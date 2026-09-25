@@ -2,6 +2,7 @@
 export class Input {
   private down = new Set<string>();
   private pressed = new Set<string>();
+  private virtual = new Set<string>();
   dx = 0;
   dy = 0;
   wheel = 0;
@@ -17,10 +18,10 @@ export class Input {
       const k = e.key.toLowerCase();
       if (!this.down.has(k)) this.pressed.add(k);
       this.down.add(k);
-      if ([' ', 'arrowup', 'arrowdown', 'arrowleft', 'arrowright', 'tab'].includes(k)) e.preventDefault();
+      if ([' ', 'arrowup', 'arrowdown', 'arrowleft', 'arrowright'].includes(k)) e.preventDefault();
     });
     addEventListener('keyup', (e) => this.down.delete(e.key.toLowerCase()));
-    addEventListener('blur', () => this.down.clear());
+    addEventListener('blur', () => this.reset());
     el.addEventListener('pointerdown', (e) => {
       if (e.pointerType === 'touch') return;
       this.dragging = true;
@@ -66,12 +67,13 @@ export class Input {
         if (t.identifier === lookId) lookId = -1;
       }
     };
+    addEventListener('blur', () => { stickId = lookId = -1; });
     this.el.addEventListener('touchend', end);
     this.el.addEventListener('touchcancel', end);
   }
 
   held(k: string): boolean {
-    return !this.blocked && this.down.has(k);
+    return !this.blocked && (this.down.has(k) || this.virtual.has(k));
   }
 
   /** True once, on the frame the key went down. Works while blocked (for Esc / panel toggles). */
@@ -83,7 +85,24 @@ export class Input {
     this.pressed.add(k);
   }
 
+  setVirtual(k: string, held: boolean): void {
+    if (held) {
+      if (!this.virtual.has(k)) this.pressed.add(k);
+      this.virtual.add(k);
+    } else this.virtual.delete(k);
+  }
+
+  reset(): void {
+    this.down.clear();
+    this.virtual.clear();
+    this.pressed.clear();
+    this.stick.x = this.stick.y = 0;
+    this.dragging = false;
+    this.dx = this.dy = this.wheel = 0;
+  }
+
   axis(): { x: number; y: number } {
+    if (this.blocked) return { x: 0, y: 0 };
     let x = this.stick.x, y = -this.stick.y;
     if (this.held('w') || this.held('arrowup')) y += 1;
     if (this.held('s') || this.held('arrowdown')) y -= 1;

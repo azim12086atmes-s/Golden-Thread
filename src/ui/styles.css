@@ -194,3 +194,10 @@ kbd { display: inline-block; min-inline-size: 22px; padding: 2px 6px; border-rad
   .panel { inset-block: 10px 76px; inset-inline: 10px; inline-size: auto; }
   .feed { inset-block-end: 130px; }
 }
+
+/* Touch actions stay clear of the bottom navigation. */
+.touch-actions { display: none; position: absolute; inset-inline-end: 16px; inset-block-end: 100px; gap: 8px; grid-template-columns: repeat(2, minmax(0, 1fr)); max-inline-size: 250px; }
+.touch-actions[hidden] { display: none !important; }
+.touch-action { pointer-events: auto; touch-action: none; user-select: none; min-block-size: 48px; background: var(--glass-strong); }
+@media (pointer: coarse) { .touch-actions { display: grid; } .prompt { inset-block-end: 220px; } }
+:focus-visible { outline: 2px solid var(--gold); outline-offset: 3px; }

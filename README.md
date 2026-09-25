@@ -11,7 +11,7 @@ Built with three.js + TypeScript + Vite. Everything is procedural — no model o
 
 ```
 npm install
-npm run dev        # http://127.0.0.1:5190
+npm run dev        # http://127.0.0.1:5191
 npm test           # rules, systems and world checks
 npm run build      # typecheck + production bundle in dist/
 ```
@@ -58,3 +58,13 @@ dev.go('mughal', 8, 70, Math.PI, 0.12, 14, 17.6); // land, offset, camera yaw/pi
 dev.hold(['w'], 2);                            // hold keys for 2 seconds
 dev.info();                                    // position, gap between them, mode, target
 ```
+
+## Development copy
+
+This is a local Git development copy of the original Golden_Thread folder; no hosted GitHub fork
+exists because the source had no Git repository or remote. Dependencies currently use a local
+node_modules junction to the original installation; on another machine run npm install.
+The original source remains untouched. Run on port 5191 to keep saves separate from port 5190.
+
+Help now includes Low / High graphics and Save photo. P saves a PNG without the HUD.
+Touch screens have Interact, Fly, Jump / Rise, and Run / Descend controls.

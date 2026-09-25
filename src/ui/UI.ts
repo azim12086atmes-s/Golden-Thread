@@ -49,6 +49,7 @@ export class UI {
   private card = h('div', { class: 'card' });
   private labels = h('div', { class: 'labels' });
   private dock = h('nav', { class: 'dock' });
+  private touchActions = h('div', { class: 'touch-actions', 'aria-label': 'Touch actions' });
   private title = h('div', { class: 'title' });
   private flash = h('div', { class: 'flash' });
   panel: Panel = null;
@@ -63,6 +64,8 @@ export class UI {
   constructor(private g: Game) {
     document.body.append(this.root);
     this.root.append(this.labels, this.tl, this.tr, this.tracker, this.feed, this.prompt, this.dock, this.panelEl, this.card, this.flash, this.title);
+    this.root.append(this.touchActions);
+    this.buildTouchActions();
     this.buildDock();
     this.buildTitle();
     g.bus.on('toast', ({ text, kind }) => this.toast(text, kind ?? 'info'));
@@ -80,6 +83,7 @@ export class UI {
 
   handleKeys(): void {
     const i = this.g.input;
+    if (i.hit('p') && !this.modal) this.g.takePhoto();
     const keys: Array<[string, Panel]> = [['c', 'wardrobe'], ['i', 'bag'], ['j', 'journal'], ['m', 'map'], ['n', 'messages'], ['v', 'vehicles'], ['h', 'help']];
     for (const [k, p] of keys) if (i.hit(k)) return this.toggle(p);
     if (i.hit('b')) {
@@ -97,6 +101,7 @@ export class UI {
   }
 
   update(dt: number): void {
+    this.touchActions.hidden = !this.g.started || this.modal || this.g.inVan;
     this.hudTimer -= dt;
     if (this.hudTimer <= 0) {
       this.hudTimer = 0.25;
@@ -229,6 +234,24 @@ export class UI {
     );
   }
 
+  private buildTouchActions(): void {
+    const actions = [['e', 'Interact'], ['f', 'Fly'], [' ', 'Jump / Rise'], ['shift', 'Run / Descend']];
+    for (const [key, label] of actions) {
+      const button = btn(label, () => {}, 'touch-action');
+      button.setAttribute('aria-label', label);
+      button.addEventListener('pointerdown', (event) => {
+        event.preventDefault();
+        button.setPointerCapture(event.pointerId);
+        this.g.input.setVirtual(key, true);
+      });
+      const release = () => this.g.input.setVirtual(key, false);
+      button.addEventListener('pointerup', release);
+      button.addEventListener('pointercancel', release);
+      button.addEventListener('lostpointercapture', release);
+      this.touchActions.append(button);
+    }
+  }
+
   private buildDock(): void {
     const items: Array<[Panel, string, string]> = [['wardrobe', '👗', 'Wardrobe (C)'], ['bag', '🎒', 'Bag & crafts (I)'], ['journal', '📖', 'Journal (J)'], ['map', '🗺️', 'Map (M)'], ['messages', '💌', 'Messages (N)'], ['vehicles', '🚐', 'Travel (V)'], ['help', '❔', 'Help (H)']];
     for (const [p, icon, label] of items) {
@@ -250,6 +273,7 @@ export class UI {
 
   open(p: Panel): void {
     if (this.panel === 'build' && p !== 'build') this.g.exitBuild();
+    this.g.input.reset();
     this.panel = p;
     this.render();
   }
@@ -541,6 +565,14 @@ export class UI {
   }
 
   private help(body: HTMLElement): void {
+    body.append(h('h3', {}, 'Graphics & photos'),
+      h('p', { class: 'dim' }, 'Low graphics turns off shadows and bloom and reduces resolution. Your choice is remembered on this browser.'),
+      h('div', { class: 'acts' },
+        btn('Low graphics', () => { this.g.setQuality('low'); this.render(); }, this.g.quality === 'low' ? 'on' : 'ghost'),
+        btn('High graphics', () => { this.g.setQuality('high'); this.render(); }, this.g.quality === 'high' ? 'on' : 'ghost'),
+        btn('Save photo (P)', () => this.g.takePhoto(), 'primary')),
+      h('p', { class: 'dim' }, 'On touch screens: drag the left half to move, the right half to look. Hold Jump / Rise or Run / Descend; tap Interact or Fly. Photos save the view without menus.'));
+
     const rows: Array<[string, string]> = [
       ['WASD / arrows', 'Walk · steer'], ['Drag · wheel', 'Look around · zoom'], ['Space', 'Jump · rise (flying, unicorn, plane climb)'], ['Shift', 'Run · descend · boost'],
       ['F', 'Cape of light — fly together'], ['E', 'Talk · gather · befriend · light lanterns'], ['V', 'Choose how to travel'], ['C', 'Wardrobe for both'], ['I', 'Bag, skills and crafting'],

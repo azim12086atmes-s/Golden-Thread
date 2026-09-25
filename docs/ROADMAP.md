@@ -43,3 +43,14 @@ friendship → unicorns; messages from friends; every panel.
 ## Not planned
 
 Combat, enemies, fail states, multiplayer, real-money purchases.
+
+## Local development copy — 2026-09-25
+
+Independent source snapshot from Golden_Thread (the source folder had no Git history or remote).
+Added touch action buttons (interact, fly, held ascent and descent), blocked touch motion in menus,
+focus-loss input cleanup, keyboard Tab navigation, remembered low/high graphics controls, and
+PNG photo capture without HUD via Help or P. Full free-camera photo mode remains future work.
+Acceptance: touch holds persist until release/cancel; menus and blur clear movement; low graphics
+disables shadows and bloom; a photo contains the rendered world without the DOM overlay.
+Existing content invariants are unchanged. House interiors and community projects remain future work.
+`nValidation: 222 tests pass; full TypeScript check and production bundle pass. Browser smoke test: title/start, world rendering, low/high graphics switching, PNG download inspected with no HUD, and no console errors. Touch input rules are unit-tested; physical-phone testing remains outstanding. Unused incomplete geo.ts is preserved in docs/prototypes/geo.ts.txt because its required geography-data.ts never existed in the source snapshot.

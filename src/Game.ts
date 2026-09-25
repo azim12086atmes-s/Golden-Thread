@@ -46,6 +46,7 @@ export class Game {
   readonly renderer: THREE.WebGLRenderer;
   readonly scene = new THREE.Scene();
   readonly camera = new THREE.PerspectiveCamera(60, 1, 0.1, 5000);
+  quality: 'low' | 'high' = 'high';
   private composer: EffectComposer;
   private bloom: UnrealBloomPass;
   readonly bus = new EventBus();
@@ -125,7 +126,7 @@ export class Game {
     });
     this.renderer.domElement.addEventListener('click', () => this.buildClick());
     addEventListener('beforeunload', () => this.save());
-    this.resize();
+    try { this.setQuality(localStorage.getItem('golden-thread/quality') === 'low' ? 'low' : 'high'); } catch { this.resize(); }
     this.renderer.setAnimationLoop(() => this.frame());
   }
 
@@ -137,6 +138,41 @@ export class Game {
     this.camera.aspect = w / h;
     this.camera.updateProjectionMatrix();
     this.van.resize(w, h);
+  }
+
+  setQuality(quality: 'low' | 'high'): void {
+    this.quality = quality;
+    this.renderer.setPixelRatio(quality === 'low' ? 1 : Math.min(devicePixelRatio, 1.75));
+    this.composer.setPixelRatio(this.renderer.getPixelRatio());
+    this.renderer.shadowMap.enabled = quality === 'high';
+    this.bloom.enabled = quality === 'high';
+    this.scene.traverse((object) => {
+      if (object instanceof THREE.Mesh) {
+        const materials = Array.isArray(object.material) ? object.material : [object.material];
+        materials.forEach((material) => { material.needsUpdate = true; });
+      }
+    });
+    this.resize();
+    try { localStorage.setItem('golden-thread/quality', quality); } catch { /* session-only */ }
+  }
+
+  takePhoto(): void {
+    // Render and copy synchronously before WebGL clears its drawing buffer. DOM UI is excluded.
+    if (this.inVan) this.renderer.render(this.van.scene, this.van.camera);
+    else this.composer.render();
+    const snapshot = document.createElement('canvas');
+    snapshot.width = this.renderer.domElement.width;
+    snapshot.height = this.renderer.domElement.height;
+    snapshot.getContext('2d')!.drawImage(this.renderer.domElement, 0, 0);
+    snapshot.toBlob((blob) => {
+      if (!blob) return this.toast('Photo could not be saved. Please try again.');
+      const url = URL.createObjectURL(blob), link = document.createElement('a');
+      link.href = url;
+      link.download = 'golden-thread-' + this.region.id + '-' + Date.now() + '.png';
+      link.click();
+      setTimeout(() => URL.revokeObjectURL(url), 60000);
+      this.toast('Your journey photo is ready.');
+    }, 'image/png');
   }
 
   get hour(): number {
@@ -521,3 +557,4 @@ export class Game {
     location.reload();
   }
 }
+

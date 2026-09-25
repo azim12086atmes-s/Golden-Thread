@@ -1,0 +1,1 @@
+geo.ts.txt preserves an unfinished, unused continent-map prototype from the original folder. It imported geography-data.ts, which was absent. No runtime module imported it. Restore it to src/world only when the proposed continent data and its tests are implemented. The active twenty-land terrain is unchanged.
