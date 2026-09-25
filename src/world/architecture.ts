@@ -1,0 +1,1033 @@
+import * as THREE from 'three';
+import type { Rng } from '../core/rng';
+import {
+  GeoBuilder, M, archPanel, box, cone, cyl, dome, gable, hip, onion, sphere, sweptRoof, tent, tree,
+} from './kit';
+import type { RegionId, RegionSpec } from './regions';
+
+/**
+ * Architecture per land. Every builder works in a local frame: origin at the building's base
+ * centre, front facing +Z. The caller places it with GeoBuilder.frame(). `g` is lit geometry;
+ * `glow` is windows, lanterns and lamps, which brighten at night.
+ */
+export interface Ctx {
+  g: GeoBuilder;
+  glow: GeoBuilder;
+  rng: Rng;
+  s: RegionSpec;
+}
+
+export interface Footprint {
+  /** Collision radius. */
+  r: number;
+  /** Height of the top, for flight clearance. */
+  h: number;
+}
+
+const DOOR = '#4a3426';
+/** Tower windows: many of them, so each is muted — the city glows, it does not blaze. */
+const NY_WINDOW = '#b8a47a';
+const pick = <T>(c: Ctx, a: readonly T[]) => c.rng.pick(a);
+
+/** A glowing window on the front face (z = +d/2) — or on any face via ry. */
+function win(c: Ctx, x: number, y: number, z: number, w = 0.9, h = 1.1, ry = 0, arched = false): void {
+  if (arched) archPanel(c.glow, w, h, c.s.glow, x, y, z, ry, 0.08);
+  else box(c.glow, w, h, 0.1, c.s.glow, x, y, z, ry);
+}
+
+function windowGrid(c: Ctx, w: number, d: number, floors: number, floorH: number, perRow: number, arched = false, y0 = 0.9): void {
+  for (let f = 0; f < floors; f++) {
+    for (let i = 0; i < perRow; i++) {
+      const x = -w / 2 + (w / perRow) * (i + 0.5);
+      win(c, x, y0 + f * floorH, d / 2 + 0.02, 0.8, 1.1, 0, arched);
+    }
+    // side windows
+    win(c, w / 2 + 0.02, y0 + f * floorH, 0, 0.8, 1.1, Math.PI / 2, arched);
+    win(c, -w / 2 - 0.02, y0 + f * floorH, 0, 0.8, 1.1, -Math.PI / 2, arched);
+  }
+}
+
+function door(c: Ctx, w: number, d: number, arched = false, col = DOOR): void {
+  if (arched) archPanel(c.g, 1.3, 2.3, col, 0, 0, d / 2 + 0.01, 0, 0.1, true);
+  else box(c.g, 1.2, 2.1, 0.12, col, 0, 0, d / 2);
+  void w;
+}
+
+function chhatri(c: Ctx, x: number, y: number, z: number, r: number, col: string, domeCol: string): void {
+  for (const [dx, dz] of [[-1, -1], [1, -1], [-1, 1], [1, 1]]) cyl(c.g, r * 0.1, r * 0.1, r * 1.2, col, x + dx * r * 0.7, y, z + dz * r * 0.7, 5);
+  box(c.g, r * 1.8, r * 0.18, r * 1.8, col, x, y + r * 1.2, z);
+  onion(c.g, r * 0.75, domeCol, x, y + r * 1.38, z);
+}
+
+function lanternHanging(c: Ctx, x: number, y: number, z: number, col?: string): void {
+  cyl(c.g, 0.02, 0.02, 0.5, '#3a2a22', x, y, z, 3);
+  sphere(c.glow, 0.28, col ?? c.s.glow, x, y - 0.25, z, 6, 1.3);
+}
+
+// ───────────────────────── houses ─────────────────────────
+
+type HouseFn = (c: Ctx) => Footprint;
+
+const houses: Record<RegionId, HouseFn> = {
+  meadow(c) {
+    const wall = pick(c, c.s.walls), roof = pick(c, c.s.roofs);
+    if (c.rng.chance(0.5)) {
+      cyl(c.g, 3, 3.1, 3, wall, 0, 0, 0, 10);
+      cone(c.g, 3.9, 3.4, roof, 0, 3, 0, 10);
+      box(c.g, 0.6, 1.6, 0.6, '#b5654a', 1.4, 4.2, 0.4);
+      box(c.g, 1.1, 2, 0.2, DOOR, 0, 0, 2.95);
+      win(c, 1.8, 1.2, 2.4, 0.7, 0.8, 0.6);
+      win(c, -1.8, 1.2, 2.4, 0.7, 0.8, -0.6);
+      for (let i = 0; i < 5; i++) sphere(c.g, 0.25, pick(c, c.s.flowers), -2.6 + i * 1.3, 0.2, 3.3, 5);
+      return { r: 3.6, h: 6.5 };
+    }
+    box(c.g, 6, 3, 5, wall);
+    gable(c.g, 6.8, 6, 2.6, roof, 0, 3, 0);
+    box(c.g, 0.7, 1.8, 0.7, '#b5654a', -1.8, 4, -0.8);
+    door(c, 6, 5);
+    win(c, -1.8, 1, 2.52);
+    win(c, 1.8, 1, 2.52);
+    return { r: 3.8, h: 5.8 };
+  },
+
+  japan(c) {
+    const wall = pick(c, c.s.walls), roof = pick(c, c.s.roofs), wood = '#4a3426';
+    const two = c.rng.chance(0.4);
+    box(c.g, 7.4, 0.5, 6.4, '#8a8078');
+    box(c.g, 6.6, 3, 5.6, wall, 0, 0.5, 0);
+    for (const x of [-3.3, 0, 3.3]) box(c.g, 0.25, 3, 0.25, wood, x, 0.5, 2.8);
+    box(c.g, 6.8, 0.25, 0.25, wood, 0, 3.3, 2.8);
+    for (let i = 0; i < 3; i++) box(c.glow, 1.4, 1.8, 0.08, c.s.glow, -2.2 + i * 2.2, 0.9, 2.84);
+    sweptRoof(c.g, 8.8, 7.8, 2.4, roof, 0, 3.5, 0);
+    if (two) {
+      box(c.g, 4.6, 2.2, 4, wall, 0, 4.6, 0);
+      box(c.glow, 1.6, 1.2, 0.08, c.s.glow, 0, 5.2, 2.02);
+      sweptRoof(c.g, 6.6, 5.8, 2, roof, 0, 6.7, 0);
+    }
+    if (c.rng.chance(0.4)) lanternHanging(c, 2.6, 3.3, 3.4, '#ffb070');
+    return { r: 4.2, h: two ? 8.7 : 6 };
+  },
+
+  korea(c) {
+    const wall = pick(c, c.s.walls), roof = pick(c, c.s.roofs), wood = '#7a4a2a';
+    box(c.g, 8, 0.9, 6, '#a8a098');
+    box(c.g, 7, 2.8, 5, wall, 0, 0.9, 0);
+    for (const x of [-3.5, -1.2, 1.2, 3.5]) box(c.g, 0.3, 2.8, 0.3, wood, x, 0.9, 2.5);
+    box(c.g, 7.2, 0.3, 0.3, wood, 0, 3.4, 2.5);
+    for (const x of [-2.35, 0, 2.35]) box(c.glow, 1.3, 1.5, 0.08, c.s.glow, x, 1.4, 2.54);
+    sweptRoof(c.g, 10, 8, 2.6, roof, 0, 3.7, 0, 0, 0.5);
+    return { r: 4.6, h: 6.3 };
+  },
+
+  china(c) {
+    const roof = pick(c, c.s.roofs), red = '#b3262a';
+    box(c.g, 8, 0.6, 7, '#cfc8b8');
+    box(c.g, 6.6, 3.2, 5.6, '#f2e6cc', 0, 0.6, 0);
+    for (const x of [-3.3, -1.1, 1.1, 3.3]) cyl(c.g, 0.2, 0.2, 3.2, red, x, 0.6, 3, 8);
+    box(c.g, 7.2, 0.4, 0.4, red, 0, 3.6, 3);
+    box(c.glow, 1.6, 2, 0.08, c.s.glow, -1.9, 1, 2.84);
+    box(c.glow, 1.6, 2, 0.08, c.s.glow, 1.9, 1, 2.84);
+    sweptRoof(c.g, 9.4, 8.2, 2.4, roof, 0, 3.8, 0, 0, 0.45);
+    lanternHanging(c, -2.2, 3.6, 3.4, '#ff4a2a');
+    lanternHanging(c, 2.2, 3.6, 3.4, '#ff4a2a');
+    return { r: 4.4, h: 6.2 };
+  },
+
+  norway(c) {
+    const wall = pick(c, c.s.walls), roof = pick(c, c.s.roofs);
+    const w = 5 + c.rng.range(0, 1.5), d = 6, h = 5 + c.rng.range(0, 2);
+    box(c.g, w, h, d, wall);
+    gable(c.g, w + 0.6, d + 0.8, 3.4, roof, 0, h, 0, Math.PI / 2);
+    for (const x of [-w / 2, w / 2]) box(c.g, 0.2, h, 0.2, '#ffffff', x, 0, d / 2);
+    windowGrid(c, w, d, Math.floor(h / 2.6), 2.4, 2);
+    door(c, w, d);
+    return { r: Math.max(w, d) / 2 + 0.6, h: h + 3.4 };
+  },
+
+  switzerland(c) {
+    const wood = pick(c, ['#8a5a36', '#a8703f', '#6e4a30']);
+    box(c.g, 8, 2.6, 7, '#b8b0a4');
+    box(c.g, 8, 3, 7, wood, 0, 2.6, 0);
+    gable(c.g, 10.5, 9.5, 3, pick(c, c.s.roofs), 0, 5.6, 0, Math.PI / 2);
+    box(c.g, 7, 0.2, 1.4, wood, 0, 3.2, 4.1);
+    for (let i = 0; i < 8; i++) box(c.g, 0.1, 1, 0.1, '#5a3a26', -3.4 + i, 3.4, 4.75);
+    for (let i = 0; i < 6; i++) sphere(c.g, 0.22, i % 2 ? '#e8364a' : '#ff6b8b', -2.5 + i, 4.5, 4.6, 4);
+    windowGrid(c, 8, 7, 2, 2.8, 3);
+    door(c, 8, 7);
+    return { r: 5, h: 8.6 };
+  },
+
+  london(c) {
+    // A short terrace of three houses.
+    const roof = pick(c, c.s.roofs), trim = '#f2efe6';
+    const floors = c.rng.int(3, 4), fh = 3;
+    for (let i = -1; i <= 1; i++) {
+      const wall = pick(c, c.s.walls), x = i * 5.2;
+      c.g.frame(x, 0, 0, 0, 1, () => {
+        box(c.g, 5.2, floors * fh, 8, wall);
+        box(c.g, 5.3, 0.3, 8.1, trim, 0, fh, 0);
+        windowGrid(c, 5.2, 8, floors, fh, 2);
+        box(c.g, 1.2, 2.3, 0.15, pick(c, ['#1f3a5a', '#1f1f24', '#8a1f2a', '#2f5a3a']), 1.2, 0, 4.02);
+        box(c.g, 0.8, 1.6, 0.8, '#7a3a30', -1.5, floors * fh + 1.4, 0);
+      });
+    }
+    gable(c.g, 15.6, 8.4, 3, roof, 0, floors * fh, 0);
+    for (let i = 0; i < 8; i++) box(c.g, 0.08, 1, 0.08, '#1f1f24', -7.5 + i * 2.1, 0, 5.2);
+    return { r: 8.5, h: floors * fh + 3 };
+  },
+
+  newyork(c) {
+    const wall = pick(c, c.s.walls);
+    const w = c.rng.range(12, 20), d = c.rng.range(12, 20);
+    const h = c.rng.chance(0.3) ? c.rng.range(70, 130) : c.rng.range(22, 60);
+    box(c.g, w, h, d, wall);
+    for (let y = 4; y < h - 2; y += 3.4) box(c.glow, w + 0.08, 0.7, d + 0.08, NY_WINDOW, 0, y, 0);
+    box(c.g, w + 0.6, 0.6, d + 0.6, '#3a3a44', 0, h, 0);
+    if (h > 60) {
+      box(c.g, w * 0.7, h * 0.12, d * 0.7, wall, 0, h, 0);
+      for (let y = h + 2; y < h * 1.12 - 1; y += 3.4) box(c.glow, w * 0.7 + 0.08, 0.7, d * 0.7 + 0.08, NY_WINDOW, 0, y, 0);
+    } else if (c.rng.chance(0.6)) {
+      for (const [x, z] of [[-w / 4, -d / 4], [w / 5, d / 5]]) {
+        for (const [a, b] of [[-0.8, -0.8], [0.8, -0.8], [-0.8, 0.8], [0.8, 0.8]]) cyl(c.g, 0.1, 0.1, 2, '#3a3a3a', x + a, h, z + b, 4);
+        cyl(c.g, 1.4, 1.4, 2.4, '#8a5a3a', x, h + 2, z, 10);
+        cone(c.g, 1.5, 1, '#5a3a2a', x, h + 4.4, z, 10);
+      }
+    }
+    box(c.glow, w * 0.5, 3, 0.1, '#fff6d8', 0, 0, d / 2 + 0.05);
+    return { r: Math.max(w, d) * 0.6, h: h > 60 ? h * 1.12 : h + 4 };
+  },
+
+  renaissance(c) {
+    const wall = pick(c, c.s.walls), floors = c.rng.int(2, 3), fh = 3.4;
+    const w = 9, d = 8;
+    box(c.g, w, floors * fh, d, wall);
+    box(c.g, w + 0.2, 0.4, d + 0.2, '#fbf3e0', 0, fh, 0);
+    for (let f = 0; f < floors; f++) for (let i = 0; i < 3; i++) win(c, -3 + i * 3, 0.8 + f * fh, d / 2 + 0.02, 1, 1.5, 0, true);
+    win(c, w / 2 + 0.02, 1, 0, 1, 1.5, Math.PI / 2, true);
+    win(c, -w / 2 - 0.02, 1, 0, 1, 1.5, -Math.PI / 2, true);
+    hip(c.g, w + 1.4, d + 1.4, 2, pick(c, c.s.roofs), 0, floors * fh, 0);
+    archPanel(c.g, 1.6, 2.6, DOOR, 0, 0, d / 2 + 0.03);
+    return { r: 6, h: floors * fh + 2 };
+  },
+
+  vintage(c) {
+    const wall = pick(c, c.s.walls), awn = pick(c, ['#e07a5f', '#5a8ab5', '#6ab58a', '#d9467a']);
+    const w = 8, d = 7, h = c.rng.chance(0.5) ? 4.2 : 7.4;
+    box(c.g, w, h, d, wall);
+    box(c.g, w + 0.3, 0.8, d + 0.3, '#ffffff', 0, h, 0);
+    box(c.glow, w - 2, 2.2, 0.1, c.s.glow, 0, 0.6, d / 2 + 0.02);
+    for (let i = 0; i < 8; i++) {
+      const geo = { w: w / 8 };
+      box(c.g, geo.w, 0.1, 1.8, i % 2 ? '#ffffff' : awn, -w / 2 + geo.w * (i + 0.5), 3, d / 2 + 0.8);
+    }
+    box(c.g, w * 0.6, 0.9, 0.2, awn, 0, 3.4, d / 2 + 0.05);
+    if (h > 5) windowGrid(c, w, d, 1, 3, 3, false, 4.6);
+    return { r: 5.3, h: h + 0.8 };
+  },
+
+  islamic(c) {
+    const wall = pick(c, c.s.walls), trim = pick(c, c.s.trims);
+    const w = c.rng.range(7, 10), d = c.rng.range(7, 10), h = c.rng.range(4, 7);
+    box(c.g, w, h, d, wall);
+    box(c.g, w + 0.2, 0.5, d + 0.2, trim, 0, h, 0);
+    archPanel(c.g, 1.6, 2.8, trim, 0, 0, d / 2 + 0.01, 0, 0.1, true);
+    for (const x of [-w / 3, w / 3]) win(c, x, 1.4, d / 2 + 0.02, 0.9, 1.6, 0, true);
+    box(c.g, 1.6, 1.2, 0.5, '#8a5a36', w / 3, h - 2.2, d / 2 + 0.2);
+    if (c.rng.chance(0.4)) {
+      cyl(c.g, 1.8, 1.8, 0.8, wall, 0, h + 0.5, 0, 12);
+      dome(c.g, 1.8, pick(c, c.s.roofs), 0, h + 1.3, 0, 12);
+    }
+    if (c.rng.chance(0.5)) lanternHanging(c, -1.6, 2.8, d / 2 + 0.5);
+    return { r: Math.max(w, d) / 2 + 0.5, h: h + 3 };
+  },
+
+  middleeast(c) {
+    const wall = pick(c, c.s.walls);
+    const w = c.rng.range(7, 10), d = c.rng.range(7, 10), h = c.rng.range(4.5, 7.5);
+    box(c.g, w, h, d, wall);
+    for (let i = 0; i < 5; i++) cyl(c.g, 0.1, 0.1, 0.8, '#6b4a2a', -w / 2 + 1 + i * (w - 2) / 4, h - 0.8, d / 2 + 0.3, 4);
+    box(c.g, w + 0.2, 0.5, d + 0.2, wall, 0, h, 0);
+    if (c.rng.chance(0.6)) {
+      box(c.g, 2.2, 5, 2.2, wall, w / 2 - 1.4, h, -d / 2 + 1.4);
+      for (let i = 0; i < 2; i++) box(c.g, 0.4, 2.6, 2.3, '#4a3426', w / 2 - 1.9 + i * 1, h + 1.8, -d / 2 + 1.4);
+    }
+    archPanel(c.g, 1.4, 2.5, '#6b4a2a', 0, 0, d / 2 + 0.01);
+    win(c, -w / 3, 2.4, d / 2 + 0.02, 0.7, 1);
+    win(c, w / 3, 2.4, d / 2 + 0.02, 0.7, 1);
+    if (c.rng.chance(0.5)) {
+      box(c.g, 4, 0.1, 2.4, pick(c, ['#c23b2a', '#2f6f9a', '#e2b43a']), 0, 2.9, d / 2 + 1.2);
+      lanternHanging(c, 1.4, 2.9, d / 2 + 2.2);
+    }
+    return { r: Math.max(w, d) / 2 + 0.6, h: h + 5 };
+  },
+
+  desert(c) {
+    const a = pick(c, c.s.roofs), b = pick(c, ['#f1d3a2', '#8c3b2a', '#d9a066']);
+    if (c.rng.chance(0.5)) {
+      box(c.g, 7, 0.02, 5, pick(c, ['#8c3b2a', '#2f6f9a', '#d9a066']), 0, 0.02, 3);
+      gable(c.g, 7, 6, 3, a, 0, 0, 0);
+      box(c.g, 7.2, 0.3, 0.3, b, 0, 1.2, 0);
+    } else {
+      tent(c.g, 3.4, 4.2, a, b);
+    }
+    // campfire
+    cone(c.glow, 0.45, 0.9, '#ff8a2a', 3.8, 0.1, 3.8, 5);
+    for (let i = 0; i < 6; i++) sphere(c.g, 0.2, '#6b6b6b', 3.8 + Math.cos(i) * 0.7, 0, 3.8 + Math.sin(i) * 0.7, 4);
+    return { r: 3.8, h: 4.3 };
+  },
+
+  egypt(c) {
+    const wall = pick(c, c.s.walls);
+    const w = c.rng.range(6, 9), d = c.rng.range(6, 9), h = c.rng.range(3.5, 6.5);
+    box(c.g, w, h, d, wall);
+    box(c.g, w + 0.3, 0.4, d + 0.3, '#c9a86a', 0, h, 0);
+    box(c.g, 1.2, 2.2, 0.12, pick(c, ['#2f6f9a', '#6b4a2a']), 0, 0, d / 2);
+    win(c, -w / 3, 2, d / 2 + 0.02, 0.6, 0.8);
+    win(c, w / 3, 2, d / 2 + 0.02, 0.6, 0.8);
+    if (c.rng.chance(0.3)) {
+      cone(c.g, 1.4, 4, '#e8d6b0', -w / 4, h, -d / 4, 10);
+    }
+    return { r: Math.max(w, d) / 2 + 0.5, h: h + 1 };
+  },
+
+  indianorth(c) {
+    const wall = pick(c, c.s.walls), trim = '#ffffff';
+    const floors = c.rng.int(2, 3), fh = 3.2, w = 9, d = 8;
+    box(c.g, w, floors * fh, d, wall);
+    for (let f = 1; f <= floors; f++) box(c.g, w + 0.2, 0.25, d + 0.2, trim, 0, f * fh - 0.1, 0);
+    for (let f = 0; f < floors; f++) for (let i = 0; i < 3; i++) win(c, -3 + i * 3, 0.8 + f * fh, d / 2 + 0.02, 0.9, 1.4, 0, true);
+    // jharokha balcony
+    box(c.g, 2.4, 1.6, 1.2, wall, 0, fh + 0.4, d / 2 + 0.6);
+    onion(c.g, 0.9, trim, 0, fh + 2, d / 2 + 0.6);
+    chhatri(c, w / 2 - 1.2, floors * fh, -d / 2 + 1.2, 1.1, wall, trim);
+    archPanel(c.g, 1.5, 2.6, '#6b3a2a', 0, 0, d / 2 + 0.01, 0, 0.1, true);
+    return { r: 6, h: floors * fh + 2.8 };
+  },
+
+  indiasouth(c) {
+    const wall = pick(c, c.s.walls), roof = pick(c, c.s.roofs);
+    box(c.g, 9, 0.6, 8, '#b5a58a');
+    box(c.g, 7, 3, 6, wall, 0, 0.6, 0);
+    for (const x of [-4, -1.3, 1.3, 4]) cyl(c.g, 0.18, 0.18, 2.6, '#6b4a2a', x, 0.6, 3.6, 6);
+    hip(c.g, 11, 10, 3.6, roof, 0, 3.2, 0);
+    hip(c.g, 5, 4, 1.8, roof, 0, 5.6, 0);
+    door(c, 7, 6);
+    win(c, -2.2, 1.6, 3.02);
+    win(c, 2.2, 1.6, 3.02);
+    for (let i = 0; i < 7; i++) sphere(c.g, 0.12, i % 2 ? '#ffffff' : '#f2a13a', -3 + i, 0.62, 4.3, 4);
+    return { r: 5.4, h: 7.4 };
+  },
+
+  mughal(c) {
+    const red = '#b5552e', white = '#fbf7ee';
+    const w = 9, d = 8, h = c.rng.range(5, 7);
+    box(c.g, w, h, d, red);
+    box(c.g, w + 0.2, 0.3, d + 0.2, white, 0, h, 0);
+    box(c.g, w + 0.2, 0.2, d + 0.2, white, 0, h * 0.5, 0);
+    archPanel(c.g, 2.4, 3.6, white, 0, 0, d / 2 + 0.01, 0, 0.1, true);
+    archPanel(c.g, 1.8, 3.1, '#5a2a1a', 0, 0, d / 2 + 0.06, 0, 0.1, true);
+    for (const x of [-3, 3]) win(c, x, 1.4, d / 2 + 0.02, 1, 1.6, 0, true);
+    chhatri(c, -w / 2 + 1.1, h, -d / 2 + 1.1, 1, white, white);
+    chhatri(c, w / 2 - 1.1, h, -d / 2 + 1.1, 1, white, white);
+    return { r: 6, h: h + 3 };
+  },
+
+  indonesia(c) {
+    const wood = pick(c, c.s.walls), roof = pick(c, c.s.roofs);
+    for (const x of [-3.5, 0, 3.5]) for (const z of [-2.2, 2.2]) cyl(c.g, 0.2, 0.2, 1.6, '#5a3a26', x, 0, z, 6);
+    box(c.g, 9, 3, 6, wood, 0, 1.6, 0);
+    for (let i = 0; i < 6; i++) box(c.g, 1.2, 0.3, 0.08, pick(c, c.s.trims), -3.6 + i * 1.44, 3.6, 3.02);
+    gable(c.g, 8, 8, 4, roof, 0, 4.6, 0);
+    // The horned ridge: each end sweeps up and out.
+    for (const s of [-1, 1]) {
+      const g2 = c.g;
+      g2.frame(s * 4.4, 7.4, 0, 0, 1, () => {
+        cone(g2, 1.1, 5.2, roof, 0, 0, 0, 6);
+      });
+    }
+    box(c.glow, 1, 1.2, 0.08, c.s.glow, -2, 2.4, 3.02);
+    box(c.glow, 1, 1.2, 0.08, c.s.glow, 2, 2.4, 3.02);
+    box(c.g, 1.2, 2, 0.1, DOOR, 0, 1.6, 3.02);
+    box(c.g, 1.4, 0.2, 2, '#6b4a2a', 0, 0.8, 3.9);
+    return { r: 5.4, h: 12 };
+  },
+
+  aurora(c) {
+    if (c.rng.chance(0.45)) {
+      // Glass igloo: a clear dome with a warm glow inside.
+      box(c.g, 5.4, 0.3, 5.4, '#8a5a3c');
+      dome(c.g, 2.7, '#cfe8ff', 0, 0.3, 0, 14);
+      sphere(c.glow, 0.9, c.s.glow, 0, 0.8, 0, 8, 0.6);
+      return { r: 3, h: 3 };
+    }
+    const wood = pick(c, c.s.walls);
+    gable(c.g, 7, 7, 6.4, wood, 0, 0, 0, Math.PI / 2);
+    gable(c.g, 7.4, 7.8, 6.9, '#f4f8ff', 0, 0.2, 0, Math.PI / 2);
+    box(c.glow, 2.4, 3.4, 0.1, c.s.glow, 0, 0.4, 3.55);
+    box(c.g, 0.6, 1.4, 0.6, '#6b6b6b', 1.8, 4, -1);
+    return { r: 4, h: 7 };
+  },
+
+  skyisles(c) {
+    const wall = pick(c, c.s.walls), roof = pick(c, c.s.roofs);
+    for (let i = 0; i < 6; i++) {
+      const a = (i / 6) * Math.PI * 2;
+      cyl(c.g, 0.25, 0.25, 4, wall, Math.cos(a) * 3, 0, Math.sin(a) * 3, 6);
+    }
+    cyl(c.g, 3.6, 3.6, 0.4, wall, 0, 0, 0, 12);
+    cyl(c.g, 3.6, 3.6, 0.4, wall, 0, 4, 0, 12);
+    dome(c.g, 3.4, roof, 0, 4.4, 0, 12, 0.8);
+    sphere(c.glow, 0.8, c.s.glow, 0, 2, 0, 8);
+    return { r: 3.8, h: 7.2 };
+  },
+};
+
+export function buildHouse(c: Ctx): Footprint {
+  return houses[c.s.id](c);
+}
+
+// ───────────────────────── street props ─────────────────────────
+
+export function lampPost(c: Ctx, x: number, y: number, z: number): void {
+  const id = c.s.id;
+  if (id === 'japan') {
+    box(c.g, 0.5, 0.9, 0.5, '#9a948a', x, y, z);
+    box(c.g, 0.8, 0.1, 0.8, '#9a948a', x, y + 0.9, z);
+    box(c.glow, 0.5, 0.5, 0.5, c.s.glow, x, y + 1, z);
+    hip(c.g, 1.1, 1.1, 0.5, '#8a847a', x, y + 1.5, z);
+    return;
+  }
+  if (id === 'china' || id === 'korea') {
+    cyl(c.g, 0.07, 0.07, 3, '#b3262a', x, y, z, 5);
+    box(c.g, 1.2, 0.1, 0.1, '#b3262a', x + 0.5, y + 3, z);
+    lanternHanging(c, x + 1, y + 3, z, id === 'china' ? '#ff4a2a' : '#ffd08a');
+    return;
+  }
+  if (id === 'desert' || id === 'skyisles') {
+    sphere(c.glow, 0.3, c.s.glow, x, y + 0.6, z, 6);
+    cyl(c.g, 0.05, 0.05, 0.6, '#6b4a2a', x, y, z, 4);
+    return;
+  }
+  const dark = id === 'london' || id === 'newyork' || id === 'vintage' ? '#1f1f24' : '#4a3a2a';
+  cyl(c.g, 0.08, 0.12, 3.6, dark, x, y, z, 6);
+  box(c.glow, 0.45, 0.6, 0.45, c.s.glow, x, y + 3.6, z);
+  cone(c.g, 0.4, 0.4, dark, x, y + 4.2, z, 4);
+}
+
+/** Small scene-setting props scattered through a land's streets. */
+export function streetProp(c: Ctx, x: number, y: number, z: number, ry: number): void {
+  const id = c.s.id;
+  c.g.frame(x, y, z, ry, 1, () => c.glow.frame(x, y, z, ry, 1, () => {
+    const r = c.rng.next();
+    switch (id) {
+      case 'london':
+        if (r < 0.5) {
+          box(c.g, 1, 2.6, 1, '#c8202a');
+          box(c.glow, 0.8, 1.4, 1.02, '#fff0c0', 0, 0.9, 0);
+          box(c.g, 1.1, 0.3, 1.1, '#c8202a', 0, 2.6, 0);
+        } else {
+          box(c.g, 2.6, 4.4, 9, '#c8202a', 0, 0.5, 0);
+          box(c.glow, 2.64, 0.9, 8, '#fff0c0', 0, 1.9, 0);
+          box(c.glow, 2.64, 0.9, 8, '#fff0c0', 0, 3.6, 0);
+          for (const zz of [-3, 3]) for (const xx of [-1.2, 1.2]) cyl(c.g, 0.5, 0.5, 0.3, '#1f1f24', xx, 0.2, zz, 8);
+        }
+        break;
+      case 'newyork':
+        box(c.g, 1.9, 1, 4.4, '#f2c230', 0, 0.4, 0);
+        box(c.g, 1.7, 0.7, 2.2, '#f2c230', 0, 1.4, -0.2);
+        box(c.glow, 1.72, 0.45, 2.1, '#cfe8ff', 0, 1.5, -0.2);
+        break;
+      case 'japan':
+        if (r < 0.5) {
+          for (const xx of [-2, 2]) cyl(c.g, 0.2, 0.24, 4.4, '#c8202a', xx, 0, 0, 8);
+          box(c.g, 5.8, 0.4, 0.5, '#c8202a', 0, 3.6, 0);
+          box(c.g, 6.6, 0.4, 0.6, '#2a2a2a', 0, 4.4, 0);
+        } else {
+          tree(c.g, 'sakura', 0, 0, 0, 1.2, () => c.rng.next());
+        }
+        break;
+      case 'renaissance':
+      case 'islamic':
+      case 'mughal': {
+        const stone = id === 'mughal' ? '#fbf7ee' : id === 'islamic' ? '#3a9a9a' : '#d9d0c0';
+        cyl(c.g, 2.4, 2.6, 0.7, stone, 0, 0, 0, id === 'islamic' ? 8 : 14);
+        cyl(c.g, 2.1, 2.1, 0.1, '#5ab4e0', 0, 0.62, 0, 14);
+        cyl(c.g, 0.3, 0.4, 1.6, stone, 0, 0, 0, 8);
+        cyl(c.g, 0.9, 0.5, 0.3, stone, 0, 1.6, 0, 10);
+        sphere(c.glow, 0.2, '#bfe8ff', 0, 2, 0, 5);
+        break;
+      }
+      case 'middleeast':
+      case 'indianorth': {
+        const cloth = c.rng.pick(['#c23b2a', '#e2b43a', '#2f6f9a', '#d9467a', '#2f7a5a']);
+        for (const [xx, zz] of [[-1.4, -1], [1.4, -1], [-1.4, 1], [1.4, 1]]) cyl(c.g, 0.06, 0.06, 2.4, '#6b4a2a', xx, 0, zz, 4);
+        box(c.g, 3.2, 0.1, 2.4, cloth, 0, 2.4, 0);
+        box(c.g, 2.8, 0.9, 1.6, '#8a5a36', 0, 0, 0);
+        for (let i = 0; i < 5; i++) sphere(c.g, 0.25, c.rng.pick(['#e8364a', '#f2a13a', '#7ab55a', '#f2d14e']), -1.1 + i * 0.55, 1, 0, 5);
+        lanternHanging(c, 0, 2.4, 1);
+        break;
+      }
+      case 'vintage':
+        box(c.g, 1.9, 0.9, 4.2, c.rng.pick(['#8fd3c7', '#f2a0a0', '#f2d06a']), 0, 0.4, 0);
+        box(c.g, 1.7, 0.8, 2, '#f4f1de', 0, 1.3, -0.3);
+        for (const zz of [-1.4, 1.4]) for (const xx of [-0.95, 0.95]) cyl(c.g, 0.4, 0.4, 0.25, '#1f1f24', xx, 0.2, zz, 8);
+        break;
+      case 'meadow':
+        box(c.g, 1.6, 0.9, 1.6, '#a8703f');
+        cyl(c.g, 0.7, 0.7, 0.1, '#5ab4e0', 0, 0.9, 0, 10);
+        for (const xx of [-0.7, 0.7]) box(c.g, 0.12, 2.2, 0.12, '#6b4a2a', xx, 0, 0);
+        gable(c.g, 1.9, 1.6, 0.8, '#e07a5f', 0, 2.2, 0);
+        break;
+      case 'aurora':
+        box(c.g, 1.6, 0.6, 0.9, '#8a5a3c', 0, 0.2, 0);
+        box(c.g, 0.1, 0.1, 2.4, '#6b4a2a', -0.6, 0, 0);
+        box(c.g, 0.1, 0.1, 2.4, '#6b4a2a', 0.6, 0, 0);
+        break;
+      case 'indiasouth':
+      case 'indonesia':
+        box(c.g, 1.8, 0.8, 5, '#6b4a2a', 0, 0, 0);
+        gable(c.g, 1.4, 2, 1.2, '#c9a86a', 0, 0.8, 0, Math.PI / 2);
+        break;
+      default:
+        box(c.g, 2, 0.45, 0.6, '#8a5a36', 0, 0.45, 0);
+        for (const xx of [-0.8, 0.8]) box(c.g, 0.1, 0.45, 0.5, '#4a3a2a', xx, 0, 0);
+    }
+  }));
+}
+
+// ───────────────────────── landmarks ─────────────────────────
+
+export interface LandmarkOut {
+  colliders: Array<{ x: number; z: number; r: number; h: number }>;
+  platforms: Array<{ x: number; z: number; r: number; y: number }>;
+  /** Height of the landmark, for the map and far-view. */
+  height: number;
+}
+
+type LandmarkFn = (c: Ctx, out: LandmarkOut) => void;
+
+function pagoda(c: Ctx, tiers: number, base: number, roofCol: string, bodyCol: string): number {
+  let y = 0;
+  box(c.g, base + 3, 1, base + 3, '#9a948a');
+  y = 1;
+  for (let i = 0; i < tiers; i++) {
+    const s = base * (1 - i * 0.12);
+    box(c.g, s, 3.4, s, bodyCol, 0, y, 0);
+    box(c.glow, s * 0.4, 1.6, s + 0.1, c.s.glow, 0, y + 0.8, 0);
+    sweptRoof(c.g, s * 1.7, s * 1.7, 1.8, roofCol, 0, y + 3.2, 0, 0, 0.4);
+    y += 4.4;
+  }
+  cyl(c.g, 0.2, 0.25, 7, '#c9a86a', 0, y - 0.6, 0, 6);
+  for (let i = 0; i < 5; i++) cyl(c.g, 0.55, 0.55, 0.15, '#c9a86a', 0, y + i * 1.1, 0, 8);
+  return y + 6;
+}
+
+const landmarks: Record<RegionId, LandmarkFn> = {
+  meadow(c, o) {
+    cyl(c.g, 2.2, 3.2, 14, '#7a5a3c', 0, 0, 0, 10);
+    for (const [x, y, z, r] of [[0, 18, 0, 11], [7, 15, 3, 7], [-7, 16, -2, 7.5], [2, 15, -7, 7], [-3, 14, 7, 6.5]] as const) sphere(c.g, r, '#6aab52', x, y, z, 9);
+    for (let i = 0; i < 40; i++) {
+      const a = c.rng.range(0, Math.PI * 2), rr = c.rng.range(3, 12);
+      sphere(c.glow, 0.25, c.rng.pick(['#ffe98a', '#ffd6f0', '#c8f0ff']), Math.cos(a) * rr, c.rng.range(10, 24), Math.sin(a) * rr, 5);
+    }
+    c.g.frame(18, 0, 6, 0, 1, () => {
+      cyl(c.g, 1.8, 1.9, 1.2, '#a8a098', 0, 0, 0, 10);
+      cyl(c.g, 1.5, 1.5, 0.1, '#5ab4e0', 0, 1.1, 0, 10);
+      for (const x of [-1.5, 1.5]) box(c.g, 0.2, 2.8, 0.2, '#6b4a2a', x, 0, 0);
+      gable(c.g, 3.6, 3, 1.2, '#e07a5f', 0, 2.8, 0);
+    });
+    c.g.frame(-26, 0, -14, 0.4, 1, () => {
+      cyl(c.g, 2.4, 3.4, 12, '#fff4e0', 0, 0, 0, 8);
+      cone(c.g, 3, 3, '#e07a5f', 0, 12, 0, 8);
+      for (let i = 0; i < 4; i++) {
+        const blade = new THREE.BoxGeometry(1.1, 8, 0.15);
+        blade.translate(0, 4.2, 0);
+        c.g.add(blade, '#f4ead8', M(0, 11, 3.5, 0, 1, 1, 1, 0, (i * Math.PI) / 2 + 0.4));
+      }
+      box(c.glow, 1, 1.4, 0.1, c.s.glow, 0, 5, 3.25);
+    });
+    o.colliders.push({ x: 0, z: 0, r: 3.4, h: 30 }, { x: 18, z: 6, r: 2, h: 3 }, { x: -26, z: -14, r: 3.4, h: 15 });
+    o.height = 30;
+  },
+
+  japan(c, o) {
+    o.height = pagoda(c, 5, 8, '#3a3a4a', '#8a3a2a');
+    c.g.frame(0, 0, 26, 0, 1, () => {
+      for (const x of [-4, 4]) cyl(c.g, 0.45, 0.55, 8, '#d42a2a', x, 0, 0, 10);
+      box(c.g, 11, 0.7, 0.8, '#d42a2a', 0, 6.4, 0);
+      box(c.g, 13, 0.7, 1.1, '#2a2a2a', 0, 7.8, 0);
+    });
+    o.colliders.push({ x: 0, z: 0, r: 7, h: o.height }, { x: -4, z: 26, r: 0.8, h: 8 }, { x: 4, z: 26, r: 0.8, h: 8 });
+  },
+
+  korea(c, o) {
+    box(c.g, 34, 7, 12, '#b8b0a4');
+    for (const x of [-10, 0, 10]) archPanel(c.g, 4.6, 5.4, '#3a2a22', x, 0, 6.01);
+    box(c.g, 30, 5, 9, '#c23b2a', 0, 7, 0);
+    for (let i = 0; i < 9; i++) box(c.glow, 2, 2.6, 0.1, c.s.glow, -13 + i * 3.25, 8, 4.52);
+    sweptRoof(c.g, 44, 16, 4, '#3a3f4a', 0, 12, 0, 0, 0.5);
+    box(c.g, 18, 3, 6, '#c23b2a', 0, 15.5, 0);
+    sweptRoof(c.g, 28, 11, 3.6, '#3a3f4a', 0, 18.5, 0, 0, 0.5);
+    o.colliders.push({ x: -12, z: 0, r: 6, h: 22 }, { x: 12, z: 0, r: 6, h: 22 });
+    o.height = 22;
+  },
+
+  china(c, o) {
+    let y = 0;
+    for (let i = 0; i < 3; i++) {
+      cyl(c.g, 22 - i * 4, 23 - i * 4, 1.4, '#f4f0e6', 0, y, 0, 24);
+      y += 1.4;
+    }
+    o.platforms.push({ x: 0, z: 0, r: 14, y });
+    for (let i = 0; i < 3; i++) {
+      const r = 7 - i * 1.8;
+      cyl(c.g, r, r, 4, '#b3262a', 0, y, 0, 16);
+      box(c.glow, r * 2.02, 1.6, r * 0.8, c.s.glow, 0, y + 1.2, 0);
+      y += 4;
+      cone(c.g, r + 2.2, 3.4, '#2a4a9a', 0, y, 0, 16);
+      y += 2.2;
+    }
+    sphere(c.g, 1, '#e2b43a', 0, y + 1.4, 0, 8);
+    o.colliders.push({ x: 0, z: 0, r: 7.2, h: y + 3 });
+    o.height = y + 3;
+  },
+
+  norway(c, o) {
+    const wood = '#3a2a22';
+    box(c.g, 14, 6, 10, wood);
+    let y = 6;
+    for (let i = 0; i < 4; i++) {
+      const s = 1 - i * 0.2;
+      gable(c.g, 16 * s, 12 * s, 5 * s, '#2a1f1a', 0, y, 0);
+      if (i < 3) box(c.g, 10 * s, 2.2, 8 * s, wood, 0, y + 3.5 * s, 0);
+      y += 4.2 * s;
+      for (const s2 of [-1, 1]) {
+        c.g.frame(s2 * 8 * s, y - 1.2, 0, 0, 1, () => cone(c.g, 0.4, 2.4, '#2a1f1a', 0, 0, 0, 5));
+      }
+    }
+    cone(c.g, 1.6, 8, '#2a1f1a', 0, y, 0, 6);
+    box(c.glow, 2, 3, 0.1, c.s.glow, 0, 0, 5.05);
+    o.colliders.push({ x: 0, z: 0, r: 8, h: y + 8 });
+    o.height = y + 8;
+  },
+
+  switzerland(c, o) {
+    box(c.g, 9, 26, 9, '#e8dcc0');
+    archPanel(c.g, 5, 7, '#3a2a22', 0, 0, 4.51);
+    box(c.g, 9.4, 1, 9.4, '#c23b3b', 0, 12, 0);
+    for (let i = 0; i < 4; i++) {
+      c.glow.frame(0, 20, 0, (i * Math.PI) / 2, 1, () => {
+        c.glow.add(cylinderDisc(2.6, 4.5), '#fff4d0');
+      });
+    }
+    hip(c.g, 10.5, 10.5, 9, '#5a3a26', 0, 26, 0);
+    cyl(c.g, 0.2, 0.2, 3, '#e2b43a', 0, 35, 0, 5);
+    o.colliders.push({ x: 0, z: 0, r: 6.4, h: 38 });
+    o.height = 38;
+  },
+
+  london(c, o) {
+    box(c.g, 60, 14, 14, '#d9c9a0', 0, 0, 14);
+    for (let i = 0; i < 18; i++) win(c, -28 + i * 3.3, 3, 21.02, 1.2, 6, 0, true);
+    for (let i = 0; i < 12; i++) cone(c.g, 0.6, 3, '#d9c9a0', -27 + i * 5, 14, 21, 4);
+    box(c.g, 11, 60, 11, '#d9c9a0');
+    for (let y = 4; y < 54; y += 6) for (let i = 0; i < 4; i++) {
+      c.glow.frame(0, y, 0, (i * Math.PI) / 2, 1, () => box(c.glow, 1.4, 3.4, 0.1, c.s.glow, 0, 0, 5.52));
+    }
+    box(c.g, 12.5, 12, 12.5, '#c9b88a', 0, 58, 0);
+    for (let i = 0; i < 4; i++) {
+      c.glow.frame(0, 64, 0, (i * Math.PI) / 2, 1, () => c.glow.add(cylinderDisc(4.4, 6.25), '#fff8e0'));
+    }
+    hip(c.g, 12, 12, 16, '#3a3a44', 0, 70, 0);
+    cyl(c.g, 0.3, 0.3, 6, '#e2b43a', 0, 86, 0, 5);
+    o.colliders.push({ x: 0, z: 0, r: 8, h: 92 }, { x: -18, z: 14, r: 12, h: 14 }, { x: 18, z: 14, r: 12, h: 14 }, { x: 0, z: 14, r: 8, h: 14 });
+    o.height = 92;
+  },
+
+  newyork(c, o) {
+    const stone = '#c9c2b5';
+    let y = 0, w = 40;
+    for (let i = 0; i < 5; i++) {
+      const h = 50 - i * 8;
+      box(c.g, w, h, w, stone, 0, y, 0);
+      for (let yy = y + 3; yy < y + h - 1; yy += 3.4) box(c.glow, w + 0.1, 0.7, w + 0.1, NY_WINDOW, 0, yy, 0);
+      y += h;
+      w *= 0.74;
+    }
+    for (let i = 0; i < 5; i++) {
+      const r = w * 0.9 - i * 1.2;
+      cyl(c.glow, r * 0.95, r, 3, '#fff0b0', 0, y + i * 3.2, 0, 8);
+      cyl(c.g, r, r * 0.95, 0.4, '#d9d9e0', 0, y + i * 3.2 + 3, 0, 8);
+    }
+    cone(c.g, 2.4, 40, '#e0e0ea', 0, y + 16, 0, 8);
+    o.colliders.push({ x: 0, z: 0, r: 25, h: y + 56 });
+    o.height = y + 56;
+  },
+
+  renaissance(c, o) {
+    const wall = '#f0dcb4', red = '#b5552e';
+    box(c.g, 20, 22, 60, wall, 0, 0, 18);
+    for (let i = 0; i < 8; i++) win(c, 10.02, 8, i * 7 - 4, 2, 5, Math.PI / 2, true);
+    gable(c.g, 60, 22, 7, red, 0, 22, 18, Math.PI / 2);
+    cyl(c.g, 14, 14, 16, wall, 0, 0, -16, 8);
+    cyl(c.g, 12, 12, 10, wall, 0, 16, -16, 8);
+    for (let i = 0; i < 8; i++) {
+      const a = (i / 8) * Math.PI * 2;
+      win(c, Math.sin(a) * 12.1, 18, -16 + Math.cos(a) * 12.1, 1.6, 4, a, true);
+    }
+    dome(c.g, 12, red, 0, 26, -16, 8, 1.3);
+    for (let i = 0; i < 8; i++) {
+      const a = (i / 8) * Math.PI * 2 + Math.PI / 8;
+      c.g.frame(Math.sin(a) * 6, 26, -16 + Math.cos(a) * 6, a, 1, () => box(c.g, 0.6, 14, 0.6, '#fbf3e0', 0, 0, 5.4));
+    }
+    cyl(c.g, 2.2, 2.4, 5, '#fbf3e0', 0, 41, -16, 8);
+    cone(c.g, 2.4, 3, red, 0, 46, -16, 8);
+    sphere(c.g, 0.7, '#e2b43a', 0, 49.5, -16, 6);
+    c.g.frame(26, 0, 30, 0, 1, () => {
+      box(c.g, 8, 70, 8, wall);
+      for (let y = 10; y < 66; y += 12) box(c.g, 8.4, 0.8, 8.4, '#fbf3e0', 0, y, 0);
+      for (let i = 0; i < 4; i++) c.glow.frame(26, 60, 30, (i * Math.PI) / 2, 1, () => archPanel(c.glow, 2, 5, c.s.glow, 0, 0, 4.05));
+      hip(c.g, 8.4, 8.4, 5, red, 0, 70, 0);
+    });
+    o.colliders.push({ x: 0, z: 18, r: 14, h: 29 }, { x: 0, z: 40, r: 11, h: 29 }, { x: 0, z: -16, r: 14.5, h: 50 }, { x: 26, z: 30, r: 5.6, h: 75 });
+    o.height = 75;
+  },
+
+  vintage(c, o) {
+    // Carousel.
+    cyl(c.g, 10, 10.4, 1, '#f4f1de', 0, 0, 0, 20);
+    cyl(c.g, 1.2, 1.2, 8, '#e2b43a', 0, 1, 0, 12);
+    for (let i = 0; i < 12; i++) {
+      const a = (i / 12) * Math.PI * 2;
+      cyl(c.g, 0.1, 0.1, 6, '#e2b43a', Math.cos(a) * 7, 1, Math.sin(a) * 7, 5);
+      sphere(c.g, 0.7, i % 3 === 0 ? '#ffffff' : i % 3 === 1 ? '#ffc4dc' : '#bfe3d9', Math.cos(a) * 7, 3, Math.sin(a) * 7, 6, 0.7);
+    }
+    cyl(c.g, 10.6, 10.6, 1, '#e07a5f', 0, 7, 0, 20);
+    for (let i = 0; i < 20; i++) {
+      const a = (i / 20) * Math.PI * 2;
+      sphere(c.glow, 0.2, '#fff0b3', Math.cos(a) * 10.7, 7.5, Math.sin(a) * 10.7, 4);
+    }
+    cone(c.g, 11, 5, '#e07a5f', 0, 8, 0, 20);
+    cone(c.g, 11.05, 1.6, '#ffffff', 0, 8, 0, 20);
+    sphere(c.g, 0.8, '#e2b43a', 0, 13.3, 0, 8);
+    // Bandstand.
+    c.g.frame(30, 0, -18, 0, 1, () => {
+      cyl(c.g, 6, 6.2, 1.2, '#ffffff', 0, 0, 0, 8);
+      for (let i = 0; i < 8; i++) {
+        const a = (i / 8) * Math.PI * 2;
+        cyl(c.g, 0.18, 0.18, 4, '#ffffff', Math.cos(a) * 5.4, 1.2, Math.sin(a) * 5.4, 6);
+      }
+      cone(c.g, 6.8, 3, '#5a8ab5', 0, 5.2, 0, 8);
+    });
+    o.colliders.push({ x: 0, z: 0, r: 10.5, h: 14 }, { x: 30, z: -18, r: 6.2, h: 8 });
+    o.height = 14;
+  },
+
+  islamic(c, o) {
+    const white = '#fbf7ee', blue = '#2f6f9a', gold = '#d4af37';
+    // Courtyard walls with arcades.
+    for (const [x, z, w, d] of [[0, 34, 70, 2], [-34, 12, 2, 46], [34, 12, 2, 46]] as const) {
+      box(c.g, w, 7, d, white, x, 0, z);
+    }
+    for (let i = 0; i < 12; i++) archPanel(c.g, 3.4, 5.4, blue, -30 + i * 5.4, 0, 35.02, 0, 0.1, true);
+    // Reflecting pool.
+    box(c.g, 12, 0.5, 30, '#3a9a9a', 0, 0, 16);
+    box(c.g, 11, 0.1, 29, '#7fd0e8', 0, 0.5, 16);
+    // Prayer hall.
+    box(c.g, 48, 14, 26, white, 0, 0, -12);
+    for (let i = 0; i < 9; i++) archPanel(c.glow, 3, 7, c.s.glow, -20 + i * 5, 1, 1.02, 0, 0.08, true);
+    box(c.g, 48.4, 1, 26.4, blue, 0, 14, -12);
+    cyl(c.g, 11, 11, 5, white, 0, 15, -12, 16);
+    for (let i = 0; i < 16; i++) {
+      const a = (i / 16) * Math.PI * 2;
+      win(c, Math.sin(a) * 11.05, 16, -12 + Math.cos(a) * 11.05, 1.2, 2.4, a, true);
+    }
+    onion(c.g, 11, blue, 0, 20, -12, gold);
+    // Four minarets.
+    for (const [x, z] of [[-30, -28], [30, -28], [-30, 32], [30, 32]] as const) {
+      cyl(c.g, 1.6, 2, 40, white, x, 0, z, 8);
+      cyl(c.g, 2.8, 2.4, 1.2, blue, x, 28, z, 8);
+      for (let i = 0; i < 8; i++) {
+        const a = (i / 8) * Math.PI * 2;
+        sphere(c.glow, 0.25, c.s.glow, x + Math.cos(a) * 2.7, 29.6, z + Math.sin(a) * 2.7, 4);
+      }
+      cyl(c.g, 1.3, 1.5, 6, white, x, 40, z, 8);
+      cone(c.g, 1.6, 5, blue, x, 46, z, 8);
+      cyl(c.g, 0.1, 0.1, 2, gold, x, 51, z, 4);
+      o.colliders.push({ x, z, r: 2.4, h: 53 });
+    }
+    o.colliders.push({ x: -14, z: -12, r: 13, h: 15 }, { x: 14, z: -12, r: 13, h: 15 }, { x: 0, z: -12, r: 12, h: 42 });
+    o.height = 53;
+  },
+
+  middleeast(c, o) {
+    const mud = '#d9b98a';
+    const walls: Array<[number, number, number, number]> = [[0, -26, 56, 3], [-26, 0, 3, 52], [26, 0, 3, 52], [-17, 26, 22, 3], [17, 26, 22, 3]];
+    for (const [x, z, w, d] of walls) {
+      box(c.g, w, 9, d, mud, x, 0, z);
+      o.colliders.push({ x, z, r: Math.max(w, d) / 2 > 12 ? 3 : Math.max(w, d) / 2, h: 9 });
+      const n = Math.floor(Math.max(w, d) / 2.4);
+      for (let i = 0; i < n; i++) {
+        const t = -Math.max(w, d) / 2 + 1.2 + i * 2.4;
+        box(c.g, 1.2, 1, 1.2, mud, w > d ? x + t : x, 9, w > d ? z : z + t);
+      }
+    }
+    // Long walls get a row of colliders.
+    for (let t = -24; t <= 24; t += 6) o.colliders.push({ x: t, z: -26, r: 3.2, h: 9 }, { x: -26, z: t, r: 3.2, h: 9 }, { x: 26, z: t, r: 3.2, h: 9 });
+    for (const [x, z] of [[-26, -26], [26, -26], [-26, 26], [26, 26]] as const) {
+      cyl(c.g, 4.4, 5, 13, mud, x, 0, z, 12);
+      for (let i = 0; i < 10; i++) {
+        const a = (i / 10) * Math.PI * 2;
+        box(c.g, 1, 1.2, 1, mud, x + Math.cos(a) * 4, 13, z + Math.sin(a) * 4);
+      }
+      o.colliders.push({ x, z, r: 5, h: 14 });
+    }
+    for (const [x, z] of [[-8, -8], [8, -12], [0, 10]] as const) {
+      box(c.g, 4, 22, 4, mud, x, 0, z);
+      for (let i = 0; i < 3; i++) box(c.g, 0.6, 5, 4.1, '#4a3426', x - 1.2 + i * 1.2, 15, z);
+      o.colliders.push({ x, z, r: 2.8, h: 22 });
+    }
+    for (let i = 0; i < 16; i++) lanternHanging(c, -20 + (i % 8) * 5.6, 8 - Math.floor(i / 8) * 2, i < 8 ? 22 : -22);
+    o.height = 22;
+  },
+
+  desert(c, o) {
+    cyl(c.g, 22, 23, 0.4, '#d9c28f', 0, -0.2, 0, 20);
+    cyl(c.g, 18, 18, 0.3, '#3aa0c0', 0, 0, 0, 20);
+    for (let i = 0; i < 14; i++) {
+      const a = (i / 14) * Math.PI * 2;
+      tree(c.g, 'palm', Math.cos(a) * 22, 0, Math.sin(a) * 22, 1.2 + (i % 3) * 0.2, () => c.rng.next());
+    }
+    c.g.frame(0, 0, -40, 0, 1, () => {
+      tent(c.g, 10, 9, '#2a2220', '#8c3b2a');
+      box(c.g, 16, 0.05, 10, '#8c3b2a', 0, 0.05, 12);
+      for (let i = 0; i < 8; i++) lanternHanging(c, -8 + i * 2.3, 5, 10);
+    });
+    for (let i = 0; i < 10; i++) {
+      const a = (i / 10) * Math.PI * 2;
+      cone(c.glow, 0.6, 1.3, '#ff8a2a', Math.cos(a) * 32, 0, Math.sin(a) * 32, 5);
+    }
+    o.colliders.push({ x: 0, z: -40, r: 9, h: 9 });
+    o.height = 10;
+  },
+
+  egypt(c, o) {
+    const stone = '#e0c48a';
+    for (const [x, z, s] of [[0, -60, 60], [70, -30, 44], [-60, -50, 34]] as const) {
+      const g = c.g;
+      g.frame(x, 0, z, Math.PI / 4, 1, () => cone(g, s * 0.72, s * 0.64, stone, 0, 0, 0, 4));
+      o.colliders.push({ x, z, r: s * 0.46, h: s * 0.64 });
+    }
+    cone(c.g, 1.6, 26, '#d9b070', 0, 1, 26, 4);
+    box(c.g, 3, 1, 3, '#c9a060', 0, 0, 26);
+    for (let i = 0; i < 10; i++) {
+      for (const x of [-8, 8]) {
+        cyl(c.g, 1, 1.1, 10, '#d9b878', x, 0, 44 + i * 5, 10);
+        cyl(c.g, 1.6, 1.1, 1.2, '#2f6f9a', x, 10, 44 + i * 5, 10);
+        o.colliders.push({ x, z: 44 + i * 5, r: 1.3, h: 11 });
+      }
+    }
+    box(c.g, 24, 0.12, 700, '#3a9ac0', -140, 0.1, 0);
+    o.colliders.push({ x: 0, z: 26, r: 2, h: 27 });
+    o.height = 40;
+  },
+
+  indianorth(c, o) {
+    const pink = '#e8917a', white = '#ffffff';
+    const rows = 9;
+    for (let r = 0; r < rows; r++) {
+      const w = 60 - r * 5.2, y = r * 4.2;
+      box(c.g, w, 4.2, 10 - r * 0.6, pink, 0, y, 0);
+      const n = Math.floor(w / 3.4);
+      for (let i = 0; i < n; i++) {
+        const x = -w / 2 + 1.7 + i * 3.4;
+        box(c.g, 2.4, 3, 1.4, pink, x, y + 0.6, 5 - r * 0.3 + 0.6);
+        box(c.glow, 1.2, 1.6, 0.1, c.s.glow, x, y + 1.2, 5 - r * 0.3 + 1.32);
+        dome(c.g, 0.9, white, x, y + 3.6, 5 - r * 0.3 + 0.6, 6);
+      }
+    }
+    chhatri(c, 0, rows * 4.2, 0, 2, pink, white);
+    o.colliders.push({ x: -18, z: 0, r: 8, h: 20 }, { x: 0, z: 0, r: 8, h: 40 }, { x: 18, z: 0, r: 8, h: 20 }, { x: -26, z: 0, r: 5, h: 10 }, { x: 26, z: 0, r: 5, h: 10 });
+    o.height = 44;
+  },
+
+  indiasouth(c, o) {
+    const tiers = ['#e8a86a', '#2f7a5a', '#c23b2a', '#e2b43a', '#5a8ab5', '#e8a86a', '#c23b2a', '#2f7a5a', '#e2b43a'];
+    box(c.g, 26, 8, 18, '#d9d0b8');
+    archPanel(c.g, 5, 7, '#3a2a22', 0, 0, 9.01);
+    let y = 8, w = 24, d = 16;
+    for (const col of tiers) {
+      box(c.g, w, 3.2, d, col, 0, y, 0);
+      for (let i = 0; i < 5; i++) box(c.g, 1.4, 1.8, 0.6, i % 2 ? '#ffffff' : '#e2b43a', -w / 2 + w * (i + 0.5) / 5, y + 0.6, d / 2 + 0.3);
+      y += 3.2;
+      w *= 0.87;
+      d *= 0.86;
+    }
+    c.g.frame(0, y, 0, 0, 1, () => {
+      const barrel = cylinderBarrel(d * 0.6, w);
+      c.g.add(barrel, '#e2b43a');
+    });
+    for (let i = 0; i < 5; i++) cone(c.g, 0.4, 2.2, '#e2b43a', -w / 2 + w * (i + 0.5) / 5, y + d * 0.55, 0, 6);
+    // Temple tank.
+    c.g.frame(0, 0, 40, 0, 1, () => {
+      box(c.g, 24, 0.6, 24, '#c9bfa8');
+      box(c.g, 20, 0.2, 20, '#3a9ac0', 0, 0.5, 0);
+    });
+    o.colliders.push({ x: 0, z: 0, r: 12, h: y + 4 });
+    o.height = y + 6;
+  },
+
+  mughal(c, o) {
+    const white = '#fbf7ee', red = '#b5552e';
+    box(c.g, 70, 4, 70, '#f2eee4', 0, 0, -30);
+    o.platforms.push({ x: 0, z: -30, r: 34, y: 4 });
+    c.g.frame(0, 4, -30, 0, 1, () => {
+      cyl(c.g, 17, 17, 22, white, 0, 0, 0, 8);
+      for (let i = 0; i < 8; i++) {
+        const a = (i / 8) * Math.PI * 2 + Math.PI / 8;
+        archPanel(c.g, 8, 16, '#e8e2d4', Math.sin(a) * 15.8, 1, Math.cos(a) * 15.8, a, 0.2, true);
+        archPanel(c.glow, 3.4, 6, c.s.glow, Math.sin(a) * 16, 3, Math.cos(a) * 16, a, 0.1, true);
+      }
+      cyl(c.g, 9, 9, 6, white, 0, 22, 0, 16);
+      onion(c.g, 11, white, 0, 26, 0, '#d4af37');
+      for (const [x, z] of [[-11, -11], [11, -11], [-11, 11], [11, 11]] as const) chhatri(c, x, 22, z, 2.6, white, white);
+      for (const [x, z] of [[-31, -31], [31, -31], [-31, 31], [31, 31]] as const) {
+        cyl(c.g, 1.4, 1.8, 30, white, x, 0, z, 8);
+        for (const y of [10, 20]) cyl(c.g, 2.4, 2.2, 0.8, white, x, y, z, 8);
+        chhatri(c, x, 30, z, 1.6, white, white);
+        o.colliders.push({ x, z: z - 30, r: 2.2, h: 40 });
+      }
+    });
+    // Charbagh — four-fold garden with water channels and cypress avenues.
+    box(c.g, 4, 0.3, 90, '#7fc8e0', 0, 0, 44);
+    box(c.g, 90, 0.3, 4, '#7fc8e0', 0, 0, 44);
+    for (let i = 0; i < 12; i++) {
+      for (const x of [-5, 5]) tree(c.g, 'cypress', x, 0, 4 + i * 7, 1.2, () => c.rng.next());
+    }
+    for (let i = 0; i < 5; i++) sphere(c.glow, 0.3, '#fff0c0', 0, 0.6, 12 + i * 14, 5);
+    c.g.frame(0, 0, 96, 0, 1, () => {
+      box(c.g, 34, 20, 10, red);
+      archPanel(c.g, 10, 15, white, 0, 0, 5.02, 0, 0.15, true);
+      archPanel(c.g, 8, 13, '#3a2a22', 0, 0, 5.1, 0, 0.1, true);
+      for (const x of [-15, 15]) chhatri(c, x, 20, 0, 2, red, white);
+    });
+    o.colliders.push({ x: 0, z: -30, r: 18, h: 60 }, { x: -11, z: 96, r: 6, h: 20 }, { x: 11, z: 96, r: 6, h: 20 });
+    o.height = 64;
+  },
+
+  indonesia(c, o) {
+    const stone = '#8a8478';
+    let y = 0, s = 64;
+    for (let i = 0; i < 5; i++) {
+      box(c.g, s, 3.4, s, stone, 0, y, 0);
+      box(c.g, s + 0.6, 0.6, s + 0.6, '#9a948a', 0, y + 3.4, 0);
+      y += 4;
+      o.platforms.push({ x: 0, z: 0, r: s / 2 - 1, y });
+      s -= 9;
+    }
+    for (let i = 0; i < 3; i++) {
+      const r = s / 2 - i * 3.2;
+      cyl(c.g, r, r + 0.4, 2.6, stone, 0, y, 0, 20);
+      y += 2.6;
+      o.platforms.push({ x: 0, z: 0, r: r - 0.5, y });
+      const n = 8 + i * 4;
+      for (let k = 0; k < n; k++) {
+        const a = (k / n) * Math.PI * 2;
+        dome(c.g, 1.1, '#9a948a', Math.cos(a) * (r - 1.4), y, Math.sin(a) * (r - 1.4), 8, 1.3);
+        cone(c.g, 0.25, 1, '#9a948a', Math.cos(a) * (r - 1.4), y + 1.3, Math.sin(a) * (r - 1.4), 5);
+      }
+    }
+    dome(c.g, 4.6, '#9a948a', 0, y, 0, 12, 1.2);
+    cone(c.g, 0.8, 6, '#9a948a', 0, y + 5, 0, 6);
+    // Stairs on each side as ramps of platforms.
+    for (let i = 0; i < 8; i++) for (const [dx, dz] of [[0, 1], [0, -1], [1, 0], [-1, 0]] as const) {
+      const dist = 36 - i * 2.6;
+      o.platforms.push({ x: dx * dist, z: dz * dist, r: 2.6, y: i * 2.5 });
+    }
+    o.height = y + 11;
+  },
+
+  aurora(c, o) {
+    cyl(c.g, 9, 10, 10, '#e8eef5', 0, 0, 0, 16);
+    dome(c.g, 9, '#c8d4e0', 0, 10, 0, 16);
+    box(c.g, 2.4, 9, 9.4, '#3a4a5a', 0, 11, 0, 0);
+    c.g.frame(0, 14, 0, 0, 1, () => c.g.add(cylinderBarrel(1.4, 12), '#6a7a8a', undefined));
+    for (let i = 0; i < 12; i++) {
+      const a = (i / 12) * Math.PI * 2;
+      box(c.glow, 1.2, 2, 0.1, c.s.glow, Math.sin(a) * 9.6, 3, Math.cos(a) * 9.6, a);
+    }
+    for (let i = 0; i < 6; i++) {
+      const a = (i / 6) * Math.PI * 2 + 0.3;
+      c.g.frame(Math.cos(a) * 28, 0, Math.sin(a) * 28, 0, 1, () => {
+        dome(c.g, 3, '#cfe8ff', 0, 0, 0, 14);
+        sphere(c.glow, 1, c.s.glow, 0, 0.6, 0, 8, 0.6);
+      });
+      o.colliders.push({ x: Math.cos(a) * 28, z: Math.sin(a) * 28, r: 3, h: 3 });
+    }
+    o.colliders.push({ x: 0, z: 0, r: 10, h: 19 });
+    o.height = 19;
+  },
+
+  skyisles(c, o) {
+    // Floating islands rising in a spiral to the Temple of the Great Lantern.
+    for (let i = 0; i < 16; i++) {
+      const a = i * 0.9, r = 70 - i * 3.2;
+      const x = Math.cos(a) * r, z = Math.sin(a) * r, y = 18 + i * 9;
+      const size = i === 15 ? 26 : c.rng.range(9, 15);
+      floatingIsland(c, x, y, z, size);
+      o.platforms.push({ x, z, r: size - 0.8, y: y + 0.6 });
+      if (i === 15) {
+        c.g.frame(x, y + 0.6, z, 0, 1, () => c.glow.frame(x, y + 0.6, z, 0, 1, () => {
+          for (let k = 0; k < 10; k++) {
+            const b = (k / 10) * Math.PI * 2;
+            cyl(c.g, 0.6, 0.7, 14, '#f4f0ff', Math.cos(b) * 12, 0, Math.sin(b) * 12, 8);
+          }
+          cyl(c.g, 13.5, 13.5, 1.2, '#fff4e0', 0, 14, 0, 20);
+          dome(c.g, 12, '#b8a4ff', 0, 15, 0, 20, 0.7);
+          sphere(c.glow, 3.4, '#fff0b0', 0, 6, 0, 12, 1.3);
+          cyl(c.glow, 0.3, 0.3, 30, '#fff0b0', 0, 23, 0, 6);
+        }));
+        o.height = y + 60;
+      }
+    }
+  },
+};
+
+function floatingIsland(c: Ctx, x: number, y: number, z: number, size: number): void {
+  c.g.frame(x, y, z, 0, 1, () => {
+    const under = cone0(size);
+    c.g.add(under, '#e0d6f6');
+    cyl(c.g, size, size * 0.96, 0.6, '#c8f0c0', 0, 0, 0, 14);
+    for (let i = 0; i < 3; i++) {
+      const a = c.rng.range(0, Math.PI * 2), r = c.rng.range(0, size * 0.6);
+      tree(c.g, c.rng.chance(0.5) ? 'cloud' : 'crystal', Math.cos(a) * r, 0.6, Math.sin(a) * r, 1, () => c.rng.next());
+    }
+  });
+}
+
+// Tiny geometry helpers that need raw three.js.
+/** A clock face: a disc facing +Z, pushed out to sit on a wall `out` metres from the centre. */
+function cylinderDisc(r: number, out: number): THREE.BufferGeometry {
+  const g = new THREE.CylinderGeometry(r, r, 0.2, 16);
+  g.rotateX(Math.PI / 2);
+  g.translate(0, 0, out + 0.05);
+  return g;
+}
+function cylinderBarrel(r: number, len: number): THREE.BufferGeometry {
+  const g = new THREE.CylinderGeometry(r, r, len, 10, 1, false, 0, Math.PI);
+  g.rotateZ(Math.PI / 2);
+  g.rotateX(-Math.PI / 2);
+  return g;
+}
+function cone0(size: number): THREE.BufferGeometry {
+  const g = new THREE.ConeGeometry(size * 0.96, size * 1.4, 9);
+  g.rotateX(Math.PI);
+  g.translate(0, -size * 0.7, 0);
+  return g;
+}
+
+export function buildLandmark(c: Ctx): LandmarkOut {
+  const out: LandmarkOut = { colliders: [], platforms: [], height: 20 };
+  landmarks[c.s.id](c, out);
+  return out;
+}
