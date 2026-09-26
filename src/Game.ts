@@ -22,7 +22,7 @@ import { Housing, PLOTS, PLOT_BY_ID, PLOT_SIZE, type PlotSite } from './housing/
 import { HousingView } from './housing/HousingView';
 import { VAN_OPTIONS, VanInterior } from './housing/VanInterior';
 import { Npcs, type Npc } from './npc/Npcs';
-import { Townsfolk } from './npc/Townsfolk';
+import { Townsfolk, type Walker } from './npc/Townsfolk';
 import { CaravanView } from './caravan/CaravanView';
 import { WonderSites } from './world/WonderSites';
 import { keeperOf } from './npc/people';
@@ -55,6 +55,7 @@ export type Interactable =
   | { kind: 'van'; label: string }
   | { kind: 'chariot'; label: string }
   | { kind: 'companion'; id: string; label: string }
+  | { kind: 'folk'; walker: Walker; label: string }
   | { kind: 'bed'; plotId: string; decorId: string; label: string };
 
 /** A scripted scene that takes the camera (and optionally renders its own scene). */
@@ -429,12 +430,43 @@ export class Game {
     if (pal) cands.push([1.2, { kind: 'companion', id: pal.id, label: pal.kind === 'pet' ? `Pet ${pal.name}` : `Chat with ${pal.name}` }]);
     const ride = onFoot ? this.celebration.label(p) : null;
     if (ride) cands.push([0.5, { kind: 'chariot', label: ride }]);
+    // Anyone in town: stop and talk; some need a hand today.
+    const folk = onFoot ? this.townsfolk.nearest(p, 2.6) : null;
+    if (folk) {
+      const f = this.townsfolk.who(folk, this.day), key = this.folkKey(folk);
+      const needs = f.favour && !this.helped.has(key);
+      cands.push([Math.hypot(folk.model.root.position.x - p.x, folk.model.root.position.z - p.z) + 0.4, { kind: 'folk', walker: folk, label: needs ? `❗ ${f.name} needs a hand` : `💬 Talk with ${f.name}` }]);
+    }
     cands.sort((a, b) => a[0] - b[0]);
     return cands[0]?.[1] ?? null;
   }
 
+  private helped = new Set<string>();
+  private asked = new Set<string>();
+  private get day(): number { return Math.floor(this.st.minutes / DAY_MINUTES); }
+  private folkKey(w: Walker): string { return `${w.land}:${w.idx}:${this.day}`; }
+
+  /** Talking with someone in town — and helping them, which is how the two earn their way. */
+  private talkFolk(w: Walker): void {
+    this.townsfolk.turnTo(w, this.trav.gPos);
+    const f = this.townsfolk.who(w, this.day), key = this.folkKey(w);
+    if (f.favour && !this.helped.has(key)) {
+      if (!this.asked.has(key)) {
+        this.asked.add(key);
+        return this.toast(`${f.name}: "${f.favour.ask}" (press E again to help)`, 'story');
+      }
+      this.helped.add(key);
+      this.st.coins += f.favour.coins;
+      this.st.light += 0.05;
+      this.bus.emit('coins:changed', { coins: this.st.coins });
+      return this.toast(`${f.favour.done} ${f.name} thanks you both. +${f.favour.coins} 🪙`, 'reward');
+    }
+    this.toast(`${f.name}: "${f.line}"`, 'story');
+  }
+
   interact(t: Interactable): void {
     switch (t.kind) {
+      case 'folk': return this.talkFolk(t.walker);
       case 'npc': return this.talk(t.npc);
       case 'node': return this.gather(t.node);
       case 'animal': return this.ui.openAnimal(t.animal);

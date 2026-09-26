@@ -67,17 +67,18 @@ describe('caravan movement', () => {
 });
 
 describe('who can join', () => {
-  it('children join after their land\'s chapter, two at a time; pets once befriended, three at a time', () => {
-    const [kavya, tomas, hana] = [CHILDREN[0], CHILDREN[1], CHILDREN[2]];
+  it('children join after their land\'s chapter, four at a time; pets once befriended, four at a time', () => {
+    const [kavya, tomas, hana, seoah, mina] = [CHILDREN[0], CHILDREN[1], CHILDREN[2], CHILDREN[3], CHILDREN[4]];
     expect(canJoin(kavya, [], [], []).ok).toBe(false);
     expect(canJoin(kavya, [], [kavya.joinsAfter], []).ok).toBe(true);
-    expect(canJoin(hana, [kavya, tomas], [hana.joinsAfter], []).ok).toBe(false);
-    expect(MAX_CHILDREN).toBe(2);
-    const [p1, p2, p3, p4] = PETS;
+    expect(canJoin(mina, [kavya, tomas, hana], [mina.joinsAfter], []).ok).toBe(true);
+    expect(canJoin(mina, [kavya, tomas, hana, seoah], [mina.joinsAfter], []).ok).toBe(false);
+    expect(MAX_CHILDREN).toBe(4);
+    const [p1, p2, p3, p4, p5] = PETS;
     expect(canJoin(p1, [], [], []).ok).toBe(false);
     expect(canJoin(p1, [], [], [p1.id]).ok).toBe(true);
-    expect(canJoin(p4, [p1, p2, p3], [], [p4.id]).ok).toBe(false);
-    expect(MAX_PETS).toBe(3);
+    expect(canJoin(p5, [p1, p2, p3, p4], [], [p5.id]).ok).toBe(false);
+    expect(MAX_PETS).toBe(4);
     expect(canJoin(p1, [p1], [], [p1.id]).ok).toBe(false);
   });
 });

@@ -3,6 +3,7 @@ import type { Rng } from '../core/rng';
 import {
   GeoBuilder, M, archPanel, box, cone, cyl, dome, gable, hip, onion, sphere, sweptRoof, tent, tree,
 } from './kit';
+import { houseDecor } from './houseDecor';
 import type { RegionId, RegionSpec } from './regions';
 
 /**
@@ -385,6 +386,7 @@ const houses: Record<RegionId, HouseFn> = {
 export function buildHouse(c: Ctx): Footprint {
   const fp = houses[c.s.id](c);
   if (c.s.id !== 'desert' && c.s.id !== 'skyisles' && c.s.id !== 'aurora') houseDetails(c, fp);
+  houseDecor(c, fp);
   return fp;
 }
 

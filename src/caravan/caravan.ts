@@ -87,8 +87,8 @@ export const COMPANION_BY_ID = Object.fromEntries(COMPANIONS.map((c) => [c.id, c
 export const STARTING_CARAVAN: string[] = COMPANIONS.filter((c) => c.starts).map((c) => c.id);
 
 /** How many can travel at once: the van has a back bench for two children, pets ride on rugs. */
-export const MAX_CHILDREN = 2;
-export const MAX_PETS = 3;
+export const MAX_CHILDREN = 4;
+export const MAX_PETS = 4;
 
 // ───────────────────────── movement ─────────────────────────
 
@@ -192,10 +192,10 @@ export function canJoin(def: CompanionDef, current: CompanionDef[], chaptersDone
   if (current.some((c) => c.id === def.id)) return { ok: false, reason: `${def.name} is already travelling with you.` };
   if (def.kind === 'child') {
     if (!chaptersDone.includes(def.joinsAfter)) return { ok: false, reason: `${def.name}'s family would like to know you better first.` };
-    if (current.filter((c) => c.kind === 'child').length >= MAX_CHILDREN) return { ok: false, reason: 'The back bench is full — bring someone home first.' };
+    if (current.filter((c) => c.kind === 'child').length >= MAX_CHILDREN) return { ok: false, reason: 'The bunks are full — bring someone home first.' };
     return { ok: true, reason: `${def.name} joins with their family's blessing.` };
   }
   if (!befriendedPets.includes(def.id)) return { ok: false, reason: `${def.name} does not know you yet. Try offering some ${def.likes}.` };
-  if (current.filter((c) => c.kind === 'pet').length >= MAX_PETS) return { ok: false, reason: 'Three pets is plenty for one van.' };
+  if (current.filter((c) => c.kind === 'pet').length >= MAX_PETS) return { ok: false, reason: 'Four pets is plenty for one van.' };
   return { ok: true, reason: `${def.name} hops into the van.` };
 }

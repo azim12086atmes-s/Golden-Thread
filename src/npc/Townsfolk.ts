@@ -8,6 +8,8 @@ import type { RegionInstance } from '../world/RegionBuilder';
 import { REGION_BY_ID, regionCenter, type RegionId } from '../world/regions';
 import { surfaceAt } from '../world/terrain';
 import { GeoBuilder, box } from '../world/kit';
+import { Crowd } from './Crowd';
+import { CITY_PEOPLE, folkOf } from './folk';
 
 /**
  * Townsfolk: people going about their day so every town feels lived in. They stroll the avenues
@@ -44,11 +46,12 @@ type Path =
   /** Stallholders at work (arms busy) and shoppers at the stalls. */
   | { kind: 'stall'; x: number; z: number; face: number; working: boolean };
 
-interface Walker { model: CharacterModel; land: RegionId; path: Path; speed: number; ph: number }
+export interface Walker { model: CharacterModel; land: RegionId; idx: number; path: Path; speed: number; ph: number; /** Turned to talk with the travellers until this time. */ faceUntil: number; faceAt: number }
 
-export const PER_TOWN = 42;
+/** Full figures per town — the people you can stop and talk to. The crowd (Crowd.ts) fills the rest of the city's 300. */
+export const PER_TOWN = 60;
 /** Groups of three chatting at the edges of the plaza and by the ring road. */
-export const CHAT_GROUPS = 4;
+export const CHAT_GROUPS = 6;
 
 /**
  * A market street in every town: stalls line both sides of the south avenue, just beyond the
@@ -66,11 +69,18 @@ export class Townsfolk {
   readonly talkers: Array<{ land: RegionId; x: number; z: number; ph: number }> = [];
   private stalls = new Map<string, THREE.Mesh>();
 
-  constructor(private scene: THREE.Scene) {}
+  /** The wider crowd: everyone else in town. */
+  readonly crowd: Crowd;
+  private t = 0;
+
+  constructor(private scene: THREE.Scene) {
+    this.crowd = new Crowd(scene, CITY_PEOPLE - PER_TOWN);
+  }
 
   onRegionLoaded(inst: RegionInstance): void {
     const land = inst.spec.id;
     if (land === 'skyisles') return;
+    this.crowd.onRegionLoaded(inst);
     const rng = new Rng(`townsfolk:${land}`);
     // The market's stalls: a table, four posts, a striped awning and goods laid out.
     const kit = new GeoBuilder();
@@ -96,22 +106,22 @@ export class Townsfolk {
       const pool = wardrobeFor(land, who);
       const model = new CharacterModel(pool[rng.int(0, pool.length - 1)], SKINS[rng.int(0, SKINS.length - 1)], who === 'girl' ? rng.range(0.9, 0.98) : rng.range(0.98, 1.06));
       let path: Path;
-      if (i < 10) path = { kind: 'avenue', axis: i % 2 ? 'x' : 'z', lane: (i % 4 < 2 ? 1 : -1) * 3.2, s: rng.range(-220, 220), dir: rng.chance(0.5) ? 1 : -1 };
-      else if (i < 16) path = { kind: 'ring', a: rng.range(0, Math.PI * 2), dir: rng.chance(0.5) ? 1 : -1 };
-      else if (i < 22) {
+      if (i < 18) path = { kind: 'avenue', axis: i % 2 ? 'x' : 'z', lane: (i % 4 < 2 ? 1 : -1) * 3.2, s: rng.range(-220, 220), dir: rng.chance(0.5) ? 1 : -1 };
+      else if (i < 26) path = { kind: 'ring', a: rng.range(0, Math.PI * 2), dir: rng.chance(0.5) ? 1 : -1 };
+      else if (i < 32) {
         // A stallholder behind each stall, busy with their work.
-        const st = STALLS[i - 16];
+        const st = STALLS[i - 26];
         path = { kind: 'stall', x: st.x + Math.sign(st.x) * 1.2, z: st.z, face: st.face, working: true };
-      } else if (i < 26) {
+      } else if (i < 36) {
         // Shoppers in front of the stalls, a step back from the counter.
-        const st = STALLS[(i - 22) * 1 + 1];
+        const st = STALLS[(i - 32) * 1 + 1];
         path = { kind: 'stall', x: st.x - Math.sign(st.x) * 1.9, z: st.z + (i % 2 ? 0.6 : -0.6), face: st.face + Math.PI, working: false };
-      } else if (i < 30) {
+      } else if (i < 42) {
         const s = inst.spots.length ? inst.spots[rng.int(0, inst.spots.length - 1)] : { x: 30, z: 30 };
         path = { kind: 'chat', x: s.x + (i % 2) * 1.6, z: s.z, face: i % 2 ? -Math.PI / 2 : Math.PI / 2 };
       } else {
         // A circle of three friends talking, a step apart, facing each other.
-        const gi = Math.floor((i - 30) / 3), k = (i - 30) % 3;
+        const gi = Math.floor((i - 42) / 3), k = (i - 42) % 3;
         const ga = (gi / CHAT_GROUPS) * Math.PI * 2 + 0.4;
         // Just inside the ring road, where houses never stand (they keep 14 m from it).
         const gx = Math.cos(ga) * 131, gz = Math.sin(ga) * 131;
@@ -120,11 +130,12 @@ export class Townsfolk {
         this.talkers.push({ land, x: gx, z: gz, ph: rng.range(0, 10) });
       }
       this.scene.add(model.root);
-      this.list.push({ model, land, path, speed: rng.range(1.0, 1.5), ph: rng.range(0, 10) });
+      this.list.push({ model, land, idx: i, path, speed: rng.range(1.0, 1.5), ph: rng.range(0, 10), faceUntil: 0, faceAt: 0 });
     }
   }
 
   onRegionUnloaded(inst: RegionInstance): void {
+    this.crowd.onRegionUnloaded(inst);
     for (let i = this.talkers.length - 1; i >= 0; i--) if (this.talkers[i].land === inst.spec.id) this.talkers.splice(i, 1);
     const m = this.stalls.get(inst.spec.id);
     if (m) {
@@ -139,9 +150,41 @@ export class Townsfolk {
     }
   }
 
+  /** The nearest person you could talk to, within reach. */
+  nearest(p: THREE.Vector3, r: number): Walker | null {
+    let best: Walker | null = null, bd = r;
+    for (const w of this.list) {
+      if (!w.model.root.visible) continue;
+      const d = Math.hypot(w.model.root.position.x - p.x, w.model.root.position.z - p.z);
+      if (d < bd) { bd = d; best = w; }
+    }
+    return best;
+  }
+
+  /** Their name, what they say today, and whether they need a hand. */
+  who(w: Walker, day: number) {
+    return folkOf(w.land, w.idx, day);
+  }
+
+  /** They stop and turn to the travellers for a while. */
+  turnTo(w: Walker, p: THREE.Vector3): void {
+    w.faceUntil = this.t + 8;
+    w.faceAt = Math.atan2(p.x - w.model.root.position.x, p.z - w.model.root.position.z);
+  }
+
   update(dt: number, t: number, player: THREE.Vector3): void {
+    this.t = t;
+    this.crowd.update(dt, t, player);
     const c = new THREE.Vector3();
     for (const w of this.list) {
+      if (t < w.faceUntil) {
+        // Talking with the travellers: stand still, face them, hands a little animated.
+        w.model.root.rotation.y = w.faceAt;
+        w.model.offer = Math.max(0, Math.sin(t * 0.9 + w.ph)) * 0.4;
+        w.model.offerLift = Math.sin(t * 4 + w.ph) * 0.25;
+        w.model.update(dt, { speed: 0, airborne: false, riding: false, t: t + w.ph });
+        continue;
+      }
       const centre = regionCenter(REGION_BY_ID[w.land]);
       let x: number, z: number, heading: number, speed = w.speed;
       const p = w.path;

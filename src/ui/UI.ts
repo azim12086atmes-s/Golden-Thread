@@ -55,6 +55,8 @@ export class UI {
   private tl = h('div', { class: 'hud hud-tl' });
   private tr = h('div', { class: 'hud hud-tr' });
   private tracker = h('div', { class: 'tracker' });
+  /** The objective panel can be closed; a small pill brings it back. Remembered on this device. */
+  private trackerHidden = (() => { try { return localStorage.getItem('gt-objective-hidden') === '1'; } catch { return false; } })();
   private card = h('div', { class: 'card' });
   private labels = h('div', { class: 'labels' });
   private dock = h('nav', { class: 'dock' });
@@ -217,7 +219,20 @@ export class UI {
     if (!guide || !this.g.started) return void this.tracker.replaceChildren();
     const o = guide.objective;
     const q = this.g.quests;
+    const setHidden = (v: boolean) => {
+      this.trackerHidden = v;
+      try { localStorage.setItem('gt-objective-hidden', v ? '1' : '0'); } catch { /* private window: fine */ }
+      this.refreshTracker();
+    };
+    if (this.trackerHidden) {
+      const pill = h('button', { class: 'objective-pill', title: 'Show the objective panel', 'aria-label': `Show the objective: ${o.title}` }, h('span', { 'aria-hidden': 'true' }, '🎯'), h('span', {}, o.title));
+      pill.addEventListener('click', () => setHidden(false));
+      return void this.tracker.replaceChildren(pill);
+    }
     const card = h('section', { class: `objective ${o.main ? 'main' : ''}`, 'aria-label': 'Current objective' });
+    const close = h('button', { class: 'objective-close', title: 'Close (the golden light still shows the way)', 'aria-label': 'Close the objective panel' }, '✕');
+    close.addEventListener('click', () => setHidden(true));
+    card.append(close);
     const eyebrow = o.questId ? `${o.main ? 'Main story' : 'Side journey'} · step ${o.step[0]} of ${o.step[1]}` : o.main ? 'Your story continues' : 'Suggestion';
     card.append(h('div', { class: 'eyebrow' }, eyebrow), h('b', { class: 'otitle' }, o.title), h('p', { class: 'goal' }, o.goal));
     const list = h('ol', { class: 'tasks' });

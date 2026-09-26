@@ -1,5 +1,6 @@
 import * as THREE from 'three';
 import { ANIMAL_HEAD_GAP, type Part } from '../characters/anatomy';
+import { DETAILED, buildDetailed, type DetailedId } from './detailed';
 
 /**
  * Animals share the travellers' rules: no eyes or facial features, and a floating head that
@@ -76,6 +77,8 @@ export class AnimalModel {
   readonly root = new THREE.Group();
   readonly head = new THREE.Group();
   private legs: THREE.Group[] = [];
+  /** Knees and hocks (detailed animals): they bend as the leg swings. */
+  private knees: THREE.Group[] = [];
   private tail?: THREE.Object3D;
   /** Feathered wings (unicorns): they beat slowly at rest and fast at a gallop or in the air. */
   private wings: THREE.Group[] = [];
@@ -84,10 +87,11 @@ export class AnimalModel {
   /** Seat height for rideable animals. */
   readonly saddleY: number;
 
-  constructor(readonly species: SpeciesId, scale = 1) {
+  constructor(readonly species: SpeciesId, scale = 1, tint?: string) {
     const s = SPECIES[species];
     const [L, H, W] = s.body;
-    const c = s.color, a = s.accent;
+    const c = tint ?? s.color, a = s.accent;
+    const detailed = (DETAILED as readonly string[]).includes(species);
     const body = new THREE.Group();
     body.scale.setScalar(scale);
     this.root.add(body);
@@ -97,7 +101,7 @@ export class AnimalModel {
     const torso = part(new THREE.SphereGeometry(0.5, 12, 9), c, 'body', glow);
     torso.scale.set(W, H, L);
     torso.position.y = bodyY;
-    body.add(torso);
+    if (!detailed) body.add(torso);
     this.saddleY = (bodyY + H / 2) * scale;
 
     if (species === 'unicorn') {
@@ -139,6 +143,30 @@ export class AnimalModel {
       hump.position.set(0, bodyY + H * 0.45, -L * 0.05);
       hump.scale.set(1, 0.9, 1.2);
       body.add(hump);
+    }
+
+    if (detailed) {
+      const b = buildDetailed(species as DetailedId, part, body, this.head, { L, H, W, bodyY, headR: s.headR, neck: s.neck, snout: s.snout }, c, a);
+      this.legs = b.legs;
+      this.knees = b.knees;
+      this.tail = b.tail;
+      this.headBase.copy(b.headBase);
+      this.head.position.copy(this.headBase);
+      body.add(this.head);
+      if (s.horn === 'unicorn') {
+        // A spiralled horn: a glowing cone wound with a golden thread.
+        const horn = part(new THREE.ConeGeometry(0.05, 0.5, 8), '#ffe89a', 'horn', true);
+        horn.position.set(0, s.headR * 1.25, s.headR * 0.55);
+        horn.rotation.x = 0.45;
+        this.head.add(horn);
+        for (let i = 0; i < 5; i++) {
+          const ring = part(new THREE.TorusGeometry(0.045 - i * 0.008, 0.008, 4, 10), '#fff6d0', 'horn', true);
+          ring.position.set(0, s.headR * 1.25 + Math.cos(0.45) * (-0.18 + i * 0.09), s.headR * 0.55 + Math.sin(0.45) * (-0.18 + i * 0.09));
+          ring.rotation.x = 0.45 + Math.PI / 2;
+          this.head.add(ring);
+        }
+      }
+      return;
     }
 
     // Legs.
@@ -325,7 +353,12 @@ export class AnimalModel {
     const moving = speed > 0.15;
     this.phase += dt * (moving ? 3 + speed * 1.5 : 1);
     const sw = moving ? Math.sin(this.phase) * Math.min(0.6, 0.15 + speed * 0.08) : 0;
-    this.legs.forEach((l, i) => (l.rotation.x = i % 2 === (i < 2 ? 0 : 1) ? sw : -sw));
+    this.legs.forEach((l, i) => (l.rotation.x = (l.userData.base ?? 0) + (i % 2 === (i < 2 ? 0 : 1) ? sw : -sw)));
+    // Knees fold as the foot swings forward; hocks flex as the hind leg pushes off.
+    this.knees.forEach((k, i) => {
+      const leg = this.legs[i], swing = (leg.rotation.x - (leg.userData.base ?? 0));
+      k.rotation.x = k.userData.base + (k.userData.front ? -Math.max(0, -swing) * 1.2 : Math.max(0, swing) * 0.9);
+    });
     this.head.position.y = this.headBase.y + Math.sin(t * 2 + this.phase * 0.2) * 0.015;
     if (this.tail) this.tail.rotation.y = Math.sin(t * 3 + this.phase) * 0.3;
     if (this.wings.length) {
