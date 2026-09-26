@@ -10,6 +10,8 @@ import { DECOR, DECOR_BY_ID, PLOT_BY_ID } from '../housing/housing';
 import { SLOT_NAMES, VAN_OPTIONS } from '../housing/VanInterior';
 import type { Npc } from '../npc/Npcs';
 import { PEOPLE_BY_ID } from '../npc/people';
+import { wantedCrafts } from '../guide/objectives';
+import { QUESTS } from '../quests/quests';
 import { REPLY_OPTIONS } from '../social/Messages';
 import { VEHICLES, type VehicleId } from '../vehicles/vehicles';
 import { GRID_COLS, GRID_ROWS, REGIONS, REGION_BY_ID, type RegionId, type RegionSpec } from '../world/regions';
@@ -93,6 +95,13 @@ export class UI {
       else this.g.toast('Stand on land you own to build. Buy land at the signposts outside each town.');
       return;
     }
+    if (i.hit('g') && !this.modal) {
+      this.g.guide.cycle();
+      this.g.guide.refresh();
+      const o = this.g.guide.objective;
+      this.g.toast(o.questId ? `Following: ${o.title}` : 'Nothing else underway.');
+      this.refreshTracker();
+    }
     if (i.hit('f') && !this.modal) {
       const err = this.g.chooseVehicle(this.g.trav.mode === 'fly' ? 'walk' : 'fly');
       if (err) this.g.toast(err);
@@ -106,6 +115,7 @@ export class UI {
     if (this.hudTimer <= 0) {
       this.hudTimer = 0.25;
       this.renderHud();
+      if (!this.modal) this.refreshTracker();
     }
     const t = this.g.target;
     if (t && !this.modal) {
@@ -163,10 +173,43 @@ export class UI {
   }
 
   refreshTracker(): void {
+    const guide = this.g.guide;
+    if (!guide || !this.g.started) return void this.tracker.replaceChildren();
+    const o = guide.objective;
     const q = this.g.quests;
-    const act = q.active().sort((a, b) => Number(!!b.main) - Number(!!a.main)).slice(0, 4);
-    this.tracker.replaceChildren(...act.map((x) => h('div', { class: `track ${x.main ? 'main' : ''}` }, h('b', {}, x.title), h('span', {}, q.stepText(x.id)))));
-    if (!act.length && this.g.started) this.tracker.append(h('div', { class: 'track dim' }, h('span', {}, 'Talk to people marked ❗ to help them.')));
+    const card = h('section', { class: `objective ${o.main ? 'main' : ''}`, 'aria-label': 'Current objective' });
+    const eyebrow = o.questId ? `${o.main ? 'Main story' : 'Side journey'} · step ${o.step[0]} of ${o.step[1]}` : o.main ? 'Your story continues' : 'Suggestion';
+    card.append(h('div', { class: 'eyebrow' }, eyebrow), h('b', { class: 'otitle' }, o.title), h('p', { class: 'goal' }, o.goal));
+    const list = h('ol', { class: 'tasks' });
+    for (const t of o.tasks) {
+      const now = t === o.next;
+      const li = h('li', { class: `task d${Math.min(t.depth, 2)} ${t.done ? 'done' : ''} ${now ? 'now' : ''}` },
+        h('span', { class: 'tick', 'aria-hidden': 'true' }, t.done ? '✓' : now ? '▸' : '○'),
+        h('span', { class: 'ttext' }, t.text),
+      );
+      if (now && t.target && guide.hasTarget && Number.isFinite(guide.distance)) {
+        li.append(h('span', { class: 'tdist' }, guide.distance >= 1000 ? `${(guide.distance / 1000).toFixed(1)} km` : `${Math.round(guide.distance)} m`));
+      }
+      list.append(li);
+    }
+    if (o.tasks.length) card.append(list);
+    if (o.next?.hint) card.append(h('p', { class: 'hint' }, o.next.hint));
+    const nearby = QUESTS.filter((x) => !x.main && x.region === this.g.region.id && q.isAvailable(x)).length;
+    if (nearby) card.append(h('p', { class: 'others' }, `❗ ${nearby} ${nearby > 1 ? 'people' : 'person'} in ${this.g.region.name} could use your help`));
+    const others = q.active().filter((x) => x.id !== o.questId);
+    if (others.length) card.append(h('p', { class: 'others' }, h('kbd', {}, 'G'), ` ${others.length} more journey${others.length > 1 ? 's' : ''} underway`));
+    this.tracker.replaceChildren(card);
+  }
+
+  /** A short nudge when the next task changes. */
+  nextStep(text: string): void {
+    const el = h('div', { class: 'toast next' }, h('small', {}, 'Next'), h('span', {}, text));
+    this.feed.prepend(el);
+    setTimeout(() => el.classList.add('out'), 4000);
+    setTimeout(() => el.remove(), 4600);
+    this.tracker.classList.remove('pulse');
+    void this.tracker.offsetWidth;
+    this.tracker.classList.add('pulse');
   }
 
   // ───────────────────────── feed ─────────────────────────
@@ -211,12 +254,12 @@ export class UI {
   private buildTitle(): void {
     const st = this.g.st;
     const fresh = !st.quests['main-meadow'] && st.playSeconds < 5;
-    const girl = h('input', { value: st.names.girl, maxlength: '16', 'aria-label': 'Her name' }) as HTMLInputElement;
-    const boy = h('input', { value: st.names.boy, maxlength: '16', 'aria-label': 'His name' }) as HTMLInputElement;
+    const girl = h('input', { value: st.names.girl, maxlength: '28', 'aria-label': 'Her name' }) as HTMLInputElement;
+    const boy = h('input', { value: st.names.boy, maxlength: '28', 'aria-label': 'His name' }) as HTMLInputElement;
     const go = () => {
       this.title.classList.add('out');
       setTimeout(() => this.title.remove(), 900);
-      this.g.start(fresh ? { girl: girl.value.trim() || 'Amal', boy: boy.value.trim() || 'Rafiq' } : undefined);
+      this.g.start(fresh ? { girl: girl.value.trim() || 'Syeda Fathima', boy: boy.value.trim() || 'Mohammed Abdul Azim' } : undefined);
       this.refreshTracker();
     };
     this.title.append(
@@ -360,14 +403,15 @@ export class UI {
     }
     body.append(skills, h('h3', {}, 'Make something'), h('p', { class: 'dim' }, 'Keepers teach their land\'s craft when you first meet them.'));
     const list = h('div', { class: 'recipes' });
-    const sorted = [...RECIPES].sort((a, b) => Number(canCraft(st, b).ok) - Number(canCraft(st, a).ok) || a.skill.localeCompare(b.skill));
+    const wanted = wantedCrafts(this.g.guide.objective);
+    const sorted = [...RECIPES].sort((a, b) => Number(wanted.has(b.out)) - Number(wanted.has(a.out)) || Number(canCraft(st, b).ok) - Number(canCraft(st, a).ok) || a.skill.localeCompare(b.skill));
     for (const r of sorted) {
       const c = canCraft(st, r);
       if (!c.ok && c.reason === 'skill' && level(st, r.skill) + 1 < r.level) continue;
       const needs = Object.entries(r.needs).map(([k, n]) => h('span', { class: count(st, k) >= n ? 'ok' : 'miss' }, `${ITEMS[k].icon}${count(st, k)}/${n}`));
-      list.append(h('div', { class: `recipe ${c.ok ? '' : 'dim'}` },
+      list.append(h('div', { class: `recipe ${c.ok ? '' : 'dim'} ${wanted.has(r.out) ? 'guided' : ''}` },
         h('span', { class: 'ic' }, ITEMS[r.out].icon),
-        h('div', {}, h('b', {}, `${ITEMS[r.out].name}${r.qty > 1 ? ` ×${r.qty}` : ''}`), h('small', {}, `${SKILLS[r.skill].icon} ${SKILLS[r.skill].name} ${r.level ? `Lv ${r.level}` : ''}`), h('div', { class: 'needs' }, ...needs)),
+        h('div', {}, h('b', {}, `${wanted.has(r.out) ? '✦ ' : ''}${ITEMS[r.out].name}${r.qty > 1 ? ` ×${r.qty}` : ''}`), h('small', {}, `${SKILLS[r.skill].icon} ${SKILLS[r.skill].name} ${r.level ? `Lv ${r.level}` : ''}`), h('div', { class: 'needs' }, ...needs)),
         btn('Make', () => { this.g.craft(r.id); this.render(); }, 'small', !c.ok),
       ));
     }
@@ -380,7 +424,11 @@ export class UI {
     const act = q.active();
     body.append(h('h3', {}, 'Now'));
     if (!act.length) body.append(h('p', { class: 'dim' }, 'No journeys underway. Look for ❗ above people\'s heads.'));
-    for (const x of act) body.append(h('div', { class: `quest ${x.main ? 'main' : ''}` }, h('b', {}, `${x.main ? '🏮 ' : ''}${x.title}`), h('small', {}, `${REGION_BY_ID[x.region].name} · ${PEOPLE_BY_ID[x.giver]?.name ?? ''}`), h('p', {}, x.intro), h('p', { class: 'step' }, `→ ${q.stepText(x.id)}`)));
+    const followed = this.g.guide.objective.questId;
+    for (const x of act) body.append(h('div', { class: `quest ${x.main ? 'main' : ''}` },
+      h('b', {}, `${x.main ? '🏮 ' : ''}${x.title}`), h('small', {}, `${REGION_BY_ID[x.region].name} · ${PEOPLE_BY_ID[x.giver]?.name ?? ''}`), h('p', {}, x.intro), h('p', { class: 'step' }, `→ ${q.stepText(x.id)}`),
+      x.id === followed ? h('span', { class: 'following' }, '✦ Following') : btn('Follow this journey', () => { this.g.guide.track(x.id); this.g.guide.refresh(); this.render(); this.refreshTracker(); }, 'small'),
+    ));
     const done = q.done();
     if (done.length) {
       body.append(h('h3', {}, 'Remembered'));
@@ -399,6 +447,7 @@ export class UI {
         h('b', {}, known ? r.name : '???'),
         st.lanterns.includes(r.id) ? h('span', { class: 'lit' }, '🏮') : null,
         here ? h('span', { class: 'you' }, '✦') : null,
+        this.g.guide.objective.next?.target?.region === r.id ? h('span', { class: 'goal-mark', title: 'Your next step is here' }, '◆') : null,
       );
       cell.addEventListener('click', () => { this.mapSel = r.id; this.render(); });
       grid.append(cell);
@@ -571,12 +620,14 @@ export class UI {
         btn('Low graphics', () => { this.g.setQuality('low'); this.render(); }, this.g.quality === 'low' ? 'on' : 'ghost'),
         btn('High graphics', () => { this.g.setQuality('high'); this.render(); }, this.g.quality === 'high' ? 'on' : 'ghost'),
         btn('Save photo (P)', () => this.g.takePhoto(), 'primary')),
+      h('div', { class: 'acts' },
+        btn(this.g.guide.trail ? 'Golden trail: on' : 'Golden trail: off', () => { this.g.guide.setTrail(!this.g.guide.trail); this.render(); }, this.g.guide.trail ? 'on' : 'ghost')),
       h('p', { class: 'dim' }, 'On touch screens: drag the left half to move, the right half to look. Hold Jump / Rise or Run / Descend; tap Interact or Fly. Photos save the view without menus.'));
 
     const rows: Array<[string, string]> = [
       ['WASD / arrows', 'Walk · steer'], ['Drag · wheel', 'Look around · zoom'], ['Space', 'Jump · rise (flying, unicorn, plane climb)'], ['Shift', 'Run · descend · boost'],
       ['F', 'Cape of light — fly together'], ['E', 'Talk · gather · befriend · light lanterns'], ['V', 'Choose how to travel'], ['C', 'Wardrobe for both'], ['I', 'Bag, skills and crafting'],
-      ['J', 'Journal'], ['M', 'Map and travel to known lands'], ['N', 'Messages from friends'], ['B', 'Build on your land'], ['Esc', 'Close'],
+      ['J', 'Journal'], ['G', 'Follow another journey'], ['M', 'Map and travel to known lands'], ['N', 'Messages from friends'], ['B', 'Build on your land'], ['Esc', 'Close'],
     ];
     body.append(h('table', { class: 'keys' }, ...rows.map(([k, v]) => h('tr', {}, h('td', {}, h('kbd', {}, k)), h('td', {}, v)))));
     body.append(

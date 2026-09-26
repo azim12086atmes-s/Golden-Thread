@@ -46,4 +46,27 @@ All are MUST unless marked SHOULD. Phase R = research; A = asset pipeline; S = f
 - 2026-09-25: Captured expanded owner brief; allocated GT requirements; documented C-01..06; began source-backed regional and production research. Blender MCP unavailable in this session; Pinterest search and seed pin gated by sign-in. Existing prototype features are not counted as acceptance evidence for new requirements.
 
 - 2026-09-26: GT-CHAR-001 implemented in procedural hero models. 223 tests pass, including full-wardrobe part/head-gap checks and male outfit-switch/idle identity checks. TypeScript and production bundle pass. Browser review confirmed Wanderer and Anarkali/Sherwani models and no console errors. Status remains Built pending exhaustive headwear-intersection and all-animation visual checks.
-`n## Owner intake 2026-09-26`n`n"Hey I have dowbnloaded the asked downloads. in downloads you will find blender mcp, For 3D asseting do create using blender. I want you to collaborate on work with opus 5.5 using handoffs and proper management, include what we did in previous sessions detailing different things, use files to communicate with one another, what is our plan. Distribute work effectively and accomplish this game. Fork if needed to preserve the progress if needed."`n`nGT-PROD-001 (MUST, Production, In Progress): Use actual Blender for new 3D assets; cooperate with exact Opus 5.5 through file assignments, isolated ownership and integration review. Acceptance: inspect .blend + exported GLB in browser; verify model identity for collaborator, retain handoff/result files and run integration checks. Existing GT-ART-001 and living-system acceptance checks still apply. Record blockers without silently substituting tools/models.`n`n- 2026-09-26: Added owner collaboration/Blender intake and GT-PROD-001. Checkpointed prior work at 71b0f7d. Created shared handoff, ownership and assignment documents before implementation.
+
+## Owner intake 2026-09-26
+
+"Hey I have dowbnloaded the asked downloads. in downloads you will find blender mcp, For 3D asseting do create using blender. I want you to collaborate on work with opus 5.5 using handoffs and proper management, include what we did in previous sessions detailing different things, use files to communicate with one another, what is our plan. Distribute work effectively and accomplish this game. Fork if needed to preserve the progress if needed."
+
+GT-PROD-001 (MUST, Production, In Progress): Use actual Blender for new 3D assets; cooperate with exact Opus 5.5 through file assignments, isolated ownership and integration review. Acceptance: inspect .blend + exported GLB in browser; verify model identity for collaborator, retain handoff/result files and run integration checks. Existing GT-ART-001 and living-system acceptance checks still apply. Record blockers without silently substituting tools/models.
+
+- 2026-09-26: Added owner collaboration/Blender intake and GT-PROD-001. Checkpointed prior work at 71b0f7d. Created shared handoff, ownership and assignment documents before implementation.
+
+## Owner intake 2026-09-26 — Mysuru and inspiration corpus
+
+"If possible, can you begin the game from mysore as we are from mysore. You may look into the layout of the city on maps and build the map by adding the game aesthetics to it.. Also launch a sub agent that searches architectures, artifacts, dresses, by scrolling and opening the new tabs from my feed, along with using key words in the other tabs. generate a list of keywords. From on generate different key words. Example: fantasy--> floating islands, windmills, cottages, stardust, celestial, starry, etc generate for present key words and derive 200 to 300 key words that can be use to search for architecture, artifacts, dresses, geography, sceneary, vehicles, etc related to the game. So that it can be used to search and create a corpus of structured inspiration"
+
+"use google maps layout of cities and roads, they provide pictures too. let clauade know everything you do"
+
+| ID | Requirement | Phase | Status | Acceptance |
+|---|---|---|---|---|
+| GT-START-001 | Begin new journeys in a Mysuru-inspired region informed by actual city and road layout, including Google Maps and place photos, with game aesthetics. | S | In Progress | Starting location/region names identify Mysuru; map records observed relative locations and routes with provenance; new-game spawn is clear and walkable; existing saves retain progress. Browser inspect starting region and map. Clearly distinguish compressed fictional layout from real city. |
+| GT-RES-002 | A delegated research agent explores Pinterest feed and separate keyword tabs and builds 200–300 structured derived queries. | R | In Progress | 200–300 unique queries covering requested categories, linked parent themes, structured observation targets and evidence status. Inspected images have pin URLs and notes; never count queued searches as inspected. Preserve feed; open refs separately. |
+| GT-TEAM-002 | Keep the existing Claude session informed through shared files. | Production | In Progress | Update handoff and append Codex progress notes in integration and Opus working copies, with decisions, source changes, validation and next actions. Do not start a new Claude process. |
+
+C-07: Mysuru supersedes Wanderers' Meadow as the visible starting-region identity. Preserve the internal `meadow` ID and quest/save keys for compatibility. The fantasy meadow becomes outskirts/visual accents. Author an interpreted compressed map, not a navigable real-world replica.
+
+- 2026-09-26: Recorded Mysuru/Maps/corpus/Claude steering; started delegated Pinterest research, primary-source map research and original Blender starting-region work.

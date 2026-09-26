@@ -71,6 +71,8 @@ export interface GameState {
   gathered: Record<string, number>;
   unlockedDecor: string[];
   flags: string[];
+  /** Quest the guide follows; '' lets the guide choose (main story first). */
+  tracked: string;
   /** Real seconds played, for the journal. */
   playSeconds: number;
 }
@@ -78,7 +80,7 @@ export interface GameState {
 export function newGame(): GameState {
   return {
     version: 1,
-    names: { girl: 'Amal', boy: 'Rafiq' },
+    names: { girl: 'Syeda Fathima', boy: 'Mohammed Abdul Azim' },
     minutes: 8 * 60, // morning of day one
     coins: 40,
     light: 1,
@@ -101,6 +103,7 @@ export function newGame(): GameState {
     gathered: {},
     unlockedDecor: ['fence', 'bench', 'flowerbed', 'farmbed', 'lamp-post', 'tree', 'tent', 'cottage', 'pen'],
     flags: [],
+    tracked: '',
     playSeconds: 0,
   };
 }

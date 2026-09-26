@@ -7,6 +7,7 @@ import { Animals, type Animal } from './animals/Animals';
 import { SPECIES } from './animals/AnimalModel';
 import { OUTFITS } from './characters/outfits';
 import { EventBus } from './core/events';
+import { Guide } from './guide/Guide';
 import { Input } from './core/Input';
 import { loadGame, saveGame, clearSave } from './core/save';
 import { DAY_MINUTES, hourOf, newGame, type GameState, type VanSlot } from './core/state';
@@ -64,6 +65,7 @@ export class Game {
   readonly animals: Animals;
   readonly van: VanInterior;
   readonly ui: UI;
+  readonly guide: Guide;
   region: RegionSpec;
   inVan = false;
   started = false;
@@ -120,6 +122,12 @@ export class Game {
     for (const e of ['plot:bought', 'plot:changed', 'quest:completed'] as const) this.bus.on(e, () => (this.housingDirty = true));
 
     this.ui = new UI(this);
+    this.guide = new Guide(this);
+    this.guide.onNextChanged = (o, first) => {
+      this.ui.refreshTracker();
+      if (!first && this.started && o.next) this.ui.nextStep(o.next.text);
+    };
+    this.ui.refreshTracker();
     addEventListener('resize', () => this.resize());
     this.renderer.domElement.addEventListener('pointermove', (e) => {
       this.mouse.set((e.clientX / innerWidth) * 2 - 1, -(e.clientY / innerHeight) * 2 + 1);
@@ -187,6 +195,7 @@ export class Game {
 
     if (this.inVan) {
       this.van.update(dt);
+      this.guide.update(dt, this.t);
       this.renderer.render(this.van.scene, this.van.camera);
       this.ui.update(dt);
       if (this.input.hit('escape') || this.input.hit('e')) this.exitVan();
@@ -234,6 +243,7 @@ export class Game {
     }
 
     this.trav.updateCamera(this.camera, dt);
+    this.guide.update(dt, this.t);
     this.composer.render();
     this.ui.update(dt);
     this.input.endFrame();

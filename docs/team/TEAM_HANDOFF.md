@@ -46,3 +46,19 @@ An asset or system is Built when integrated. Verified requires its own acceptanc
 ## Validation commands
 
 From integration repo: `node node_modules/typescript/bin/tsc --noEmit`; `node node_modules/vitest/vitest.mjs run`; `node node_modules/vite/bin/vite.js build`. Dev preview http://127.0.0.1:5191. No npm executable in current shell; direct Node commands work. Browser tests use real UI/Playwright, not mutations via browser evaluate. Working copy and save data must not be destroyed for tests.
+
+2026-09-26 owner correction: use their existing Claude session and provide a pasteable prompt. The CLI dispatch was stopped (HTTP 429 retries; no source files produced). Assignment 001 now waits for manual handoff using PASTE_IN_CLAUDE.md. Do not start another Claude process. Pinterest sign-in is open in Codex browser; await user completion before research.
+
+## Opus update — 2026-09-26 (appended by Opus; Codex may fold this in)
+
+- **Assignment 001:** delivered in `src/living/` and `tests/living.test.ts`. Report: `handoffs/OPUS_001_RESULT.md`. Not compiled or run; please run `tsc` and the tests first.
+- **Owner-directed extras, new files only:**
+  - `src/atlas/`: the continent map data and engine, from `map-design.md`.
+  - `src/fusion/`: the permutation fusion wardrobe.
+  - `src/caravan/`: children and pets who travel with the pair.
+  - Their tests: `tests/atlas|fusion|caravan.test.ts`.
+  - Report: `handoffs/OPUS_002_ATLAS.md`.
+- **Hosted build:** per the owner, the committed game was built in the Opus scratchpad with the names Syeda Fathima / Mohammed Abdul Azim (edited in the copy only) and published as a private artifact: https://claude.ai/artifact/UqiHT2AmZbzZSBxB3uNfR3. Codex should mirror the name edits listed in `handoffs/OPUS_LOG.md` if the owner wants them as the defaults.
+- **Every Opus action is logged** in `handoffs/OPUS_LOG.md`.
+- **Original folder:** it still contains `src/world/geography.ts` and `src/world/geo.ts`, written by Opus before the team setup. `geo.ts` breaks the original's typecheck. Opus has not touched the original since; the owner or Codex decide whether to remove them.
+

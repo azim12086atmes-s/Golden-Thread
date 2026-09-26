@@ -33,7 +33,7 @@ export function reviewCharacters(host: HTMLElement): void {
   const note = document.createElement('p'); note.textContent = 'Original procedural models. Glasses, pointed beard and curled side quiff. Drag to orbit; scroll to inspect. Hats cover the hair. Blender asset replacement is still pending.';
   panel.append(heading,note);
   for (const [who, model] of [['girl',girl],['boy',boy]] as const) {
-    const label = document.createElement('label'); label.textContent = who === 'girl' ? 'Amal outfit ' : 'Rafiq outfit ';
+    const label = document.createElement('label'); label.textContent = who === 'girl' ? 'Syeda Fathima outfit ' : 'Mohammed Abdul Azim outfit ';
     const select = document.createElement('select'); select.setAttribute('aria-label', who + ' outfit');
     for (const o of Object.values(OUTFITS).filter(o=>o.who===who)) {
       const option = document.createElement('option'); option.value=o.id; option.textContent=o.name; select.append(option);
