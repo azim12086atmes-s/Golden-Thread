@@ -41,7 +41,7 @@ export function reviewCharacters(host: HTMLElement): void {
     select.value=who==='girl'?'g-meadow':'b-meadow'; select.onchange=()=>model.setOutfit(OUTFITS[select.value]);
     label.append(select); panel.append(label);
   }
-  const link = document.createElement('a'); link.href='/'; link.textContent='Return to the game'; panel.append(link);
+  const link = document.createElement('a'); link.href='./'; link.textContent='Return to the game'; panel.append(link);
   document.body.append(panel);
   let last = performance.now();
   renderer.setAnimationLoop((now) => {
