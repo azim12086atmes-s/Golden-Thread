@@ -180,7 +180,29 @@ export function tent(g: GeoBuilder, r: number, h: number, c: C, c2: C, x = 0, y 
 /** A tree of the given species. Returns nothing: trees are merged into the land's mesh. */
 export type Flora =
   | 'oak' | 'pine' | 'birch' | 'sakura' | 'palm' | 'cypress' | 'bamboo' | 'willow' | 'maple'
-  | 'coconut' | 'olive' | 'orange' | 'snowpine' | 'cloud' | 'crystal' | 'banana' | 'plane';
+  | 'coconut' | 'olive' | 'orange' | 'snowpine' | 'cloud' | 'crystal' | 'banana' | 'plane'
+  /** Hanging purple blossom (Japan, Korea). */
+  | 'wisteria'
+  /** Fan-leaved and gold (Korea, China). */
+  | 'ginkgo'
+  /** Gulmohar: a flat crown of flame-red flowers (India). */
+  | 'flame'
+  /** Violet blossom on a wide crown (South India, Mughal gardens). */
+  | 'jacaranda'
+  /** Rainbow eucalyptus: a trunk striped green, orange, blue and maroon (Indonesia). */
+  | 'rainbowgum'
+  /** A fat bottle trunk with a small crown (the desert, Egypt). */
+  | 'baobab'
+  /** Dragon's blood tree: an umbrella of branches (Middle East, desert). */
+  | 'dragonblood'
+  /** Pastel candy-floss trees (the Meadow, the Sky Isles). */
+  | 'candy'
+  /** Leaves that glow softly (the Aurora huts, the Sky Isles). */
+  | 'glowtree'
+  /** Pink-and-white saucer blossom (London, New York). */
+  | 'magnolia'
+  /** Quivering gold leaves (Norway, Switzerland). */
+  | 'aspen';
 
 export function tree(g: GeoBuilder, kind: Flora, x: number, y: number, z: number, s: number, rng: () => number): void {
   const trunk = '#7a5a3c';
@@ -236,6 +258,79 @@ export function tree(g: GeoBuilder, kind: Flora, x: number, y: number, z: number
         g.add(geo, '#4fa04a', M(x, y + 2.2 * s, z, (i / 5) * Math.PI * 2, 1, 1, 1, -0.5, 0));
       }
       break;
+    case 'wisteria': {
+      trunkWithBark(g, 0.2 * s, 0.32 * s, 2.4 * s, '#6b5040', x, y, z);
+      sphere(g, 1.6 * s, '#6fa04a', x, y + 3 * s, z, 7, 0.7);
+      for (let i = 0; i < 14; i++) {
+        const a = (i / 14) * Math.PI * 2 + v, r = (0.6 + (i % 3) * 0.4) * s;
+        cone(g, 0.22 * s, (0.9 + (i % 4) * 0.25) * s, i % 3 ? '#b58ae0' : '#d9b8ff', x + Math.cos(a) * r, y + 2.1 * s, z + Math.sin(a) * r, 5);
+      }
+      break;
+    }
+    case 'ginkgo':
+      trunkWithBark(g, 0.18 * s, 0.28 * s, 3 * s, '#7a6a52', x, y, z);
+      for (let i = 0; i < 4; i++) cone(g, (1.4 - i * 0.25) * s, 1.4 * s, i % 2 ? '#f2c230' : '#ffd84a', x, y + (2.2 + i * 0.9) * s, z, 8);
+      break;
+    case 'flame':
+      trunkWithBark(g, 0.2 * s, 0.34 * s, 2.6 * s, '#6b5040', x, y, z);
+      sphere(g, 2.4 * s, '#3f8a3a', x, y + 3.1 * s, z, 8, 0.45);
+      for (let i = 0; i < 16; i++) {
+        const a = i * 2.4 + v * 6, r = (0.4 + ((i * 7) % 10) / 5) * s;
+        sphere(g, 0.42 * s, i % 3 ? '#ff4a1f' : '#ff9a1f', x + Math.cos(a) * r, y + 3.5 * s + (i % 2) * 0.2 * s, z + Math.sin(a) * r, 5, 0.6);
+      }
+      break;
+    case 'jacaranda':
+      trunkWithBark(g, 0.18 * s, 0.3 * s, 2.4 * s, '#6b5040', x, y, z);
+      for (const [dx, dy, dz, r] of [[0, 3.2, 0, 1.7], [1.2, 2.8, 0.4, 1.2], [-1.1, 2.9, -0.5, 1.2], [0.2, 3.9, -0.6, 1.0]] as const) sphere(g, r * s, v > 0.5 ? '#9a7ae0' : '#b08aef', x + dx * s, y + dy * s, z + dz * s, 7, 0.8);
+      break;
+    case 'rainbowgum': {
+      const cols = ['#5aa05a', '#ff9a4a', '#4a7ad0', '#9a3a5a', '#e8d05a'];
+      for (let i = 0; i < 6; i++) cyl(g, (0.34 - i * 0.03) * s, (0.36 - i * 0.03) * s, 0.9 * s, cols[(i + Math.floor(v * 5)) % 5], x, y + i * 0.9 * s, z, 7);
+      sphere(g, 2.0 * s, '#4f9a4a', x, y + 6.2 * s, z, 7, 0.8);
+      sphere(g, 1.4 * s, '#62ae52', x + 1.2 * s, y + 5.6 * s, z, 6, 0.8);
+      break;
+    }
+    case 'baobab':
+      cyl(g, 0.7 * s, 1.0 * s, 3.2 * s, '#a88a6a', x, y, z, 9);
+      for (let i = 0; i < 6; i++) {
+        const a = (i / 6) * Math.PI * 2 + v;
+        const geo = new THREE.CylinderGeometry(0.08 * s, 0.16 * s, 1.4 * s, 5);
+        geo.translate(0, 0.7 * s, 0);
+        g.add(geo, '#9a7a5a', M(x, y + 3.1 * s, z, a, 1, 1, 1, 0.9, 0));
+        sphere(g, 0.5 * s, '#6a9a4a', x + Math.cos(a) * 1.2 * s, y + 4.2 * s, z + Math.sin(a) * 1.2 * s, 5, 0.6);
+      }
+      break;
+    case 'dragonblood':
+      cyl(g, 0.22 * s, 0.3 * s, 2.2 * s, '#8a7a6a', x, y, z, 6);
+      for (let i = 0; i < 5; i++) {
+        const geo = new THREE.CylinderGeometry(0.07 * s, 0.1 * s, 1.2 * s, 4);
+        geo.translate(0, 0.6 * s, 0);
+        g.add(geo, '#8a7a6a', M(x, y + 2.2 * s, z, (i / 5) * Math.PI * 2, 1, 1, 1, 0.6, 0));
+      }
+      sphere(g, 2.2 * s, '#3f6a3a', x, y + 3.3 * s, z, 9, 0.32);
+      break;
+    case 'candy': {
+      trunkWithBark(g, 0.14 * s, 0.22 * s, 2.2 * s, '#e8d0e8', x, y, z);
+      const pastel = ['#ffb8d8', '#b8d8ff', '#d8b8ff', '#fff0a8', '#b8ffd8'];
+      for (const [dx, dy, dz, r] of [[0, 3, 0, 1.4], [0.9, 2.6, 0.3, 1.0], [-0.8, 2.7, -0.4, 1.0], [0, 3.9, 0, 0.9]] as const) sphere(g, r * s, pastel[Math.floor((v * 5 + dx + dy) * 7) % 5], x + dx * s, y + dy * s, z + dz * s, 7);
+      break;
+    }
+    case 'glowtree':
+      trunkWithBark(g, 0.14 * s, 0.24 * s, 2.6 * s, '#4a4a6a', x, y, z);
+      for (let i = 0; i < 5; i++) cone(g, (1.3 - i * 0.2) * s, 1.2 * s, i % 2 ? '#7affd0' : '#9ad8ff', x, y + (2 + i * 0.75) * s, z, 7);
+      break;
+    case 'magnolia':
+      trunkWithBark(g, 0.16 * s, 0.26 * s, 2.2 * s, '#6b5a4a', x, y, z);
+      sphere(g, 1.6 * s, '#5a8a4a', x, y + 3 * s, z, 7, 0.9);
+      for (let i = 0; i < 18; i++) {
+        const a = i * 2.4 + v * 6, e = ((i * 5) % 9) / 9;
+        sphere(g, 0.24 * s, i % 3 ? '#ffd6e6' : '#ffffff', x + Math.cos(a) * 1.55 * s * Math.cos(e), y + 3 * s + Math.sin(e) * 1.4 * s, z + Math.sin(a) * 1.55 * s * Math.cos(e), 5, 0.7);
+      }
+      break;
+    case 'aspen':
+      trunkWithBark(g, 0.1 * s, 0.16 * s, 3.4 * s, '#efeae0', x, y, z, '#3a3a3a');
+      sphere(g, 1.0 * s, v > 0.5 ? '#ffd84a' : '#f2b830', x, y + 3.8 * s, z, 7, 1.6);
+      break;
     default: {
       const leaf: Record<string, string[]> = {
         oak: ['#5c9c4a', '#6aab52', '#4f8c42'],
@@ -249,14 +344,29 @@ export function tree(g: GeoBuilder, kind: Flora, x: number, y: number, z: number
       };
       const cols = leaf[kind] ?? leaf.oak;
       const col = cols[Math.floor(v * cols.length)];
-      cyl(g, 0.16 * s, 0.26 * s, 2 * s, kind === 'birch' ? '#e8e4da' : trunk, x, y, z, 6);
+      trunkWithBark(g, 0.16 * s, 0.26 * s, 2 * s, kind === 'birch' ? '#e8e4da' : trunk, x, y, z, kind === 'birch' ? '#2a2a2a' : undefined);
       sphere(g, 1.5 * s, col, x, y + 2.8 * s, z, 7);
+      // A lighter crown where the sun catches it.
+      sphere(g, 0.9 * s, lighten(col), x + 0.3 * s, y + 3.6 * s, z + 0.2 * s, 6);
       sphere(g, 1.1 * s, col, x + 0.9 * s, y + 2.4 * s, z + 0.3 * s, 6);
       sphere(g, 1.0 * s, col, x - 0.7 * s, y + 2.6 * s, z - 0.5 * s, 6);
       if (kind === 'orange') for (let i = 0; i < 4; i++) sphere(g, 0.16 * s, '#ff9a1f', x + (rng() - 0.5) * 2 * s, y + (2.2 + rng()) * s, z + (rng() - 0.5) * 2 * s, 4);
     }
   }
 }
+
+/** A trunk with a root flare and bark bands (birch gets its dark marks). */
+function trunkWithBark(g: GeoBuilder, rTop: number, rBot: number, h: number, c: C, x: number, y: number, z: number, marks?: string): void {
+  cyl(g, rTop, rBot, h, c, x, y, z, 6);
+  cyl(g, rBot * 1.05, rBot * 1.6, h * 0.12, c, x, y, z, 6);
+  const band = marks ?? '#' + new THREE.Color(c as THREE.ColorRepresentation).multiplyScalar(0.72).getHexString();
+  for (let i = 1; i < 4; i++) {
+    const k = i / 4, r = rBot + (rTop - rBot) * k;
+    cyl(g, r * 1.04, r * 1.06, h * (marks ? 0.03 : 0.05), band, x, y + h * k, z, 6);
+  }
+}
+
+const lighten = (c: string) => '#' + new THREE.Color(c).lerp(new THREE.Color('#fff6c8'), 0.28).getHexString();
 
 export function rock(g: GeoBuilder, x: number, y: number, z: number, s: number, c: C): void {
   const geo = new THREE.DodecahedronGeometry(s, 0);

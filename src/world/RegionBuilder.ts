@@ -1,6 +1,8 @@
 import * as THREE from 'three';
 import { Rng } from '../core/rng';
 import { PLOTS, PLOT_SIZE } from './plots';
+import { LAND_STYLE, VARIANT_SHARE, buildVariant } from './buildings';
+import { houseDecor } from './houseDecor';
 import { buildHouse, lampPost, streetProp, type Ctx } from './architecture';
 import { GeoBuilder, box, cone, cyl, flowers, rock, sphere, tree } from './kit';
 import { CITY_RADIUS, REGION_SIZE, regionCenter, type RegionSpec } from './regions';
@@ -29,6 +31,10 @@ export interface RegionInstance {
 }
 
 const AVENUE = 9, RING = 140;
+/** People are ~1.8 m tall: trees reach 8–16 m and houses stand a little larger than they were drawn. */
+export const TREE_SCALE = 1.9;
+export const HOUSE_SCALE: Partial<Record<string, number>> = { newyork: 1, london: 1.05 };
+const houseScale = (id: string) => HOUSE_SCALE[id] ?? 1.15;
 const onRoad = (x: number, z: number, pad = 0) =>
   Math.abs(x) < AVENUE + pad || Math.abs(z) < AVENUE + pad || Math.abs(Math.hypot(x, z) - RING) < 6 + pad;
 
@@ -132,13 +138,16 @@ export function buildRegion(spec: RegionSpec, solid: THREE.Material, glowMat: TH
     const x = cx + rng.range(-3, 3), z = cz + rng.range(-3, 3);
     const d = Math.hypot(x, z);
     if (d < 62 || d > CITY_RADIUS - 6) continue;
-    if (onRoad(x, z, spec.id === 'newyork' ? 14 : 8) || nearPlot(x, z, 8)) continue;
+    if (onRoad(x, z, spec.id === 'newyork' ? 14 : 9) || nearPlot(x, z, 9)) continue;
     const y = H(x, z);
     if (y < WATER_Y + 0.4) continue;
     // Face the nearest avenue.
     const ry = Math.abs(x) < Math.abs(z) ? (x > 0 ? -Math.PI / 2 : Math.PI / 2) : z > 0 ? Math.PI : 0;
     let fp = { r: 4, h: 6 };
-    g.frame(x, y, z, ry, 1, () => glow.frame(x, y, z, ry, 1, () => { fp = buildHouse(ctx); }));
+    const hs = houseScale(spec.id);
+    const variant = LAND_STYLE[spec.id].kinds.length > 0 && spec.id !== 'desert' && spec.id !== 'aurora' && spec.id !== 'skyisles' && rng.chance(VARIANT_SHARE);
+    g.frame(x, y, z, ry, hs, () => glow.frame(x, y, z, ry, hs, () => { fp = variant ? buildVariant(ctx) : buildHouse(ctx); if (variant) houseDecor(ctx, fp); }));
+    fp = { r: fp.r * hs, h: fp.h * hs };
     colliders.push({ x: c.x + x, z: c.z + z, r: fp.r * 0.85, h: y + fp.h });
     placed++;
     if (rng.chance(0.25)) spots.push({ x: x + Math.sin(ry) * (fp.r + 3), z: z + Math.cos(ry) * (fp.r + 3) });
@@ -157,7 +166,7 @@ export function buildRegion(spec: RegionSpec, solid: THREE.Material, glowMat: TH
           streetProp(ctx, x + (Math.abs(x) < Math.abs(z) ? Math.sign(x) * 3 : 0), H(x, z), z + (Math.abs(x) < Math.abs(z) ? 0 : Math.sign(z) * 3), ry);
           colliders.push({ x: c.x + x, z: c.z + z, r: 1.2, h: H(x, z) + 3 });
         } else if (rng.chance(0.6)) {
-          tree(g, rng.pick(spec.flora), x, H(x, z), z, rng.range(0.8, 1.2), () => rng.next());
+          tree(g, rng.pick(spec.flora), x, H(x, z), z, rng.range(0.8, 1.2) * TREE_SCALE * 0.8, () => rng.next());
         }
         spots.push({ x: x * 0.95, z: z * 0.95 });
       }
@@ -178,9 +187,9 @@ export function buildRegion(spec: RegionSpec, solid: THREE.Material, glowMat: TH
     const y = H(x, z);
     if (y < WATER_Y + 0.3) continue;
     const kind = rng.pick(spec.flora);
-    const s = rng.range(0.8, 1.6);
+    const s = rng.range(0.8, 1.6) * TREE_SCALE;
     tree(g, kind, x, y, z, s, () => rng.next());
-    if (kind !== 'bamboo' && kind !== 'crystal') colliders.push({ x: c.x + x, z: c.z + z, r: 0.5 * s, h: y + 4 * s });
+    if (kind !== 'bamboo' && kind !== 'crystal') colliders.push({ x: c.x + x, z: c.z + z, r: 0.35 * s, h: y + 4 * s });
   }
   for (let i = 0; i < 120; i++) {
     const x = rng.range(-half, half), z = rng.range(-half, half);
