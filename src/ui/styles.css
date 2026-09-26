@@ -252,3 +252,53 @@ kbd { display: inline-block; min-inline-size: 22px; padding: 2px 6px; border-rad
 .asset-review label { display: inline-block; margin-block: 4px; margin-inline-end: 16px; }
 .asset-review select { max-inline-size: 220px; padding: 5px; }
 .asset-review a { display: block; margin-block-start: 12px; color: var(--gold); }
+
+/* Opening scene: letterbox, captions, skip. The rest of the HUD steps aside. */
+body.cinematic #ui > :not(.cinema):not(.feed) { opacity: 0; pointer-events: none; transition: opacity 0.5s; }
+body.cinematic #ui > .feed { opacity: 0; }
+.cinema { position: absolute; inset: 0; pointer-events: none; }
+.cinema .bar { position: absolute; inset-inline: 0; block-size: 11vh; background: #0b0a1c; transition: transform 0.7s cubic-bezier(0.2, 0.8, 0.2, 1); }
+.cinema .bar.top { inset-block-start: 0; transform: translateY(-100%); }
+.cinema .bar.bottom { inset-block-end: 0; transform: translateY(100%); }
+.cinema.show .bar { transform: none; }
+.cinema .caption { position: absolute; inset-inline: 16px; inset-block-end: calc(11vh + 18px); margin: 0 auto; max-inline-size: 36ch; text-align: center; font: 500 clamp(17px, 2.4vw, 24px)/1.4 var(--display); font-style: italic; color: #fff4dc; text-shadow: 0 2px 16px rgba(0, 0, 0, 0.7); opacity: 0; transform: translateY(8px); transition: opacity 0.8s, transform 0.8s; text-wrap: balance; }
+.cinema .caption.show { opacity: 1; transform: none; }
+.cinema .skip { position: absolute; inset-block-end: calc(11vh - 42px); inset-inline-end: 18px; pointer-events: auto; color: #fff4dc; }
+
+/* Bottom sheet: dressing room and van. The world stays visible above it. */
+.panel.sheet { inset-block: auto 84px; inset-inline: 12px; inline-size: auto; max-inline-size: 1100px; margin-inline: auto; max-block-size: min(42vh, 380px); transform: translateY(130%); border-radius: 20px; }
+.panel.sheet.show { transform: none; }
+.panel.sheet header { padding: 10px 16px 2px; }
+.panel.sheet h2 { font-size: 18px; }
+.panel.sheet .body { padding: 4px 16px 12px; gap: 8px; overflow-y: auto; }
+.sheet-row, .chips, .shelf { flex: none; }
+#ui.sheet-open .tracker, #ui.sheet-open .labels, #ui.sheet-open .hud-tr, #ui.sheet-open .hud-tl { display: none; }
+.sheet-row { display: flex; flex-wrap: wrap; gap: 10px 16px; align-items: center; }
+.seg { display: inline-flex; gap: 4px; padding: 3px; border-radius: 999px; background: rgba(255, 255, 255, 0.06); border: 1px solid var(--line); }
+.seg .btn { padding: 7px 14px; }
+.worn { display: grid; gap: 1px; min-inline-size: 0; }
+.worn b { font: 700 15px var(--display); color: var(--gold); }
+.worn small { color: var(--ink-dim); font-size: 11px; }
+.worn .merged { color: #bfe8c8; }
+.chips { display: flex; gap: 6px; overflow-x: auto; padding-block-end: 4px; scrollbar-width: thin; scrollbar-color: rgba(245, 196, 81, 0.5) transparent; }
+.chips .btn { flex: none; }
+.chips input { flex: none; inline-size: 150px; padding: 6px 12px; border-radius: 999px; border: 1px solid var(--line); background: rgba(255, 255, 255, 0.08); color: var(--ink); font: 700 12px var(--sans); }
+.chips input:focus { outline: 2px solid var(--gold); }
+.shelf { display: grid; grid-auto-flow: column; grid-template-rows: repeat(2, auto); grid-auto-columns: 138px; gap: 8px; overflow-x: auto; overflow-y: hidden; padding-block-end: 8px; scroll-snap-type: x proximity; scrollbar-width: thin; scrollbar-color: rgba(245, 196, 81, 0.6) rgba(255, 255, 255, 0.06); }
+.shelf::-webkit-scrollbar { block-size: 8px; }
+.shelf::-webkit-scrollbar-thumb { background: rgba(245, 196, 81, 0.6); border-radius: 8px; }
+.shelf::-webkit-scrollbar-track { background: rgba(255, 255, 255, 0.06); border-radius: 8px; }
+.shelf { align-items: start; }
+.shelf .outfit { scroll-snap-align: start; align-content: start; padding: 8px 10px; }
+.shelf .outfit.dim { opacity: 0.55; }
+.van-shelf { grid-template-rows: auto; grid-auto-columns: 170px; }
+.panel .fine { font-size: 11px; }
+@media (max-height: 640px) { .shelf { grid-template-rows: auto; } .panel.sheet .fine { display: none; } }
+@media (max-width: 720px) {
+  .panel.sheet { inset-block: auto 76px; inset-inline: 8px; max-block-size: 46vh; }
+  .shelf { grid-auto-columns: 124px; }
+  .worn { display: none; }
+}
+.shelf .outfit { min-inline-size: 0; }
+.shelf .outfit b { display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+.shelf .outfit small { max-inline-size: 100%; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }

@@ -6,8 +6,10 @@ import { UnrealBloomPass } from 'three/addons/postprocessing/UnrealBloomPass.js'
 import { Animals, type Animal } from './animals/Animals';
 import { SPECIES } from './animals/AnimalModel';
 import { OUTFITS } from './characters/outfits';
+import './characters/wardrobe'; // registers the fusion outfits
 import { EventBus } from './core/events';
 import { Guide } from './guide/Guide';
+import { CakeScene } from './story/CakeScene';
 import { Input } from './core/Input';
 import { loadGame, saveGame, clearSave } from './core/save';
 import { DAY_MINUTES, hourOf, newGame, type GameState, type VanSlot } from './core/state';
@@ -68,6 +70,7 @@ export class Game {
   readonly guide: Guide;
   region: RegionSpec;
   inVan = false;
+  cutscene: CakeScene | null = null;
   started = false;
   build: { plotId: string; kind: string | null; rot: number } | null = null;
   target: Interactable | null = null;
@@ -78,6 +81,7 @@ export class Game {
   private mouse = new THREE.Vector2();
   private housingDirty = true;
   private raycaster = new THREE.Raycaster();
+  private dress = { blend: 0, yaw: 0, savedYaw: 0, from: new THREE.Vector3(), goal: new THREE.Vector3(), look: new THREE.Vector3() };
 
   constructor(host: HTMLElement) {
     this.st = loadGame() ?? newGame();
@@ -206,8 +210,8 @@ export class Game {
     if (this.started) {
       this.st.minutes += dt * MINUTES_PER_SECOND;
       this.st.playSeconds += dt;
-      this.ui.handleKeys();
-      this.input.blocked = this.ui.modal && !this.build;
+      if (!this.cutscene) this.ui.handleKeys();
+      this.input.blocked = (this.ui.modal && !this.build) || !!this.cutscene;
       this.trav.update(dt, this.input, this.t);
       this.trackRegion();
     } else {
@@ -229,7 +233,7 @@ export class Game {
     }
 
     if (this.started) {
-      this.target = this.build ? null : this.findTarget();
+      this.target = this.build || this.cutscene ? null : this.findTarget();
       if (this.input.hit('e') && this.target && !this.ui.modal) this.interact(this.target);
       if (this.build) this.updateBuild();
       this.tickTimer += dt;
@@ -243,10 +247,45 @@ export class Game {
     }
 
     this.trav.updateCamera(this.camera, dt);
+    this.cutscene?.update(dt, this.camera);
+    this.dressCamera(dt);
     this.guide.update(dt, this.t);
     this.composer.render();
     this.ui.update(dt);
     this.input.endFrame();
+  }
+
+  /**
+   * The dressing room: the camera swings round to face whoever is being dressed, framed in the
+   * upper part of the screen above the outfit shelf. Drag to turn around them.
+   */
+  private dressCamera(dt: number): void {
+    const d = this.dress, open = this.ui.panel === 'wardrobe' && !this.inVan && !this.cutscene;
+    if (open && d.blend === 0) { d.yaw = 0; d.savedYaw = this.trav.camYaw; }
+    d.blend = THREE.MathUtils.clamp(d.blend + (open ? dt : -dt) * 2.2, 0, 1);
+    if (d.blend === 0) return;
+    if (open) {
+      d.yaw -= this.input.dx * 0.006;
+      this.trav.camYaw = d.savedYaw;
+    }
+    const who = this.ui.wardrobeWho === 'girl' ? this.trav.girl : this.trav.boy;
+    const p = who.root.position, face = who.root.rotation.y + d.yaw; // models face +z
+    // Frame the whole figure in the band of screen above the shelf.
+    const band = THREE.MathUtils.clamp(this.ui.sheetTop() / innerHeight, 0.35, 1);
+    const half = THREE.MathUtils.degToRad(this.camera.fov / 2);
+    const dist = 2.1 / (2 * 0.82 * band * Math.tan(half));
+    d.goal.set(p.x + Math.sin(face) * dist, p.y + 1.1, p.z + Math.cos(face) * dist);
+    // Aim so the figure's middle sits at the centre of that band, not of the screen.
+    const centre = new THREE.Vector3(p.x, p.y + 0.95, p.z);
+    const toC = centre.clone().sub(d.goal);
+    const drop = (0.5 - band / 2) * 2 * half;
+    const right = new THREE.Vector3(-Math.cos(face), 0, Math.sin(face));
+    d.look.copy(d.goal).add(toC.applyAxisAngle(right, drop));
+    const k = d.blend * d.blend * (3 - 2 * d.blend);
+    d.from.copy(this.camera.position);
+    this.camera.position.lerpVectors(d.from, d.goal, k);
+    const gameLook = new THREE.Vector3().copy(this.camera.position).add(this.camera.getWorldDirection(new THREE.Vector3()));
+    this.camera.lookAt(gameLook.lerp(d.look, k));
   }
 
   private trackRegion(): void {
@@ -551,9 +590,26 @@ export class Game {
     if (names) this.st.names = names;
     this.started = true;
     this.trav.camYaw = this.trav.heading;
-    if (!this.st.quests['main-meadow']) {
-      this.toast(`${this.st.names.girl} and ${this.st.names.boy} wake in Wanderers' Meadow. Grandmother Noor is waiting by the Great Oak.`, 'story');
-    }
+    if (!this.st.quests['main-meadow'] && !this.st.flags.includes('cake')) this.playOpening();
+    else if (!this.st.quests['main-meadow']) this.wakeToast();
+  }
+
+  private wakeToast(): void {
+    this.toast(`${this.st.names.girl} and ${this.st.names.boy} set out from Wanderers' Meadow. Grandmother Noor is waiting by the Great Oak.`, 'story');
+  }
+
+  /** The cake under the Great Oak. Plays on a new journey; replayable from Help. */
+  playOpening(): void {
+    if (this.cutscene || this.inVan) return;
+    this.ui.closePanel();
+    const scene = new CakeScene(this);
+    this.cutscene = scene;
+    scene.onDone = () => {
+      this.cutscene = null;
+      if (!this.st.quests['main-meadow']) this.wakeToast();
+      this.guide.refresh();
+      this.ui.refreshTracker();
+    };
   }
 
   save(): void {

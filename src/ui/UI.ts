@@ -1,7 +1,8 @@
 import * as THREE from 'three';
 import type { Animal } from '../animals/Animals';
 import { SPECIES } from '../animals/AnimalModel';
-import { outfitsFor } from '../characters/outfits';
+import { OUTFITS, outfitsFor } from '../characters/outfits';
+import { DRESS_GROUPS, dressGroup, type DressGroup } from '../characters/wardrobe';
 import type { Outfit } from '../characters/modesty';
 import { dayOf, type VanSlot } from '../core/state';
 import { canCraft, count, level } from '../economy/economy';
@@ -58,7 +59,10 @@ export class UI {
   private dialogueNpc: Npc | null = null;
   private animal: Animal | null = null;
   private msgFriend: string | null = null;
-  private wardrobeWho: 'girl' | 'boy' = 'girl';
+  wardrobeWho: 'girl' | 'boy' = 'girl';
+  private wardrobeGroup: DressGroup = 'all';
+  private wardrobeQuery = '';
+  private vanSlot: VanSlot = 'rug';
   private mapSel: RegionId | null = null;
   private hudTimer = 0;
   private labelEls = new Map<string, HTMLElement>();
@@ -75,6 +79,11 @@ export class UI {
     g.bus.on('region:entered', ({ regionId, first }) => this.titleCard(REGION_BY_ID[regionId as RegionId], first));
     for (const e of ['quest:started', 'quest:progress', 'quest:completed', 'item:gained', 'item:crafted'] as const) g.bus.on(e, () => this.refreshTracker());
     this.refreshTracker();
+  }
+
+  /** Top edge of the bottom sheet in px (the screen height when no sheet is open). */
+  sheetTop(): number {
+    return this.panelEl.classList.contains('sheet') && this.panelEl.classList.contains('show') ? this.panelEl.getBoundingClientRect().top : innerHeight;
   }
 
   get modal(): boolean {
@@ -110,7 +119,7 @@ export class UI {
   }
 
   update(dt: number): void {
-    this.touchActions.hidden = !this.g.started || this.modal || this.g.inVan;
+    this.touchActions.hidden = !this.g.started || this.modal || this.g.inVan || !!this.g.cutscene;
     this.hudTimer -= dt;
     if (this.hudTimer <= 0) {
       this.hudTimer = 0.25;
@@ -296,7 +305,7 @@ export class UI {
   }
 
   private buildDock(): void {
-    const items: Array<[Panel, string, string]> = [['wardrobe', '👗', 'Wardrobe (C)'], ['bag', '🎒', 'Bag & crafts (I)'], ['journal', '📖', 'Journal (J)'], ['map', '🗺️', 'Map (M)'], ['messages', '💌', 'Messages (N)'], ['vehicles', '🚐', 'Travel (V)'], ['help', '❔', 'Help (H)']];
+    const items: Array<[Panel, string, string]> = [['wardrobe', '👗', 'Dressing room (C)'], ['bag', '🎒', 'Bag & crafts (I)'], ['journal', '📖', 'Journal (J)'], ['map', '🗺️', 'Map (M)'], ['messages', '💌', 'Messages (N)'], ['vehicles', '🚐', 'Travel (V)'], ['help', '❔', 'Help (H)']];
     for (const [p, icon, label] of items) {
       const b = btn(icon, () => this.toggle(p), 'dock-btn');
       b.dataset.p = p ?? '';
@@ -327,6 +336,7 @@ export class UI {
     this.panel = null;
     this.dialogueNpc = null;
     this.panelEl.classList.remove('show');
+    this.root.classList.remove('sheet-open');
     this.refreshTracker();
   }
 
@@ -350,7 +360,7 @@ export class UI {
 
   render(): void {
     const body = h('div', { class: 'body' });
-    const titles: Record<string, string> = { wardrobe: 'Wardrobe', bag: 'Bag & Crafts', journal: 'Journal', map: 'The World', messages: 'Messages', vehicles: 'Ways to Travel', dialogue: '', animal: '', build: 'Build', van: 'Inside Safar', help: 'How to play' };
+    const titles: Record<string, string> = { wardrobe: 'Dressing room', bag: 'Bag & Crafts', journal: 'Journal', map: 'The World', messages: 'Messages', vehicles: 'Ways to Travel', dialogue: '', animal: '', build: 'Build', van: 'Inside Safar', help: 'How to play' };
     const head = h('header', {}, h('h2', {}, titles[this.panel ?? ''] ?? ''), btn('✕', () => this.closePanel(), 'close'));
     switch (this.panel) {
       case 'wardrobe': this.wardrobe(body); break;
@@ -367,24 +377,40 @@ export class UI {
       default: return this.closePanel();
     }
     this.panelEl.replaceChildren(head, body);
-    this.panelEl.className = `panel show p-${this.panel}`;
+    const sheet = this.panel === 'wardrobe' || this.panel === 'van';
+    this.panelEl.className = `panel show p-${this.panel}${sheet ? ' sheet' : ''}`;
+    this.root.classList.toggle('sheet-open', sheet);
   }
 
   private wardrobe(body: HTMLElement): void {
-    const st = this.g.st;
-    const tabs = h('div', { class: 'tabs' },
-      btn(`${st.names.girl}`, () => { this.wardrobeWho = 'girl'; this.render(); }, this.wardrobeWho === 'girl' ? 'on' : ''),
-      btn(`${st.names.boy}`, () => { this.wardrobeWho = 'boy'; this.render(); }, this.wardrobeWho === 'boy' ? 'on' : ''),
+    const st = this.g.st, who = this.wardrobeWho;
+    const worn = OUTFITS[st.outfits[who]];
+    const top = h('div', { class: 'sheet-row' },
+      h('div', { class: 'seg', role: 'tablist' },
+        btn(`${st.names.girl}`, () => { this.wardrobeWho = 'girl'; this.render(); }, who === 'girl' ? 'on' : ''),
+        btn(`${st.names.boy}`, () => { this.wardrobeWho = 'boy'; this.render(); }, who === 'boy' ? 'on' : '')),
+      worn ? h('div', { class: 'worn' }, h('b', {}, worn.name), h('small', {}, worn.culture), worn.merged.length ? h('small', { class: 'merged' }, `+ ${worn.merged.join(', ')}`) : null) : null,
     );
-    body.append(tabs, h('p', { class: 'dim' }, 'Every outfit is fully covering. Where an inspiration was not, it has been merged with sleeves, trousers or a headscarf.'));
-    const grid = h('div', { class: 'grid outfits' });
-    for (const o of outfitsFor(this.wardrobeWho)) {
-      const worn = st.outfits[this.wardrobeWho] === o.id;
-      const card = h('button', { class: `outfit ${worn ? 'on' : ''}`, type: 'button' }, swatch(o), h('b', {}, o.name), h('small', {}, o.culture), o.merged.length ? h('small', { class: 'merged' }, `+ ${o.merged.join(', ')}`) : null);
-      card.addEventListener('click', () => { this.g.wear(this.wardrobeWho, o.id); this.render(); });
-      grid.append(card);
-    }
-    body.append(grid);
+    const search = h('input', { type: 'search', placeholder: 'Search outfits', 'aria-label': 'Search outfits', value: this.wardrobeQuery }) as HTMLInputElement;
+    const chips = h('div', { class: 'chips' }, search, ...DRESS_GROUPS.map(([id, label]) =>
+      btn(label, () => { this.wardrobeGroup = id; this.render(); }, `small ${this.wardrobeGroup === id ? 'on' : 'ghost'}`)));
+    const shelf = h('div', { class: 'shelf', role: 'list' });
+    const fill = () => {
+      const q = this.wardrobeQuery.trim().toLowerCase();
+      const list = outfitsFor(who).filter((o) => (this.wardrobeGroup === 'all' || dressGroup(o) === this.wardrobeGroup)
+        && (!q || `${o.name} ${o.culture}`.toLowerCase().includes(q)));
+      shelf.replaceChildren(...list.map((o) => {
+        const on = st.outfits[who] === o.id;
+        const card = h('button', { class: `outfit ${on ? 'on' : ''}`, type: 'button', role: 'listitem', title: o.note ?? o.name }, swatch(o), h('b', {}, o.name), h('small', {}, o.culture));
+        card.addEventListener('click', () => { this.g.wear(who, o.id); this.render(); });
+        return card;
+      }));
+      if (!list.length) shelf.append(h('p', { class: 'dim' }, 'Nothing matches. Try another shelf.'));
+    };
+    search.addEventListener('input', () => { this.wardrobeQuery = search.value; fill(); });
+    fill();
+    body.append(top, chips, shelf, h('p', { class: 'dim fine' }, 'Drag the view to turn around. Every outfit is fully covering; where an inspiration was not, sleeves, trousers or a headscarf were merged in.'));
+    requestAnimationFrame(() => shelf.querySelector('.outfit.on')?.scrollIntoView({ block: 'nearest', inline: 'center' }));
   }
 
   private bag(body: HTMLElement): void {
@@ -600,18 +626,25 @@ export class UI {
 
   private vanPanel(body: HTMLElement): void {
     const g = this.g, st = g.st;
-    body.append(h('p', { class: 'dim' }, 'Decorate with things you have made. Each piece uses up the item. Esc to step outside.'));
-    for (const slot of Object.keys(VAN_OPTIONS) as VanSlot[]) {
-      const row = h('div', { class: 'slot' }, h('b', {}, SLOT_NAMES[slot]));
-      const opts = h('div', { class: 'trade' });
-      for (const o of VAN_OPTIONS[slot]) {
-        const cost = Object.entries(o.cost).map(([k, n]) => `${n}${ITEMS[k].icon}`).join(' ');
-        opts.append(btn(`${o.name}${cost ? ` · ${cost}` : ''}`, () => { const e = g.setVanSlot(slot, o.id); if (e) g.toast(e); this.render(); }, `small ${st.van[slot] === o.id ? 'on' : 'ghost'}`));
-      }
-      row.append(opts);
-      body.append(row);
+    const slots = Object.keys(VAN_OPTIONS) as VanSlot[];
+    const slot = this.vanSlot;
+    body.append(h('div', { class: 'chips' }, ...slots.map((s) =>
+      btn(SLOT_NAMES[s], () => { this.vanSlot = s; this.render(); }, `small ${s === slot ? 'on' : 'ghost'}`))));
+    const shelf = h('div', { class: 'shelf van-shelf', role: 'list' });
+    for (const o of VAN_OPTIONS[slot]) {
+      const on = st.van[slot] === o.id;
+      const cost = Object.entries(o.cost);
+      const afford = cost.every(([k, n]) => count(st, k) >= n);
+      const card = h('button', { class: `outfit ${on ? 'on' : ''} ${!on && !afford ? 'dim' : ''}`, type: 'button', role: 'listitem' },
+        h('b', {}, o.name),
+        h('small', {}, on ? 'In your van' : cost.length ? cost.map(([k, n]) => `${n}× ${ITEMS[k].icon} ${ITEMS[k].name}`).join(' · ') : 'Free'),
+      );
+      card.addEventListener('click', () => { const e = g.setVanSlot(slot, o.id); if (e) g.toast(e); this.render(); });
+      shelf.append(card);
     }
+    body.append(shelf, h('p', { class: 'dim fine' }, 'Decorate with things you have made — each piece uses up the item. Esc to step outside.'));
   }
+
 
   private help(body: HTMLElement): void {
     body.append(h('h3', {}, 'Graphics & photos'),
@@ -619,14 +652,15 @@ export class UI {
       h('div', { class: 'acts' },
         btn('Low graphics', () => { this.g.setQuality('low'); this.render(); }, this.g.quality === 'low' ? 'on' : 'ghost'),
         btn('High graphics', () => { this.g.setQuality('high'); this.render(); }, this.g.quality === 'high' ? 'on' : 'ghost'),
-        btn('Save photo (P)', () => this.g.takePhoto(), 'primary')),
+        btn('Save photo (P)', () => this.g.takePhoto(), 'primary'),
+        btn('🎂 Replay the celebration', () => this.g.playOpening(), 'ghost')),
       h('div', { class: 'acts' },
         btn(this.g.guide.trail ? 'Golden trail: on' : 'Golden trail: off', () => { this.g.guide.setTrail(!this.g.guide.trail); this.render(); }, this.g.guide.trail ? 'on' : 'ghost')),
       h('p', { class: 'dim' }, 'On touch screens: drag the left half to move, the right half to look. Hold Jump / Rise or Run / Descend; tap Interact or Fly. Photos save the view without menus.'));
 
     const rows: Array<[string, string]> = [
       ['WASD / arrows', 'Walk · steer'], ['Drag · wheel', 'Look around · zoom'], ['Space', 'Jump · rise (flying, unicorn, plane climb)'], ['Shift', 'Run · descend · boost'],
-      ['F', 'Cape of light — fly together'], ['E', 'Talk · gather · befriend · light lanterns'], ['V', 'Choose how to travel'], ['C', 'Wardrobe for both'], ['I', 'Bag, skills and crafting'],
+      ['F', 'Cape of light — fly together'], ['E', 'Talk · gather · befriend · light lanterns'], ['V', 'Choose how to travel'], ['C', 'Dressing room for both'], ['I', 'Bag, skills and crafting'],
       ['J', 'Journal'], ['G', 'Follow another journey'], ['M', 'Map and travel to known lands'], ['N', 'Messages from friends'], ['B', 'Build on your land'], ['Esc', 'Close'],
     ];
     body.append(h('table', { class: 'keys' }, ...rows.map(([k, v]) => h('tr', {}, h('td', {}, h('kbd', {}, k)), h('td', {}, v)))));

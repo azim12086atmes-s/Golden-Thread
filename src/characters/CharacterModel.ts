@@ -82,6 +82,8 @@ export class CharacterModel {
   private phase = 0;
   /** World-space anchor for the golden thread (the hand). */
   readonly handAnchor = new THREE.Object3D();
+  /** 0..1: raises the free hand (the one not holding the thread) forward, palm up, to offer something. */
+  offer = 0;
 
   constructor(
     public outfit: Outfit,
@@ -305,6 +307,12 @@ export class CharacterModel {
     }
   }
 
+  /** World position just above the free hand's palm. */
+  freeHand(out: THREE.Vector3): THREE.Vector3 {
+    const arm = this.threadHand > 0 ? this.armL : this.armR;
+    return arm.localToWorld(out.set(0, -0.66, 0));
+  }
+
   /** The head floats HEAD_GAP above the neck. It has no face, ever. */
   private buildHead(b: THREE.Group): void {
     const o = this.outfit, D = DIMS, r = D.headR;
@@ -456,6 +464,11 @@ export class CharacterModel {
       this.armL.rotation.z = -0.12;
       this.armR.rotation.z = 0.12;
       this.body.rotation.x = 0;
+    }
+    if (this.offer > 0) {
+      const arm = this.threadHand > 0 ? this.armL : this.armR;
+      arm.rotation.x += (-1.25 - arm.rotation.x) * this.offer;
+      arm.rotation.z *= 1 - this.offer * 0.7;
     }
     // The floating head bobs gently on its own — never touching the body.
     this.head.position.y = (DIMS.neck + HEAD_GAP + DIMS.headR) + Math.sin(s.t * 2.2) * 0.012 + (moving ? Math.abs(Math.cos(this.phase)) * 0.015 : 0);

@@ -33,3 +33,11 @@ Opus 5.5 (claude-opus-5-5) writes one line per action here so Codex can see ever
   - Appended a "LEAD CHANGE" section to the Codex repo's `TEAM_HANDOFF.md`.
   - Found Antigravity's existing work: `art/fetch_pinterest.py`, `pinterest_corpus.db`, and its routing note in its own workspace. Built on it rather than duplicating it.
 - As lead, Opus now runs shell, tsc, vitest and vite in this worktree. First full run: tsc is clean; vitest has 10 files and 271 tests, all passing, including living, atlas, fusion and caravan (their first ever run).
+- BUILT the guidance system (owner priority), commit `e89b636` on `codex/opus-living-slice`:
+  - `src/guide/objectives.ts`: a pure planner. Each quest step becomes a checklist of small tasks, each with a target: travel, meet, gather (in the land where it grows), learn from a Keeper, practise a skill, make (recipes inside recipes), give, befriend, light a lantern. With no quest underway, it suggests the next chapter.
+  - `src/guide/Guide.ts`: a beam over the target, golden motes leading there, a screen-edge waypoint with distance, and a compass.
+  - UI: an objective card (checklist, hint, distance), G to follow another journey, Follow buttons in the journal, the guided recipe marked ✦ in the bag, the target land ◆ on the map, a trail toggle in Help, and a compact phone layout.
+  - `GameState.tracked` (old saves load with it empty). Default names are now Syeda Fathima / Mohammed Abdul Azim in source.
+  - Tests: `tests/guide.test.ts` (14, including every step of every quest having a next task). Full suite: 11 files, 285 tests pass, tsc clean, production build OK (888 KB).
+  - Browser: played chapter 1 end to end with the dev harness (meet Noor → gather wool → make scarf → give → light lantern → next chapter Firenzia), at desktop and 375 px. No console errors.
+- HOSTING BLOCKED: C: has about 0.26 GB free, and `npx netlify-cli` failed with ENOSPC. Its npm cache is removed. github.com navigation from the built-in browser was refused. Awaiting the owner's choice of host or account.

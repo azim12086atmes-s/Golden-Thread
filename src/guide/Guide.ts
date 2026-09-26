@@ -185,7 +185,7 @@ export class Guide {
       this.refresh();
     }
     const next = this.objective.next;
-    this.hasTarget = !!next?.target && g.started && !g.inVan;
+    this.hasTarget = !!next?.target && g.started && !g.inVan && !g.cutscene;
     if (this.hasTarget) {
       this.resolve(next!.target!, this.targetPos);
       const p = g.trav.gPos;
@@ -242,7 +242,7 @@ export class Guide {
     const g = this.g, cam = g.camera;
     const show = this.hasTarget && !g.ui.modal && this.distance > 3;
     this.waypoint.classList.toggle('show', show);
-    this.compass.classList.toggle('show', g.started && !g.inVan && !g.ui.modal);
+    this.compass.classList.toggle('show', g.started && !g.inVan && !g.ui.modal && !g.cutscene);
 
     // Compass: bearings relative to where the camera looks. North is -z.
     const dir = cam.getWorldDirection(new THREE.Vector3());
