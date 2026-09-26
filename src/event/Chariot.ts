@@ -11,7 +11,7 @@ const mat = (c: string, glow = false) => glow
   : new THREE.MeshStandardMaterial({ color: c, roughness: 0.6, metalness: c === '#f5c451' ? 0.4 : 0, flatShading: true });
 
 /** Seat centres in the chariot's local frame (x across, z along; +z is forward). */
-export const SEATS = { girl: new THREE.Vector3(-0.72, 0.95, -0.2), boy: new THREE.Vector3(0.72, 0.95, -0.2) };
+export const SEATS = { girl: new THREE.Vector3(-0.72, 1.12, -0.2), boy: new THREE.Vector3(0.72, 0.95, -0.2) };
 
 export class Chariot {
   readonly root = new THREE.Group();
@@ -30,12 +30,12 @@ export class Chariot {
     // The body: a rounded shell, open at the front.
     const shell = new THREE.SphereGeometry(1.2, 18, 10, Math.PI * 0.15, Math.PI * 1.7, Math.PI * 0.35, Math.PI * 0.4);
     shell.scale(1.25, 1, 1.1);
-    add(shell, '#fbf4f8', 0, 1.35, -0.3).rotation.y = Math.PI;
+    add(shell, '#fbf4f8', 0, 0.95, -0.3).rotation.y = Math.PI;
     add(new THREE.BoxGeometry(2.7, 0.18, 2.1), '#fbf4f8', 0, 0.62, -0.3);
-    add(new THREE.TorusGeometry(1.45, 0.05, 6, 40, Math.PI * 1.1), '#f5c451', 0, 1.25, -0.3).rotation.set(Math.PI / 2, 0, Math.PI * 0.95);
+    add(new THREE.TorusGeometry(1.45, 0.05, 6, 40, Math.PI * 1.1), '#f5c451', 0, 0.85, -0.3).rotation.set(Math.PI / 2, 0, Math.PI * 0.95);
     // Her cushioned seat; beside it, a basket of roses (he rides his own winged unicorn).
-    add(new THREE.BoxGeometry(0.9, 0.2, 0.8), '#f49ac1', SEATS.girl.x, 0.82, SEATS.girl.z);
-    add(new THREE.BoxGeometry(0.9, 0.7, 0.15), '#f49ac1', SEATS.girl.x, 1.15, SEATS.girl.z - 0.45);
+    add(new THREE.BoxGeometry(0.9, 0.2, 0.8), '#f49ac1', SEATS.girl.x, 0.98, SEATS.girl.z);
+    add(new THREE.BoxGeometry(0.9, 0.7, 0.15), '#f49ac1', SEATS.girl.x, 1.3, SEATS.girl.z - 0.45);
     add(new THREE.CylinderGeometry(0.35, 0.28, 0.35, 12), '#c9a06a', SEATS.boy.x, 0.9, SEATS.boy.z);
     for (let i = 0; i < 9; i++) add(new THREE.SphereGeometry(0.1, 6, 5), i % 3 ? '#e0284f' : '#ffffff', SEATS.boy.x + Math.cos(i * 0.7) * 0.2, 1.12 + (i % 2) * 0.06, SEATS.boy.z + Math.sin(i * 0.7) * 0.2);
     add(new THREE.BoxGeometry(0.12, 0.55, 0.9), '#f5c451', 0, 1.0, -0.2);
