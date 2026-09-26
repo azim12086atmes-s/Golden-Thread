@@ -3,6 +3,7 @@ import { smoothstep } from '../core/rng';
 import { REGIONS, type RegionId } from './regions';
 import { SKIES, SKY_KINDS, fireworkRate, type SkyKind } from './skies';
 import { auroraMaterial } from './Sky';
+import { SkyOrnaments } from './SkyOrnaments';
 
 /**
  * Draws each land's own sky (skies.ts): clouds, kites, birds, sunbeams, rainbows, alpenglow,
@@ -138,10 +139,12 @@ export class SkyFX {
   private fwClock = 0;
   private lights: THREE.Mesh<THREE.CylinderGeometry, THREE.ShaderMaterial>[] = [];
   private halo: THREE.Sprite;
+  /** Moons, planets, the hexagon canopy, constellations, comet, islands and more (SkyOrnaments.ts). */
+  private orn = new SkyOrnaments();
   private crescent: THREE.Sprite;
 
   constructor() {
-    this.group.add(this.dome, this.near);
+    this.group.add(this.dome, this.near, this.orn.group);
 
     // The night dome: the Milky Way and nebulae, inside the sky dome and its stars.
     this.nightDome = new THREE.Mesh(new THREE.SphereGeometry(3400, 48, 24), new THREE.ShaderMaterial({
@@ -454,6 +457,7 @@ export class SkyFX {
       a.position.y += focus.y;
     }
 
+    this.orn.update(dt, t, L, night, sunDir, focus, this.pal);
     this.updateShooters(dt, L.shootingStars * night * (1 + party));
     this.updateFireworks(dt, t, focus, L.fireworks * smoothstep(0.35, 0.8, night), party);
 

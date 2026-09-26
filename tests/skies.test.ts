@@ -42,3 +42,43 @@ describe('every land has its own sky', () => {
     expect(SKIES.skyisles.effects).toContain('nebula');
   });
 });
+
+describe('sky ornaments in every land', () => {
+  const ORNAMENTS = ['moons', 'planets', 'rainbowArcs', 'hexCanopy', 'constellations', 'comet', 'sunHalo', 'islands', 'mandala', 'balloons', 'noctilucent'] as const;
+  it('every land has at least three of the new ornaments, and the meadow has them all', () => {
+    for (const k of ORNAMENTS) expect(SKY_KINDS).toContain(k);
+    for (const r of REGIONS) {
+      const n = SKIES[r.id].effects.filter((k) => (ORNAMENTS as readonly string[]).includes(k)).length;
+      expect(n, r.id).toBeGreaterThanOrEqual(3);
+    }
+    for (const k of ORNAMENTS) expect(SKIES.meadow.effects).toContain(k);
+  });
+
+  it('fitting skies: a girih star over the Islamic courtyards, balloons over the Nile, islands above the Sky Isles', () => {
+    expect(SKIES.islamic.effects).toEqual(expect.arrayContaining(['mandala', 'hexCanopy']));
+    expect(SKIES.egypt.effects).toContain('balloons');
+    expect(SKIES.skyisles.effects).toContain('islands');
+    expect(SKIES.norway.effects).toContain('noctilucent');
+  });
+});
+
+describe('choosing the time of day', () => {
+  it('moves the clock forward to dawn, day, dusk or night — never back', async () => {
+    const { jumpTo, nextTime, timeOfDay, TIMES } = await import('../src/core/time');
+    const start = 1440 * 3 + 14 * 60; // day 4, 2 pm
+    expect(timeOfDay(start)).toBe('day');
+    for (const w of TIMES) {
+      const m = jumpTo(start, w);
+      expect(m).toBeGreaterThan(start);
+      expect(m - start).toBeLessThanOrEqual(1440);
+      expect(timeOfDay(m)).toBe(w);
+    }
+    expect(jumpTo(start, 'dusk')).toBe(1440 * 3 + 18.5 * 60); // later today
+    expect(jumpTo(start, 'dawn')).toBe(1440 * 4 + 6 * 60); // tomorrow morning
+    // T cycles round the day.
+    let m = start;
+    const seen: string[] = [];
+    for (let i = 0; i < 4; i++) { m = jumpTo(m, nextTime(m)); seen.push(timeOfDay(m)); }
+    expect(seen).toEqual(['dusk', 'night', 'dawn', 'day']);
+  });
+});

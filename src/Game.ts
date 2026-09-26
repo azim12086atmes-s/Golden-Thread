@@ -15,6 +15,7 @@ import { STORY_FLAG } from './story/storyline';
 import { Celebration } from './event/Celebration';
 import { Input } from './core/Input';
 import { loadGame, saveGame, clearSave } from './core/save';
+import { SKY_PAUSED, TIME_LABEL, jumpTo, type TimeOfDay } from './core/time';
 import { DAY_MINUTES, hourOf, newGame, type GameState, type VanSlot } from './core/state';
 import { addItem, craft, removeItems, sell, sellPrice, teach, type CraftResult } from './economy/economy';
 import { ITEMS, SKILLS } from './economy/items';
@@ -243,6 +244,20 @@ export class Game {
     }, 'image/png');
   }
 
+  /** Move the clock forward to dawn, day, dusk or night (never backwards). */
+  setTimeOfDay(which: TimeOfDay): void {
+    this.st.minutes = jumpTo(this.st.minutes, which);
+    this.toast(`${TIME_LABEL[which]} — the sky turns.`);
+  }
+
+  /** Keep the sky at its hour, or let the day run again. */
+  toggleSkyPause(): boolean {
+    const i = this.st.flags.indexOf(SKY_PAUSED);
+    if (i >= 0) this.st.flags.splice(i, 1);
+    else this.st.flags.push(SKY_PAUSED);
+    return i < 0;
+  }
+
   get hour(): number {
     return hourOf(this.st.minutes);
   }
@@ -264,7 +279,7 @@ export class Game {
     }
 
     if (this.started) {
-      this.st.minutes += dt * MINUTES_PER_SECOND;
+      if (!this.st.flags.includes(SKY_PAUSED)) this.st.minutes += dt * MINUTES_PER_SECOND;
       this.st.playSeconds += dt;
       if (!this.cutscene) this.ui.handleKeys();
       this.input.blocked = (this.ui.modal && !this.build) || !!this.cutscene;

@@ -5,6 +5,7 @@ import { OUTFITS, outfitsFor } from '../characters/outfits';
 import { DRESS_GROUPS, dressGroup, type DressGroup } from '../characters/wardrobe';
 import type { Outfit } from '../characters/modesty';
 import { dayOf, type VanSlot } from '../core/state';
+import { SKY_PAUSED, TIMES, TIME_LABEL, nextTime, timeOfDay } from '../core/time';
 import { canCraft, count, level } from '../economy/economy';
 import { ITEMS, LEVEL_XP, RECIPES, SKILLS, type SkillId } from '../economy/items';
 import { DECOR, DECOR_BY_ID, PLOT_BY_ID } from '../housing/housing';
@@ -107,6 +108,8 @@ export class UI {
     if (this.storyOpen) return;
     const i = this.g.input;
     if (i.hit('p') && !this.modal) this.g.takePhoto();
+    if (i.hit('t') && !this.modal) this.g.setTimeOfDay(nextTime(this.g.st.minutes));
+    if (i.hit('o') && !this.modal) this.setTrackerHidden(!this.trackerHidden);
     const keys: Array<[string, Panel]> = [['c', 'wardrobe'], ['i', 'bag'], ['j', 'journal'], ['m', 'map'], ['n', 'messages'], ['v', 'vehicles'], ['h', 'help'], ['l', 'homes']];
     for (const [k, p] of keys) if (i.hit(k)) return this.toggle(p);
     if (i.hit('b')) {
@@ -146,6 +149,18 @@ export class UI {
     this.renderLabels();
   }
 
+  /** The clock is a button: tap it (or press T) to move on to dawn, day, dusk or night. */
+  private clockBtn = (() => {
+    const b = h('button', { class: 'time time-btn', type: 'button', title: 'Change the time of day (T)', 'aria-label': 'Move on to the next part of the day' }) as HTMLButtonElement;
+    b.addEventListener('click', (e) => { e.stopPropagation(); this.g.setTimeOfDay(nextTime(this.g.st.minutes)); });
+    return b;
+  })();
+
+  private clockText(t: string): HTMLElement {
+    if (this.clockBtn.textContent !== t) this.clockBtn.textContent = t;
+    return this.clockBtn;
+  }
+
   private renderHud(): void {
     const g = this.g, st = g.st;
     this.tl.replaceChildren(
@@ -156,7 +171,7 @@ export class UI {
     const mode = VEHICLES[g.trav.mode];
     const showEnergy = g.trav.mode === 'fly' || g.trav.mounted || g.trav.energy < 0.99;
     this.tr.replaceChildren(...[
-      h('div', { class: 'row' }, h('span', { class: 'time' }, `${g.sky.night > 0.5 ? '🌙' : '☀️'} Day ${dayOf(st.minutes)} · ${clock(st.minutes)}`)),
+      h('div', { class: 'row' }, this.clockText(`${g.sky.night > 0.5 ? '🌙' : '☀️'} Day ${dayOf(st.minutes)} · ${clock(st.minutes)}${st.flags.includes(SKY_PAUSED) ? ' ⏸' : ''}`)),
       h('div', { class: 'row' }, h('span', { class: 'coins', title: 'Coins' }, `🪙 ${st.coins}`), h('span', { class: 'light', title: 'Shared light — grows with every kindness' }, `✦ ${st.light.toFixed(st.light % 1 ? 1 : 0)}`), h('span', { title: 'Lanterns lit' }, `🏮 ${st.lanterns.length}/${REGIONS.length}`)),
       h('div', { class: 'row small' }, `${mode.icon} ${mode.name}`),
       showEnergy ? h('div', { class: 'energy', title: 'Cape light — recharges on the ground, or in the air while you stay close together' }, h('i', { style: `inline-size:${Math.round(g.trav.energy * 100)}%` })) : null,
@@ -214,23 +229,28 @@ export class UI {
     });
   }
 
+  /** Close or reopen the objective panel (✕, the 🎯 pill, or O). Remembered on this device. */
+  setTrackerHidden(v: boolean, focus = false): void {
+    this.trackerHidden = v;
+    try { localStorage.setItem('gt-objective-hidden', v ? '1' : '0'); } catch { /* private window: fine */ }
+    this.refreshTracker();
+    // Keep keyboard focus on the control that replaced the one just pressed.
+    if (focus) (this.tracker.querySelector(v ? '.objective-pill' : '.objective-close') as HTMLElement | null)?.focus();
+  }
+
   refreshTracker(): void {
     const guide = this.g.guide;
     if (!guide || !this.g.started) return void this.tracker.replaceChildren();
     const o = guide.objective;
     const q = this.g.quests;
-    const setHidden = (v: boolean) => {
-      this.trackerHidden = v;
-      try { localStorage.setItem('gt-objective-hidden', v ? '1' : '0'); } catch { /* private window: fine */ }
-      this.refreshTracker();
-    };
+    const setHidden = (v: boolean) => this.setTrackerHidden(v, true);
     if (this.trackerHidden) {
-      const pill = h('button', { class: 'objective-pill', title: 'Show the objective panel', 'aria-label': `Show the objective: ${o.title}` }, h('span', { 'aria-hidden': 'true' }, '🎯'), h('span', {}, o.title));
+      const pill = h('button', { class: 'objective-pill', title: 'Show the objective panel (O)', 'aria-label': `Show the objective: ${o.title}` }, h('span', { 'aria-hidden': 'true' }, '🎯'), h('span', {}, o.title));
       pill.addEventListener('click', () => setHidden(false));
       return void this.tracker.replaceChildren(pill);
     }
     const card = h('section', { class: `objective ${o.main ? 'main' : ''}`, 'aria-label': 'Current objective' });
-    const close = h('button', { class: 'objective-close', title: 'Close (the golden light still shows the way)', 'aria-label': 'Close the objective panel' }, '✕');
+    const close = h('button', { class: 'objective-close', title: 'Close (O) — the golden light still shows the way', 'aria-label': 'Close the objective panel' }, '✕');
     close.addEventListener('click', () => setHidden(true));
     card.append(close);
     const eyebrow = o.questId ? `${o.main ? 'Main story' : 'Side journey'} · step ${o.step[0]} of ${o.step[1]}` : o.main ? 'Your story continues' : 'Suggestion';
@@ -852,13 +872,18 @@ export class UI {
         btn('🏰 Replay the celebration evening', () => this.g.celebration.replay(), 'ghost'),
         btn('🧭 Objectives & features', () => { this.closePanel(); this.showIntroGuide(); }, 'ghost'),
         btn('▶ Watch the story', () => this.g.playStory(), 'ghost')),
+      h('h3', {}, 'Day and night'),
+      h('p', { class: 'dim' }, 'Choose the sky: the clock moves forward to that hour, as if you rested. T (or tapping the clock) moves on to the next part of the day.'),
+      h('div', { class: 'acts' },
+        ...TIMES.map((w) => btn(TIME_LABEL[w], () => { this.g.setTimeOfDay(w); this.render(); }, timeOfDay(this.g.st.minutes) === w ? 'on' : 'ghost')),
+        btn(this.g.st.flags.includes(SKY_PAUSED) ? '⏸ Sky paused' : '▶ Sky moving', () => { this.g.toggleSkyPause(); this.render(); }, this.g.st.flags.includes(SKY_PAUSED) ? 'on' : 'ghost')),
       h('div', { class: 'acts' },
         btn(this.g.guide.trail ? 'Golden trail: on' : 'Golden trail: off', () => { this.g.guide.setTrail(!this.g.guide.trail); this.render(); }, this.g.guide.trail ? 'on' : 'ghost')),
       h('p', { class: 'dim' }, 'On touch screens: drag the left half to move, the right half to look. Hold Jump / Rise or Run / Descend; tap Interact or Fly. Photos save the view without menus.'));
 
     const rows: Array<[string, string]> = [
       ['WASD / arrows', 'Walk · steer'], ['Drag · wheel', 'Look around · zoom'], ['Space', 'Jump · rise (flying, unicorn, plane climb)'], ['Shift', 'Run · descend · boost'],
-      ['F', 'Cape of light — fly together'], ['E', 'Talk · gather · befriend · light lanterns'], ['V', 'Choose how to travel'], ['C', 'Dressing room for both'], ['I', 'Bag, skills and crafting'],
+      ['F', 'Cape of light — fly together'], ['T', 'Dawn · day · dusk · night'], ['O', 'Hide or show the objective panel'], ['E', 'Talk · gather · befriend · light lanterns'], ['V', 'Choose how to travel'], ['C', 'Dressing room for both'], ['I', 'Bag, skills and crafting'],
       ['J', 'Journal'], ['G', 'Follow another journey'], ['L', 'Homes & land for sale'], ['M', 'Map and travel to known lands'], ['N', 'Messages from friends'], ['B', 'Build on your land'], ['Esc', 'Close'],
     ];
     body.append(h('table', { class: 'keys' }, ...rows.map(([k, v]) => h('tr', {}, h('td', {}, h('kbd', {}, k)), h('td', {}, v)))));
