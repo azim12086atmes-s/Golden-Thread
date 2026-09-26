@@ -22,8 +22,9 @@ export function prologue(st: GameState): Page[] {
       title: 'How to live on the road',
       lines: [
         'Be kind first, and help whoever you meet — a small errand can change someone\'s whole day.',
-        'Do honest work, and do it well. Make things with your hands, and give them away. Share what you have. Keep your promises.',
-        'Care for animals and the land. Be patient, be honest, and be grateful for each day. Write back to your friends.',
+        'Do honest work, and do it well. Make things with your hands, and give them away. Share what you have. Keep your commitments.',
+        'Keep learning: every Keeper, stallholder and neighbour can teach you a skill, and every skill lets you help someone new.',
+        'Care for animals and the land. Be patient, be honest, and be grateful for each day. Write back to your friends, and never lose the way home.',
       ],
     },
     {

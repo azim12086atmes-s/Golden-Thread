@@ -14,7 +14,7 @@ implementation spec: state, gates, numbers, formulas, rules, and the files and t
 §5 is sources and §6 is the keyword log.
 
 **Things the owner has to decide** are marked **DECISION**. There are four of them. The most
-important is in §2.2: whether the travellers are *promised* or *married*.
+important is in §2.2: whether the travellers are *committed* or *married*.
 
 ---
 
@@ -193,12 +193,12 @@ The names mean the premise; the journal can say so once, softly, in the prologue
 | What they learn | That usefulness is not the same as worth, and that rest is part of the road (Act III). | That staying is a choice you can make anywhere, and that he has already been chosen (Act V). |
 | Arc in one line | From *"I want to go everywhere"* to *"I want to bring everyone home."* | From *"Don't leave me behind"* to *"I'll wait for you by the road"* — and meaning it as a gift, not a fear. |
 
-**DECISION 1 — promised or married.** The brief says they are lovers who never touch, following
+**DECISION 1 — committed or married.** The brief says they are lovers who never touch, following
 Islamic principles. In Islamic practice a married couple may touch, and an unmarried couple should
 not travel and sleep alone together (*khalwa*). The game must pick a framing that holds up:
 
-- **Option A (recommended): promised.** In the prologue Noor, as the elder who took Rafiq in,
-  blesses their *khitbah* (engagement). They travel as promised companions with a strict household
+- **Option A (recommended, owner's choice): committed.** In the prologue Noor, as the elder who took Rafiq in,
+  blesses their *khitbah* (engagement). They travel as committed companions with a strict household
   of rules: Safar has a partition curtain and two bunks at opposite ends; on most nights Rafiq
   sleeps in the roof tent or at the lodge (§2.6), and they are hosted in homes wherever possible,
   which is also the story's theme. The **nikah** is the post-game's closing celebration in the
@@ -1609,7 +1609,7 @@ Ambient>>`, `viewpoints: Array<[x, z]>` (for "sit together").
 | 9. Gates | `vehicles/vehicles.ts`, `player/Travellers.ts` | cloud veil below 8 lanterns; glide upgrade; sled and balloon seat gaps |
 | 10. Content data | `npc/people.ts`, `world/regions.ts`, `housing/*` | every new item has a source; every keepsake id exists in `DECOR`; every festival day is within 1..28 |
 
-**Open decisions** (for the owner): (1) promised vs married (§2.2); (2) whether to name the northern
+**Open decisions** (for the owner): (1) committed vs married (decided: committed) (§2.2); (2) whether to name the northern
 song-portrait as Sámi *joik* and involve Sámi advisers, or keep it generic (§2.5 Aurora); (3) whether
 Juha's local names should include Nasreddin *Hodja* (a religious title) or plain Nasreddin; (4) the
 real-calendar option's default (off here).

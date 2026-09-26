@@ -10,14 +10,14 @@ import { CASTLE_SITE, WATER_Y, terrainHeight } from '../src/world/terrain';
 import { WONDERS, foundWonder, wonderHint, wonderPos } from '../src/world/wonders';
 
 describe('the story before the journey', () => {
-  it('tells the world, the promise, the main objective, the way to live and what to explore', () => {
+  it('tells the world, the commitment, the main objective, the way to live and what to explore', () => {
     const st = newGame();
     const pages = prologue(st);
     const text = pages.map((p) => `${p.title} ${p.lines.join(' ')}`).join(' ');
     expect(pages.length).toBeGreaterThanOrEqual(6);
     expect(text).toContain(st.names.girl);
     expect(pages.some((p) => p.eyebrow === 'The main objective')).toBe(true);
-    for (const word of ['kind', 'Share', 'promises', 'grateful', 'hidden wonders', 'home']) expect(text).toContain(word);
+    for (const word of ['kind', 'Share', 'commitments', 'learning', 'grateful', 'hidden wonders', 'way home']) expect(text).toContain(word);
   });
 });
 
@@ -84,16 +84,20 @@ describe('the story cinematic', () => {
     const st = newGame();
     const shots = storyline(st);
     const text = shots.flatMap((s) => s.lines).join(' ');
-    for (const w of ['new places', 'work', 'problem', 'secured her new job', 'lifelong journey', 'bonding', 'promised']) expect(text).toContain(w);
+    for (const w of ['new places', 'work', 'problem', 'secured her new job', 'lifelong journey', 'bonding', 'committed']) expect(text).toContain(w);
+    // The job is only a step: the story is living together, owning, earning by helping, upskilling,
+    // becoming part of the people they meet, and staying connected to home.
+    for (const w of ['only a step', 'together', 'a home of their own', 'earning by helping', 'new skill', 'part of the people', 'connected to home']) expect(text).toContain(w);
+    expect(text.toLowerCase()).not.toContain('promise');
     expect(text).toContain(st.names.girl);
     expect(text).toContain('something to celebrate');
     st.flags.push('celebration-done');
     expect(storyline(st).flatMap((s) => s.lines).join(' ')).not.toContain('something to celebrate');
-    // Each shot is long enough to read both lines; the whole story stays near a minute.
+    // Each shot is long enough to read both lines; the whole story stays under two minutes.
     for (const s of shots) { expect(s.dur).toBeGreaterThanOrEqual(8); expect(s.lines.length).toBe(2); }
     const total = shots.reduce((a, s) => a + s.dur, 0);
     expect(total).toBeGreaterThan(45);
-    expect(total).toBeLessThan(100);
+    expect(total).toBeLessThan(120);
     // The children and pets travelling with them are introduced by name, and Noor speaks.
     for (const n of ['Rosie', 'Teo', 'Pip', 'Clover']) expect(text).toContain(n);
     expect(shots.some((s) => s.focus === 'market')).toBe(true);
@@ -119,7 +123,7 @@ describe('the journey guide', () => {
     const { VEHICLES } = await import('../src/vehicles/vehicles');
     const st = newGame();
     const o = objectives(st).map((c) => c.title).join(' | ');
-    for (const w of ['lanterns', 'Work', 'Celebrate', 'Explore', 'Bond']) expect(o).toContain(w);
+    for (const w of ['Live life together', 'lanterns', 'Work', 'Celebrate', 'Explore', 'Bond']) expect(o).toContain(w);
     const f = features(st);
     const titles = f.map((c) => c.title);
     for (const v of Object.values(VEHICLES)) if (v.id !== 'walk') expect(titles).toContain(v.name);

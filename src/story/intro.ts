@@ -13,8 +13,9 @@ export interface Card { icon: string; title: string; text: string; how?: string 
 export function objectives(st: GameState): Card[] {
   const { girl } = st.names;
   return [
+    { icon: '🧭', title: 'Live life together', text: `${girl}'s new job is one step, not the destination. Keep exploring while you live: own a home, earn by helping, learn new skills, become part of the people you meet, and stay connected to home.`, how: 'Homes (L) · Messages (N) · every Keeper teaches a craft.' },
     { icon: '🏮', title: 'Relight the twenty lanterns', text: 'In every land, meet its Keeper, learn their craft, make what they need and light the lantern together. Then wake the Great Lantern above the clouds.', how: 'Follow the objective card and the golden motes.' },
-    { icon: '🧰', title: 'Work and solve problems', text: 'People everywhere need help — a delivery, a repair, a meal, a letter. Gather, craft and trade to earn your way.', how: 'Talk to anyone marked ❗ (E). Craft in your bag (I).' },
+    { icon: '🧰', title: 'Work and solve problems', text: 'People everywhere need help — a delivery, a repair, a meal, a letter. Earn your living by helping, and learn a new skill with every task.', how: 'Talk to anyone marked ❗ (E). Craft in your bag (I).' },
     { icon: '🎉', title: `Celebrate ${girl}'s new job`, text: 'A special evening at the castle in the meadow: a unicorn chariot, a gown from the wardrobe, guests from every land.', how: 'A chariot waits beside you — press E.' },
     { icon: '✨', title: 'Explore', text: `${WONDERS.length} hidden wonders lie off the roads, one in every land below the clouds. Every town has markets, people and stories.`, how: 'Look for a rising sparkle in the hills. The journal (J) has hints.' },
     { icon: '💛', title: 'Bond with everyone', text: 'Friends write to you, remember you and ask for help again. The golden thread shines brighter with every kindness.', how: 'Messages (N). Reply to your friends.' },
