@@ -383,7 +383,32 @@ const houses: Record<RegionId, HouseFn> = {
 };
 
 export function buildHouse(c: Ctx): Footprint {
-  return houses[c.s.id](c);
+  const fp = houses[c.s.id](c);
+  if (c.s.id !== 'desert' && c.s.id !== 'skyisles' && c.s.id !== 'aurora') houseDetails(c, fp);
+  return fp;
+}
+
+/**
+ * The lived-in touches every house gets on its street side (+z): a door step, potted plants by
+ * the door, a lantern, a flower box under a window, and fairy lights along the front.
+ */
+function houseDetails(c: Ctx, fp: Footprint): void {
+  const z = fp.r * 0.86, r = () => c.rng.next();
+  box(c.g, 1.6, 0.18, 0.7, '#b8b0a4', 0, 0, z + 0.3);
+  for (const x of [-1.1, 1.1]) {
+    cyl(c.g, 0.22, 0.16, 0.4, '#b5654a', x, 0, z + 0.35, 6);
+    sphere(c.g, 0.3, r() < 0.5 ? '#4f9a44' : '#6aa84f', x, 0.62, z + 0.35, 6);
+    if (r() < 0.6) sphere(c.g, 0.08, c.s.flowers[Math.floor(r() * c.s.flowers.length)], x + 0.1, 0.85, z + 0.45, 4);
+  }
+  sphere(c.glow, 0.13, c.s.glow, 1.0, 2.1, z + 0.12, 6);
+  const wx = (r() < 0.5 ? -1 : 1) * fp.r * 0.45;
+  box(c.g, 1.2, 0.22, 0.3, '#8a5a36', wx, 1.0, z + 0.05);
+  for (let i = 0; i < 4; i++) sphere(c.g, 0.1, c.s.flowers[i % c.s.flowers.length], wx - 0.45 + i * 0.3, 1.28, z + 0.08, 4);
+  const ly = Math.min(fp.h * 0.62, 3.2);
+  for (let i = 0; i <= 8; i++) {
+    const x = -fp.r * 0.7 + (i / 8) * fp.r * 1.4;
+    sphere(c.glow, 0.05, ['#ffd98a', '#ffb3d9', '#b3e6ff', '#fff2c8'][i % 4], x, ly - Math.sin((i / 8) * Math.PI) * 0.2, z + 0.1, 4);
+  }
 }
 
 // ───────────────────────── street props ─────────────────────────

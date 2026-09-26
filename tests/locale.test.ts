@@ -43,3 +43,32 @@ describe('each town dressed in its own glamour', () => {
     for (const z of STRING_AT) expect(z).toBeGreaterThan(Math.max(...STALLS.map((m) => m.z)) + 10);
   });
 });
+
+describe('lanterns in the sky', () => {
+  it('drift upwards in the world (you walk past them) in the land’s own colours', async () => {
+    const THREE = await import('three');
+    const { SkyLanterns, SKY_LANTERNS } = await import('../src/world/SkyLanterns');
+    const sl = new SkyLanterns();
+    const f = new THREE.Vector3(100, 5, 100);
+    sl.update(0.016, 0, f, 'japan', 1);
+    const at = (i: number) => { const m = new THREE.Matrix4(); sl.mesh.getMatrixAt(i, m); return new THREE.Vector3().setFromMatrixPosition(m); };
+    const before = at(3);
+    f.x += 10; // the travellers walk on
+    sl.update(0.016, 0, f, 'japan', 1);
+    const after = at(3);
+    expect(SKY_LANTERNS).toBeGreaterThanOrEqual(100);
+    expect(Math.abs(after.x - before.x)).toBeLessThan(0.5); // anchored in the world, not to the player
+    expect(after.y).toBeGreaterThan(before.y); // rising
+  });
+});
+
+describe('streets full of people', () => {
+  it('friends chat in circles by the ring road, where houses never stand', async () => {
+    const { PER_TOWN, CHAT_GROUPS } = await import('../src/npc/Townsfolk');
+    expect(PER_TOWN).toBeGreaterThanOrEqual(42);
+    expect(CHAT_GROUPS * 3).toBeLessThanOrEqual(PER_TOWN - 30);
+    // Houses keep 14 m from the ring road (radius 140); the road itself is 9 m wide.
+    expect(131).toBeGreaterThan(126);
+    expect(131 + 1.1).toBeLessThan(135.5);
+  });
+});

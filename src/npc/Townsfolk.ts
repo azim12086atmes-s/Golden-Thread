@@ -46,7 +46,9 @@ type Path =
 
 interface Walker { model: CharacterModel; land: RegionId; path: Path; speed: number; ph: number }
 
-export const PER_TOWN = 30;
+export const PER_TOWN = 42;
+/** Groups of three chatting at the edges of the plaza and by the ring road. */
+export const CHAT_GROUPS = 4;
 
 /**
  * A market street in every town: stalls line both sides of the south avenue, just beyond the
@@ -60,6 +62,8 @@ const AWNINGS = ['#e8576a', '#f2c14e', '#3a9ec8', '#7fb35a', '#c38fd9', '#ff9a1f
 
 export class Townsfolk {
   readonly list: Walker[] = [];
+  /** Centres of chatting groups (local to their town), for speech bubbles. */
+  readonly talkers: Array<{ land: RegionId; x: number; z: number; ph: number }> = [];
   private stalls = new Map<string, THREE.Mesh>();
 
   constructor(private scene: THREE.Scene) {}
@@ -102,9 +106,18 @@ export class Townsfolk {
         // Shoppers in front of the stalls, a step back from the counter.
         const st = STALLS[(i - 22) * 1 + 1];
         path = { kind: 'stall', x: st.x - Math.sign(st.x) * 1.9, z: st.z + (i % 2 ? 0.6 : -0.6), face: st.face + Math.PI, working: false };
-      } else {
+      } else if (i < 30) {
         const s = inst.spots.length ? inst.spots[rng.int(0, inst.spots.length - 1)] : { x: 30, z: 30 };
         path = { kind: 'chat', x: s.x + (i % 2) * 1.6, z: s.z, face: i % 2 ? -Math.PI / 2 : Math.PI / 2 };
+      } else {
+        // A circle of three friends talking, a step apart, facing each other.
+        const gi = Math.floor((i - 30) / 3), k = (i - 30) % 3;
+        const ga = (gi / CHAT_GROUPS) * Math.PI * 2 + 0.4;
+        // Just inside the ring road, where houses never stand (they keep 14 m from it).
+        const gx = Math.cos(ga) * 131, gz = Math.sin(ga) * 131;
+        const a = (k / 3) * Math.PI * 2;
+        path = { kind: 'chat', x: gx + Math.cos(a) * 1.1, z: gz + Math.sin(a) * 1.1, face: Math.atan2(-Math.cos(a), -Math.sin(a)) };
+        this.talkers.push({ land, x: gx, z: gz, ph: rng.range(0, 10) });
       }
       this.scene.add(model.root);
       this.list.push({ model, land, path, speed: rng.range(1.0, 1.5), ph: rng.range(0, 10) });
@@ -112,6 +125,7 @@ export class Townsfolk {
   }
 
   onRegionUnloaded(inst: RegionInstance): void {
+    for (let i = this.talkers.length - 1; i >= 0; i--) if (this.talkers[i].land === inst.spec.id) this.talkers.splice(i, 1);
     const m = this.stalls.get(inst.spec.id);
     if (m) {
       this.scene.remove(m);
@@ -149,6 +163,10 @@ export class Townsfolk {
         w.model.offerLift = p.working ? Math.sin(t * 3 + w.ph) * 0.35 : 0;
       } else {
         x = p.x; z = p.z; heading = p.face; speed = 0;
+        // People talking use their hands.
+        const talk = Math.max(0, Math.sin(t * 0.7 + w.ph));
+        w.model.offer = talk * 0.5;
+        w.model.offerLift = Math.sin(t * 4 + w.ph) * 0.3;
       }
       c.set(centre.x + x, 0, centre.z + z);
       const far = Math.hypot(c.x - player.x, c.z - player.z) > 150;

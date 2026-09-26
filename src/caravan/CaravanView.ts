@@ -13,7 +13,20 @@ import { CHILDREN, COMPANION_BY_ID, MAX_CHILDREN, caravanStep, canJoin, type Com
  * each other (caravan.ts proves it). When the travellers take a vehicle they ride along — they
  * reappear beside them on foot.
  */
-interface Body { def: CompanionDef; member: Member; child?: CharacterModel; pet?: AnimalModel; ph: number }
+interface Body { def: CompanionDef; member: Member; child?: CharacterModel; pet?: AnimalModel; ph: number; air: number; glow: THREE.Sprite }
+
+/** A soft golden halo carried by each companion while they fly. */
+const GLOW = (() => {
+  const c = document.createElement('canvas');
+  c.width = c.height = 64;
+  const x = c.getContext('2d')!;
+  const gr = x.createRadialGradient(32, 32, 0, 32, 32, 32);
+  gr.addColorStop(0, 'rgba(255,230,160,0.9)');
+  gr.addColorStop(1, 'rgba(255,230,160,0)');
+  x.fillStyle = gr;
+  x.fillRect(0, 0, 64, 64);
+  return new THREE.SpriteMaterial({ map: new THREE.CanvasTexture(c), transparent: true, depthWrite: false, blending: THREE.AdditiveBlending, toneMapped: false });
+})();
 
 export class CaravanView {
   private bodies: Body[] = [];
@@ -45,7 +58,11 @@ export class CaravanView {
     if (!def || this.bodies.some((b) => b.def.id === id)) return;
     const p = this.g.trav.gPos;
     const member: Member = { id, kind: def.kind, x: p.x - 3, z: p.z - 3, speed: 0 };
-    const body: Body = { def, member, ph: Math.random() * 10 };
+    const glow = new THREE.Sprite(GLOW);
+    glow.scale.setScalar(1.6);
+    glow.visible = false;
+    this.g.scene.add(glow);
+    const body: Body = { def, member, ph: Math.random() * 10, air: p.y, glow };
     if (def.kind === 'child') {
       const pool = wardrobeFor(def.origin, def.who);
       const outfit = pool[(def.name.length * 7) % pool.length];
@@ -90,6 +107,8 @@ export class CaravanView {
       // Riding along: they catch up the moment the travellers are back on foot.
       for (const b of this.bodies) {
         (b.child ?? b.pet)!.root.visible = false;
+        b.glow.visible = false;
+        b.air = tr.gPos.y;
         b.member.x = girl.x - 2; b.member.z = girl.z - 2; b.member.speed = 0;
       }
       return;
@@ -101,10 +120,20 @@ export class CaravanView {
       b.member = m;
       const root = (b.child ?? b.pet)!.root;
       root.visible = true;
-      root.position.set(m.x, surfaceAt(m.x, m.z, tr.gPos.y + 3), m.z);
+      // When the two fly, the children and animals rise and fly with them — a little below and
+      // behind, bobbing on the air; back on the ground they land softly.
+      const ground = surfaceAt(m.x, m.z, tr.gPos.y + 3);
+      const flying = tr.mode === 'fly' && tr.gPos.y > surfaceAt(tr.gPos.x, tr.gPos.z, tr.gPos.y + 3) + 1.2;
+      const want = flying ? tr.gPos.y - 0.8 - (i % 3) * 0.5 + Math.sin(t * 2 + b.ph) * 0.25 : ground;
+      b.air += (want - b.air) * Math.min(1, dt * (flying ? 3 : 5));
+      if (!Number.isFinite(b.air) || (!flying && Math.abs(b.air - ground) > 40)) b.air = want;
+      root.position.set(m.x, Math.max(ground, b.air), m.z);
       if (Math.hypot(dx, dz) > 0.002) root.rotation.y = Math.atan2(dx, dz);
-      if (b.child) b.child.update(dt, { speed: m.speed, airborne: false, riding: false, t: t + b.ph });
-      else b.pet!.update(dt, m.speed, t + b.ph);
+      const aloft = root.position.y > ground + 0.5;
+      if (b.child) b.child.update(dt, { speed: m.speed, airborne: aloft, riding: false, t: t + b.ph });
+      else b.pet!.update(dt, aloft ? 6 : m.speed, t + b.ph);
+      b.glow.visible = aloft;
+      b.glow.position.copy(root.position).add(new THREE.Vector3(0, 0.4, 0));
     });
   }
 

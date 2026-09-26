@@ -19,7 +19,7 @@ import { prologue } from '../story/prologue';
 import { features, objectives, type Card } from '../story/intro';
 import { WONDERS, foundWonder, wonderHint, wonderPos } from '../world/wonders';
 import { VEHICLES, type VehicleId } from '../vehicles/vehicles';
-import { GRID_COLS, GRID_ROWS, REGIONS, REGION_BY_ID, type RegionId, type RegionSpec } from '../world/regions';
+import { GRID_COLS, GRID_ROWS, REGIONS, REGION_BY_ID, regionCenter, type RegionId, type RegionSpec } from '../world/regions';
 import type { Game } from '../Game';
 
 type Panel = 'wardrobe' | 'bag' | 'journal' | 'map' | 'messages' | 'vehicles' | 'dialogue' | 'animal' | 'build' | 'van' | 'help' | 'homes' | 'property' | null;
@@ -39,6 +39,8 @@ const btn = (label: string, on: () => void, cls = '', disabled = false) => {
   b.addEventListener('click', (e) => { e.stopPropagation(); on(); });
   return b;
 };
+/** What a street sounds like, drawn as bubbles. */
+const CHATTER = ['💬', '😄', 'Good morning!', 'Did you hear…?', '🎶', 'Fresh bread today!', 'How is your family?', '☕', 'Ha ha!', 'See you at the market!', '🌸', 'Lovely weather!'];
 const hearts = (n: number) => '💛'.repeat(Math.floor(n)) + '🤍'.repeat(Math.max(0, 5 - Math.floor(n)));
 const clock = (m: number) => {
   const hh = Math.floor((m % 1440) / 60), mm = Math.floor(m % 60);
@@ -72,6 +74,7 @@ export class UI {
   private mapSel: RegionId | null = null;
   private hudTimer = 0;
   private labelEls = new Map<string, HTMLElement>();
+  private bubbleEls: HTMLElement[] = [];
 
   constructor(private g: Game) {
     document.body.append(this.root);
@@ -186,6 +189,27 @@ export class UI {
       el.style.opacity = String(Math.min(1, (22 - d) / 6));
     }
     for (const [id, el] of this.labelEls) if (!seen.has(id)) { el.remove(); this.labelEls.delete(id); }
+    this.renderBubbles();
+  }
+
+  /** Speech bubbles over townsfolk chatting nearby — the sound of a street, drawn. */
+  private renderBubbles(): void {
+    const g = this.g, cam = g.camera, p = g.trav.gPos, v = new THREE.Vector3();
+    const t = performance.now() / 1000;
+    const near = g.townsfolk.talkers
+      .map((k) => { const c = regionCenter(REGION_BY_ID[k.land]); return { ...k, wx: c.x + k.x, wz: c.z + k.z }; })
+      .filter((k) => Math.hypot(k.wx - p.x, k.wz - p.z) < 40)
+      .slice(0, 4);
+    while (this.bubbleEls.length < near.length) { const el = h('div', { class: 'bubble' }); this.labels.append(el); this.bubbleEls.push(el); }
+    this.bubbleEls.forEach((el, i) => {
+      const k = near[i];
+      if (!k || g.inVan || this.modal) { el.hidden = true; return; }
+      const beat = Math.floor((t + k.ph) / 3.2);
+      v.set(k.wx, p.y + 2.8, k.wz).project(cam);
+      el.hidden = v.z > 1 || beat % 3 === 2;
+      el.textContent = CHATTER[(beat + Math.floor(k.ph * 7)) % CHATTER.length];
+      el.style.transform = `translate(${(v.x * 0.5 + 0.5) * innerWidth}px, ${(-v.y * 0.5 + 0.5) * innerHeight}px) translate(-50%, -100%)`;
+    });
   }
 
   refreshTracker(): void {

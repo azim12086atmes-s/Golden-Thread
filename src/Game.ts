@@ -34,6 +34,7 @@ import { VEHICLES, type VehicleId } from './vehicles/vehicles';
 import { Ambience } from './world/Ambience';
 import { RegionFX } from './world/RegionFX';
 import { TownDressing } from './world/TownDressing';
+import { SkyLanterns } from './world/SkyLanterns';
 import type { ResourceNode } from './world/RegionBuilder';
 import { REGION_BY_ID, regionAt, regionCenter, type RegionId, type RegionSpec } from './world/regions';
 import { Sky } from './world/Sky';
@@ -79,6 +80,7 @@ export class Game {
   readonly sky = new Sky();
   readonly ambience = new Ambience();
   readonly regionFx = new RegionFX();
+  readonly skyLanterns = new SkyLanterns();
   readonly quests: QuestSystem;
   readonly msgs: Messages;
   readonly housing: Housing;
@@ -134,7 +136,7 @@ export class Game {
 
     this.scene.fog = this.sky.fog;
     this.scene.add(...this.auras);
-    this.scene.add(this.world.group, this.sky.group, this.sky.sunLight, this.sky.sunLight.target, this.sky.hemi, this.ambience.points, this.regionFx.points);
+    this.scene.add(this.world.group, this.sky.group, this.sky.sunLight, this.sky.sunLight.target, this.sky.hemi, this.ambience.points, this.regionFx.points, this.skyLanterns.mesh);
 
     this.composer = new EffectComposer(this.renderer);
     this.composer.addPass(new RenderPass(this.scene, this.camera));
@@ -275,6 +277,7 @@ export class Game {
     this.ambience.update(dt, this.trav.gPos, this.t, this.sky.night);
     this.regionFx.setRegion(this.region.id);
     this.regionFx.update(dt, this.trav.gPos, this.t, this.sky.night);
+    this.skyLanterns.update(dt, this.t, this.trav.gPos, this.region.id, this.sky.night);
     this.npcs.update(dt, this.t, this.trav.gPos);
     this.townsfolk.update(dt, this.t, this.trav.gPos);
     this.dressing.update(this.sky.night);
