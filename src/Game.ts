@@ -37,7 +37,8 @@ import { Ambience } from './world/Ambience';
 import { RegionFX } from './world/RegionFX';
 import { TownDressing } from './world/TownDressing';
 import { SkyLanterns } from './world/SkyLanterns';
-import type { ResourceNode } from './world/RegionBuilder';
+import type { Door, ResourceNode } from './world/RegionBuilder';
+import { HouseInterior, ROOM_NAME, roomTitle } from './housing/HouseInterior';
 import { REGION_BY_ID, regionAt, regionCenter, type RegionId, type RegionSpec } from './world/regions';
 import { Sky } from './world/Sky';
 import { SkyFX } from './world/SkyFX';
@@ -59,6 +60,7 @@ export type Interactable =
   | { kind: 'chariot'; label: string }
   | { kind: 'companion'; id: string; label: string }
   | { kind: 'folk'; walker: Walker; label: string }
+  | { kind: 'door'; door: Door; label: string }
   | { kind: 'bed'; plotId: string; decorId: string; label: string };
 
 /** A scripted scene that takes the camera (and optionally renders its own scene). */
@@ -98,6 +100,9 @@ export class Game {
   readonly dressing: TownDressing;
   readonly animals: Animals;
   readonly van: VanInterior;
+  /** The room behind whichever front door they stepped through. */
+  readonly house: HouseInterior;
+  inHouse = false;
   readonly ui: UI;
   readonly guide: Guide;
   readonly celebration: Celebration;
@@ -162,6 +167,7 @@ export class Game {
     this.housingView = new HousingView(this.scene, this.st, this.world);
     this.trav = new Travellers(this.scene, this.world, this.st, OUTFITS[this.st.outfits.girl], OUTFITS[this.st.outfits.boy]);
     this.van = new VanInterior(this.st, OUTFITS[this.st.outfits.girl], OUTFITS[this.st.outfits.boy]);
+    this.house = new HouseInterior(OUTFITS[this.st.outfits.girl], OUTFITS[this.st.outfits.boy]);
     this.region = regionAt(this.trav.gPos.x, this.trav.gPos.z);
 
     this.world.onRegionLoaded = (inst) => {
@@ -208,6 +214,7 @@ export class Game {
     this.camera.aspect = w / h;
     this.camera.updateProjectionMatrix();
     this.van.resize(w, h);
+    this.house.resize(w, h);
   }
 
   setQuality(quality: 'low' | 'high'): void {
@@ -230,6 +237,7 @@ export class Game {
   takePhoto(): void {
     // Render and copy synchronously before WebGL clears its drawing buffer. DOM UI is excluded.
     if (this.inVan) this.renderer.render(this.van.scene, this.van.camera);
+    else if (this.inHouse) this.renderer.render(this.house.scene, this.house.camera);
     else this.composer.render();
     const snapshot = document.createElement('canvas');
     snapshot.width = this.renderer.domElement.width;
@@ -276,6 +284,17 @@ export class Game {
       this.renderer.render(this.van.scene, this.van.camera);
       this.ui.update(dt);
       if (this.input.hit('escape') || this.input.hit('e')) this.exitVan();
+      this.input.endFrame();
+      return;
+    }
+
+    if (this.inHouse) {
+      if (!this.st.flags.includes(SKY_PAUSED)) this.st.minutes += dt * MINUTES_PER_SECOND;
+      this.house.update(dt);
+      this.guide.update(dt, this.t);
+      this.renderer.render(this.house.scene, this.house.camera);
+      this.ui.update(dt);
+      if (this.input.hit('escape') || this.input.hit('e')) this.exitHouse();
       this.input.endFrame();
       return;
     }
@@ -451,6 +470,11 @@ export class Game {
     if (pal) cands.push([1.2, { kind: 'companion', id: pal.id, label: pal.kind === 'pet' ? `Pet ${pal.name}` : `Chat with ${pal.name}` }]);
     const ride = onFoot ? this.celebration.label(p) : null;
     if (ride) cands.push([0.5, { kind: 'chariot', label: ride }]);
+    // Front doors: every building in town can be entered.
+    if (onFoot) for (const r of this.world.loadedRegions()) for (const d of r.doors) {
+      const dd = Math.hypot(d.x - p.x, d.z - p.z);
+      if (dd < 2.6 && Math.abs(d.y - p.y) < 2.5) cands.push([dd + 0.3, { kind: 'door', door: d, label: `🚪 Step inside ${d.kind === 'shop' ? 'the shop' : ROOM_NAME[d.land as RegionId]}` }]);
+    }
     // Anyone in town: stop and talk; some need a hand today.
     const folk = onFoot ? this.townsfolk.nearest(p, 2.6) : null;
     if (folk) {
@@ -475,6 +499,7 @@ export class Game {
   interact(t: Interactable): void {
     switch (t.kind) {
       case 'folk': return this.talkFolk(t.walker);
+      case 'door': return this.enterHouse(t.door);
       case 'npc': return this.talk(t.npc);
       case 'node': return this.gather(t.node);
       case 'animal': return this.ui.openAnimal(t.animal);
@@ -583,6 +608,7 @@ export class Game {
     this.st.outfits[who] = id;
     (who === 'girl' ? this.trav.girl : this.trav.boy).setOutfit(OUTFITS[id]);
     this.van.setOutfits(OUTFITS[this.st.outfits.girl], OUTFITS[this.st.outfits.boy]);
+    this.house.setOutfits(OUTFITS[this.st.outfits.girl], OUTFITS[this.st.outfits.boy]);
     this.bus.emit('outfit:changed', { who });
   }
 
@@ -691,6 +717,57 @@ export class Game {
     this.housing.remove(plotId, decorId);
     this.housingDirty = true;
   }
+
+  // ───── inside a house ─────
+
+  /** Minutes since this house's basket was last gathered from (it refills each day). */
+  private houseKey(d: Door): string { return `house:${d.id}`; }
+  houseGathered(d: Door): boolean {
+    const last = this.st.gathered[this.houseKey(d)];
+    return last !== undefined && this.st.minutes - last < DAY_MINUTES;
+  }
+
+  enterHouse(d: Door): void {
+    this.inHouse = true;
+    this.target = null;
+    this.house.enter(d, this.sky.night, this.houseGathered(d));
+    this.ui.openHouse(d);
+  }
+
+  exitHouse(): void {
+    this.inHouse = false;
+    this.ui.closePanel();
+  }
+
+  /** What the house has to share: the land's own material, twice, once a day. */
+  gatherInHouse(): string {
+    const d = this.house.door;
+    if (!d) return '';
+    if (this.houseGathered(d)) return 'You have already been given something here today — come back tomorrow.';
+    const mats = REGION_BY_ID[d.land as RegionId].materials, item = mats[(d.id.length + Math.floor(this.st.minutes / DAY_MINUTES)) % mats.length];
+    addItem(this.st, item, 2);
+    this.st.gathered[this.houseKey(d)] = this.st.minutes;
+    this.bus.emit('item:gained', { id: item, qty: 2 });
+    this.house.setGathered(true);
+    return `The family shares +2 ${ITEMS[item].icon} ${ITEMS[item].name}.`;
+  }
+
+  /** Talk with the host (who may need a hand, like anyone in town). */
+  talkInHouse(): string {
+    const d = this.house.door;
+    if (!d) return '';
+    let h = 0;
+    for (const ch of d.id) h = (h * 31 + ch.charCodeAt(0)) >>> 0;
+    const r = talkToFolk(this.st, d.land as RegionId, 300 + (h % 600));
+    if (r.kind === 'helped') this.bus.emit('coins:changed', { coins: this.st.coins });
+    return r.text;
+  }
+
+  /** Where they are (for the panel). */
+  houseTitle(): string {
+    return this.house.door ? roomTitle(this.house.door) : '';
+  }
+
 
   // ───── the van ─────
 

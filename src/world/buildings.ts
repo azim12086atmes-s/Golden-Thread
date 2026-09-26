@@ -240,7 +240,7 @@ const BUILD: Record<Archetype, Builder> = {
 };
 
 /** Build one of the land's building variants (the caller has placed the frame). */
-export function buildVariant(c: Ctx): Footprint {
-  const st = LAND_STYLE[c.s.id];
-  return BUILD[pick(c, st.kinds)](c, st);
+export function buildVariant(c: Ctx): Footprint & { kind: Archetype } {
+  const st = LAND_STYLE[c.s.id], kind = pick(c, st.kinds);
+  return { ...BUILD[kind](c, st), kind };
 }

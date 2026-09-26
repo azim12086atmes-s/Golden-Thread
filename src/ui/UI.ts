@@ -23,7 +23,7 @@ import { VEHICLES, type VehicleId } from '../vehicles/vehicles';
 import { GRID_COLS, GRID_ROWS, REGIONS, REGION_BY_ID, regionCenter, type RegionId, type RegionSpec } from '../world/regions';
 import type { Game } from '../Game';
 
-type Panel = 'wardrobe' | 'bag' | 'journal' | 'map' | 'messages' | 'vehicles' | 'dialogue' | 'animal' | 'build' | 'van' | 'help' | 'homes' | 'property' | null;
+type Panel = 'wardrobe' | 'bag' | 'journal' | 'map' | 'messages' | 'vehicles' | 'dialogue' | 'animal' | 'build' | 'van' | 'house' | 'help' | 'homes' | 'property' | null;
 
 const h = (tag: string, attrs: Record<string, string> = {}, ...kids: Array<Node | string | null | false>) => {
   const el = document.createElement(tag);
@@ -477,6 +477,7 @@ export class UI {
   closePanel(): void {
     if (this.panel === 'build') this.g.exitBuild();
     if (this.panel === 'van') this.g.inVan = false;
+    if (this.panel === 'house') this.g.inHouse = false;
     this.panel = null;
     this.dialogueNpc = null;
     this.panelEl.classList.remove('show');
@@ -502,9 +503,29 @@ export class UI {
     this.open('van');
   }
 
+  private houseNote = '';
+  openHouse(_d: unknown): void {
+    this.houseNote = '';
+    this.open('house');
+  }
+
+  private housePanel(body: HTMLElement): void {
+    const g = this.g, d = g.house.door;
+    if (!d) return;
+    const done = g.houseGathered(d);
+    body.append(
+      h('div', { class: 'acts' },
+        btn(done ? '🧺 Shared today' : '🧺 Accept what they share', () => { this.houseNote = g.gatherInHouse(); this.render(); }, done ? 'ghost' : 'primary', done),
+        btn('💬 Talk with the family', () => { this.houseNote = g.talkInHouse(); this.render(); }, 'ghost'),
+        btn('🌅 Rest until morning', () => { g.setTimeOfDay('dawn'); this.houseNote = 'You rest together — each in your own place — and wake at dawn.'; this.render(); }, 'ghost'),
+        btn('🌙 Stay until night', () => { g.setTimeOfDay('night'); this.houseNote = 'Lamps are lit; the evening is long and kind.'; this.render(); }, 'ghost'),
+        btn('🚪 Step outside', () => g.exitHouse(), 'ghost')),
+      this.houseNote ? h('p', { class: 'story' }, this.houseNote) : h('p', { class: 'dim' }, 'Every home in town opens its door to you. Esc or E to step back outside.'));
+  }
+
   render(): void {
     const body = h('div', { class: 'body' });
-    const titles: Record<string, string> = { wardrobe: 'Dressing room', bag: 'Bag & Crafts', journal: 'Journal', map: 'The World', messages: 'Messages', vehicles: 'Ways to Travel', dialogue: '', animal: '', build: 'Build', van: 'Inside Safar', help: 'How to play', homes: 'Homes & Land', property: 'Land for sale' };
+    const titles: Record<string, string> = { wardrobe: 'Dressing room', bag: 'Bag & Crafts', journal: 'Journal', map: 'The World', messages: 'Messages', vehicles: 'Ways to Travel', dialogue: '', animal: '', build: 'Build', van: 'Inside Safar', house: this.g.houseTitle(), help: 'How to play', homes: 'Homes & Land', property: 'Land for sale' };
     const head = h('header', {}, h('h2', {}, titles[this.panel ?? ''] ?? ''), btn('✕', () => this.closePanel(), 'close'));
     switch (this.panel) {
       case 'wardrobe': this.wardrobe(body); break;
@@ -517,13 +538,14 @@ export class UI {
       case 'animal': this.animalPanel(body, head); break;
       case 'build': this.buildPanel(body); break;
       case 'van': this.vanPanel(body); break;
+      case 'house': this.housePanel(body); break;
       case 'help': this.help(body); break;
       case 'homes': this.homes(body); break;
       case 'property': this.property(body); break;
       default: return this.closePanel();
     }
     this.panelEl.replaceChildren(head, body);
-    const sheet = this.panel === 'wardrobe' || this.panel === 'van';
+    const sheet = this.panel === 'wardrobe' || this.panel === 'van' || this.panel === 'house';
     this.panelEl.className = `panel show p-${this.panel}${sheet ? ' sheet' : ''}`;
     this.root.classList.toggle('sheet-open', sheet);
   }

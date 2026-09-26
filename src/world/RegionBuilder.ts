@@ -27,9 +27,14 @@ export interface RegionInstance {
   nodes: ResourceNode[];
   /** Deterministic spots for residents and animals. */
   spots: Array<{ x: number; z: number }>;
+  /** Front doors of the town's buildings (world coordinates): step inside with E. */
+  doors: Door[];
   wild: Array<{ x: number; z: number }>;
   dispose(): void;
 }
+
+/** A building's front door. `kind` is the building type ('house' for the land's own homes). */
+export interface Door { id: string; land: string; x: number; z: number; y: number; facing: number; kind: string; r: number }
 
 const AVENUE = 9, RING = 140;
 /** People are ~1.8 m tall: trees reach 8–16 m and houses stand a little larger than they were drawn. */
@@ -105,6 +110,9 @@ export function buildRegion(spec: RegionSpec, solid: THREE.Material, glowMat: TH
   const ctx: Ctx = { g, glow, rng, s: spec };
   const colliders: Collider[] = [];
   const spots: Array<{ x: number; z: number }> = [];
+  const doors: Door[] = [];
+  /** Buildings' full footprints (local), so nothing gatherable ends up inside a wall. */
+  const buildings: Array<{ x: number; z: number; r: number }> = [];
   const wild: Array<{ x: number; z: number }> = [];
   const H = (lx: number, lz: number) => terrainHeight(c.x + lx, c.z + lz);
   const plotsHere = PLOTS.filter((p) => p.region === spec.id).map((p) => ({ x: p.x - c.x, z: p.z - c.z }));
@@ -148,8 +156,15 @@ export function buildRegion(spec: RegionSpec, solid: THREE.Material, glowMat: TH
     const hs = houseScale(spec.id);
     const variant = LAND_STYLE[spec.id].kinds.length > 0 && spec.id !== 'desert' && spec.id !== 'aurora' && spec.id !== 'skyisles' && rng.chance(VARIANT_SHARE);
     g.frame(x, y, z, ry, hs, () => glow.frame(x, y, z, ry, hs, () => { fp = variant ? buildVariant(ctx) : buildHouse(ctx); if (variant) houseDecor(ctx, fp); }));
+    const kind = (fp as { kind?: string }).kind ?? 'house';
     fp = { r: fp.r * hs, h: fp.h * hs };
     colliders.push({ x: c.x + x, z: c.z + z, r: fp.r * 0.85, h: y + fp.h });
+    buildings.push({ x, z, r: fp.r });
+    // The front door: on the street face, where the building faces the avenue.
+    if (!isSky && spec.id !== 'desert' && spec.id !== 'aurora') {
+      const reach = fp.r * 0.95 + 0.6;
+      doors.push({ id: `${spec.id}:${placed}`, land: spec.id, x: c.x + x + Math.sin(ry) * reach, z: c.z + z + Math.cos(ry) * reach, y, facing: ry, kind, r: fp.r });
+    }
     placed++;
     if (rng.chance(0.25)) spots.push({ x: x + Math.sin(ry) * (fp.r + 3), z: z + Math.cos(ry) * (fp.r + 3) });
   }
@@ -261,6 +276,14 @@ export function buildRegion(spec: RegionSpec, solid: THREE.Material, glowMat: TH
     let x = Math.cos(a) * r, z = Math.sin(a) * r;
     if (onRoad(x, z, 3)) x += 12;
     if (nearPlot(x, z, 2)) continue;
+    // Never inside (or against) a building: step outwards along the street until clear.
+    for (let k = 0; k < 12 && buildings.some((b) => Math.hypot(x - b.x, z - b.z) < b.r + 2.5); k++) {
+      const nb = buildings.find((b) => Math.hypot(x - b.x, z - b.z) < b.r + 2.5)!;
+      const d = Math.hypot(x - nb.x, z - nb.z) || 1;
+      x = nb.x + ((x - nb.x) / d) * (nb.r + 3);
+      z = nb.z + ((z - nb.z) / d) * (nb.r + 3);
+    }
+    if (buildings.some((b) => Math.hypot(x - b.x, z - b.z) < b.r + 2.5) || onRoad(x, z, 1)) continue;
     let y = H(x, z);
     if (isSky) {
       // In the Sky Isles, resources sit on the spiral islands.
@@ -283,6 +306,7 @@ export function buildRegion(spec: RegionSpec, solid: THREE.Material, glowMat: TH
     colliders,
     nodes,
     spots,
+    doors,
     wild,
     dispose() {
       solidMesh?.geometry.dispose();
