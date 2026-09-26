@@ -18,65 +18,108 @@ import { WIND_GLSL, WIND_UNIFORMS } from './wind';
  */
 
 
-/** Blade tufts: five curved blades in a loose fan; y is 0 at the root and 1 at the tip. */
-function tuftGeo(): THREE.BufferGeometry {
-  const pos: number[] = [], tip: number[] = [];
-  for (let b = 0; b < 5; b++) {
-    const a = (b / 5) * Math.PI * 2 + b * 0.7, lean = 0.18 + (b % 3) * 0.06;
-    const ox = Math.cos(a) * 0.09, oz = Math.sin(a) * 0.09, w = 0.05;
-    const px = Math.cos(a + Math.PI / 2) * w, pz = Math.sin(a + Math.PI / 2) * w;
-    const h = 0.75 + (b % 2) * 0.35;
-    const P = (k: number) => [ox + Math.cos(a) * lean * k * k, h * k, oz + Math.sin(a) * lean * k * k];
-    const [m0, m1] = [P(0.5), P(1)];
-    // Two quads narrowing to a point.
-    const quad = (y0: number[], y1: number[], w0: number, w1: number, t0: number, t1: number) => {
-      const a0 = [y0[0] - px * w0, y0[1], y0[2] - pz * w0], b0 = [y0[0] + px * w0, y0[1], y0[2] + pz * w0];
-      const a1 = [y1[0] - px * w1, y1[1], y1[2] - pz * w1], b1 = [y1[0] + px * w1, y1[1], y1[2] + pz * w1];
-      pos.push(...a0, ...b0, ...a1, ...b0, ...b1, ...a1);
-      tip.push(t0, t0, t1, t0, t1, t1);
-    };
-    quad([ox, 0, oz], m0, 1, 0.7, 0, 0.5);
-    quad(m0, m1, 0.7, 0.05, 0.5, 1);
+/**
+ * Painted cards: three upright quads crossed at 60°, carrying a painting of grass (or flowers)
+ * with a cut-out edge, so from any side a tuft reads as dozens of fine blades rather than a few
+ * flat shapes. `tip` is 0 at the root and 1 at the top (the wind bends by it).
+ */
+function cardGeo(w: number, h: number): THREE.BufferGeometry {
+  const pos: number[] = [], uv: number[] = [], tip: number[] = [], nor: number[] = [], idx: number[] = [];
+  for (let q = 0; q < 3; q++) {
+    const a = (q / 3) * Math.PI, cx = Math.cos(a) * w / 2, cz = Math.sin(a) * w / 2, base = pos.length / 3;
+    pos.push(-cx, 0, -cz, cx, 0, cz, cx, h, cz, -cx, h, -cz);
+    uv.push(0, 0, 1, 0, 1, 1, 0, 1);
+    tip.push(0, 0, 1, 1);
+    // Lit from above like a meadow, not like a wall.
+    for (let i = 0; i < 4; i++) nor.push(0, 1, 0);
+    idx.push(base, base + 1, base + 2, base, base + 2, base + 3);
   }
   const g = new THREE.BufferGeometry();
   g.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3));
+  g.setAttribute('uv', new THREE.Float32BufferAttribute(uv, 2));
+  g.setAttribute('normal', new THREE.Float32BufferAttribute(nor, 3));
   g.setAttribute('tip', new THREE.Float32BufferAttribute(tip, 1));
-  g.computeVertexNormals();
-  // Grass lit from above looks right: point every normal up-ish.
-  const n = g.getAttribute('normal');
-  for (let i = 0; i < n.count; i++) n.setXYZ(i, n.getX(i) * 0.3, 1, n.getZ(i) * 0.3);
+  g.setIndex(idx);
   return g;
 }
 
-/** A meadow flower: a stalk, five petals and a bright heart. */
-function flowerGeo(): THREE.BufferGeometry {
-  const parts: THREE.BufferGeometry[] = [];
-  const stalk = new THREE.CylinderGeometry(0.015, 0.02, 0.55, 3).translate(0, 0.275, 0);
-  parts.push(stalk);
-  for (let i = 0; i < 5; i++) {
-    const a = (i / 5) * Math.PI * 2;
-    const p = new THREE.SphereGeometry(0.075, 5, 3).scale(1, 0.35, 0.6).translate(0.07, 0, 0).rotateY(a).translate(0, 0.58, 0);
-    parts.push(p);
-  }
-  parts.push(new THREE.SphereGeometry(0.045, 5, 4).translate(0, 0.6, 0));
-  const pos: number[] = [], nor: number[] = [], tip: number[] = [];
-  parts.forEach((g, k) => {
-    const ng = g.index ? g.toNonIndexed() : g;
-    const p = ng.getAttribute('position'), n = ng.getAttribute('normal');
-    for (let i = 0; i < p.count; i++) {
-      pos.push(p.getX(i), p.getY(i), p.getZ(i));
-      nor.push(n.getX(i), n.getY(i), n.getZ(i));
-      tip.push(k === 0 ? p.getY(i) / 0.55 * 0.4 : k === parts.length - 1 ? 2 : 1);
-    }
-  });
-  const out = new THREE.BufferGeometry();
-  out.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3));
-  out.setAttribute('normal', new THREE.Float32BufferAttribute(nor, 3));
-  out.setAttribute('tip', new THREE.Float32BufferAttribute(tip, 1));
-  return out;
+const rnd = (() => { let s = 7; return () => ((s = (s * 16807) % 2147483647) / 2147483647); })();
+
+/** A tapering, curving blade from (x, bottom) up to height h, leaning by `lean`. */
+function blade(x: CanvasRenderingContext2D, bx: number, by: number, h: number, lean: number, w: number): void {
+  const tx = bx + lean, ty = by - h, mx = bx + lean * 0.25, my = by - h * 0.55;
+  x.beginPath();
+  x.moveTo(bx - w, by);
+  x.quadraticCurveTo(mx - w * 0.6, my, tx, ty);
+  x.quadraticCurveTo(mx + w * 0.6, my, bx + w, by);
+  x.closePath();
+  x.fill();
 }
 
-const GEO = { tuft: tuftGeo(), flower: flowerGeo() };
+/** Grass painted in soft greys (the instance colour gives it its land's green). */
+function grassTexture(): THREE.Texture | null {
+  if (typeof document === 'undefined') return null;
+  const c = document.createElement('canvas');
+  c.width = 256; c.height = 256;
+  const x = c.getContext('2d')!;
+  // Blades rise from a loose clump at the middle and fan outwards, so the card reads as one tuft
+  // with light between the blades rather than a solid block.
+  for (let i = 0; i < 30; i++) {
+    const bx = 128 + (rnd() - 0.5) * 70, h = 110 + rnd() * 140, lean = (bx - 128) * 1.4 + (rnd() - 0.5) * 60;
+    const g = x.createLinearGradient(0, 256, 0, 256 - h);
+    const v = 205 + Math.floor(rnd() * 40);
+    g.addColorStop(0, `rgb(${v * 0.78},${v * 0.82},${v * 0.72})`);
+    g.addColorStop(0.5, `rgb(${v},${v},${v * 0.94})`);
+    g.addColorStop(1, `rgb(${Math.min(255, v + 40)},${Math.min(255, v + 45)},${v})`);
+    x.fillStyle = g;
+    blade(x, bx, 256, h, lean, 1.6 + rnd() * 1.8);
+  }
+  // A few seed heads nodding above the blades.
+  for (let i = 0; i < 5; i++) {
+    const bx = 40 + rnd() * 176, h = 200 + rnd() * 50, lean = (rnd() - 0.5) * 50;
+    x.strokeStyle = 'rgb(200,200,180)'; x.lineWidth = 1.5;
+    x.beginPath(); x.moveTo(bx, 256); x.quadraticCurveTo(bx + lean * 0.3, 256 - h * 0.6, bx + lean, 256 - h); x.stroke();
+    x.fillStyle = 'rgb(236,228,196)';
+    x.beginPath(); x.ellipse(bx + lean, 256 - h, 3, 9, lean * 0.01, 0, Math.PI * 2); x.fill();
+  }
+  return finish(c);
+}
+
+/** Wildflowers painted with green stalks and leaves and white petals (tinted per instance). */
+function flowerTexture(): THREE.Texture | null {
+  if (typeof document === 'undefined') return null;
+  const c = document.createElement('canvas');
+  c.width = 256; c.height = 256;
+  const x = c.getContext('2d')!;
+  const heads: Array<[number, number, number]> = [];
+  for (let i = 0; i < 5; i++) {
+    const bx = 40 + i * 44 + (rnd() - 0.5) * 20, h = 110 + rnd() * 120, lean = (rnd() - 0.5) * 50;
+    x.strokeStyle = 'rgb(70,130,60)'; x.lineWidth = 3;
+    x.beginPath(); x.moveTo(bx, 256); x.quadraticCurveTo(bx + lean * 0.2, 256 - h * 0.5, bx + lean, 256 - h); x.stroke();
+    x.fillStyle = 'rgb(80,145,64)';
+    blade(x, bx, 256, h * 0.45, -lean * 0.8 - 18, 5);
+    heads.push([bx + lean, 256 - h, 13 + rnd() * 9]);
+  }
+  for (const [hx, hy, r] of heads) {
+    x.fillStyle = 'rgb(255,255,255)';
+    for (let k = 0; k < 6; k++) {
+      const a = (k / 6) * Math.PI * 2;
+      x.beginPath(); x.ellipse(hx + Math.cos(a) * r * 0.6, hy + Math.sin(a) * r * 0.6, r * 0.55, r * 0.32, a, 0, Math.PI * 2); x.fill();
+    }
+    x.fillStyle = 'rgb(255,200,60)';
+    x.beginPath(); x.arc(hx, hy, r * 0.3, 0, Math.PI * 2); x.fill();
+  }
+  return finish(c);
+}
+
+function finish(c: HTMLCanvasElement): THREE.Texture {
+  const t = new THREE.CanvasTexture(c);
+  t.colorSpace = THREE.SRGBColorSpace;
+  t.anisotropy = 4;
+  return t;
+}
+
+const GEO = { tuft: cardGeo(1.1, 0.95), flower: cardGeo(0.9, 0.85) };
 export const GRASS_UNIFORMS = { uNight: { value: 0 }, uFocus: { value: new THREE.Vector3() }, uFieldR: { value: 40 } };
 
 /**
@@ -84,7 +127,8 @@ export const GRASS_UNIFORMS = { uNight: { value: 0 }, uFocus: { value: new THREE
  * `tip` colouring (dark root → the instance colour → a light tip) and a night glimmer.
  */
 function swayingMaterial(kind: 'grass' | 'flower'): THREE.MeshLambertMaterial {
-  const m = new THREE.MeshLambertMaterial({ side: THREE.DoubleSide });
+  const map = kind === 'grass' ? grassTexture() : flowerTexture();
+  const m = new THREE.MeshLambertMaterial({ side: THREE.DoubleSide, map, alphaTest: 0.5 });
   m.onBeforeCompile = (sh) => {
     Object.assign(sh.uniforms, WIND_UNIFORMS, GRASS_UNIFORMS);
     sh.vertexShader = sh.vertexShader
@@ -105,12 +149,21 @@ function swayingMaterial(kind: 'grass' | 'flower'): THREE.MeshLambertMaterial {
       .replace('#include <common>', `#include <common>\nvarying float vTip;\nuniform float uNight;`)
       .replace('#include <color_fragment>', `#include <color_fragment>
         ${kind === 'grass'
-          ? 'diffuseColor.rgb *= mix(0.55, 1.25, clamp(vTip, 0.0, 1.0));'
-          : 'if (vTip < 0.5) diffuseColor.rgb = vec3(0.25, 0.5, 0.2); else if (vTip > 1.5) diffuseColor.rgb = vec3(1.0, 0.9, 0.45);'}`)
+          ? 'diffuseColor.rgb *= mix(0.85, 1.2, clamp(vTip, 0.0, 1.0));'
+          : 'float petal = 0.0;'}`)
       .replace('#include <emissivemap_fragment>', `#include <emissivemap_fragment>
         ${kind === 'grass'
           ? 'totalEmissiveRadiance += diffuseColor.rgb * smoothstep(0.7, 1.0, vTip) * uNight * 0.55;'
-          : 'totalEmissiveRadiance += diffuseColor.rgb * step(0.5, vTip) * uNight * 1.1;'}`);
+          : 'totalEmissiveRadiance += diffuseColor.rgb * petal * uNight * 1.1;'}`);
+    if (kind === 'flower') {
+      // Only the petals take the flower's colour; stalks, leaves and hearts keep their paint.
+      sh.fragmentShader = sh.fragmentShader.replace('#include <color_fragment>', `
+        vec3 tx = diffuseColor.rgb;
+        float petalW = smoothstep(0.6, 0.85, min(tx.r, min(tx.g, tx.b)));
+        #ifdef USE_COLOR
+          diffuseColor.rgb = mix(tx, tx * vColor, petalW);
+        #endif`).replace('float petal = 0.0;', 'float petal = petalW;');
+    }
   };
   m.customProgramCacheKey = () => 'meadow-' + kind;
   return m;
@@ -261,13 +314,13 @@ export class MeadowField {
  */
 export function patternGround(mat: THREE.MeshStandardMaterial): void {
   mat.onBeforeCompile = (sh) => {
-    Object.assign(sh.uniforms, GRASS_UNIFORMS);
+    Object.assign(sh.uniforms, GRASS_UNIFORMS, { uWindDir: WIND_UNIFORMS.uWindDir });
     sh.vertexShader = sh.vertexShader
       .replace('#include <common>', '#include <common>\nvarying vec3 vGW;')
       .replace('#include <worldpos_vertex>', '#include <worldpos_vertex>\nvGW = (modelMatrix * vec4(transformed, 1.0)).xyz;');
     sh.fragmentShader = sh.fragmentShader
       .replace('#include <common>', `#include <common>
-        varying vec3 vGW; uniform float uNight;
+        varying vec3 vGW; uniform float uNight; uniform vec2 uWindDir;
         float gh(vec2 p) { return fract(sin(dot(p, vec2(12.9898, 78.233))) * 43758.5453); }`)
       .replace('#include <color_fragment>', `#include <color_fragment>
         float greenish = smoothstep(0.02, 0.12, diffuseColor.g - max(diffuseColor.r, diffuseColor.b) * 0.92);
@@ -284,6 +337,31 @@ export function patternGround(mat: THREE.MeshStandardMaterial): void {
           float dot0 = 1.0 - smoothstep(0.08, 0.16, length(f));
           vec3 petal = s > 0.975 ? vec3(1.0, 0.75, 0.85) : s > 0.955 ? vec3(1.0, 0.95, 0.6) : vec3(0.95, 0.95, 1.0);
           diffuseColor.rgb = mix(diffuseColor.rgb, petal, dot0 * 0.85);
+        }`)
+      .replace('#include <normal_fragment_maps>', `#include <normal_fragment_maps>
+        {
+          // Sand and snow carry the wind's patterns, lit by the sun: ripples across the dunes,
+          // long carved streaks (sastrugi) across the snow. The bumps tilt the normal, so the
+          // light itself draws them.
+          vec3 dc = vColor.rgb;
+          float snowy = smoothstep(0.78, 0.9, min(dc.r, min(dc.g, dc.b)));
+          float sandy = smoothstep(0.08, 0.2, dc.r - dc.b) * smoothstep(0.55, 0.7, dc.r) * (1.0 - smoothstep(0.0, 0.08, dc.g - dc.r));
+          vec2 wd = normalize(uWindDir + vec2(0.0001));
+          vec2 wp = vec2(dot(vGW.xz, wd), dot(vGW.xz, vec2(-wd.y, wd.x)));
+          float warp = sin(wp.y * 0.21) * 1.6 + sin(wp.y * 0.07 + wp.x * 0.03) * 3.0;
+          // Ripples: crests across the wind, ~0.9 m apart, sharper on the lee side.
+          float ph = (wp.x + warp) * 7.0;
+          float rip = cos(ph) * 0.5 + 0.5 * cos(ph * 2.0 + 1.2) * 0.35;
+          vec2 gR = wd * rip * 0.22 * sandy;
+          // Sastrugi: long streaks along the wind, of uneven width.
+          float st = sin(wp.y * 1.9 + sin(wp.x * 0.13) * 2.5) * sin(wp.y * 0.53 + 1.7);
+          vec2 gS = vec2(-wd.y, wd.x) * st * 0.18 * snowy;
+          vec3 bw = vec3(gR.x + gS.x, 0.0, gR.y + gS.y);
+          normal = normalize(normal - (viewMatrix * vec4(bw, 0.0)).xyz);
+          // Snow glitters where the sun catches single crystals.
+          vec2 sc = floor(vGW.xz * 5.0);
+          float glint = step(0.992, gh(sc + floor(dot(normalize(vViewPosition), vec3(7.0, 3.0, 5.0)) * 4.0))) * snowy;
+          totalEmissiveRadiance += vec3(1.0, 0.98, 0.92) * glint * 0.9 * (1.0 - uNight * 0.6);
         }`)
       .replace('#include <emissivemap_fragment>', `#include <emissivemap_fragment>
         {

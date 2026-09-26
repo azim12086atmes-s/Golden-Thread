@@ -17,9 +17,9 @@ import { LOCALES } from './locale';
 export class World {
   readonly group = new THREE.Group();
   /** Walls, roofs, trees and flowers: leaves and petals carry a sway weight and move in the wind. */
-  readonly solid = swayMaterial(new THREE.MeshStandardMaterial({ vertexColors: true, flatShading: true, roughness: 0.9, side: THREE.DoubleSide }));
+  readonly solid = swayMaterial(new THREE.MeshStandardMaterial({ vertexColors: true, roughness: 0.9, side: THREE.DoubleSide }));
   readonly glow = new THREE.MeshBasicMaterial({ vertexColors: true, toneMapped: false });
-  readonly terrainMat = new THREE.MeshStandardMaterial({ vertexColors: true, flatShading: true, roughness: 1 });
+  readonly terrainMat = new THREE.MeshStandardMaterial({ vertexColors: true, roughness: 1 });
   private waterMat = waterMaterial();
   private foamMat = foamMaterial();
   private foams = new Map<string, THREE.Mesh>();
