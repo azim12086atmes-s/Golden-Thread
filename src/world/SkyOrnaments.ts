@@ -2,6 +2,7 @@ import * as THREE from 'three';
 import { smoothstep } from '../core/rng';
 import { GeoBuilder, cone, cyl, sphere, tree } from './kit';
 import type { SkyKind } from './skies';
+import { rainbowGeometry, rainbowMaterial } from './Sky';
 
 /**
  * The sky's ornaments (skies.ts lists which land has which): sister moons in other colours and
@@ -60,15 +61,6 @@ function moonTex(phase: number, seed: number): THREE.CanvasTexture {
   });
 }
 
-const RAINBOW_FRAG = `uniform float strength; uniform float pale; varying vec2 vUv;
-  vec3 hue(float h){ return clamp(abs(mod(h * 6.0 + vec3(0.0, 4.0, 2.0), 6.0) - 3.0) - 1.0, 0.0, 1.0); }
-  void main(){
-    float v = vUv.y;
-    float front = clamp(sin(v * 6.2832), 0.0, 1.0);
-    float ends = smoothstep(0.0, 0.12, vUv.x) * smoothstep(1.0, 0.88, vUv.x);
-    vec3 c = mix(hue(v * 1.6), vec3(0.85, 0.9, 1.0), pale);
-    gl_FragColor = vec4(c * 1.1, front * ends * strength * 0.45);
-  }`;
 const PLAIN_VERT = 'varying vec2 vUv; void main(){ vUv = uv; gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0); }';
 
 /** Constellations: little figures of stars (azimuth, elevation in degrees) and the lines between them. */
@@ -96,7 +88,7 @@ export class SkyOrnaments {
   private moons: THREE.Sprite[] = [];
   private planets = new THREE.Group();
   private planetMats: THREE.Material[] = [];
-  private arcs: THREE.Mesh<THREE.TorusGeometry, THREE.ShaderMaterial>[] = [];
+  private arcs: THREE.Mesh<THREE.BufferGeometry, THREE.ShaderMaterial>[] = [];
   private hex: THREE.InstancedMesh;
   private hexDirs: THREE.Vector3[] = [];
   private cons: THREE.Group = new THREE.Group();
@@ -149,10 +141,7 @@ export class SkyOrnaments {
 
     // Extra rainbows round the horizon (moonbows at night).
     for (const [r, tube] of [[360, 16], [470, 18], [300, 12]] as const) {
-      const m = new THREE.Mesh(new THREE.TorusGeometry(r, tube, 10, 72, Math.PI), new THREE.ShaderMaterial({
-        transparent: true, depthWrite: false, side: THREE.DoubleSide, fog: false,
-        uniforms: { strength: { value: 0 }, pale: { value: 0 } }, vertexShader: PLAIN_VERT, fragmentShader: RAINBOW_FRAG,
-      }));
+      const m = new THREE.Mesh(rainbowGeometry(r, tube * 2.6), rainbowMaterial());
       m.frustumCulled = false;
       this.arcs.push(m);
       this.group.add(m);

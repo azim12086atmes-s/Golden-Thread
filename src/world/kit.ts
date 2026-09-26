@@ -11,6 +11,9 @@ export class GeoBuilder {
   private stack: THREE.Matrix4[] = [new THREE.Matrix4()];
   private tmpColor = new THREE.Color();
 
+  /** While true, parts added are foliage (except wood: cylinders), drawn as leaves by the shader. */
+  leafy = false;
+
   get size(): number {
     return this.parts.length;
   }
@@ -35,6 +38,7 @@ export class GeoBuilder {
   }
 
   add(geo: THREE.BufferGeometry, color: THREE.ColorRepresentation, local?: THREE.Matrix4): this {
+    const leaf = this.leafy && geo.type !== 'CylinderGeometry' ? 1 : 0;
     let g = geo.index ? geo.toNonIndexed() : geo;
     if (g !== geo) geo.dispose();
     g.deleteAttribute('uv');
@@ -52,6 +56,7 @@ export class GeoBuilder {
     }
     g.setAttribute('color', new THREE.BufferAttribute(cols, 3));
     g.setAttribute('sway', new THREE.BufferAttribute(new Float32Array(n), 1));
+    g.setAttribute('leaf', new THREE.BufferAttribute(new Float32Array(n).fill(leaf), 1));
     this.parts.push(g);
     return this;
   }
@@ -229,7 +234,9 @@ export type Flora =
 
 export function tree(g: GeoBuilder, kind: Flora, x: number, y: number, z: number, s: number, rng: () => number): void {
   const m = g.mark();
-  treeParts(g, kind, x, y, z, s, rng);
+  // Crowns, fronds and blossoms are leaves (crystals and cloud-puffs are not); trunks are wood.
+  g.leafy = kind !== 'crystal' && kind !== 'cloud';
+  try { treeParts(g, kind, x, y, z, s, rng); } finally { g.leafy = false; }
   // Crowns move in the wind; trunks stand firm. Palms and bamboo bend the most.
   g.sway(m, y, (kind === 'palm' || kind === 'coconut' || kind === 'bamboo' ? 6 : 4.5) * s, kind === 'crystal' ? 0 : kind === 'bamboo' || kind === 'willow' ? 1.3 : 1);
 }

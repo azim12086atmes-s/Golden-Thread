@@ -2,7 +2,7 @@ import * as THREE from 'three';
 import { smoothstep } from '../core/rng';
 import { REGIONS, type RegionId } from './regions';
 import { SKIES, SKY_KINDS, fireworkRate, type SkyKind } from './skies';
-import { auroraMaterial } from './Sky';
+import { auroraMaterial, rainbowGeometry, rainbowMaterial } from './Sky';
 import { SkyOrnaments } from './SkyOrnaments';
 
 /**
@@ -127,7 +127,7 @@ export class SkyFX {
   private birds: THREE.InstancedMesh;
   private flocks = new Float32Array(FLOCKS * 5); // x, z, radius, height, phase
   private beams: THREE.Mesh<THREE.BufferGeometry, THREE.ShaderMaterial>;
-  private rainbows: THREE.Mesh<THREE.TorusGeometry, THREE.ShaderMaterial>[] = [];
+  private rainbows: THREE.Mesh<THREE.BufferGeometry, THREE.ShaderMaterial>[] = [];
   private glow: THREE.Mesh<THREE.CylinderGeometry, THREE.ShaderMaterial>;
   private auroras: THREE.Mesh<THREE.PlaneGeometry, THREE.ShaderMaterial>[] = [];
   private shooters: Shooter[] = [];
@@ -216,20 +216,7 @@ export class SkyFX {
 
     // Rainbows, always opposite the sun: a bright one and a fainter second bow with its colours reversed.
     for (const [r, tube, k, flip] of [[430, 20, 1, 0], [560, 16, 0.4, 1]] as const) {
-      const m = new THREE.Mesh(new THREE.TorusGeometry(r, tube, 10, 80, Math.PI), new THREE.ShaderMaterial({
-        transparent: true, depthWrite: false, side: THREE.DoubleSide, fog: false,
-        uniforms: { strength: { value: 0 }, k: { value: k }, flip: { value: flip } },
-        vertexShader: 'varying vec2 vUv; void main(){ vUv = uv; gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0); }',
-        fragmentShader: `uniform float strength; uniform float k; uniform float flip; varying vec2 vUv;
-          vec3 hue(float h){ return clamp(abs(mod(h * 6.0 + vec3(0.0, 4.0, 2.0), 6.0) - 3.0) - 1.0, 0.0, 1.0); }
-          void main(){
-            float v = vUv.y;
-            float front = clamp(sin(v * 6.2832), 0.0, 1.0);
-            float h = mix(v * 1.6, 0.8 - v * 1.6, flip);
-            float ends = smoothstep(0.0, 0.1, vUv.x) * smoothstep(1.0, 0.9, vUv.x);
-            gl_FragColor = vec4(hue(h) * 1.1, front * ends * strength * k * 0.5);
-          }`,
-      }));
+      const m = new THREE.Mesh(rainbowGeometry(r, tube * 2.6), rainbowMaterial({ k, flip }));
       m.frustumCulled = false;
       this.rainbows.push(m);
       this.dome.add(m);

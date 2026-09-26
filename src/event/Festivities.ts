@@ -3,7 +3,7 @@ import { PartyAir } from '../world/PartyAir';
 import { AnimalModel } from '../animals/AnimalModel';
 import { CharacterModel } from '../characters/CharacterModel';
 import { OUTFITS } from '../characters/outfits';
-import { auroraMaterial, rainbowMaterial } from '../world/Sky';
+import { auroraMaterial, rainbowGeometry, rainbowMaterial } from '../world/Sky';
 import { CASTLE, guestSpot, guests } from './site';
 import { Dragon } from './Dragon';
 import { wardrobeFor } from '../npc/Townsfolk';
@@ -80,7 +80,7 @@ export class Festivities {
   private lanterns: THREE.InstancedMesh;
   private lanternState: Float32Array;
   private auroras: THREE.Mesh<THREE.PlaneGeometry, THREE.ShaderMaterial>[] = [];
-  private rainbows: THREE.Mesh<THREE.TorusGeometry, THREE.ShaderMaterial>[] = [];
+  private rainbows: THREE.Mesh<THREE.BufferGeometry, THREE.ShaderMaterial>[] = [];
   private unicorns: Array<{ m: AnimalModel; a: number; r: number; s: number }> = [];
   readonly dragon = new Dragon();
   /** The air of every land, each in its own slice round the courtyard. */
@@ -147,7 +147,7 @@ export class Festivities {
       this.group.add(m);
     }
     for (const [dx, dz, r, ry] of [[-60, -40, 120, 0.5], [70, -90, 95, -0.4], [0, -180, 160, 0], [-150, 60, 110, 1.3], [140, 40, 130, -1.2], [20, 170, 150, 3.0]] as const) {
-      const m = new THREE.Mesh(new THREE.TorusGeometry(r, r * 0.05, 8, 64, Math.PI), rainbowMaterial());
+      const m = new THREE.Mesh(rainbowGeometry(r, r * 0.12), rainbowMaterial());
       m.position.set(this.centre.x + dx, groundY - 4, this.centre.z + dz);
       m.rotation.y = ry;
       m.frustumCulled = false;

@@ -53,7 +53,7 @@ export class Sky {
   /** The current land's sky colours, eased so crossing a border never snaps the sky. */
   private tint = { day: new THREE.Color('#bfe6ff'), dusk: new THREE.Color('#ffb38a'), night: new THREE.Color('#2a2a6e') };
   private auroras: THREE.Mesh<THREE.PlaneGeometry, THREE.ShaderMaterial>[] = [];
-  private rainbows: THREE.Mesh<THREE.TorusGeometry, THREE.ShaderMaterial>[] = [];
+  private rainbows: THREE.Mesh<THREE.BufferGeometry, THREE.ShaderMaterial>[] = [];
   readonly fog = new THREE.Fog('#cfeaff', 120, 1400);
   /** The land's air, eased as you travel (locale.ts `atmos`). */
   readonly air = { haze: new THREE.Color('#ffe8f0'), hazeNight: new THREE.Color('#3a3a7a'), sun: new THREE.Color('#fff0d0'), near: 140, far: 1500, light: 1.1 };
@@ -169,7 +169,7 @@ export class Sky {
     const c = regionCenter(REGION_BY_ID.meadow);
     for (const [dx, dz, r, ry] of [[40, -260, 260, 0.2], [-280, 120, 180, 1.4], [220, 180, 150, -0.9]] as const) {
       const mat = rainbowMaterial();
-      const m = new THREE.Mesh(new THREE.TorusGeometry(r, r * 0.06, 8, 64, Math.PI), mat);
+      const m = new THREE.Mesh(rainbowGeometry(r, r * 0.14), mat);
       m.position.set(c.x + dx, -6, c.z + dz);
       m.rotation.y = ry;
       m.frustumCulled = false;
@@ -228,6 +228,7 @@ export class Sky {
     u.veil.value.copy(this.air.haze).lerp(tmpA.set('#ffffff'), 0.55).multiplyScalar(1 - this.night * 0.8).lerp(this.tint.night, this.night * 0.4);
     u.veilAmt.value = 0.55 - this.night * 0.35;
     u.time.value = t;
+    RAINBOW_TIME.value = t;
 
     this.group.position.set(focus.x, 0, focus.z);
     // The haze: the land's own colour by day and by night, and its own depth.
@@ -313,21 +314,58 @@ export function auroraMaterial(seed: number): THREE.ShaderMaterial {
       });
 }
 
-/** Rainbow arc material for a half torus: uniform strength (0..1). */
-export function rainbowMaterial(): THREE.ShaderMaterial {
+/** Shared clock for every rainbow's shimmer (advanced by Sky.update). */
+const RAINBOW_TIME = { value: 0 };
+
+/**
+ * A rainbow as a ribbon of light (like the aurora), not a tube: a flat half-ring standing upright
+ * with `uv.x` running along the arc (0 at one foot, 1 at the other) and `uv.y` across it (0 inner,
+ * 1 outer). The ribbon is wider than the colours so its edges melt into the sky.
+ */
+export function rainbowGeometry(r: number, width: number): THREE.BufferGeometry {
+  const g = new THREE.RingGeometry(r - width / 2, r + width / 2, 128, 4, 0, Math.PI);
+  const p = g.getAttribute('position'), uv = g.getAttribute('uv');
+  for (let i = 0; i < p.count; i++) {
+    const x = p.getX(i), y = p.getY(i);
+    uv.setXY(i, Math.atan2(y, x) / Math.PI, (Math.hypot(x, y) - (r - width / 2)) / width);
+  }
+  return g;
+}
+
+/**
+ * Rainbow light: soft spectral bands (red outside, violet inside; `flip` reverses them for a
+ * second bow), faint supernumerary bands just inside the violet, slow rays of brighter and
+ * dimmer light drifting along the arc as in an aurora, and feet that fade into the air. `pale`
+ * turns it into a silvery moonbow. Uniforms: strength (0..1), k, flip, pale.
+ */
+export function rainbowMaterial(opts: { k?: number; flip?: number } = {}): THREE.ShaderMaterial {
   return new THREE.ShaderMaterial({
-        transparent: true,
-        depthWrite: false,
-        side: THREE.DoubleSide,
-        fog: false,
-        uniforms: { strength: { value: 0 } },
-        vertexShader: `varying vec2 vUv; void main(){ vUv = uv; gl_Position = projectionMatrix * modelViewMatrix * vec4(position,1.0); }`,
-        fragmentShader: `uniform float strength; varying vec2 vUv;
-          vec3 band(float v){ return clamp(abs(mod(v * 6.0 + vec3(0.0, 4.0, 2.0), 6.0) - 3.0) - 1.0, 0.0, 1.0); }
-          void main(){
-            float v = vUv.y;
-            float a = smoothstep(0.0, 0.15, v) * smoothstep(1.0, 0.85, v) * smoothstep(0.0, 0.08, vUv.x) * smoothstep(0.5, 0.42, vUv.x);
-            gl_FragColor = vec4(band(v * 0.8) * 1.15, a * strength * 0.55);
-          }`,
-      });
+    transparent: true,
+    depthWrite: false,
+    side: THREE.DoubleSide,
+    fog: false,
+    uniforms: { strength: { value: 0 }, k: { value: opts.k ?? 1 }, flip: { value: opts.flip ?? 0 }, pale: { value: 0 }, t: RAINBOW_TIME },
+    vertexShader: `varying vec2 vUv; void main(){ vUv = uv; gl_Position = projectionMatrix * modelViewMatrix * vec4(position,1.0); }`,
+    fragmentShader: `uniform float strength; uniform float k; uniform float flip; uniform float pale; uniform float t; varying vec2 vUv;
+      vec3 hue(float h){ return clamp(abs(mod(h * 6.0 + vec3(0.0, 4.0, 2.0), 6.0) - 3.0) - 1.0, 0.0, 1.0); }
+      float n1(float x){ return fract(sin(x * 12.9898) * 43758.5453); }
+      float vn(float x){ float i = floor(x), f = fract(x); f = f * f * (3.0 - 2.0 * f); return mix(n1(i), n1(i + 1.0), f); }
+      void main(){
+        float v = vUv.y, x = vUv.x;
+        // The colours fill the middle of the ribbon; its edges are soft light.
+        float c01 = clamp((v - 0.2) / 0.6, 0.0, 1.0);
+        float o = mix(c01, 1.0 - c01, flip);
+        vec3 c = hue((1.0 - o) * 0.78);
+        float body = exp(-pow((v - 0.5) * 2.5, 4.0));
+        // Faint extra bands just inside the violet.
+        float sup = exp(-pow((v - mix(0.14, 0.86, flip)) * 9.0, 2.0)) * (0.5 + 0.5 * sin(v * 90.0)) * 0.35;
+        // Aurora-like rays and a slow travelling shimmer along the arc.
+        float rays = 0.62 + 0.38 * vn(x * 110.0 + t * 0.5) * (0.6 + 0.4 * vn(x * 27.0 - t * 0.2 + 5.0));
+        float drift = 0.72 + 0.28 * sin(x * 14.0 - t * 0.3);
+        float ends = smoothstep(0.0, 0.2, x) * smoothstep(1.0, 0.8, x);
+        c = mix(c, vec3(0.82, 0.88, 1.0), pale * 0.8);
+        float a = (body * rays * drift + sup * c01) * ends * strength * k;
+        gl_FragColor = vec4(c * 1.2 + vec3(0.08), a * 0.6);
+      }`,
+  });
 }
