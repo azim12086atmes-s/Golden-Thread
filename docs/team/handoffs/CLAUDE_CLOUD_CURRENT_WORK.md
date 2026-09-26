@@ -1,24 +1,41 @@
 # Claude Cloud handoff — current work
 
 Branch: `claudes-current-work` in `azim12086atmes-s/Golden-Thread`.
-Base: `acbaee3` (`latest-working-on-going`), the clean playable prototype. This branch adds the local work Claude left unfinished. Continue from this branch; do not reset to the clean branch.
+Base: `acbaee3` (`latest-working-on-going`) is the clean fallback. Continue from this branch.
 
-Read `AGENTS.md`, `docs/GAME_DESIGN.md`, `docs/ROADMAP.md`, and `docs/REQUIREMENTS_EXPANSION.md` before editing. Preserve the core rules: the two protagonists never touch or share a seat/mount, all people and animals have no eyes and detached floating heads, clothing remains modest, and new visual features must keep the game playable on web.
+Read `AGENTS.md`, `docs/GAME_DESIGN.md`, `docs/ROADMAP.md`, `docs/REQUIREMENTS_EXPANSION.md` first. The core rules are
+unchanged and tested: the two never touch or share a seat/mount; no eyes and floating heads on every person and
+animal; modest clothing via `modestify()`.
 
-Current uncompleted work on this branch includes a closeable objective tracker, a larger furnished van and four-child/four-pet capacity, a flying carpet for children and pets, more anatomically detailed cat/dog/unicorn models, location-specific house decorations, a 300-person instanced city crowd, and additional townsfolk conversations/favours. Typecheck and the existing 326 tests passed at handoff, but these new features have not all had visual browser verification; tests may not cover their new behavior. Inspect wiring and finish what is incomplete rather than treating file presence as completion. The clean branch remains a fallback.
+## Session 2026-09-26 (cloud) — what shipped (all on this branch, 380 tests, typecheck + build pass)
 
-Owner's immediate questions and requests, in priority order:
+| Area | Where | State |
+|---|---|---|
+| City crowds: 300 people per town, all talkable | `npc/Townsfolk.ts`, `npc/Crowd.ts`, `npc/folk.ts` | Built, tested, browser-checked. Everyone is instanced (5 draw calls/town); the nearest 14 become full figures. Any of the 300 can be talked to; land-specific favours, some needing goods; one reward per person per day (saved in `st.folk`). |
+| Meadow celebration: every sky + every land's particles | `world/PartyAir.ts`, `SkyFX.ts`, `SkyLanterns.ts` | Built, tested, browser-checked. All 25 sky effects; each land's particle theme and every weather in its own slice round the courtyard; fireworks/kites/lanterns in every land's colours. |
+| Sky ornaments in every land | `world/SkyOrnaments.ts`, `skies.ts` | Moons, ringed planets, extra rainbows/moonbows, golden hex canopy, constellations, comet, sun halo + sundogs, floating islands with waterfalls, turning girih star, balloons, noctilucent clouds. 3–7 per land; the Meadow has all. |
+| Day/night control | `core/time.ts`, UI | T or tap the clock → next of dawn/day/dusk/night (forward only). Help: four buttons + "pause the sky". |
+| Objective panel | `ui/UI.ts` | ✕ close, 🎯 pill to reopen, O key; focus follows; remembered per device. Browser-verified. |
+| Safar van | `vehicles/vanLayout.ts`, `vehicles.ts`, `housing/VanInterior.ts` | 3 × 8.6 m; shared floor plan inside/out: 2 separate beds, 4 bunks, 4 pet beds, benches with table (seats 2.2 m+ apart), kitchen, storage. Children and pets ride visibly inside while driving. |
+| Pets and children | `caravan/*` | 13 pets (6 dogs, 4 cats, 3 birds), 11 children. Start: Rosie, Teo, Pip, Clover. Max 4 children + 4 pets. Pets now wait at their home land's plaza and join when offered their food. |
+| Flying carpet | `caravan/Carpet.ts`, `CaravanView.ts`, `caravan.ts` | All flight modes (cape, unicorn, biplane, dragon), eased in her frame (no lag, never cuts across on turns), hard clearance guard; tested + browser-checked. |
+| Houses and buildings | `world/buildings.ts`, `houseDecor.ts`, `RegionBuilder.ts` | 5 new archetypes per land style; houses 15% larger; path mosaics in land colours. |
+| Enterable houses | `housing/HouseInterior.ts` | Every town building's front door → a land-styled room (5 families + shop/courtyard/tower variants); share an item once a day, talk, rest. Items never spawn inside walls. |
+| Trees | `world/kit.ts`, `regions.ts` | 1.9× taller; 11 new colourful species; bark bands; crowns sway. |
+| Water | `world/waters.ts`, `Water.ts` | Each land: a lake, 2–3 ponds, a river in the countryside, carved into terrain; fairytale shader (caustics, rings, glints, night lattice glow), foam, lily pads and lotus. |
+| Meadows & wind | `world/Meadow.ts`, `wind.ts` | Dense recycling grass/flower field round the travellers, patterned ground and glowing fairy rings; one gusting wind sways grass, flowers, tree crowns, carpet and falling particles. Low graphics turns grass off. |
+| Animals | `animals/detailed.ts`, `AnimalModel.ts`, `event/Dragon.ts` | All 16 quadrupeds jointed and shaped per species; birds with folded wings and jointed legs; star patterns on unicorns and the dragon. |
+| Farming | `housing/housing.ts`, `HousingView.ts`, UI | 12 crops, seeds bought at market stalls (per land), choose/water/harvest panel, new dishes, crop favours; full season tested incl. save/reload. |
 
-1. Verify whether **all regional sky effects and particles** also appear in the **Meadow celebration event**. Identify which effects actually show in the event and add missing ones in an intentional, attractive way. Check day/night transitions and performance.
-2. Verify that the **objective UI panel has a close button and a way to reopen it**. Make both keyboard/mouse/touch accessible and ensure the choice persists appropriately.
-3. Make the dedicated **van larger and more aesthetically pleasing**, with credible sleeping/seating/storage space for both protagonists, up to **four children and four pets**. Keep the protagonists' separate-seat rule. Verify the interior and exterior match and the companions fit while travelling.
-4. Report exactly **which pets are currently in the game**, their species, which are available at the start, and **how many children and pets can travel at once**. Distinguish defined companions from active capacity and verify the actual UI/gameplay limit.
-5. Dress **all houses and buildings** with location-specific architectural patterns and artifacts, including interiors where accessible. Extend pattern work to pathways and outfits; use cultural references thoughtfully, not generic tokens. Keep draw calls and memory under control.
-6. Replace plain grass with **vibrant meadow grass patterns**, including restrained night glow and layered flowers/ground cover. Add more **lakes, rivers and ponds**, with animated glowing patterns and foam. Water should feel fairytale-like while still readable and traversable.
-7. Refine the **cat, dog, unicorn and dragon** silhouettes and proportions; add tasteful patterns to the unicorn and dragon. Preserve no-eyes/floating-head constraints and the two-rider separation rule.
-8. When the protagonists fly by themselves or on a flying animal, have accompanying **children and pets travel alongside on a flying carpet**. Verify all flight modes, transitions, capacity, collision/spacing, and return to the ground.
-9. Support **up to 300 people in a city** without a severe frame-rate drop, and make more of them interactive with varied location-appropriate conversations and useful help/favour loops. Do not claim 300 interactive residents if only a small subset can be spoken to; tell the owner the actual result.
-10. Expand land ownership into **buying, planting, growing, harvesting and using/selling crops**. The crop cycle should persist through save/load and connect to food or economy systems.
-11. Add **wind flowing through the environment**: grass, foliage, loose cloth and relevant objects sway with varied strength and direction. Add animated glowing foam to water, patterns on trees and trunks, and coherent pattern language across terrain, houses/buildings, paths, animals and clothing.
+## Still open / honest limits
 
-Work structurally, preserve the playable build, and prioritize a completed coherent slice over disconnected visual sketches. Add focused tests for new game rules and browser/visual checks for appearance and performance. At the end, answer every owner question with observed behavior, list what shipped versus remains incomplete, run typecheck/tests/build, and push commits to this same branch. Do not deploy or merge unless asked. Keep `latest-working-on-going` as the clean baseline.
+- No real-GPU frame rate was measured (the cloud browser is software-rendered). Counts: Meadow by day ~1.8–2.3k draw calls,
+  1.0–1.8M triangles (grass ~0.3M); the celebration evening ~4.7k calls because the guests and dancers are full figures
+  (pre-existing). If phones struggle: instance the party guests, and lower `FIELD_CELLS` in `Meadow.ts`.
+- House interiors are a furnished diorama with actions, not a walk-around space.
+- A full caravan cannot yet say goodbye (children going home at their destination is described but not built), so a fifth
+  child/pet waits.
+- Wind moves grass, foliage, flowers, the carpet and particles; robes and headscarves do not sway (capes already ripple).
+- Rivers have no bridges (water is a walkable surface, as before).
+- Crowd figures far away are simple instanced shapes; up close they swap to full outfits.
+- Sky ornaments were screenshot-checked in the Meadow, Islamic, Egypt, Norway and Sky Isles; others are covered by tests only.

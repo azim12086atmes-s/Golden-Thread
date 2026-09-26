@@ -61,3 +61,13 @@ Validation: 222 tests pass; full TypeScript check and production bundle pass. Br
 Read REQUIREMENTS_EXPANSION.md and research/living-world/LIVING_SYSTEMS.md for requirements and staged build gates. Research atlas, Pinterest evidence log and Blender/web contract are in research/living-world/. Pinterest image selection remains blocked on sign-in; Blender MCP was not callable. No Blender-authored assets, persistent-vehicle replacement or new living-economy systems are claimed complete.
 
 Implemented original procedural hero identity: glasses for both, angular beard and visible curled side quiff for the boy when not under headwear; character review at /?characters. Geometry tests cover the full wardrobe and idle head bobbing.
+
+
+## Cloud session — 2026-09-26
+
+See `docs/team/handoffs/CLAUDE_CLOUD_CURRENT_WORK.md` for the full table. Built and tested: 300-person talkable towns,
+every land's air and sky at the celebration, 11 new sky ornaments per land, day/night switch, closeable objective panel,
+the bigger Safar van (4 children + 4 pets), the flying carpet in every flight mode, pets you can meet and adopt, five new
+building types and patterned paths, enterable houses with land-styled rooms, bigger colourful trees, lakes/ponds/rivers
+with fairytale water and foam, dense meadows with wind, jointed anatomy for every animal, and a full farming loop with
+seed markets and cooking. Next: instanced party guests, walk-around interiors, children going home, bridges.
