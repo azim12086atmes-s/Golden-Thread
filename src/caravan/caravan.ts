@@ -199,3 +199,38 @@ export function canJoin(def: CompanionDef, current: CompanionDef[], chaptersDone
   if (current.filter((c) => c.kind === 'pet').length >= MAX_PETS) return { ok: false, reason: 'Four pets is plenty for one van.' };
   return { ok: true, reason: `${def.name} hops into the van.` };
 }
+
+// ───────────────────────── the flying carpet ─────────────────────────
+
+/** Seats on the carpet (local metres; +z is forward): children in front, pets behind. */
+export const CARPET_SEATS = {
+  child: [[-0.95, 0.75], [-0.32, 0.75], [0.32, 0.75], [0.95, 0.75]] as const,
+  pet: [[-0.95, -0.75], [-0.32, -0.75], [0.32, -0.75], [0.95, -0.75]] as const,
+};
+export const CARPET_W = 2.9, CARPET_L = 3.6;
+
+/**
+ * How far to the side the carpet flies (centre to centre), by how the two are flying: beside
+ * them on the cape, clear of the unicorn's wings, well clear of the biplane's and the dragon's.
+ */
+export const CARPET_SIDE: Record<'fly' | 'unicorn' | 'plane' | 'dragon', number> = { fly: 4.2, unicorn: 5.5, plane: 8, dragon: 8 };
+
+/**
+ * Where the carpet should be: beside her on the side away from him, a little behind, a little
+ * below. `heading` is her facing (0 = +Z). Returns world x/z/y and its facing.
+ */
+export function carpetTarget(mode: keyof typeof CARPET_SIDE, girl: { x: number; y: number; z: number }, boy: P2, heading: number): { x: number; y: number; z: number; side: number } {
+  const fx = Math.sin(heading), fz = Math.cos(heading), rx = Math.cos(heading), rz = -Math.sin(heading);
+  const side = (boy.x - girl.x) * rx + (boy.z - girl.z) * rz > 0 ? -1 : 1;
+  const off = CARPET_SIDE[mode];
+  const drop = mode === 'fly' ? 0.45 : mode === 'unicorn' ? 0.2 : -0.6;
+  return { x: girl.x + rx * side * off - fx * 1.2, y: girl.y - drop, z: girl.z + rz * side * off - fz * 1.2, side };
+}
+
+/** World positions of every carpet seat for a carpet at (x, z) facing `heading`. */
+export function carpetSeats(x: number, z: number, heading: number): P2[] {
+  const out: P2[] = [];
+  const c = Math.cos(heading), sn = Math.sin(heading);
+  for (const [sx, sz] of [...CARPET_SEATS.child, ...CARPET_SEATS.pet]) out.push({ x: x + sx * c + sz * sn, z: z - sx * sn + sz * c });
+  return out;
+}

@@ -76,7 +76,7 @@ function flowerGeo(): THREE.BufferGeometry {
 }
 
 const GEO = { tuft: tuftGeo(), flower: flowerGeo() };
-export const GRASS_UNIFORMS = { uNight: { value: 0 } };
+export const GRASS_UNIFORMS = { uNight: { value: 0 }, uFocus: { value: new THREE.Vector3() }, uFieldR: { value: 40 } };
 
 /**
  * A Lambert material whose instances bend with the wind by how far up the blade they are, with
@@ -88,8 +88,12 @@ function swayingMaterial(kind: 'grass' | 'flower'): THREE.MeshLambertMaterial {
     Object.assign(sh.uniforms, WIND_UNIFORMS, GRASS_UNIFORMS);
     sh.vertexShader = sh.vertexShader
       .replace('#include <common>', `#include <common>\nattribute float tip;\nvarying float vTip;\n${WIND_GLSL}`)
+      .replace('#include <common>\nattribute float tip;', '#include <common>\nattribute float tip;\nuniform vec3 uFocus; uniform float uFieldR;')
       .replace('#include <project_vertex>', `
         vTip = tip;
+        // Fade out towards the edge of the field so it never shows a border.
+        vec3 rootW = (modelMatrix * instanceMatrix * vec4(0.0, 0.0, 0.0, 1.0)).xyz;
+        transformed *= 1.0 - smoothstep(uFieldR * 0.7, uFieldR, length(rootW.xz - uFocus.xz));
         vec4 wpG = modelMatrix * instanceMatrix * vec4(transformed, 1.0);
         float bend = ${kind === 'grass' ? 'tip * tip * 0.55' : 'min(tip, 1.0) * 0.35'};
         wpG.xz += windOffset(wpG.xyz, bend);
@@ -239,8 +243,10 @@ export class MeadowField {
 
   update(focus: THREE.Vector3, ground: number): void {
     // High in the air the meadow is too far below to matter.
-    this.group.visible = this.enabled && focus.y - ground < 40;
+    this.group.visible = this.enabled && focus.y - ground < 22;
     if (!this.group.visible) return;
+    GRASS_UNIFORMS.uFocus.value.copy(focus);
+    GRASS_UNIFORMS.uFieldR.value = Math.min(FIELD_CELL * FIELD_CELLS, FLOWER_CELL * FLOWER_CELLS) / 2 - 1;
     this.grass.update(focus.x, focus.z);
     this.flowers.update(focus.x, focus.z);
   }

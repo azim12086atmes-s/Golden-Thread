@@ -82,3 +82,38 @@ describe('who can join', () => {
     expect(canJoin(p1, [p1], [], [p1.id]).ok).toBe(false);
   });
 });
+
+describe('the flying carpet', () => {
+  it('seats four children and four pets, apart from each other', async () => {
+    const { CARPET_SEATS, carpetSeats, MEMBER_CLEARANCE: MC } = await import('../src/caravan/caravan');
+    expect(CARPET_SEATS.child.length).toBe(4);
+    expect(CARPET_SEATS.pet.length).toBe(4);
+    const s = carpetSeats(0, 0, 0.7);
+    for (let i = 0; i < s.length; i++) for (let j = i + 1; j < s.length; j++) expect(Math.hypot(s[i].x - s[j].x, s[i].z - s[j].z)).toBeGreaterThanOrEqual(MC * 0.75);
+  });
+
+  it('flies beside them in every flight mode, clear of both of them and of any wings', async () => {
+    const { carpetTarget, carpetSeats, TRAVELLER_CLEARANCE: TC } = await import('../src/caravan/caravan');
+    // Half-wingspans (measured from the models): biplane 4.5 m, dragon 4.8 m; the cape and unicorns fold close.
+    const wing = { fly: 0.8, unicorn: 1.3, plane: 4.5, dragon: 4.8 } as const;
+    for (const mode of ['fly', 'unicorn', 'plane', 'dragon'] as const) {
+      for (let k = 0; k < 24; k++) {
+        const heading = k * 0.53, girl = { x: 10, y: 50, z: -4 };
+        const rx = Math.cos(heading), rz = -Math.sin(heading);
+        // He flies beside her (on the cape/unicorns), or sits behind her (plane, dragon).
+        const side = k % 2 ? 1 : -1, gap = mode === 'unicorn' ? 2.6 : mode === 'fly' ? 1.95 : 0;
+        const boy = { x: girl.x + rx * side * gap - Math.sin(heading) * (gap ? 0 : 1.5), z: girl.z + rz * side * gap - Math.cos(heading) * (gap ? 0 : 1.5) };
+        const c = carpetTarget(mode, girl, boy, heading);
+        for (const s of carpetSeats(c.x, c.z, heading)) {
+          expect(Math.hypot(s.x - girl.x, s.z - girl.z), `${mode} girl`).toBeGreaterThanOrEqual(TC + 1);
+          expect(Math.hypot(s.x - boy.x, s.z - boy.z), `${mode} boy`).toBeGreaterThanOrEqual(TC + 1);
+          // Sideways distance from her line of flight must clear the wing tip.
+          const lateral = Math.abs((s.x - girl.x) * rx + (s.z - girl.z) * rz);
+          expect(lateral, `${mode} wing`).toBeGreaterThan(wing[mode] + 0.3);
+        }
+        // Always on the side away from him.
+        if (gap) expect(Math.sign((c.x - girl.x) * rx + (c.z - girl.z) * rz)).toBe(-side);
+      }
+    }
+  });
+});

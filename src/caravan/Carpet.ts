@@ -7,12 +7,8 @@ import * as THREE from 'three';
  * and a trail of sparkles follows it.
  */
 
-/** Seats on the carpet (local metres; +z is forward): children in front, pets behind. */
-export const CARPET_SEATS = {
-  child: [[-0.95, 0.75], [-0.32, 0.75], [0.32, 0.75], [0.95, 0.75]] as const,
-  pet: [[-0.95, -0.75], [-0.32, -0.75], [0.32, -0.75], [0.95, -0.75]] as const,
-};
-export const CARPET_W = 2.9, CARPET_L = 3.6;
+import { CARPET_L, CARPET_SEATS, CARPET_W } from './caravan';
+import { currentWind } from '../world/wind';
 
 function weave(glow: boolean): THREE.CanvasTexture {
   const c = document.createElement('canvas');
@@ -111,18 +107,19 @@ export class Carpet {
 
   update(dt: number, t: number, night: number, speed: number): void {
     const pos = this.cloth.geometry.attributes.position as THREE.BufferAttribute;
-    const wave = 0.05 + Math.min(0.12, speed * 0.004);
+    const w = currentWind(), gust = w.strength * (0.6 + 0.4 * Math.sin(t * 1.7));
+    const wave = 0.05 + Math.min(0.12, speed * 0.004) + gust * 0.04;
     for (let i = 0; i < pos.count; i++) {
       const x = this.base[i * 3], z = this.base[i * 3 + 2];
       const edge = Math.abs(x) / (CARPET_W / 2);
       const back = (CARPET_L / 2 - z) / CARPET_L;
-      const y = Math.sin(z * 2.4 - t * 6) * wave * (0.4 + back) + Math.sin(x * 3 + t * 3.3) * 0.02 + edge * edge * 0.06;
+      const y = Math.sin(z * 2.4 - t * 6) * wave * (0.4 + back) + Math.sin(x * 3 + t * 3.3) * (0.02 + gust * 0.03) + edge * edge * 0.06;
       pos.setXYZ(i, x * this.open, y * this.open, z);
     }
     pos.needsUpdate = true;
     this.cloth.geometry.computeVertexNormals();
     this.cloth.material.emissiveIntensity = 0.25 + night * 1.2;
-    for (const tsl of this.tassels) tsl.rotation.x = tsl.userData.z * (1.1 + Math.sin(t * 7 + tsl.position.x * 3) * 0.25);
+    for (const tsl of this.tassels) tsl.rotation.x = tsl.userData.z * (1.1 + Math.sin(t * 7 + tsl.position.x * 3) * (0.25 + gust * 0.2));
     // Sparkles shed from the back edge drift and fade.
     const sp = this.sparks.geometry.attributes.position as THREE.BufferAttribute;
     const sc = this.sparks.geometry.attributes.color as THREE.BufferAttribute;

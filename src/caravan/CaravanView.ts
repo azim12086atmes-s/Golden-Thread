@@ -11,7 +11,7 @@ import { PET_BEDS, RIDE_CHILD_SEATS, VAN } from '../vehicles/vanLayout';
 
 /** Children are drawn at this scale of an adult. */
 const CHILD_SCALE = 0.62;
-import { CHILDREN, COMPANION_BY_ID, MAX_CHILDREN, caravanStep, canJoin, type CompanionDef, type Member } from './caravan';
+import { CARPET_L, CARPET_W, CHILDREN, COMPANION_BY_ID, MAX_CHILDREN, TRAVELLER_CLEARANCE, CARPET_SIDE, caravanStep, canJoin, carpetTarget, type CompanionDef, type Member } from './caravan';
 
 /**
  * The caravan in the world: the children and pets travelling with the two, walking behind them
@@ -145,27 +145,51 @@ export class CaravanView {
     });
   }
 
+  /** Where the carpet is relative to her (eased, so it glides into place but never lags behind). */
+  private carpetRel = new THREE.Vector3();
+  private carpetLive = false;
+
   /** The carpet flies beside the two (on the side away from him), then lands and rolls up. */
   private updateCarpet(dt: number, t: number, aloft: boolean): void {
     const g = this.g, tr = g.trav, root = this.carpet.root;
     root.visible = true;
-    const h = tr.heading, fx = Math.sin(h), fz = Math.cos(h), rx = Math.cos(h), rz = -Math.sin(h);
-    const side = (tr.bPos.x - tr.gPos.x) * rx + (tr.bPos.z - tr.gPos.z) * rz > 0 ? -1 : 1;
-    const big = tr.mode === 'dragon' || tr.mode === 'plane' || tr.mode === 'unicorn';
-    const off = big ? 7 : 4.2;
-    const want = this.tmp;
-    let k = 1 - Math.exp(-dt * 3);
+    const h = tr.heading;
+    const mode = tr.mode === 'dragon' || tr.mode === 'plane' || tr.mode === 'unicorn' ? tr.mode : 'fly';
+    const k = 1 - Math.exp(-dt * 2.5);
     if (aloft) {
-      want.set(tr.gPos.x + rx * side * off - fx * 1.2, tr.gPos.y - 0.45 + Math.sin(t * 1.6) * 0.15, tr.gPos.z + rz * side * off - fz * 1.2);
-      this.carpetHeading += Math.atan2(Math.sin(h - this.carpetHeading), Math.cos(h - this.carpetHeading)) * k;
+      // Ease in her own frame (sideways, forward, up) and turn the carpet with her: on a sharp
+      // turn it swings round her at its full distance and never cuts across the two.
+      const want = carpetTarget(mode, tr.gPos, tr.bPos, this.carpetHeading);
+      const ch = this.carpetHeading, rx = Math.cos(ch), rz = -Math.sin(ch), fx = Math.sin(ch), fz = Math.cos(ch);
+      const dx = want.x - tr.gPos.x, dz = want.z - tr.gPos.z;
+      const local = this.tmp.set(dx * rx + dz * rz, want.y - tr.gPos.y + Math.sin(t * 1.6) * 0.15, dx * fx + dz * fz);
+      if (!this.carpetLive) {
+        const px = root.position.x - tr.gPos.x, pz = root.position.z - tr.gPos.z;
+        this.carpetRel.set(px * rx + pz * rz, root.position.y - tr.gPos.y, px * fx + pz * fz);
+        // Never start inside the clear space round her.
+        if (Math.abs(this.carpetRel.x) < Math.abs(local.x) * 0.6) this.carpetRel.x = local.x * 0.6;
+        this.carpetLive = true;
+      }
+      this.carpetRel.x += (local.x - this.carpetRel.x) * k;
+      this.carpetRel.z += (local.z - this.carpetRel.z) * k;
+      this.carpetRel.y += (local.y - this.carpetRel.y) * (1 - Math.exp(-dt * 5));
+      this.carpetHeading += Math.atan2(Math.sin(h - ch), Math.cos(h - ch)) * (1 - Math.exp(-dt * 3));
+      const c2 = this.carpetHeading, r2x = Math.cos(c2), r2z = -Math.sin(c2), f2x = Math.sin(c2), f2z = Math.cos(c2);
+      root.position.set(tr.gPos.x + r2x * this.carpetRel.x + f2x * this.carpetRel.z, tr.gPos.y + this.carpetRel.y, tr.gPos.z + r2z * this.carpetRel.x + f2z * this.carpetRel.z);
+      // The rule, whatever the flying: no seat within reach of either of the two.
+      const reach = Math.max(CARPET_W / 2 + CARPET_L / 2 * 0.6 + TRAVELLER_CLEARANCE + 0.3, CARPET_SIDE[mode] - 0.5);
+      for (const p of [tr.gPos, tr.bPos]) {
+        const ox = root.position.x - p.x, oz = root.position.z - p.z, d = Math.hypot(ox, oz);
+        if (d < reach) { const u = d > 1e-3 ? 1 / d : 0; root.position.x = p.x + (d > 1e-3 ? ox * u : r2x) * reach; root.position.z = p.z + (d > 1e-3 ? oz * u : r2z) * reach; }
+      }
       this.carpet.open = Math.min(1, this.carpet.open + dt * 1.5);
     } else {
       // Coming in to land where it is, then everyone steps off and it rolls up.
-      want.set(root.position.x, surfaceAt(root.position.x, root.position.z, root.position.y + 3) + 0.3, root.position.z);
-      k = 1 - Math.exp(-dt * 2.2);
-      if (root.position.y - want.y < 0.12) this.carpet.open = Math.max(0, this.carpet.open - dt * 1.4);
+      this.carpetLive = false;
+      const ground = surfaceAt(root.position.x, root.position.z, root.position.y + 3) + 0.3;
+      root.position.y += (ground - root.position.y) * (1 - Math.exp(-dt * 2.2));
+      if (root.position.y - ground < 0.12) this.carpet.open = Math.max(0, this.carpet.open - dt * 1.4);
     }
-    root.position.lerp(want, k);
     root.rotation.set(Math.sin(t * 1.3) * 0.03, this.carpetHeading, Math.sin(t * 0.9) * 0.04 * (aloft ? 1 : 0));
     this.carpet.update(dt, t, g.sky.night, aloft ? tr.currentSpeed : 0);
     root.updateMatrixWorld();
