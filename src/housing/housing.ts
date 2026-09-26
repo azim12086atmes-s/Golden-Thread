@@ -3,6 +3,7 @@ import { DAY_MINUTES, type GameState, type PlacedDecor } from '../core/state';
 import { addItem, removeItems } from '../economy/economy';
 import { SPECIES, type SpeciesId } from '../animals/AnimalModel';
 import { REGIONS, type RegionId } from '../world/regions';
+import { ITEMS } from '../economy/items';
 
 /** Plots of land for sale in every land, and what can be built on them. Pure rules. */
 
@@ -41,11 +42,53 @@ export const DECOR_BY_ID = Object.fromEntries(DECOR.map((d) => [d.id, d]));
 /** A house in the land's style costs this on top of the land when bought together. */
 export const HOME_PRICE = 160;
 
-export const CROPS: Record<string, { out: string; qty: number; grow: number }> = {
-  seed_flower: { out: 'wildflower', qty: 4, grow: DAY_MINUTES * 0.5 },
-  seed_herb: { out: 'herbs', qty: 3, grow: DAY_MINUTES },
-  seed_rice: { out: 'rice', qty: 4, grow: DAY_MINUTES },
+/**
+ * What grows: the harvest, how many, how long it takes (game minutes), and how it looks — its
+ * leaves, what it bears when ripe, and its habit (tall stalks, a bush, a trailing vine, a flower).
+ */
+export interface CropDef { out: string; qty: number; grow: number; leaf: string; ripe: string; shape: 'stalk' | 'bush' | 'vine' | 'flower' }
+export const CROPS: Record<string, CropDef> = {
+  seed_flower: { out: 'wildflower', qty: 4, grow: DAY_MINUTES * 0.5, leaf: '#6aab52', ripe: '#ff8fb8', shape: 'flower' },
+  seed_herb: { out: 'herbs', qty: 3, grow: DAY_MINUTES, leaf: '#4f9a44', ripe: '#7ac85a', shape: 'bush' },
+  seed_rice: { out: 'rice', qty: 4, grow: DAY_MINUTES, leaf: '#9ac85a', ripe: '#e8d27a', shape: 'stalk' },
+  seed_wheat: { out: 'wheat', qty: 5, grow: DAY_MINUTES * 0.8, leaf: '#9ab84a', ripe: '#e8c35a', shape: 'stalk' },
+  seed_tomato: { out: 'tomato', qty: 4, grow: DAY_MINUTES * 1.2, leaf: '#4f8f3a', ripe: '#e8402a', shape: 'bush' },
+  seed_carrot: { out: 'carrot', qty: 4, grow: DAY_MINUTES * 0.7, leaf: '#6ab84a', ripe: '#ff8a2a', shape: 'bush' },
+  seed_pumpkin: { out: 'pumpkin', qty: 2, grow: DAY_MINUTES * 1.6, leaf: '#4f8f3a', ripe: '#ff8a1f', shape: 'vine' },
+  seed_strawberry: { out: 'strawberry', qty: 5, grow: DAY_MINUTES * 1.0, leaf: '#3f8a3a', ripe: '#e8284a', shape: 'vine' },
+  seed_chilli: { out: 'chilli', qty: 5, grow: DAY_MINUTES * 1.1, leaf: '#3f8a3a', ripe: '#d81f1f', shape: 'bush' },
+  seed_sunflower: { out: 'sunflower', qty: 3, grow: DAY_MINUTES * 0.9, leaf: '#5a9a3a', ripe: '#ffd21f', shape: 'flower' },
+  seed_cotton: { out: 'cotton', qty: 3, grow: DAY_MINUTES * 1.3, leaf: '#5a8a3a', ripe: '#fbf6ee', shape: 'bush' },
+  seed_tea: { out: 'tea', qty: 4, grow: DAY_MINUTES * 1.4, leaf: '#2f7a3a', ripe: '#6ac85a', shape: 'bush' },
 };
+
+/** Watering a bed once brings its harvest this much closer (a share of its growing time). */
+export const WATER_BOOST = 0.3;
+
+/** The seeds each land's market stalls sell (their own farming), and at what price. */
+export const SEED_SHOP: Record<RegionId, string[]> = {
+  meadow: ['seed_flower', 'seed_carrot', 'seed_pumpkin', 'seed_strawberry', 'seed_wheat'],
+  japan: ['seed_rice', 'seed_tea', 'seed_strawberry'], korea: ['seed_rice', 'seed_chilli', 'seed_carrot'],
+  china: ['seed_rice', 'seed_tea', 'seed_chilli'], norway: ['seed_carrot', 'seed_wheat', 'seed_strawberry'],
+  switzerland: ['seed_wheat', 'seed_carrot', 'seed_flower'], london: ['seed_herb', 'seed_tomato', 'seed_strawberry'],
+  newyork: ['seed_tomato', 'seed_pumpkin', 'seed_sunflower'], renaissance: ['seed_tomato', 'seed_herb', 'seed_wheat'],
+  vintage: ['seed_sunflower', 'seed_pumpkin', 'seed_flower'], islamic: ['seed_herb', 'seed_tomato', 'seed_chilli'],
+  middleeast: ['seed_wheat', 'seed_chilli', 'seed_herb'], desert: ['seed_wheat', 'seed_herb'],
+  egypt: ['seed_cotton', 'seed_wheat', 'seed_tomato'], indianorth: ['seed_wheat', 'seed_chilli', 'seed_cotton', 'seed_carrot'],
+  indiasouth: ['seed_rice', 'seed_chilli', 'seed_tea'], mughal: ['seed_flower', 'seed_wheat', 'seed_carrot'],
+  indonesia: ['seed_rice', 'seed_tea', 'seed_chilli'], aurora: ['seed_carrot', 'seed_herb'], skyisles: ['seed_flower', 'seed_sunflower'],
+};
+export const seedPrice = (seed: string) => Math.ceil((ITEMS[seed]?.value ?? 4) * 1.6);
+
+/** Buy seeds at a market stall. Pure rule: coins down, seeds in the bag. */
+export function buySeed(st: GameState, land: RegionId, seed: string): 'ok' | 'coins' | 'unknown' {
+  if (!SEED_SHOP[land].includes(seed) || !CROPS[seed]) return 'unknown';
+  const price = seedPrice(seed);
+  if (st.coins < price) return 'coins';
+  st.coins -= price;
+  addItem(st, seed, 1);
+  return 'ok';
+}
 
 export class Housing {
   constructor(private st: GameState, private bus: EventBus) {}
@@ -140,6 +183,16 @@ export class Housing {
     if (!bed || bed.kind !== 'farmbed' || bed.crop || !CROPS[seed]) return false;
     if (!removeItems(this.st, { [seed]: 1 })) return false;
     bed.crop = { seed, plantedAt: this.st.minutes };
+    this.bus.emit('plot:changed', { plotId });
+    return true;
+  }
+
+  /** Water a bed: once per planting, it brings the harvest closer. */
+  water(plotId: string, decorId: string): boolean {
+    const bed = this.st.plots[plotId]?.decor.find((d) => d.id === decorId);
+    if (!bed?.crop || bed.crop.watered || this.growth(bed) >= 1) return false;
+    bed.crop.plantedAt -= CROPS[bed.crop.seed].grow * WATER_BOOST;
+    bed.crop.watered = true;
     this.bus.emit('plot:changed', { plotId });
     return true;
   }

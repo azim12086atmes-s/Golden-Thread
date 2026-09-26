@@ -78,6 +78,9 @@ export const FAVOURS: Favour[] = [
   { ask: 'I need to fix this bench before the evening crowd.', done: 'A few nails and it is steady again.', coins: 9 },
   { ask: 'My grandmother is unwell — do you have any fresh herbs for her tea?', done: 'You hand over the herbs. The kettle goes on at once.', coins: 14, needs: { item: 'herbs', qty: 1 } },
   { ask: 'We are cooking for the whole street tonight and ran out of rice.', done: 'The pot is full again; you are invited to supper.', coins: 12, needs: { item: 'rice', qty: 2 } },
+  { ask: 'The school kitchen needs tomatoes for tomorrow\'s soup — do you grow any?', done: 'A basket of tomatoes, and forty happy children at lunch.', coins: 16, needs: { item: 'tomato', qty: 2 } },
+  { ask: 'Our festival needs a pumpkin for the lantern contest!', done: 'Carved and glowing — it wins, of course.', coins: 20, needs: { item: 'pumpkin', qty: 1 } },
+  { ask: 'Some wheat for the baker? The mill ran short.', done: 'Flour by noon, bread by evening.', coins: 12, needs: { item: 'wheat', qty: 3 } },
   { ask: 'A bunch of flowers for my friend\'s new shop would be perfect.', done: 'The flowers go in a jar on the counter. The first customer smiles.', coins: 10, needs: { item: 'wildflower', qty: 2 } },
 ];
 

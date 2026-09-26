@@ -19,7 +19,7 @@ import { SKY_PAUSED, TIME_LABEL, jumpTo, type TimeOfDay } from './core/time';
 import { DAY_MINUTES, hourOf, newGame, type GameState, type VanSlot } from './core/state';
 import { addItem, craft, removeItems, sell, sellPrice, teach, type CraftResult } from './economy/economy';
 import { ITEMS, SKILLS } from './economy/items';
-import { Housing, PLOTS, PLOT_BY_ID, PLOT_SIZE, type PlotSite } from './housing/housing';
+import { CROPS, Housing, PLOTS, PLOT_BY_ID, PLOT_SIZE, buySeed, seedPrice, type PlotSite } from './housing/housing';
 import { HousingView } from './housing/HousingView';
 import { VAN_OPTIONS, VanInterior } from './housing/VanInterior';
 import { Npcs, type Npc } from './npc/Npcs';
@@ -61,6 +61,7 @@ export type Interactable =
   | { kind: 'companion'; id: string; label: string }
   | { kind: 'folk'; walker: Walker; label: string }
   | { kind: 'door'; door: Door; label: string }
+  | { kind: 'market'; walker: Walker; label: string }
   | { kind: 'bed'; plotId: string; decorId: string; label: string };
 
 /** A scripted scene that takes the camera (and optionally renders its own scene). */
@@ -480,7 +481,10 @@ export class Game {
     if (folk) {
       const f = this.townsfolk.who(folk, this.day);
       const needs = f.favour && !(this.st.folk.day === this.day && this.st.folk.helped.includes(`${folk.land}:${folk.idx}`));
-      cands.push([Math.hypot(folk.x - p.x, folk.z - p.z) + 0.4, { kind: 'folk', walker: folk, label: needs ? `❗ ${f.name} needs a hand` : `💬 Talk with ${f.name}` }]);
+      const stall = folk.path.kind === 'stall' && folk.path.working;
+      cands.push([Math.hypot(folk.x - p.x, folk.z - p.z) + 0.4, stall
+        ? { kind: 'market', walker: folk, label: `🛒 ${f.name}'s stall — seeds & produce` }
+        : { kind: 'folk', walker: folk, label: needs ? `❗ ${f.name} needs a hand` : `💬 Talk with ${f.name}` }]);
     }
     cands.sort((a, b) => a[0] - b[0]);
     return cands[0]?.[1] ?? null;
@@ -500,6 +504,7 @@ export class Game {
     switch (t.kind) {
       case 'folk': return this.talkFolk(t.walker);
       case 'door': return this.enterHouse(t.door);
+      case 'market': this.townsfolk.turnTo(t.walker, this.trav.gPos); return this.ui.openMarket(t.walker.land);
       case 'npc': return this.talk(t.npc);
       case 'node': return this.gather(t.node);
       case 'animal': return this.ui.openAnimal(t.animal);
@@ -508,20 +513,8 @@ export class Game {
         this.ui.openProperty(t.site);
         return;
       }
-      case 'bed': {
-        const d = this.st.plots[t.plotId].decor.find((x) => x.id === t.decorId)!;
-        if (!d.crop) {
-          const seed = ['seed_flower', 'seed_herb', 'seed_rice'].find((s) => (this.st.inventory[s] ?? 0) > 0);
-          if (!seed) return this.toast('You have no seeds. Craft some with Gardening (I).');
-          this.housing.plant(t.plotId, t.decorId, seed);
-          this.toast(`Planted ${ITEMS[seed].name}.`);
-        } else {
-          const out = this.housing.harvest(t.plotId, t.decorId);
-          if (out) this.toast(`Harvested ${ITEMS[out].icon} ${ITEMS[out].name}!`, 'reward');
-        }
-        this.housingDirty = true;
-        return;
-      }
+      case 'bed':
+        return this.ui.openFarm(t.plotId, t.decorId);
       case 'lantern':
         if (this.quests.lightLantern(t.region)) this.ui.lanternMoment(REGION_BY_ID[t.region]);
         return;
@@ -716,6 +709,35 @@ export class Game {
   removeDecor(plotId: string, decorId: string): void {
     this.housing.remove(plotId, decorId);
     this.housingDirty = true;
+  }
+
+  // ───── the farm ─────
+
+  /** Plant a chosen seed in a bed. */
+  plantBed(plotId: string, decorId: string, seed: string): string {
+    if (!this.housing.plant(plotId, decorId, seed)) return (this.st.inventory[seed] ?? 0) > 0 ? 'Something is already growing here.' : `You have no ${ITEMS[seed].name}. Market stallholders in every town sell seeds.`;
+    this.housingDirty = true;
+    return `Planted ${ITEMS[seed].name}. ${ITEMS[CROPS[seed].out].icon} in about ${Math.round(CROPS[seed].grow / 60)} hours.`;
+  }
+
+  waterBed(plotId: string, decorId: string): string {
+    const ok = this.housing.water(plotId, decorId);
+    this.housingDirty = true;
+    return ok ? 'You water the bed together. The plants perk up — the harvest comes sooner.' : 'It has had its water.';
+  }
+
+  harvestBed(plotId: string, decorId: string): string {
+    const out = this.housing.harvest(plotId, decorId);
+    this.housingDirty = true;
+    if (!out) return 'Not ripe yet.';
+    this.st.light += 0.05;
+    return `Harvested ${ITEMS[out].icon} ${ITEMS[out].name}! Cook it (I), sell it at a market stall, or share it with someone who needs it.`;
+  }
+
+  buySeed(seed: string): string {
+    const r = buySeed(this.st, this.region.id, seed);
+    if (r === 'ok') { this.bus.emit('coins:changed', { coins: this.st.coins }); this.bus.emit('item:gained', { id: seed, qty: 1 }); return `+1 ${ITEMS[seed].name}`; }
+    return r === 'coins' ? `You need ${seedPrice(seed)} coins.` : 'Not sold here.';
   }
 
   // ───── inside a house ─────

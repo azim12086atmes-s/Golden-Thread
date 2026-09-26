@@ -8,7 +8,7 @@ import { dayOf, type VanSlot } from '../core/state';
 import { SKY_PAUSED, TIMES, TIME_LABEL, nextTime, timeOfDay } from '../core/time';
 import { canCraft, count, level } from '../economy/economy';
 import { ITEMS, LEVEL_XP, RECIPES, SKILLS, type SkillId } from '../economy/items';
-import { DECOR, DECOR_BY_ID, PLOT_BY_ID } from '../housing/housing';
+import { CROPS, DECOR, DECOR_BY_ID, PLOT_BY_ID, SEED_SHOP, seedPrice } from '../housing/housing';
 import { SLOT_NAMES, VAN_OPTIONS } from '../housing/VanInterior';
 import type { Npc } from '../npc/Npcs';
 import { PEOPLE_BY_ID } from '../npc/people';
@@ -23,7 +23,7 @@ import { VEHICLES, type VehicleId } from '../vehicles/vehicles';
 import { GRID_COLS, GRID_ROWS, REGIONS, REGION_BY_ID, regionCenter, type RegionId, type RegionSpec } from '../world/regions';
 import type { Game } from '../Game';
 
-type Panel = 'wardrobe' | 'bag' | 'journal' | 'map' | 'messages' | 'vehicles' | 'dialogue' | 'animal' | 'build' | 'van' | 'house' | 'help' | 'homes' | 'property' | null;
+type Panel = 'wardrobe' | 'bag' | 'journal' | 'map' | 'messages' | 'vehicles' | 'dialogue' | 'animal' | 'build' | 'van' | 'house' | 'farm' | 'market' | 'help' | 'homes' | 'property' | null;
 
 const h = (tag: string, attrs: Record<string, string> = {}, ...kids: Array<Node | string | null | false>) => {
   const el = document.createElement(tag);
@@ -503,6 +503,57 @@ export class UI {
     this.open('van');
   }
 
+  private farmBed: { plotId: string; decorId: string } | null = null;
+  private marketLand: RegionId = 'meadow';
+  private farmNote = '';
+
+  openFarm(plotId: string, decorId: string): void {
+    this.farmBed = { plotId, decorId };
+    this.farmNote = '';
+    this.open('farm');
+  }
+
+  openMarket(land: RegionId): void {
+    this.marketLand = land;
+    this.farmNote = '';
+    this.open('market');
+  }
+
+  /** A farm bed: what grows, how far along, and what you can do — plant, water, harvest. */
+  private farmPanel(body: HTMLElement): void {
+    const g = this.g, st = g.st, b = this.farmBed;
+    const d = b && st.plots[b.plotId]?.decor.find((x) => x.id === b.decorId);
+    if (!b || !d) return;
+    if (d.crop) {
+      const cd = CROPS[d.crop.seed], gr = g.housing.growth(d), out = ITEMS[cd.out];
+      body.append(h('p', {}, `${out.icon} ${out.name} — ${gr >= 1 ? 'ripe and ready!' : `${Math.round(gr * 100)}% grown`}${d.crop.watered ? ' · watered' : ''}`),
+        h('div', { class: 'meter' }, h('i', { style: `inline-size:${Math.round(gr * 100)}%` })),
+        h('div', { class: 'acts' },
+          btn(`🧺 Harvest ${cd.qty}× ${out.icon}`, () => { this.farmNote = g.harvestBed(b.plotId, b.decorId); this.render(); }, gr >= 1 ? 'primary' : 'ghost', gr < 1),
+          btn('💧 Water', () => { this.farmNote = g.waterBed(b.plotId, b.decorId); this.render(); }, 'ghost', !!d.crop.watered || gr >= 1)));
+    } else {
+      const seeds = Object.keys(CROPS).filter((k) => (st.inventory[k] ?? 0) > 0);
+      body.append(h('p', {}, 'An empty bed, dug and ready. What shall we grow?'));
+      body.append(seeds.length
+        ? h('div', { class: 'acts' }, ...seeds.map((k) => btn(`${ITEMS[CROPS[k].out].icon} ${ITEMS[k].name} ×${st.inventory[k]}`, () => { this.farmNote = g.plantBed(b.plotId, b.decorId, k); this.render(); }, 'ghost')))
+        : h('p', { class: 'dim' }, 'You have no seeds. Stallholders at every town market sell their land\'s seeds; you can also make flower, herb, rice and wheat seed with Gardening (I).'));
+    }
+    if (this.farmNote) body.append(h('p', { class: 'story' }, this.farmNote));
+  }
+
+  /** A market stall: this land's seeds to buy, and your produce and goods to sell. */
+  private marketPanel(body: HTMLElement): void {
+    const g = this.g, st = g.st, land = this.marketLand;
+    body.append(h('h3', {}, `Seeds of ${REGION_BY_ID[land].name}`),
+      h('div', { class: 'acts' }, ...SEED_SHOP[land].map((k) => btn(`${ITEMS[CROPS[k].out].icon} ${ITEMS[k].name} · 🪙${seedPrice(k)}`, () => { this.farmNote = g.buySeed(k); this.render(); }, 'ghost', st.coins < seedPrice(k)))));
+    const sellable = Object.entries(st.inventory).filter(([k, n]) => n > 0 && ['crop', 'food', 'good'].includes(ITEMS[k]?.kind));
+    body.append(h('h3', {}, 'Sell your harvest and your makings'),
+      sellable.length
+        ? h('div', { class: 'acts' }, ...sellable.map(([k, n]) => btn(`${ITEMS[k].icon} ${ITEMS[k].name} ×${n} · 🪙${g.priceHere(k)}`, () => { const got = g.sell(k); this.farmNote = got ? `Sold for ${got} coins.` : ''; this.render(); }, 'small ghost')))
+        : h('p', { class: 'dim' }, 'Nothing to sell yet — grow something, or cook what you grow (dishes fetch more).'));
+    if (this.farmNote) body.append(h('p', { class: 'story' }, this.farmNote));
+  }
+
   private houseNote = '';
   openHouse(_d: unknown): void {
     this.houseNote = '';
@@ -525,7 +576,7 @@ export class UI {
 
   render(): void {
     const body = h('div', { class: 'body' });
-    const titles: Record<string, string> = { wardrobe: 'Dressing room', bag: 'Bag & Crafts', journal: 'Journal', map: 'The World', messages: 'Messages', vehicles: 'Ways to Travel', dialogue: '', animal: '', build: 'Build', van: 'Inside Safar', house: this.g.houseTitle(), help: 'How to play', homes: 'Homes & Land', property: 'Land for sale' };
+    const titles: Record<string, string> = { wardrobe: 'Dressing room', bag: 'Bag & Crafts', journal: 'Journal', map: 'The World', messages: 'Messages', vehicles: 'Ways to Travel', dialogue: '', animal: '', build: 'Build', van: 'Inside Safar', house: this.g.houseTitle(), farm: 'Farm bed', market: 'Market stall', help: 'How to play', homes: 'Homes & Land', property: 'Land for sale' };
     const head = h('header', {}, h('h2', {}, titles[this.panel ?? ''] ?? ''), btn('✕', () => this.closePanel(), 'close'));
     switch (this.panel) {
       case 'wardrobe': this.wardrobe(body); break;
@@ -539,6 +590,8 @@ export class UI {
       case 'build': this.buildPanel(body); break;
       case 'van': this.vanPanel(body); break;
       case 'house': this.housePanel(body); break;
+      case 'farm': this.farmPanel(body); break;
+      case 'market': this.marketPanel(body); break;
       case 'help': this.help(body); break;
       case 'homes': this.homes(body); break;
       case 'property': this.property(body); break;

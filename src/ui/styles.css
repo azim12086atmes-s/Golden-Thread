@@ -348,3 +348,6 @@ body.cinematic #ui > .feed { opacity: 0; }
 
 .time-btn { font: inherit; color: inherit; background: none; border: 0; padding: 2px 6px; margin: -2px -6px; border-radius: 8px; cursor: pointer; }
 .time-btn:hover, .time-btn:focus-visible { background: rgba(245, 196, 81, 0.2); outline: none; }
+.panel p.story { font: 500 15px/1.45 var(--display); color: var(--ink); padding: 8px 12px; border-inline-start: 3px solid rgba(255, 143, 184, 0.6); background: rgba(255, 255, 255, 0.04); border-radius: 8px; }
+.meter { block-size: 8px; border-radius: 999px; background: rgba(255, 255, 255, 0.12); overflow: hidden; margin-block: 6px 10px; }
+.meter i { display: block; block-size: 100%; background: linear-gradient(90deg, #7fb35a, #f5c451); }

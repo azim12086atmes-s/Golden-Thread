@@ -247,3 +247,52 @@ describe('saving', () => {
     expect(skillLevel(139)).toBe(2);
   });
 });
+
+describe('farming: buy, plant, water, grow, harvest, cook, sell', () => {
+  it('a full season, saved and reloaded half-way', async () => {
+    const { Housing, CROPS, SEED_SHOP, buySeed, seedPrice, WATER_BOOST } = await import('../src/housing/housing');
+    const { EventBus } = await import('../src/core/events');
+    const { craft, sell, sellPrice } = await import('../src/economy/economy');
+    const { serialize, deserialize } = await import('../src/core/save');
+    const { ITEMS, RECIPES } = await import('../src/economy/items');
+    let st = newGame();
+    st.coins = 1000;
+    const h = new Housing(st, new EventBus());
+    expect(h.buy('meadow-a')).toBe('ok');
+    const bed = h.place('meadow-a', 'farmbed', 0, 0, 0)!;
+    // Buy seeds at a market stall: this land's own.
+    expect(SEED_SHOP.meadow).toContain('seed_pumpkin');
+    expect(buySeed(st, 'meadow', 'seed_tea')).toBe('unknown'); // not grown here
+    const coins = st.coins;
+    expect(buySeed(st, 'meadow', 'seed_wheat')).toBe('ok');
+    expect(st.coins).toBe(coins - seedPrice('seed_wheat'));
+    expect(h.plant('meadow-a', bed.id, 'seed_wheat')).toBe(true);
+    expect(st.inventory.seed_wheat ?? 0).toBe(0);
+    // Water once: closer to harvest, and only once.
+    const before = h.growth(bed);
+    expect(h.water('meadow-a', bed.id)).toBe(true);
+    expect(h.growth(bed) - before).toBeCloseTo(WATER_BOOST, 5);
+    expect(h.water('meadow-a', bed.id)).toBe(false);
+    // Save and reload mid-season: the crop is still there.
+    st = deserialize(serialize(st))!;
+    const h2 = new Housing(st, new EventBus());
+    const bed2 = st.plots['meadow-a'].decor.find((d) => d.id === bed.id)!;
+    expect(bed2.crop?.seed).toBe('seed_wheat');
+    expect(h2.harvest('meadow-a', bed.id)).toBeNull(); // not ripe
+    st.minutes += CROPS.seed_wheat.grow;
+    expect(h2.harvest('meadow-a', bed.id)).toBe('wheat');
+    expect(st.inventory.wheat).toBe(CROPS.seed_wheat.qty);
+    // Cook it, then sell the dish for more than the grain.
+    const r = craft(st, 'roti');
+    expect(r.ok).toBe(true);
+    expect(sellPrice('roti', 'london', [])).toBeGreaterThan(sellPrice('wheat', 'london', []) * 2);
+    expect(sell(st, 'roti', 'london', [])).toBeGreaterThan(0);
+    // Every crop's harvest is a real item, and every farm crop goes into at least one recipe or favour.
+    for (const [seed, c] of Object.entries(CROPS)) {
+      expect(ITEMS[seed], seed).toBeDefined();
+      expect(ITEMS[c.out], c.out).toBeDefined();
+    }
+    for (const out of ['wheat', 'tomato', 'carrot', 'pumpkin', 'strawberry', 'chilli', 'sunflower']) expect(RECIPES.some((rc) => out in rc.needs), out).toBe(true);
+    for (const land of Object.keys(SEED_SHOP)) for (const sd of SEED_SHOP[land as keyof typeof SEED_SHOP]) expect(CROPS[sd], `${land} ${sd}`).toBeDefined();
+  });
+});

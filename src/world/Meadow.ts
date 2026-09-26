@@ -1,5 +1,6 @@
 import * as THREE from 'three';
 import { LOCALES } from './locale';
+import { PLOTS, PLOT_SIZE } from './plots';
 import { CITY_RADIUS, REGION_SIZE, regionAt } from './regions';
 import { WATER_Y, groundColor, terrainHeight } from './terrain';
 import { WIND_GLSL, WIND_UNIFORMS } from './wind';
@@ -126,6 +127,8 @@ export function grassy(x: number, z: number, h: number, col: THREE.Color): boole
   if (d < 54) return false; // the plaza and landmark
   if (d < CITY_RADIUS + 48 && (Math.abs(lx) < 12 || Math.abs(lz) < 12)) return false; // avenues
   if (Math.abs(d - 140) < 8.5) return false; // the ring road
+  // Plots of land are for building and farming: the meadow stops at their fences.
+  if (PLOTS.some((p) => Math.abs(x - p.x) < PLOT_SIZE / 2 + 1 && Math.abs(z - p.z) < PLOT_SIZE / 2 + 1)) return false;
   return true;
 }
 

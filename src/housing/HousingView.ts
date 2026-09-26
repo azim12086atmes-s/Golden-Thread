@@ -6,7 +6,7 @@ import { GeoBuilder, box, cyl, flowers, sphere, tent, tree } from '../world/kit'
 import { REGION_BY_ID, type RegionId } from '../world/regions';
 import { surfaceAt } from '../world/terrain';
 import type { World } from '../world/World';
-import { DECOR_BY_ID, PLOT_BY_ID, PLOT_SIZE } from './housing';
+import { CROPS, DECOR_BY_ID, PLOT_BY_ID, PLOT_SIZE } from './housing';
 
 /** Builds the look of a piece of decor. Used for placed decor and for the build-mode ghost. */
 export function buildDecor(kind: string, region: RegionId, seed: string, growth = 0, crop?: string): { g: GeoBuilder; glow: GeoBuilder } {
@@ -36,15 +36,33 @@ export function buildDecor(kind: string, region: RegionId, seed: string, growth 
     case 'farmbed': {
       box(g, 2.4, 0.28, 2.4, '#5a3a26');
       for (let i = 0; i < 5; i++) box(g, 2.2, 0.06, 0.18, '#4a2e1e', 0, 0.28, -0.9 + i * 0.45);
-      if (crop) {
-        const col = crop === 'seed_rice' ? '#9ac85a' : crop === 'seed_herb' ? '#4f9a44' : '#6aab52';
-        const ripe = crop === 'seed_flower' ? '#ff8fb8' : crop === 'seed_rice' ? '#e8d27a' : '#7ac85a';
+      if (crop && CROPS[crop]) {
+        const cd = CROPS[crop], col = cd.leaf, ripe = cd.ripe, g1 = Math.min(1, growth);
         for (let i = 0; i < 9; i++) {
           const x = -0.8 + (i % 3) * 0.8, z = -0.8 + Math.floor(i / 3) * 0.8;
-          const h = 0.15 + growth * 0.6;
-          cyl(g, 0.04, 0.05, h, col, x, 0.3, z, 4);
-          if (growth >= 1) sphere(g, 0.14, ripe, x, 0.3 + h, z, 5);
-          else sphere(g, 0.08 + growth * 0.1, col, x, 0.3 + h, z, 4);
+          if (cd.shape === 'stalk') {
+            // Wheat and rice: a clump of tall stalks, heads turning gold as they ripen.
+            for (let k = 0; k < 4; k++) {
+              const h = 0.15 + g1 * (0.7 + (k % 2) * 0.15), ox = x + (k % 2 - 0.5) * 0.18, oz = z + (Math.floor(k / 2) - 0.5) * 0.18;
+              cyl(g, 0.015, 0.02, h, col, ox, 0.3, oz, 3);
+              if (g1 > 0.5) cyl(g, 0.035, 0.02, 0.18, g1 >= 1 ? ripe : col, ox, 0.3 + h, oz, 4);
+            }
+          } else if (cd.shape === 'vine') {
+            // Pumpkins and strawberries: leaves spreading low, fruit sitting among them.
+            sphere(g, 0.12 + g1 * 0.2, col, x, 0.33, z, 6, 0.45);
+            if (g1 > 0.6) sphere(g, crop === 'seed_pumpkin' ? 0.1 + (g1 - 0.6) * 0.45 : 0.06, g1 >= 1 ? ripe : '#9ac85a', x + 0.15, 0.36, z + 0.1, 7, crop === 'seed_pumpkin' ? 0.75 : 1);
+          } else if (cd.shape === 'flower') {
+            const h = 0.15 + g1 * (crop === 'seed_sunflower' ? 1.3 : 0.5);
+            cyl(g, 0.025, 0.03, h, col, x, 0.3, z, 4);
+            sphere(g, 0.07, col, x + 0.08, 0.3 + h * 0.5, z, 4, 0.5);
+            if (g1 >= 0.8) sphere(g, crop === 'seed_sunflower' ? 0.2 : 0.12, ripe, x, 0.3 + h, z, 7, crop === 'seed_sunflower' ? 0.35 : 1);
+          } else {
+            // Bushes: tomatoes, chillies, carrots, herbs, cotton, tea.
+            const h = 0.12 + g1 * 0.45;
+            cyl(g, 0.03, 0.04, h, '#5a7a3a', x, 0.3, z, 4);
+            sphere(g, 0.1 + g1 * 0.18, col, x, 0.3 + h, z, 6, 0.9);
+            if (g1 >= 1) for (let k = 0; k < 4; k++) sphere(g, crop === 'seed_carrot' ? 0.05 : 0.055, ripe, x + Math.cos(k * 1.6) * 0.18, 0.3 + h - 0.05 + (k % 2) * 0.1, z + Math.sin(k * 1.6) * 0.18, 4);
+          }
         }
       }
       break;

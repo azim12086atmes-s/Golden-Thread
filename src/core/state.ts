@@ -32,7 +32,7 @@ export interface PlacedDecor {
   z: number;
   rot: number;
   /** For farm beds: what is planted and when. */
-  crop?: { seed: string; plantedAt: number };
+  crop?: { seed: string; plantedAt: number; watered?: boolean };
 }
 
 export interface AnimalState {
