@@ -77,6 +77,8 @@ export interface GameState {
   caravan: string[];
   /** Real seconds played, for the journal. */
   playSeconds: number;
+  /** Today's conversations in town: who asked for a hand and whom you helped. */
+  folk: { day: number; asked: string[]; helped: string[] };
 }
 
 export function newGame(): GameState {
@@ -108,6 +110,7 @@ export function newGame(): GameState {
     tracked: '',
     caravan: ['child-rosie', 'child-teo', 'pet-sheepdog', 'pet-clover'],
     playSeconds: 0,
+    folk: { day: 0, asked: [], helped: [] },
   };
 }
 

@@ -1,4 +1,5 @@
 import * as THREE from 'three';
+import { PartyAir } from '../world/PartyAir';
 import { AnimalModel } from '../animals/AnimalModel';
 import { CharacterModel } from '../characters/CharacterModel';
 import { OUTFITS } from '../characters/outfits';
@@ -82,6 +83,8 @@ export class Festivities {
   private rainbows: THREE.Mesh<THREE.TorusGeometry, THREE.ShaderMaterial>[] = [];
   private unicorns: Array<{ m: AnimalModel; a: number; r: number; s: number }> = [];
   readonly dragon = new Dragon();
+  /** The air of every land, each in its own slice round the courtyard. */
+  readonly air = new PartyAir();
   private crowd: Array<{ model: CharacterModel; x: number; z: number; face: number; ph: number }> = [];
   private crowdOn = false;
   private dancers: Array<{ model: CharacterModel; a: number; r: number; ph: number }> = [];
@@ -106,7 +109,7 @@ export class Festivities {
     // Magic dust: a slow rainbow swirl around the courtyard.
     this.dust = swarm(900, 0.16, dot, (i, c) => c.setHSL((i / 900) % 1, 0.9, 0.72), true);
     this.seed(this.dust, 26, 0.5, 9);
-    this.group.add(this.petals.points, this.flies.points, this.dust.points);
+    this.group.add(this.petals.points, this.flies.points, this.dust.points, this.air.group);
 
     // Roses: real little blossoms tumbling down.
     const rose = new THREE.DodecahedronGeometry(0.11, 0);
@@ -238,6 +241,9 @@ export class Festivities {
     if (!this.group.visible) return;
     const L = this.level;
     for (const m of [this.petals, this.flies, this.dust]) m.points.material.opacity = L;
+    this.air.level = L;
+    // The group sits at the origin; the air is placed at the courtyard in world space.
+    this.air.update(dt, t, this.centre, night, typeof innerHeight === 'number' ? innerHeight / 2 : 360);
 
     // Petals fall, sway and are recycled above.
     {

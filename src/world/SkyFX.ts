@@ -1,6 +1,6 @@
 import * as THREE from 'three';
 import { smoothstep } from '../core/rng';
-import type { RegionId } from './regions';
+import { REGIONS, type RegionId } from './regions';
 import { SKIES, SKY_KINDS, fireworkRate, type SkyKind } from './skies';
 import { auroraMaterial } from './Sky';
 
@@ -86,6 +86,10 @@ const NIGHT_FRAG = `
     }
     gl_FragColor = vec4(col * up, 1.0);
   }`;
+
+/** Every land's sky colours, one after another: the celebration's palette. */
+export const PARTY_PALETTE: string[] = REGIONS.flatMap((r) => SKIES[r.id].palette);
+const REGION_IDS = REGIONS.map((r) => r.id);
 
 const KITES = 22, FLOCKS = 4, PER_FLOCK = 9, SHOOTERS = 6, BURSTS = 12, SPARKS = 130, BEAMS = 6, CLOUDS = 34;
 const KITE_R = 190, FLOCK_R = 280;
@@ -305,9 +309,13 @@ export class SkyFX {
   update(dt: number, t: number, focus: THREE.Vector3, land: RegionId, night: number, sunDir: THREE.Vector3): void {
     const design = SKIES[land];
     const e = Math.min(1, dt * 0.8);
-    this.pal.forEach((c, i) => c.lerp(tmpC.set(design.palette[i % design.palette.length]), e));
-    this.cloudTint.lerp(tmpC.set(design.cloud), e);
     const party = land === 'meadow' ? this.party : 0;
+    // At the celebration the sky wears every land's colours: fireworks, kites, beams and halos
+    // cycle slowly through all twenty palettes.
+    const palette = party > 0.3 ? PARTY_PALETTE : design.palette;
+    const shift = party > 0.3 ? Math.floor(t / 6) * 6 : 0;
+    this.pal.forEach((c, i) => c.lerp(tmpC.set(palette[(i + shift) % palette.length]), e));
+    this.cloudTint.lerp(tmpC.set(design.cloud), e);
     const k = Math.min(1, dt * 0.5);
     for (const kind of SKY_KINDS) {
       const want = Math.max(design.effects.includes(kind) ? 1 : 0, party);
@@ -535,8 +543,10 @@ export class SkyFX {
       }
       b.age = 0;
       b.rise = rnd(1, 1.6);
-      b.c1.copy(this.pal[Math.floor(Math.random() * this.pal.length)]);
-      b.c2.copy(Math.random() < 0.12 ? tmpC.set('#ffffff') : this.pal[Math.floor(Math.random() * this.pal.length)]);
+      // At the party each burst is one land's own firework colours.
+      const src = party > 0.3 ? SKIES[REGION_IDS[Math.floor(Math.random() * REGION_IDS.length)]].palette.map((x) => tmpD.set(x).clone()) : this.pal;
+      b.c1.copy(src[Math.floor(Math.random() * src.length)]);
+      b.c2.copy(Math.random() < 0.12 ? tmpC.set('#ffffff') : src[Math.floor(Math.random() * src.length)]);
       b.live = true;
       const i0 = this.bursts.indexOf(b) * SPARKS, ring = Math.random() < 0.25, speed = rnd(34, 48);
       for (let p = 0; p < SPARKS; p++) {

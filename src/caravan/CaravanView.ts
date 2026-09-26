@@ -6,6 +6,11 @@ import { wardrobeFor } from '../npc/Townsfolk';
 import { REGION_BY_ID } from '../world/regions';
 import { surfaceAt } from '../world/terrain';
 import { Carpet } from './Carpet';
+import { DIMS } from '../characters/CharacterModel';
+import { PET_BEDS, RIDE_CHILD_SEATS, VAN } from '../vehicles/vanLayout';
+
+/** Children are drawn at this scale of an adult. */
+const CHILD_SCALE = 0.62;
 import { CHILDREN, COMPANION_BY_ID, MAX_CHILDREN, caravanStep, canJoin, type CompanionDef, type Member } from './caravan';
 
 /**
@@ -60,7 +65,7 @@ export class CaravanView {
     if (def.kind === 'child') {
       const pool = wardrobeFor(def.origin, def.who);
       const outfit = pool[(def.name.length * 7) % pool.length];
-      body.child = new CharacterModel(outfit, ['#f1c9a5', '#e0ac85', '#c68b62', '#a8704a'][def.name.length % 4], 0.62);
+      body.child = new CharacterModel(outfit, ['#f1c9a5', '#e0ac85', '#c68b62', '#a8704a'][def.name.length % 4], CHILD_SCALE);
       this.g.scene.add(body.child.root);
     } else {
       body.pet = new AnimalModel(def.species, def.scale, def.tint);
@@ -116,6 +121,8 @@ export class CaravanView {
     const onFoot = tr.mode === 'walk' || tr.mode === 'fly';
     const show = g.started && onFoot && !g.inVan && cutOk;
     const girl = { x: tr.gPos.x, z: tr.gPos.z }, boy = { x: tr.bPos.x, z: tr.bPos.z };
+    const vanRoot = g.started && !g.inVan && tr.mode === 'van' ? tr.vehicleRoot : null;
+    if (vanRoot && cutOk) return this.rideInVan(dt, t, vanRoot);
     if (!show) {
       // Riding along: they catch up the moment the travellers are back on foot.
       for (const b of this.bodies) {
@@ -179,6 +186,30 @@ export class CaravanView {
     if (!aloft && this.carpet.open <= 0) {
       this.carpetState = 'off';
       root.visible = false;
+    }
+  }
+
+  /** Driving: the children sit on the benches by the big windows, the pets curl up in their beds. */
+  private rideInVan(dt: number, t: number, van: THREE.Object3D): void {
+    van.updateMatrixWorld();
+    let ci = 0, pi = 0;
+    for (const b of this.bodies) {
+      const r = (b.child ?? b.pet)!.root;
+      if (b.child) {
+        const s = RIDE_CHILD_SEATS[ci++ % RIDE_CHILD_SEATS.length];
+        // Sitting: the hips rest on the cushion (0.5 m up), legs forward.
+        r.position.set(s[0], VAN.floorY + 0.5 - DIMS.hip * CHILD_SCALE, s[2]);
+        r.rotation.set(0, s[0] < 0 ? Math.PI / 2 : -Math.PI / 2, 0);
+        b.child.update(dt, { speed: 0, airborne: false, riding: true, t: t + b.ph });
+      } else {
+        const [x, z] = PET_BEDS[pi++ % PET_BEDS.length];
+        r.position.set(x, VAN.floorY + 0.1, z);
+        r.rotation.set(0, Math.PI * 0.8, 0);
+        b.pet!.update(dt, 0, t + b.ph);
+      }
+      r.applyMatrix4(van.matrixWorld);
+      r.visible = true;
+      b.member.x = r.position.x; b.member.z = r.position.z; b.member.speed = 0;
     }
   }
 

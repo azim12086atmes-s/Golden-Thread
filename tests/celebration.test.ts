@@ -85,3 +85,33 @@ describe('the celebration evening', () => {
     expect(Object.keys(LAND_SHELF).length).toBe(REGIONS.length);
   });
 });
+
+describe('every land’s air at the celebration', () => {
+  it('each land’s own particles and every kind of weather fill their own slice round the courtyard', async () => {
+    const { partyAirs } = await import('../src/world/PartyAir');
+    const { LOCALES } = await import('../src/world/locale');
+    const { MODES } = await import('../src/world/Ambience');
+    const airs = partyAirs();
+    for (const r of REGIONS) {
+      const a = airs.find((x) => x.source === r.id);
+      expect(a, r.id).toBeDefined();
+      expect(a!.theme).toBe(LOCALES[r.id].particles);
+      expect(a!.n).toBeGreaterThan(50);
+    }
+    for (const m of Object.keys(MODES)) if (m !== 'none') expect(airs.some((x) => x.source === `ambient:${m}`), m).toBe(true);
+    // Slices on the same ring never overlap, so the lands' colours never muddy together.
+    const rings = new Map<number, typeof airs>();
+    for (const a of airs) rings.set(a.r0, [...(rings.get(a.r0) ?? []), a]);
+    for (const list of rings.values()) for (let i = 0; i < list.length; i++) for (let j = i + 1; j < list.length; j++) {
+      const d = Math.abs(Math.atan2(Math.sin(list[i].angle - list[j].angle), Math.cos(list[i].angle - list[j].angle)));
+      expect(d).toBeGreaterThanOrEqual(list[i].spread + list[j].spread - 1e-9);
+    }
+    // All of it stays out of the aisle-and-cake courtyard's middle and within the party grounds.
+    for (const a of airs) { expect(a.r0).toBeGreaterThanOrEqual(10); expect(a.r1).toBeLessThanOrEqual(100); }
+  });
+
+  it('the meadow’s sky has every sky effect, so the party shows them all', async () => {
+    const { SKIES, SKY_KINDS } = await import('../src/world/skies');
+    expect([...SKIES.meadow.effects].sort()).toEqual([...SKY_KINDS].sort());
+  });
+});

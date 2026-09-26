@@ -1,184 +1,169 @@
 import * as THREE from 'three';
-import { Rng } from '../core/rng';
-import type { RegionInstance } from '../world/RegionBuilder';
-import { regionCenter, type RegionId } from '../world/regions';
-import { surfaceAt } from '../world/terrain';
-import { wardrobeFor } from './Townsfolk';
+import { HEAD_GAP } from '../characters/anatomy';
+import { DIMS } from '../characters/CharacterModel';
+import type { Outfit } from '../characters/modesty';
 
 /**
- * The wider crowd that fills each town's streets: hundreds of people drawn cheaply (a few shared
- * instanced meshes per town) so a city can hold 300 at once. They walk the avenues and the ring
- * road on their own lanes, stroll round the plaza, and stand talking in little groups. Like
- * everyone in the game they have no faces and their heads float; they wear their land's colours
- * (taken from its own wardrobe), fully covered, many with headscarves, hats or caps.
+ * How a town's crowd is drawn: every person in town (up to 300) as five shared instanced meshes
+ * — lower garment, upper garment, patterned trim, skin (the floating head and the hands) and
+ * hair or headwear. A handful of draw calls for the whole city. The nearest people are shown as
+ * full figures instead (Townsfolk swaps them), so up close everyone is properly dressed.
+ *
+ * The rules hold here too: no face on anyone, the head floats `HEAD_GAP` clear of the collar,
+ * and everyone is covered from the wrists to the ankles (the robe reaches the shoes, sleeves the
+ * hands), whatever their land's colours.
  */
 
-type Route =
-  | { kind: 'avenue'; axis: 'x' | 'z'; lane: number; s: number; dir: number }
-  | { kind: 'ring'; lane: number; a: number; dir: number }
-  | { kind: 'plaza'; r: number; a: number; dir: number }
-  | { kind: 'stand'; x: number; z: number; face: number };
+/** Unscaled heights, matching CharacterModel so full figures and crowd figures line up. */
+export const CROWD_DIMS = {
+  hem: 0.07,
+  waist: DIMS.waist,
+  collar: DIMS.neck,
+  headR: DIMS.headR,
+  headY: DIMS.neck + HEAD_GAP + DIMS.headR,
+};
 
-interface Person { route: Route; speed: number; ph: number; scale: number }
+type Tint = [number, number, number];
 
-interface Town { land: RegionId; cx: number; cz: number; meshes: THREE.InstancedMesh[]; people: Person[] }
-
-const SKINS = ['#f1c9a5', '#e0ac85', '#c68b62', '#a8704a', '#8a5a3a', '#6b4630'];
-const HAIR = ['#2a1f1a', '#4a3226', '#6b4a2a', '#1f1a1a', '#8a6a4a'];
-
-function robeGeo(): THREE.BufferGeometry {
-  // Long garment to the ankle (with a hint of shoes below).
-  const g = new THREE.CylinderGeometry(0.17, 0.3, 1.05, 9);
-  g.translate(0, 0.62, 0);
-  return g;
-}
-function torsoGeo(): THREE.BufferGeometry {
-  // Shoulders and two sleeves, hanging a little forward.
-  const parts = [new THREE.CylinderGeometry(0.2, 0.17, 0.48, 9).translate(0, 1.38, 0)];
-  for (const x of [-1, 1]) {
-    const s = new THREE.CylinderGeometry(0.055, 0.07, 0.6, 6);
-    s.rotateZ(x * 0.12);
-    s.translate(x * 0.25, 1.3, 0.02);
-    parts.push(s);
-  }
-  return mergeGeos(parts);
-}
-function headGeo(): THREE.BufferGeometry {
-  return new THREE.SphereGeometry(0.13, 10, 8).translate(0, 1.8, 0);
-}
-function crownGeo(): THREE.BufferGeometry {
-  // Hair, a cap or a headscarf: a shell over the top and back of the head.
-  const g = new THREE.SphereGeometry(0.145, 10, 6, 0, Math.PI * 2, 0, Math.PI * 0.55);
-  g.translate(0, 1.82, -0.01);
-  return g;
-}
-
-function mergeGeos(list: THREE.BufferGeometry[]): THREE.BufferGeometry {
-  const pos: number[] = [], nor: number[] = [], idx: number[] = [];
-  let base = 0;
-  for (const g of list) {
+/** Merge geometries, painting each one's vertices with its own tint (multiplied by the instance colour). */
+function merge(parts: Array<[THREE.BufferGeometry, Tint]>): THREE.BufferGeometry {
+  const pos: number[] = [], nor: number[] = [], col: number[] = [];
+  for (const [g, tint] of parts) {
     const ng = g.index ? g.toNonIndexed() : g;
     const p = ng.getAttribute('position'), n = ng.getAttribute('normal');
     for (let i = 0; i < p.count; i++) {
       pos.push(p.getX(i), p.getY(i), p.getZ(i));
       nor.push(n.getX(i), n.getY(i), n.getZ(i));
-      idx.push(base + i);
+      col.push(...tint);
     }
-    base += p.count;
   }
   const out = new THREE.BufferGeometry();
   out.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3));
   out.setAttribute('normal', new THREE.Float32BufferAttribute(nor, 3));
-  out.setIndex(idx);
+  out.setAttribute('color', new THREE.Float32BufferAttribute(col, 3));
   return out;
 }
 
-const GEOS = { robe: robeGeo(), torso: torsoGeo(), head: headGeo(), crown: crownGeo() };
-const MAT = new THREE.MeshStandardMaterial({ flatShading: true, roughness: 0.9 });
+const W: Tint = [1, 1, 1];
+const D = CROWD_DIMS;
 
-export class Crowd {
-  private towns = new Map<RegionId, Town>();
+/** Long garment from the waist to the ankle, with shoes peeping out below. */
+function lowerGeo(): THREE.BufferGeometry {
+  const robe = new THREE.CylinderGeometry(0.2, 0.31, D.waist + 0.05 - D.hem, 10).translate(0, (D.waist + 0.05 + D.hem) / 2, 0);
+  const shoes = [-0.09, 0.09].map((x) => [new THREE.BoxGeometry(0.11, 0.07, 0.2).translate(x, 0.035, 0.06), [0.22, 0.18, 0.16] as Tint] as [THREE.BufferGeometry, Tint]);
+  return merge([[robe, W], ...shoes]);
+}
+
+/** Shoulders, chest and two long sleeves hanging a little forward. */
+function upperGeo(): THREE.BufferGeometry {
+  const chest = new THREE.CylinderGeometry(0.19, 0.2, D.collar - D.waist + 0.02, 10).translate(0, (D.collar + D.waist) / 2, 0);
+  const parts: Array<[THREE.BufferGeometry, Tint]> = [[chest, W]];
+  for (const x of [-1, 1]) {
+    const s = new THREE.CylinderGeometry(0.06, 0.075, 0.62, 7);
+    s.rotateZ(x * 0.1);
+    s.rotateX(-0.08);
+    s.translate(x * 0.25, 1.06, 0.03);
+    parts.push([s, W]);
+  }
+  return merge(parts);
+}
+
+/** The pattern: a hem band, a collar band, cuffs and a sash in the outfit's trim colour. */
+function trimGeo(): THREE.BufferGeometry {
+  const hem = new THREE.CylinderGeometry(0.305, 0.315, 0.09, 10, 1, true).translate(0, D.hem + 0.08, 0);
+  const band = new THREE.CylinderGeometry(0.275, 0.29, 0.04, 10, 1, true).translate(0, D.hem + 0.22, 0);
+  const collar = new THREE.CylinderGeometry(0.15, 0.19, 0.06, 10, 1, true).translate(0, D.collar - 0.02, 0);
+  const sash = new THREE.CylinderGeometry(0.205, 0.205, 0.07, 10, 1, true).translate(0, D.waist + 0.02, 0);
+  const parts: Array<[THREE.BufferGeometry, Tint]> = [[hem, W], [band, [0.8, 0.8, 0.8]], [collar, W], [sash, [0.9, 0.9, 0.9]]];
+  for (const x of [-1, 1]) parts.push([new THREE.CylinderGeometry(0.078, 0.078, 0.05, 7, 1, true).translate(x * 0.28, 0.76, 0.05), W]);
+  return merge(parts);
+}
+
+/** The floating head and the two hands (skin). No face — ever. */
+function skinGeo(): THREE.BufferGeometry {
+  const head = new THREE.SphereGeometry(D.headR, 10, 8).translate(0, D.headY, 0);
+  const hands = [-1, 1].map((x) => [new THREE.SphereGeometry(0.05, 6, 5).translate(x * 0.28, 0.71, 0.06), W] as [THREE.BufferGeometry, Tint]);
+  return merge([[head, W], ...hands]);
+}
+
+/** Hair, a cap or a headscarf: a shell over the top and back of the floating head only. */
+function crownGeo(): THREE.BufferGeometry {
+  const g = new THREE.SphereGeometry(D.headR * 1.1, 10, 7, 0, Math.PI * 2, 0, Math.PI * 0.62);
+  g.translate(0, D.headY + 0.01, -0.012);
+  return merge([[g, W]]);
+}
+
+export const CROWD_GEOS = { lower: lowerGeo(), upper: upperGeo(), trim: trimGeo(), skin: skinGeo(), crown: crownGeo() };
+export const CROWD_PARTS = ['lower', 'upper', 'trim', 'skin', 'crown'] as const;
+
+const MAT = new THREE.MeshStandardMaterial({ vertexColors: true, flatShading: true, roughness: 0.88 });
+
+/** The colours a crowd figure wears, taken from a real (modest) outfit of their land. */
+export function crowdColours(o: Outfit, skin: string, hair: string): Record<(typeof CROWD_PARTS)[number], string> {
+  const covered = o.head.style !== 'none' && o.head.style !== 'hair';
+  return {
+    lower: o.lowerColor,
+    upper: o.outer?.color ?? o.topColor,
+    trim: o.trim,
+    skin,
+    crown: covered ? o.head.color : hair,
+  };
+}
+
+/** One town's instanced figures. Hidden slots are scaled to zero. */
+export class CrowdMeshes {
+  readonly meshes: THREE.InstancedMesh[];
   private m = new THREE.Matrix4();
   private q = new THREE.Quaternion();
   private e = new THREE.Euler();
   private v = new THREE.Vector3();
   private s = new THREE.Vector3();
+  private zero = new THREE.Matrix4().makeScale(0, 0, 0);
 
-  constructor(private scene: THREE.Scene, readonly size: number) {}
-
-  onRegionLoaded(inst: RegionInstance): void {
-    const land = inst.spec.id;
-    if (land === 'skyisles' || this.towns.has(land) || this.size <= 0) return;
-    const rng = new Rng(`crowd:${land}`);
-    const c = regionCenter(inst.spec);
-    const n = this.size;
-    const meshes = [GEOS.robe, GEOS.torso, GEOS.head, GEOS.crown].map((g) => {
-      const im = new THREE.InstancedMesh(g, MAT, n);
+  constructor(private scene: THREE.Scene, readonly count: number, centre: THREE.Vector3, radius: number) {
+    this.meshes = CROWD_PARTS.map((k) => {
+      const im = new THREE.InstancedMesh(CROWD_GEOS[k], MAT, count);
       im.castShadow = false;
-      im.frustumCulled = false;
-      this.scene.add(im);
+      im.receiveShadow = true;
+      // People move about the whole town: one sphere round it is enough for frustum culling.
+      im.boundingSphere = new THREE.Sphere(centre.clone(), radius);
+      im.instanceMatrix.setUsage(THREE.DynamicDrawUsage);
+      scene.add(im);
       return im;
     });
-    const people: Person[] = [];
-    const col = new THREE.Color();
-    for (let i = 0; i < n; i++) {
-      const who = i % 2 ? 'boy' : 'girl';
-      const pool = wardrobeFor(land, who);
-      const o = pool[rng.int(0, pool.length - 1)];
-      meshes[0].setColorAt(i, col.set(o.lowerColor === o.topColor ? o.topColor : rng.chance(0.5) ? o.topColor : o.lowerColor));
-      meshes[1].setColorAt(i, col.set(o.outer?.color ?? o.topColor));
-      meshes[2].setColorAt(i, col.set(SKINS[rng.int(0, SKINS.length - 1)]));
-      meshes[3].setColorAt(i, col.set(o.head?.color ?? HAIR[rng.int(0, HAIR.length - 1)]));
-      const f = i / n;
-      let route: Route;
-      if (f < 0.45) route = { kind: 'avenue', axis: i % 2 ? 'x' : 'z', lane: (rng.chance(0.5) ? 1 : -1) * rng.range(1.2, 7.5), s: rng.range(-230, 230), dir: rng.chance(0.5) ? 1 : -1 };
-      else if (f < 0.7) route = { kind: 'ring', lane: rng.range(-5, 5), a: rng.range(0, Math.PI * 2), dir: rng.chance(0.5) ? 1 : -1 };
-      else if (f < 0.86) route = { kind: 'plaza', r: rng.range(32, 48), a: rng.range(0, Math.PI * 2), dir: rng.chance(0.5) ? 1 : -1 };
-      else {
-        // Little groups standing and talking: between the avenues, just off the plaza and the ring.
-        const g = Math.floor((i - n * 0.86) / 3), k = i % 3;
-        let ga = 0.78 + g * 1.9;
-        // Never on an avenue: keep well away from the two axes.
-        if (Math.min(Math.abs(Math.cos(ga)), Math.abs(Math.sin(ga))) < 0.3) ga += 0.45;
-        const gr = g % 2 ? 58 : 122;
-        const gx = Math.cos(ga) * gr, gz = Math.sin(ga) * gr, a = (k / 3) * Math.PI * 2;
-        route = { kind: 'stand', x: gx + Math.cos(a) * 1.1, z: gz + Math.sin(a) * 1.1, face: Math.atan2(-Math.cos(a), -Math.sin(a)) };
-      }
-      people.push({ route, speed: rng.range(0.9, 1.5), ph: rng.range(0, 10), scale: who === 'girl' ? rng.range(0.9, 0.98) : rng.range(0.98, 1.06) });
-    }
-    for (const im of meshes) if (im.instanceColor) im.instanceColor.needsUpdate = true;
-    this.towns.set(land, { land, cx: c.x, cz: c.z, meshes, people });
   }
 
-  onRegionUnloaded(inst: RegionInstance): void {
-    const t = this.towns.get(inst.spec.id);
-    if (!t) return;
-    for (const im of t.meshes) {
+  paint(i: number, cols: Record<(typeof CROWD_PARTS)[number], string>): void {
+    const c = new THREE.Color();
+    CROWD_PARTS.forEach((k, j) => this.meshes[j].setColorAt(i, c.set(cols[k])));
+  }
+
+  finishPaint(): void {
+    for (const im of this.meshes) if (im.instanceColor) im.instanceColor.needsUpdate = true;
+  }
+
+  place(i: number, x: number, y: number, z: number, heading: number, sway: number, scale: number): void {
+    this.q.setFromEuler(this.e.set(0, heading, sway));
+    this.m.compose(this.v.set(x, y, z), this.q, this.s.setScalar(scale));
+    for (const im of this.meshes) im.setMatrixAt(i, this.m);
+  }
+
+  hide(i: number): void {
+    for (const im of this.meshes) im.setMatrixAt(i, this.zero);
+  }
+
+  commit(): void {
+    for (const im of this.meshes) im.instanceMatrix.needsUpdate = true;
+  }
+
+  set visible(v: boolean) {
+    for (const im of this.meshes) im.visible = v;
+  }
+
+  dispose(): void {
+    for (const im of this.meshes) {
       this.scene.remove(im);
       im.dispose();
-    }
-    this.towns.delete(inst.spec.id);
-  }
-
-  /** How many people are in town right now (for the tests and the journal). */
-  count(land: RegionId): number {
-    return this.towns.get(land)?.people.length ?? 0;
-  }
-
-  update(dt: number, t: number, player: THREE.Vector3): void {
-    for (const town of this.towns.values()) {
-      const near = Math.hypot(town.cx - player.x, town.cz - player.z) < 420;
-      for (const im of town.meshes) im.visible = near;
-      if (!near) continue;
-      town.people.forEach((p, i) => {
-        const r = p.route;
-        let x: number, z: number, h: number, moving = true;
-        if (r.kind === 'avenue') {
-          r.s += r.dir * p.speed * dt;
-          if (Math.abs(r.s) > 232) r.dir *= -1;
-          const around = Math.abs(r.s) < 52 ? Math.sqrt(52 * 52 - r.s * r.s) * Math.sign(r.lane) + r.lane * 0.3 : r.lane;
-          if (r.axis === 'z') { x = around; z = r.s; h = r.dir > 0 ? 0 : Math.PI; } else { x = r.s; z = around; h = r.dir > 0 ? Math.PI / 2 : -Math.PI / 2; }
-        } else if (r.kind === 'ring') {
-          const rad = 140 + r.lane;
-          r.a += (r.dir * p.speed * dt) / rad;
-          x = Math.cos(r.a) * rad; z = Math.sin(r.a) * rad;
-          h = Math.atan2(-Math.sin(r.a) * r.dir, Math.cos(r.a) * r.dir);
-        } else if (r.kind === 'plaza') {
-          r.a += (r.dir * p.speed * 0.8 * dt) / r.r;
-          x = Math.cos(r.a) * r.r; z = Math.sin(r.a) * r.r;
-          h = Math.atan2(-Math.sin(r.a) * r.dir, Math.cos(r.a) * r.dir);
-        } else {
-          x = r.x; z = r.z; h = r.face; moving = false;
-        }
-        const wx = town.cx + x, wz = town.cz + z;
-        const step = moving ? Math.abs(Math.sin(t * p.speed * 5 + p.ph)) * 0.05 : Math.sin(t * 1.3 + p.ph) * 0.01;
-        const y = surfaceAt(wx, wz, 1e9) + step;
-        const sway = moving ? Math.sin(t * p.speed * 5 + p.ph) * 0.05 : Math.sin(t * 0.7 + p.ph) * 0.06;
-        this.q.setFromEuler(this.e.set(0, h, sway));
-        this.m.compose(this.v.set(wx, y, wz), this.q, this.s.setScalar(p.scale));
-        for (const im of town.meshes) im.setMatrixAt(i, this.m);
-      });
-      for (const im of town.meshes) im.instanceMatrix.needsUpdate = true;
     }
   }
 }

@@ -23,6 +23,7 @@ import { HousingView } from './housing/HousingView';
 import { VAN_OPTIONS, VanInterior } from './housing/VanInterior';
 import { Npcs, type Npc } from './npc/Npcs';
 import { Townsfolk, type Walker } from './npc/Townsfolk';
+import { talkToFolk } from './npc/folk';
 import { CaravanView } from './caravan/CaravanView';
 import { WonderSites } from './world/WonderSites';
 import { keeperOf } from './npc/people';
@@ -281,6 +282,7 @@ export class Game {
     this.ambience.update(dt, this.trav.gPos, this.t, this.sky.night);
     this.regionFx.setRegion(this.region.id);
     this.regionFx.update(dt, this.trav.gPos, this.t, this.sky.night);
+    this.skyLanterns.everyLand = this.region.id === 'meadow' && this.celebration.festivities.level > 0.5;
     this.skyLanterns.update(dt, this.t, this.trav.gPos, this.region.id, this.sky.night);
     this.skyFx.party = this.celebration.festivities.level;
     this.skyFx.partyAt.copy(this.celebration.festivities.centre);
@@ -425,7 +427,7 @@ export class Game {
       const d = Math.hypot(lp.x - p.x, lp.z - p.z);
       if (d < (this.region.id === 'skyisles' ? 200 : 45)) cands.push([d * 0.2, { kind: 'lantern', region: this.region.id, label: '🏮 Light the lantern together' }]);
     }
-    if (this.trav.parkedVan && onFoot && this.trav.parkedVan.pos.distanceTo(p) < 4.5) cands.push([this.trav.parkedVan.pos.distanceTo(p), { kind: 'van', label: 'Step inside Safar' }]);
+    if (this.trav.parkedVan && onFoot && this.trav.parkedVan.pos.distanceTo(p) < 6) cands.push([this.trav.parkedVan.pos.distanceTo(p), { kind: 'van', label: 'Step inside Safar' }]);
     const pal = onFoot ? this.caravan.nearest(p, 2.4) : null;
     if (pal) cands.push([1.2, { kind: 'companion', id: pal.id, label: pal.kind === 'pet' ? `Pet ${pal.name}` : `Chat with ${pal.name}` }]);
     const ride = onFoot ? this.celebration.label(p) : null;
@@ -433,35 +435,22 @@ export class Game {
     // Anyone in town: stop and talk; some need a hand today.
     const folk = onFoot ? this.townsfolk.nearest(p, 2.6) : null;
     if (folk) {
-      const f = this.townsfolk.who(folk, this.day), key = this.folkKey(folk);
-      const needs = f.favour && !this.helped.has(key);
-      cands.push([Math.hypot(folk.model.root.position.x - p.x, folk.model.root.position.z - p.z) + 0.4, { kind: 'folk', walker: folk, label: needs ? `❗ ${f.name} needs a hand` : `💬 Talk with ${f.name}` }]);
+      const f = this.townsfolk.who(folk, this.day);
+      const needs = f.favour && !(this.st.folk.day === this.day && this.st.folk.helped.includes(`${folk.land}:${folk.idx}`));
+      cands.push([Math.hypot(folk.x - p.x, folk.z - p.z) + 0.4, { kind: 'folk', walker: folk, label: needs ? `❗ ${f.name} needs a hand` : `💬 Talk with ${f.name}` }]);
     }
     cands.sort((a, b) => a[0] - b[0]);
     return cands[0]?.[1] ?? null;
   }
 
-  private helped = new Set<string>();
-  private asked = new Set<string>();
   private get day(): number { return Math.floor(this.st.minutes / DAY_MINUTES); }
-  private folkKey(w: Walker): string { return `${w.land}:${w.idx}:${this.day}`; }
 
   /** Talking with someone in town — and helping them, which is how the two earn their way. */
   private talkFolk(w: Walker): void {
     this.townsfolk.turnTo(w, this.trav.gPos);
-    const f = this.townsfolk.who(w, this.day), key = this.folkKey(w);
-    if (f.favour && !this.helped.has(key)) {
-      if (!this.asked.has(key)) {
-        this.asked.add(key);
-        return this.toast(`${f.name}: "${f.favour.ask}" (press E again to help)`, 'story');
-      }
-      this.helped.add(key);
-      this.st.coins += f.favour.coins;
-      this.st.light += 0.05;
-      this.bus.emit('coins:changed', { coins: this.st.coins });
-      return this.toast(`${f.favour.done} ${f.name} thanks you both. +${f.favour.coins} 🪙`, 'reward');
-    }
-    this.toast(`${f.name}: "${f.line}"`, 'story');
+    const r = talkToFolk(this.st, w.land, w.idx);
+    if (r.kind === 'helped') this.bus.emit('coins:changed', { coins: this.st.coins });
+    this.toast(r.text, r.kind === 'helped' ? 'reward' : r.kind === 'need' ? 'info' : 'story');
   }
 
   interact(t: Interactable): void {
@@ -688,6 +677,7 @@ export class Game {
 
   enterVan(): void {
     this.inVan = true;
+    this.target = null;
     this.van.rebuild();
     this.ui.openVan();
   }

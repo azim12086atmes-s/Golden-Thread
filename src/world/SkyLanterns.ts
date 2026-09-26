@@ -1,6 +1,6 @@
 import * as THREE from 'three';
 import { LOCALES } from './locale';
-import type { RegionId } from './regions';
+import { REGIONS, type RegionId } from './regions';
 
 /**
  * Sky lanterns wherever you are: paper lanterns released somewhere nearby drift up into the
@@ -13,7 +13,9 @@ const RADIUS = 170, TOP = 170;
 export class SkyLanterns {
   readonly mesh: THREE.InstancedMesh;
   private state = new Float32Array(SKY_LANTERNS * 5); // x, y, z offsets, speed, phase
-  private land: RegionId | null = null;
+  private land: RegionId | 'all' | null = null;
+  /** At the celebration, lanterns rise in every land's colours at once. */
+  everyLand = false;
   private tmp = new THREE.Matrix4();
   private col = new THREE.Color();
 
@@ -36,9 +38,10 @@ export class SkyLanterns {
     const first = this.focus.lengthSq() === 0 && focus.lengthSq() > 0;
     this.focus.copy(focus);
     if (first) for (let i = 0; i < SKY_LANTERNS; i++) this.respawn(i, true);
-    if (land !== this.land) {
-      this.land = land;
-      const lights = LOCALES[land].lights;
+    const key = this.everyLand ? 'all' : land;
+    if (key !== this.land) {
+      this.land = key;
+      const lights = this.everyLand ? REGIONS.flatMap((r) => LOCALES[r.id].lights) : LOCALES[land].lights;
       for (let i = 0; i < SKY_LANTERNS; i++) this.mesh.setColorAt(i, this.col.set(lights[i % lights.length]));
       if (this.mesh.instanceColor) this.mesh.instanceColor.needsUpdate = true;
     }

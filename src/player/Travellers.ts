@@ -73,6 +73,11 @@ export class Travellers {
     }
   }
 
+  /** The vehicle being driven or flown, if any (the caravan rides inside the van). */
+  get vehicleRoot(): THREE.Object3D | null {
+    return this.vehicle && VEHICLES[this.mode].seats.length ? this.vehicle.root : null;
+  }
+
   get airborne(): boolean {
     return !this.grounded;
   }
@@ -137,7 +142,7 @@ export class Travellers {
       this.grounded = false;
       this.vy = 6;
     }
-    this.camDist = def.kind === 'air' ? 20 : def.kind === 'ground' ? (id === 'truck' ? 16 : 12) : def.kind === 'mount' ? 10 : 8;
+    this.camDist = def.kind === 'air' ? 20 : def.kind === 'ground' ? (id === 'truck' || id === 'van' ? 16 : 12) : def.kind === 'mount' ? 10 : 8;
     return null;
   }
 
@@ -286,7 +291,7 @@ export class Travellers {
       return;
     }
     const before = next.clone();
-    this.world.resolve(next, this.mode === 'truck' ? 2.6 : this.mode === 'van' ? 2.2 : 1.8);
+    this.world.resolve(next, this.mode === 'truck' ? 2.6 : this.mode === 'van' ? 2.9 : 1.8);
     if (before.distanceToSquared(next) > 1e-4) this.speed *= 0.6;
     this.gPos.copy(next);
     this.gPos.y = groundAt(this.gPos.x, this.gPos.z, this.gPos.y + 1.5);

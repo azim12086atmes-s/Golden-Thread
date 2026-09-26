@@ -8,8 +8,8 @@ import type { Ambient } from './regions';
 
 const N = 700, BOX = 70;
 
-interface Mode { color: string; size: number; fall: number; drift: number; glow: boolean; nightOnly?: boolean; count: number }
-const MODES: Record<Ambient, Mode> = {
+export interface Mode { color: string; size: number; fall: number; drift: number; glow: boolean; nightOnly?: boolean; count: number }
+export const MODES: Record<Ambient, Mode> = {
   snow: { color: '#ffffff', size: 0.22, fall: 1.4, drift: 0.6, glow: false, count: 700 },
   petals: { color: '#ffc4dc', size: 0.2, fall: 0.8, drift: 1.4, glow: false, count: 350 },
   fireflies: { color: '#fff08a', size: 0.25, fall: 0, drift: 0.8, glow: true, nightOnly: true, count: 260 },
