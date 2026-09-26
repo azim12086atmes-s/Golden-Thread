@@ -18,12 +18,12 @@ export class Thread {
     this.core = new THREE.Mesh(new THREE.TubeGeometry(this.curve, 8, 0.02, 4), new THREE.MeshBasicMaterial({ color: '#ffd76a', toneMapped: false }));
     this.halo = new THREE.Mesh(
       new THREE.TubeGeometry(this.curve, 8, 0.07, 6),
-      new THREE.MeshBasicMaterial({ color: '#ffcf5a', transparent: true, opacity: 0.25, blending: THREE.AdditiveBlending, depthWrite: false, toneMapped: false }),
+      new THREE.MeshBasicMaterial({ color: '#ffae2a', transparent: true, opacity: 0.25, blending: THREE.AdditiveBlending, depthWrite: false, toneMapped: false }),
     );
     for (let i = 0; i < this.moteT.length; i++) this.moteT[i] = i / this.moteT.length;
     const g = new THREE.BufferGeometry();
     g.setAttribute('position', new THREE.BufferAttribute(new Float32Array(this.moteT.length * 3), 3));
-    this.motes = new THREE.Points(g, new THREE.PointsMaterial({ color: new THREE.Color('#ffc94a').multiplyScalar(2.2), size: 0.12, transparent: true, depthWrite: false, toneMapped: false, blending: THREE.AdditiveBlending }));
+    this.motes = new THREE.Points(g, new THREE.PointsMaterial({ color: new THREE.Color('#ffc23a').multiplyScalar(1.6), size: 0.06, transparent: true, depthWrite: false, toneMapped: false, blending: THREE.AdditiveBlending }));
     for (const o of [this.core, this.halo, this.motes]) o.frustumCulled = false;
     this.group.add(this.halo, this.core, this.motes);
   }
@@ -48,14 +48,16 @@ export class Thread {
     const segs = Math.max(8, Math.min(40, Math.round(d * 3)));
     this.core.geometry.dispose();
     this.halo.geometry.dispose();
-    this.core.geometry = new THREE.TubeGeometry(this.curve, segs, 0.03 + Math.min(0.02, light * 0.002), 5);
-    this.halo.geometry = new THREE.TubeGeometry(this.curve, segs, 0.1 + Math.min(0.08, light * 0.008), 6);
+    // A fine thread: a bright gold core inside a narrow warm glow.
+    this.core.geometry = new THREE.TubeGeometry(this.curve, segs, 0.011 + Math.min(0.006, light * 0.0006), 5);
+    this.halo.geometry = new THREE.TubeGeometry(this.curve, segs, 0.032 + Math.min(0.02, light * 0.002), 6);
 
     // Brighter with shared light, pulsing softly like a heartbeat.
     const pulse = 0.85 + 0.15 * Math.sin(t * 2.6) + 0.1 * Math.max(0, Math.sin(t * 5.2));
-    const glow = (1.6 + Math.min(3, light * 0.25)) * pulse;
-    this.core.material.color.setRGB(1.0 * glow, 0.72 * glow, 0.22 * glow);
-    this.halo.material.opacity = 0.3 + Math.min(0.3, light * 0.03);
+    // Rich gold, not white-hot: bright enough to glow, never so bright it washes out to yellow-white.
+    const glow = (1.15 + Math.min(0.9, light * 0.08)) * pulse;
+    this.core.material.color.setRGB(1.0 * glow, 0.74 * glow, 0.26 * glow);
+    this.halo.material.opacity = 0.32 + Math.min(0.25, light * 0.025);
 
     const pos = this.motes.geometry.getAttribute('position') as THREE.BufferAttribute;
     const p = new THREE.Vector3();
