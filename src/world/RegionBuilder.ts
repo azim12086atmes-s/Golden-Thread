@@ -3,6 +3,7 @@ import { Rng } from '../core/rng';
 import { PLOTS, PLOT_SIZE } from './plots';
 import { LAND_STYLE, VARIANT_SHARE, buildVariant } from './buildings';
 import { houseDecor } from './houseDecor';
+import { lotusSpots } from './Water';
 import { buildHouse, lampPost, streetProp, type Ctx } from './architecture';
 import { GeoBuilder, box, cone, cyl, flowers, rock, sphere, tree } from './kit';
 import { CITY_RADIUS, REGION_SIZE, regionCenter, type RegionSpec } from './regions';
@@ -216,6 +217,16 @@ export function buildRegion(spec: RegionSpec, solid: THREE.Material, glowMat: TH
   for (let i = 0; i < 30; i++) {
     const a = rng.range(0, Math.PI * 2), r = rng.range(CITY_RADIUS + 20, half - 30);
     wild.push({ x: Math.cos(a) * r, z: Math.sin(a) * r });
+  }
+
+  // Lily pads and lotus flowers on the ponds and the lake; the flowers glow after dusk.
+  for (const l of lotusSpots(spec.id)) {
+    const x = l.x - c.x, z = l.z - c.z;
+    cyl(g, 0.9, 0.9, 0.05, '#4f9a5a', x, WATER_Y + 0.02, z, 9);
+    if (l.flower) {
+      for (let k = 0; k < 6; k++) cone(glow, 0.16, 0.4, k % 2 ? '#ffb8d8' : '#ffe0f0', x + Math.cos(k) * 0.18, WATER_Y + 0.08, z + Math.sin(k) * 0.18, 4);
+      sphere(glow, 0.1, '#fff08a', x, WATER_Y + 0.22, z, 5);
+    }
   }
 
   // Plot markers: a signpost at each plot's front.

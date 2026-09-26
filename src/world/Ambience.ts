@@ -1,5 +1,6 @@
 import * as THREE from 'three';
 import type { Ambient } from './regions';
+import { currentWind } from './wind';
 
 /**
  * Air that belongs to a place: snow in the north, petals under the sakura, fireflies over the
@@ -62,12 +63,15 @@ export class Ambience {
     this.points.material.opacity = this.fade * vis * 0.9;
     if (md.count === 0 || vis < 0.01) return;
 
-    const half = BOX / 2;
+    const half = BOX / 2, w = currentWind(), wx = w.x * w.strength * 1.6, wz = w.z * w.strength * 1.6;
     for (let i = 0; i < md.count; i++) {
       const s = this.seed[i];
       let x = this.pos[i * 3], y = this.pos[i * 3 + 1], z = this.pos[i * 3 + 2];
       x += (Math.sin(t * 0.7 + s) * md.drift + (md === MODES.sand ? md.drift : 0)) * dt;
       z += Math.cos(t * 0.5 + s * 1.3) * md.drift * dt;
+      // Falling things ride the wind; fireflies and sparkles hardly notice it.
+      const carried = md.fall > 0 ? 1 : 0.2;
+      x += wx * carried * dt; z += wz * carried * dt;
       y -= md.fall * dt * (0.7 + (s % 1) * 0.6);
       if (md.fall === 0) y += Math.sin(t * 1.3 + s) * 0.3 * dt;
       // Wrap around the focus so the field is always around the camera.

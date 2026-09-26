@@ -4,7 +4,11 @@ import { buildLandmark } from './architecture';
 import { GeoBuilder } from './kit';
 import { buildRegion, type Collider, type RegionInstance, type ResourceNode } from './RegionBuilder';
 import { REGIONS, REGION_SIZE, regionCenter, type RegionSpec } from './regions';
-import { CHUNK, WATER_Y, addPlatform, buildTerrainChunk } from './terrain';
+import { CHUNK, WATER_Y, addPlatform, buildTerrainChunk, terrainHeight } from './terrain';
+import { GRASS_UNIFORMS, MeadowField, patternGround } from './Meadow';
+import { foamMaterial, shoreGeometry, waterMaterial } from './Water';
+import { swayMaterial } from './wind';
+import { LOCALES } from './locale';
 
 /**
  * The world around the player. Terrain streams in chunks; each land's town streams as a whole;
@@ -12,9 +16,17 @@ import { CHUNK, WATER_Y, addPlatform, buildTerrainChunk } from './terrain';
  */
 export class World {
   readonly group = new THREE.Group();
-  readonly solid = new THREE.MeshStandardMaterial({ vertexColors: true, flatShading: true, roughness: 0.9, side: THREE.DoubleSide });
+  /** Walls, roofs, trees and flowers: leaves and petals carry a sway weight and move in the wind. */
+  readonly solid = swayMaterial(new THREE.MeshStandardMaterial({ vertexColors: true, flatShading: true, roughness: 0.9, side: THREE.DoubleSide }));
   readonly glow = new THREE.MeshBasicMaterial({ vertexColors: true, toneMapped: false });
   readonly terrainMat = new THREE.MeshStandardMaterial({ vertexColors: true, flatShading: true, roughness: 1 });
+  private waterMat = waterMaterial();
+  private foamMat = foamMaterial();
+  private foams = new Map<string, THREE.Mesh>();
+  /** The dense meadow of grass and flowers round the travellers. */
+  readonly meadow = new MeadowField();
+  /** Low graphics turns the meadow grass off (the patterned ground stays). */
+  set grass(on: boolean) { this.meadow.enabled = on; }
   private chunks = new Map<string, THREE.Mesh>();
   private regions = new Map<string, RegionInstance>();
   private landmarkColliders: Collider[] = [];
@@ -25,13 +37,11 @@ export class World {
   onRegionUnloaded?: (r: RegionInstance) => void;
 
   constructor() {
-    this.water = new THREE.Mesh(
-      new THREE.PlaneGeometry(4000, 4000, 1, 1).rotateX(-Math.PI / 2),
-      new THREE.MeshStandardMaterial({ color: '#3a9ec8', transparent: true, opacity: 0.82, roughness: 0.15, metalness: 0.1 }),
-    );
+    patternGround(this.terrainMat);
+    this.water = new THREE.Mesh(new THREE.PlaneGeometry(4000, 4000, 1, 1).rotateX(-Math.PI / 2), this.waterMat);
     this.water.position.y = WATER_Y;
     this.water.receiveShadow = true;
-    this.group.add(this.water);
+    this.group.add(this.water, this.meadow.group);
     this.buildLandmarks();
   }
 
@@ -53,6 +63,17 @@ export class World {
   }
 
   /** Stream around a point. Call every frame; work is spread across frames. */
+  /** The water's look: the hour, and the land's own lantern colour that it glows with at night. */
+  setWaterLook(t: number, night: number, land: keyof typeof LOCALES): void {
+    const glow = LOCALES[land].lights[0];
+    for (const m of [this.waterMat, this.foamMat]) {
+      m.uniforms.t.value = t;
+      m.uniforms.night.value = night;
+      (m.uniforms.glow.value as THREE.Color).lerp(new THREE.Color(glow), 0.02);
+    }
+    GRASS_UNIFORMS.uNight.value = night;
+  }
+
   update(focus: THREE.Vector3, night: number): void {
     // Glow brightens at night: day windows read as warm glass, night windows as light.
     this.glow.color.setScalar(0.45 + night * 0.95);
@@ -87,6 +108,8 @@ export class World {
       }
     }
 
+    this.meadow.update(focus, terrainHeight(focus.x, focus.z));
+
     // Regions: load when near, unload with hysteresis. One build per frame.
     for (const r of REGIONS) {
       const c = regionCenter(r);
@@ -97,6 +120,8 @@ export class World {
         this.group.remove(loaded.group);
         loaded.dispose();
         this.regions.delete(r.id);
+        const foam = this.foams.get(r.id);
+        if (foam) { this.group.remove(foam); foam.geometry.dispose(); this.foams.delete(r.id); }
         this.onRegionUnloaded?.(loaded);
       }
     }
@@ -107,6 +132,9 @@ export class World {
         const inst = buildRegion(next, this.solid, this.glow);
         this.regions.set(next.id, inst);
         this.group.add(inst.group);
+        // Foam round the land's lakes, ponds and river.
+        const fg = shoreGeometry(next.id, WATER_Y);
+        if (fg) { const fm = new THREE.Mesh(fg, this.foamMat); fm.renderOrder = 1; this.foams.set(next.id, fm); this.group.add(fm); }
         this.onRegionLoaded?.(inst);
       }
     }

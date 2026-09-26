@@ -51,8 +51,31 @@ export class GeoBuilder {
       cols[i * 3 + 2] = this.tmpColor.b;
     }
     g.setAttribute('color', new THREE.BufferAttribute(cols, 3));
+    g.setAttribute('sway', new THREE.BufferAttribute(new Float32Array(n), 1));
     this.parts.push(g);
     return this;
+  }
+
+  /** Where the next parts start, and the transform they will be placed with (for `sway`). */
+  mark(): { start: number; top: THREE.Matrix4 } {
+    return { start: this.parts.length, top: this.top.clone() };
+  }
+
+  /**
+   * Let everything added since `m` move in the wind: nothing at the base, fully free at the top.
+   * `baseY` and `height` are in the local frame the parts were added in.
+   */
+  sway(m: { start: number; top: THREE.Matrix4 }, baseY: number, height: number, max = 1): void {
+    const v = new THREE.Vector3(0, baseY, 0).applyMatrix4(m.top);
+    const sy = new THREE.Vector3().setFromMatrixScale(m.top).y;
+    const y0 = v.y + height * sy * 0.3, y1 = v.y + height * sy;
+    for (let p = m.start; p < this.parts.length; p++) {
+      const pos = this.parts[p].getAttribute('position'), w = this.parts[p].getAttribute('sway') as THREE.BufferAttribute;
+      for (let i = 0; i < pos.count; i++) {
+        const k = Math.min(1, Math.max(0, (pos.getY(i) - y0) / Math.max(1e-3, y1 - y0)));
+        w.setX(i, k * k * max);
+      }
+    }
   }
 
   build(material: THREE.Material): THREE.Mesh | null {
@@ -205,6 +228,13 @@ export type Flora =
   | 'aspen';
 
 export function tree(g: GeoBuilder, kind: Flora, x: number, y: number, z: number, s: number, rng: () => number): void {
+  const m = g.mark();
+  treeParts(g, kind, x, y, z, s, rng);
+  // Crowns move in the wind; trunks stand firm. Palms and bamboo bend the most.
+  g.sway(m, y, (kind === 'palm' || kind === 'coconut' || kind === 'bamboo' ? 6 : 4.5) * s, kind === 'crystal' ? 0 : kind === 'bamboo' || kind === 'willow' ? 1.3 : 1);
+}
+
+function treeParts(g: GeoBuilder, kind: Flora, x: number, y: number, z: number, s: number, rng: () => number): void {
   const trunk = '#7a5a3c';
   const v = rng();
   switch (kind) {
@@ -374,6 +404,12 @@ export function rock(g: GeoBuilder, x: number, y: number, z: number, s: number, 
 }
 
 export function flowers(g: GeoBuilder, x: number, y: number, z: number, cols: readonly string[], rng: () => number, n = 6): void {
+  const m = g.mark();
+  flowerParts(g, x, y, z, cols, rng, n);
+  g.sway(m, y - 0.1, 0.6, 0.7);
+}
+
+function flowerParts(g: GeoBuilder, x: number, y: number, z: number, cols: readonly string[], rng: () => number, n: number): void {
   for (let i = 0; i < n; i++) {
     const fx = x + (rng() - 0.5) * 3, fz = z + (rng() - 0.5) * 3;
     cyl(g, 0.02, 0.02, 0.4, '#4a8a3a', fx, y, fz, 3);

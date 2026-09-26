@@ -2,6 +2,7 @@ import * as THREE from 'three';
 import { ShaderPass } from 'three/addons/postprocessing/ShaderPass.js';
 import { LOCALES, type ParticleTheme } from './locale';
 import type { RegionId } from './regions';
+import { currentWind } from './wind';
 
 /**
  * Each land's own air and colour: a layer of particles only that land has (see locale.ts), and a
@@ -130,6 +131,7 @@ export class RegionFX {
     m.opacity = this.fade * vis * (glowNow ? 0.95 : 0.85);
     if (vis < 0.01) return;
     const half = BOX / 2, n = Math.min(N, th.count), sp = th.speed;
+    const w = currentWind(), carry = th.glow ? 0.3 : 1.4, wx = w.x * w.strength * carry, wz = w.z * w.strength * carry;
     for (let i = 0; i < n; i++) {
       const s = this.seed[i];
       let x = this.pos[i * 3], y = this.pos[i * 3 + 1], z = this.pos[i * 3 + 2];
@@ -171,6 +173,8 @@ export class RegionFX {
           z += Math.cos(t * 0.45 + s) * sp * dt;
           break;
       }
+      // Petals, leaves and rain are carried by the wind.
+      x += wx * dt; z += wz * dt;
       // Keep the field around the travellers.
       if (x - focus.x > half) x -= BOX; else if (x - focus.x < -half) x += BOX;
       if (z - focus.z > half) z -= BOX; else if (z - focus.z < -half) z += BOX;

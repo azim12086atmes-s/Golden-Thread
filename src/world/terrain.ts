@@ -1,6 +1,7 @@
 import * as THREE from 'three';
 import { fbm, lerp, smoothstep } from '../core/rng';
 import { PLOTS, PLOT_SIZE } from './plots';
+import { carveWater } from './waters';
 import {
   CITY_RADIUS, GRID_COLS, GRID_ROWS, HOME_COL, HOME_ROW, REGION_SIZE, regionAtGrid, type RegionSpec,
 } from './regions';
@@ -93,7 +94,8 @@ function naturalHeight(x: number, z: number): number {
   // The world is an island; beyond the grid it slopes into the sea.
   const o = outside(x, z);
   if (o > 0) h = h - o * 0.2 - 2;
-  return h;
+  // Lakes, ponds and rivers in the countryside (waters.ts).
+  return carveWater(x, z, h);
 }
 
 /** Walkable height at a point: the highest platform under `fromY`, else terrain, never below water. */

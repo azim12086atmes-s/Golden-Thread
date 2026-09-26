@@ -43,6 +43,7 @@ import { Sky } from './world/Sky';
 import { SkyFX } from './world/SkyFX';
 import { surfaceAt } from './world/terrain';
 import { World } from './world/World';
+import { updateWind } from './world/wind';
 
 /** Real seconds per game minute: a day lasts 16 real minutes. */
 const MINUTES_PER_SECOND = DAY_MINUTES / (16 * 60);
@@ -215,6 +216,7 @@ export class Game {
     this.composer.setPixelRatio(this.renderer.getPixelRatio());
     this.renderer.shadowMap.enabled = quality === 'high';
     this.bloom.enabled = quality === 'high';
+    this.world.grass = quality === 'high';
     this.scene.traverse((object) => {
       if (object instanceof THREE.Mesh) {
         const materials = Array.isArray(object.material) ? object.material : [object.material];
@@ -291,6 +293,8 @@ export class Game {
       this.trav.update(dt, this.input, this.t);
     }
 
+    updateWind(this.t, this.region.id, dt);
+    this.world.setWaterLook(this.t, this.sky.night, this.region.id);
     this.world.update(this.trav.gPos, this.sky.night);
     this.sky.update(this.hour, this.trav.gPos, this.t, this.region.id);
     this.ambience.setMode(this.region.ambient);
