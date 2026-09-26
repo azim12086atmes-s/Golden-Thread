@@ -72,3 +72,22 @@ describe('walking together', () => {
     expect(companionHeading(0.05, 0, 1 / 60, her, 0)).toBeCloseTo(Math.PI / 2);
   });
 });
+
+describe('the travellers\' proportions', () => {
+  it('her eye line (the floating head\'s centre) meets his mid-chest', async () => {
+    const THREE = await import('three');
+    const { CharacterModel, CHEST_MID, HERO_SCALE } = await import('../src/characters/CharacterModel');
+    const girl = new CharacterModel(OUTFITS['g-kurti-jeans'], '#e3b58f', HERO_SCALE.girl, 1, 'girl');
+    girl.root.updateMatrixWorld(true);
+    const eye = girl.head.getWorldPosition(new THREE.Vector3()).y;
+    const chest = HERO_SCALE.boy * CHEST_MID;
+    expect(Math.abs(eye - chest)).toBeLessThan(0.02);
+  });
+
+  it('both everyday kurtas end at half-thigh, over light jeans', () => {
+    for (const id of ['g-kurti-jeans', 'b-kurta-jeans']) {
+      expect(OUTFITS[id].length).toBe('thigh');
+      expect(OUTFITS[id].lower).toBe('trousers');
+    }
+  });
+});

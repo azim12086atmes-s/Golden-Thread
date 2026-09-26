@@ -1,6 +1,6 @@
 import * as THREE from 'three';
 import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
-import { CharacterModel } from '../characters/CharacterModel';
+import { CharacterModel, HERO_SCALE } from '../characters/CharacterModel';
 import { OUTFITS } from '../characters/outfits';
 
 /** Original procedural character review; never touches saved game state. */
@@ -21,8 +21,8 @@ export function reviewCharacters(host: HTMLElement): void {
   controls.update();
   scene.add(new THREE.HemisphereLight('#fff6df','#69647c',2.5));
   const sun = new THREE.DirectionalLight('#fff6e8',3); sun.position.set(-3,5,4); scene.add(sun);
-  const girl = new CharacterModel(OUTFITS['g-meadow'],'#e3b58f',0.96,1,'girl');
-  const boy = new CharacterModel(OUTFITS['b-meadow'],'#c99a74',1.04,-1,'boy');
+  const girl = new CharacterModel(OUTFITS['g-meadow'],'#e3b58f',HERO_SCALE.girl,1,'girl');
+  const boy = new CharacterModel(OUTFITS['b-meadow'],'#c99a74',HERO_SCALE.boy,-1,'boy');
   girl.root.position.x = -0.62; boy.root.position.x = 0.62;
   scene.add(girl.root,boy.root);
   const ground = new THREE.Mesh(new THREE.CircleGeometry(3,64),new THREE.MeshStandardMaterial({color:'#c2b99f',roughness:1}));

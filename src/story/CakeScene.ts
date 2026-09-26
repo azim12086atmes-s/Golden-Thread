@@ -64,6 +64,8 @@ export class CakeScene {
   private group = new THREE.Group();
   private slice: THREE.Group;
   private blade: THREE.Mesh;
+  /** The thread of light from his raised hand to the blade while he cuts from where he stands. */
+  private link: THREE.Mesh;
   private sparks: THREE.Mesh[] = [];
   private t = 0;
   private tablePos = new THREE.Vector3();
@@ -87,7 +89,7 @@ export class CakeScene {
     const { girl, boy } = g.st.names;
     this.beats = [
       { at: 0.4, text: 'The morning the journey begins, under the Great Oak.' },
-      { at: 4.2, text: 'Before the road — a small celebration.' },
+      { at: 4.2, text: `A small celebration before the road. From across the table, ${boy} cuts the cake with the thread's light.` },
       { at: 8.2, text: `${boy} offers ${girl} the first piece…` },
       { at: 12.8, text: '…and the golden thread between them shines a little brighter.' },
       { at: 16.2 },
@@ -144,6 +146,9 @@ export class CakeScene {
     this.blade = mesh(new THREE.BoxGeometry(0.01, 0.5, 0.44), GOLD, true);
     this.blade.visible = false;
     this.group.add(this.blade);
+    this.link = mesh(new THREE.CylinderGeometry(0.006, 0.006, 1, 6, 1, true).translate(0, 0.5, 0), GOLD, true);
+    this.link.visible = false;
+    g.scene.add(this.link);
 
     for (let i = 0; i < 26; i++) {
       const s = mesh(new THREE.SphereGeometry(0.02, 6, 4), i % 3 ? GOLD : ROSE, true);
@@ -198,17 +203,29 @@ export class CakeScene {
       }
     }
 
+    const face = (m: THREE.Object3D, yaw: number, k: number) => { m.rotation.y += Math.atan2(Math.sin(yaw - m.rotation.y), Math.cos(yaw - m.rotation.y)) * k; };
+    // While the cake is cut he turns to it and conducts the cut from where he stands — a full
+    // table's width away; his raised hand sweeps down with each stroke of the blade.
+    const cutTurn = THREE.MathUtils.smoothstep(t, 4.0, 4.6) * (1 - THREE.MathUtils.smoothstep(t, 7.0, 7.6));
+    if (cutTurn > 0) face(tr.boy.root, Math.atan2(this.tablePos.x - tr.bPos.x, this.tablePos.z - tr.bPos.z), cutTurn);
     // For the offering they turn towards each other — still a full step apart, never touching.
     const turn = THREE.MathUtils.smoothstep(t, 7.2, 8.4) * (1 - THREE.MathUtils.smoothstep(t, 13.6, 14.8)) * 0.7;
     if (turn > 0) {
       const toG = Math.atan2(tr.gPos.x - tr.bPos.x, tr.gPos.z - tr.bPos.z);
-      const face = (m: THREE.Object3D, yaw: number) => { m.rotation.y += Math.atan2(Math.sin(yaw - m.rotation.y), Math.cos(yaw - m.rotation.y)) * turn; };
-      face(tr.boy.root, toG);
-      face(tr.girl.root, toG + Math.PI);
-      tr.boy.root.updateMatrixWorld(true);
-      tr.girl.root.updateMatrixWorld(true);
+      face(tr.boy.root, toG, turn);
+      face(tr.girl.root, toG + Math.PI, turn);
     }
-    tr.boy.offer = THREE.MathUtils.smoothstep(t, 7.6, 8.6) * (1 - THREE.MathUtils.smoothstep(t, 13.2, 14.2));
+    tr.boy.root.updateMatrixWorld(true);
+    tr.girl.root.updateMatrixWorld(true);
+    const cutting = THREE.MathUtils.smoothstep(t, 4.1, 4.7) * (1 - THREE.MathUtils.smoothstep(t, 7.0, 7.5));
+    const giving = THREE.MathUtils.smoothstep(t, 7.6, 8.6) * (1 - THREE.MathUtils.smoothstep(t, 13.2, 14.2));
+    tr.boy.offer = Math.max(cutting, giving);
+    {
+      // The stroke follows the blade: high before each cut, sweeping down as it falls.
+      const c = THREE.MathUtils.clamp((t - 4.8) / 2.2, 0, 1);
+      const e = c < 0.5 ? c * 2 : (c - 0.5) * 2;
+      tr.boy.offerLift = cutting > giving ? -0.65 + (c > 0 && c < 1 ? Math.sin(e * Math.PI) * 0.95 : 0) : 0;
+    }
     const star = this.group.getObjectByName('star');
     if (star) {
       star.rotation.y += dt * 1.5;
@@ -227,6 +244,17 @@ export class CakeScene {
       this.blade.position.copy(along).multiplyScalar(0.21).setY(0.82 + 0.5 - Math.sin(e * Math.PI) * 0.34);
       this.blade.rotation.y = Math.atan2(along.x, along.z) + Math.PI / 2;
       for (let i = 0; i < 6; i++) this.spark(i, this.blade.getWorldPosition(new THREE.Vector3()).add(new THREE.Vector3(0, -0.2, 0)), t);
+    }
+    // A thread of light from his hand to the blade: the cut is his, made from a distance.
+    this.link.visible = this.blade.visible;
+    if (this.link.visible) {
+      tr.boy.root.updateMatrixWorld(true);
+      const from = tr.boy.freeHand(new THREE.Vector3());
+      const to = this.blade.getWorldPosition(new THREE.Vector3()).add(new THREE.Vector3(0, 0.22, 0));
+      const d = to.clone().sub(from);
+      this.link.position.copy(from);
+      this.link.quaternion.setFromUnitVectors(new THREE.Vector3(0, 1, 0), d.clone().normalize());
+      this.link.scale.set(1 + Math.sin(t * 20) * 0.3, d.length(), 1 + Math.sin(t * 20) * 0.3);
     }
 
     // The slice's flight: out of the cake (7.0), up to float above his open hand (8.4–9.4),
@@ -300,6 +328,8 @@ export class CakeScene {
       g.st.light += 0.5;
     }
     g.trav.boy.offer = 0;
+    g.trav.boy.offerLift = 0;
+    g.scene.remove(this.link);
     g.trav.camYaw = this.savedYaw;
     g.scene.remove(this.group);
     for (const s of this.sparks) g.scene.remove(s);

@@ -10,7 +10,7 @@
 
 export type Who = 'girl' | 'boy';
 export type Sleeve = 'none' | 'cap' | 'short' | 'elbow' | 'three-quarter' | 'full';
-export type Hem = 'mini' | 'knee' | 'midi' | 'ankle' | 'floor';
+export type Hem = 'mini' | 'thigh' | 'knee' | 'midi' | 'ankle' | 'floor';
 export type Neckline = 'high' | 'modest' | 'open';
 export type Fit = 'fitted' | 'loose';
 

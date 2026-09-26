@@ -1,5 +1,5 @@
 import * as THREE from 'three';
-import { CharacterModel } from '../characters/CharacterModel';
+import { CharacterModel, HERO_SCALE } from '../characters/CharacterModel';
 import type { Outfit } from '../characters/modesty';
 import type { GameState, VanSlot } from '../core/state';
 
@@ -80,8 +80,8 @@ export class VanInterior {
     key.position.set(0, 2.2, 0);
     this.scene.add(key);
     this.scene.add(this.room);
-    this.girl = new CharacterModel(girl, '#e3b58f', 0.96, 1, 'girl');
-    this.boy = new CharacterModel(boy, '#c99a74', 1.04, -1, 'boy');
+    this.girl = new CharacterModel(girl, '#e3b58f', HERO_SCALE.girl, 1, 'girl');
+    this.boy = new CharacterModel(boy, '#c99a74', HERO_SCALE.boy, -1, 'boy');
     // Opposite benches across the aisle: 2.4 m apart.
     this.girl.root.position.set(-BENCH_X, 0.05, 0.4);
     this.girl.root.rotation.y = Math.PI / 2;

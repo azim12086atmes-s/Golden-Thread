@@ -1,6 +1,6 @@
 import * as THREE from 'three';
 import { AnimalModel } from '../animals/AnimalModel';
-import { CharacterModel } from '../characters/CharacterModel';
+import { CharacterModel, HERO_SCALE } from '../characters/CharacterModel';
 import { MIN_GAP, enforceGap, followStep } from '../characters/follow';
 import type { Outfit } from '../characters/modesty';
 import { Thread } from '../characters/Thread';
@@ -50,8 +50,8 @@ export class Travellers {
   private camInit = false;
 
   constructor(private scene: THREE.Scene, private world: World, private st: GameState, girlOutfit: Outfit, boyOutfit: Outfit) {
-    this.girl = new CharacterModel(girlOutfit, '#e3b58f', 0.96, 1, 'girl');
-    this.boy = new CharacterModel(boyOutfit, '#c99a74', 1.04, -1, 'boy');
+    this.girl = new CharacterModel(girlOutfit, '#e3b58f', HERO_SCALE.girl, 1, 'girl');
+    this.boy = new CharacterModel(boyOutfit, '#c99a74', HERO_SCALE.boy, -1, 'boy');
     scene.add(this.girl.root, this.boy.root, this.thread.group);
     this.gPos.set(st.player.x, st.player.y, st.player.z);
     this.heading = st.player.heading;

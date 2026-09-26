@@ -27,7 +27,7 @@ function mesh(geo: THREE.BufferGeometry, color: string, part: Part, glow = false
   return m;
 }
 
-const HEM_Y: Record<Hem, number> = { floor: 0.03, ankle: 0.09, midi: 0.42, knee: 0.52, mini: 0.72 };
+const HEM_Y: Record<Hem, number> = { floor: 0.03, ankle: 0.09, midi: 0.42, knee: 0.52, thigh: 0.66, mini: 0.72 };
 
 interface TopInfo { long: boolean; flare: number; band?: 'obi' | 'sash' | 'belt' | 'ribbon'; collar: 'cross' | 'round' | 'high' | 'hood' | 'fur' }
 const TOP: Record<TopStyle, TopInfo> = {
@@ -63,6 +63,16 @@ export interface Dimensions {
 
 export const DIMS: Dimensions = { hip: 0.82, waist: 0.95, shoulder: 1.36, neck: 1.4, headR: 0.155 };
 
+/** Mid-chest height on the unscaled body: 60% of the way from the waist to the shoulder line. */
+export const CHEST_MID = DIMS.waist + 0.6 * (DIMS.shoulder - DIMS.waist);
+/** Eye line on the unscaled body. There are no eyes, ever; this is the floating head's centre. */
+export const EYE_LINE = DIMS.neck + HEAD_GAP + DIMS.headR;
+/**
+ * The travellers' sizes (owner's proportion): her eye line meets his mid-chest.
+ * girl × EYE_LINE = boy × CHEST_MID.
+ */
+export const HERO_SCALE = { boy: 1.08, girl: (1.08 * CHEST_MID) / EYE_LINE } as const;
+
 export interface AnimState {
   speed: number;
   airborne: boolean;
@@ -84,6 +94,8 @@ export class CharacterModel {
   readonly handAnchor = new THREE.Object3D();
   /** 0..1: raises the free hand (the one not holding the thread) forward, palm up, to offer something. */
   offer = 0;
+  /** Added to the offering arm's forward angle: negative lifts it higher, positive lowers it. */
+  offerLift = 0;
 
   constructor(
     public outfit: Outfit,
@@ -467,7 +479,7 @@ export class CharacterModel {
     }
     if (this.offer > 0) {
       const arm = this.threadHand > 0 ? this.armL : this.armR;
-      arm.rotation.x += (-1.25 - arm.rotation.x) * this.offer;
+      arm.rotation.x += (-1.25 + this.offerLift - arm.rotation.x) * this.offer;
       arm.rotation.z *= 1 - this.offer * 0.7;
     }
     // The floating head bobs gently on its own — never touching the body.
