@@ -31,8 +31,11 @@ describe('no eyes, no faces, floating heads (brief)', () => {
 
   for (const o of Object.values(OUTFITS)) {
     it(`traveller in "${o.id}" is built only from allowed parts, with a floating head`, () => {
-      const c = new CharacterModel(o, '#e0ac85');
+      const c = new CharacterModel(o, '#e0ac85', 1, 1, o.who);
       const ms = meshes(c.root);
+      expect(ms.filter(m => m.userData.part === 'glasses')).toHaveLength(5);
+      expect(ms.some(m => m.userData.part === 'beard')).toBe(o.who === 'boy');
+      expect(ms.some(m => m.name === 'curled-side-quiff')).toBe(o.who === 'boy' && ['hair', 'none'].includes(o.head.style));
       for (const m of ms) expect(isAllowedPart(m.userData.part), `${o.id}: ${m.userData.part}`).toBe(true);
       const head = ms.filter((m) => inside(m, c.head));
       const body = ms.filter((m) => !inside(m, c.head));
@@ -43,6 +46,22 @@ describe('no eyes, no faces, floating heads (brief)', () => {
       expect(headBottom - bodyTop, `${o.id} head gap`).toBeGreaterThanOrEqual(0.04);
     });
   }
+
+  it('GT-CHAR-001 preserves identity across wardrobe changes and head bobbing', () => {
+    const c = new CharacterModel(OUTFITS['b-meadow'], '#c99a74', 1, -1, 'boy');
+    for (const outfit of Object.values(OUTFITS).filter(o => o.who === 'boy')) {
+      c.setOutfit(outfit);
+      for (let t = 0; t < 6; t += 0.25) {
+        c.update(1/60, { speed: 0, airborne: false, riding: false, t });
+        const ms = meshes(c.root);
+        const head = ms.filter(m => inside(m, c.head)).flatMap(worldVerts);
+        const body = ms.filter(m => !inside(m, c.head)).flatMap(worldVerts).filter(v => Math.hypot(v.x,v.z) < 0.3);
+        expect(Math.min(...head.map(v=>v.y)) - Math.max(...body.map(v=>v.y))).toBeGreaterThan(0.03);
+        expect(ms.filter(m => m.userData.part === 'beard')).toHaveLength(1);
+        expect(ms.filter(m => m.userData.part === 'glasses')).toHaveLength(5);
+      }
+    }
+  });
 
   for (const id of Object.keys(SPECIES) as SpeciesId[]) {
     it(`animal "${id}" has a detached head and no face`, () => {

@@ -1,5 +1,7 @@
 # The Golden Thread — Game Design
 
+Owner amendments (2026-09-25): see REQUIREMENTS_EXPANSION.md. It overrides older descriptions: glasses/beard/hair are permitted as specified; owned vehicles must eventually become persistent rather than summoned. The original systems below describe the baseline, not completion of the expansion.
+
 A peaceful open-world journey. Two wanderers — a girl (the player) and a boy (her companion) —
 travel the world in their van, joined by a shining golden thread. They help people, learn crafts,
 make friends with people and animals, and build small homes wherever they are welcomed.

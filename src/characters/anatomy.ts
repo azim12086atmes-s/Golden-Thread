@@ -2,7 +2,7 @@
  * Anatomy rules shared by every person and animal model.
  *
  * Two invariants from the brief, enforced here and tested in tests/anatomy.test.ts:
- *  1. No character or animal has eyes or any facial feature.
+ *  1. No character or animal has eyes. Owner-approved glasses, beard and hair are permitted (GT-CHAR-001).
  *  2. Every head floats, detached from the body.
  *
  * Model builders tag each mesh with `userData.part`. Only parts listed in ALLOWED_PARTS may be
@@ -16,7 +16,7 @@ export const ANIMAL_HEAD_GAP = 0.12;
 
 export const ALLOWED_PARTS = [
   'head', 'headwear', 'torso', 'garment', 'sleeve', 'hand', 'leg', 'foot', 'trim',
-  'cape', 'accessory', 'body', 'tail', 'ear', 'horn', 'mane', 'wing', 'hoof', 'neck',
+  'glasses', 'beard', 'hair', 'cape', 'accessory', 'body', 'tail', 'ear', 'horn', 'mane', 'wing', 'hoof', 'neck',
 ] as const;
 export type Part = (typeof ALLOWED_PARTS)[number];
 

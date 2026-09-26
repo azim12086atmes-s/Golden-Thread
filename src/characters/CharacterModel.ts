@@ -4,7 +4,7 @@ import type { Hem, Outfit, TopStyle } from './modesty';
 
 /**
  * A traveller: soft rounded forms, a floating head with no face, fully covering clothing.
- * Every mesh is tagged with `userData.part` (see anatomy.ts); nothing face-like is ever built.
+ * Every mesh is tagged with `userData.part` (see anatomy.ts); eyes, nose and mouth are never built; hero identity follows GT-CHAR-001.
  */
 
 const matCache = new Map<string, THREE.Material>();
@@ -89,6 +89,7 @@ export class CharacterModel {
     private scale = 1,
     /** Which hand holds the thread: +1 = the +X hand, -1 = the -X hand. */
     private threadHand: 1 | -1 = 1,
+    private identity: 'girl' | 'boy' | null = null,
   ) {
     this.root.add(this.body);
     this.build();
@@ -207,6 +208,7 @@ export class CharacterModel {
 
     this.buildOuter(b);
     this.buildHead(b);
+    this.buildIdentity();
   }
 
   private hemTrim(b: THREE.Group, r: number, y: number, color: string): void {
@@ -382,6 +384,50 @@ export class CharacterModel {
     } else if (style === 'beanie') {
       add(new THREE.SphereGeometry(r * 1.1, 12, 8, 0, Math.PI * 2, 0, Math.PI * 0.55), hc, r * 0.05);
       add(new THREE.SphereGeometry(r * 0.3, 6, 4), o.trim, r * 1.15);
+    }
+  }
+
+  /** GT-CHAR-001: identity belongs to the floating head, independent of wardrobe. */
+  private buildIdentity(): void {
+    if (!this.identity) return;
+    const frame = this.identity === 'girl' ? '#976822' : '#302b27';
+    for (const side of [-1, 1]) {
+      const rim = mesh(new THREE.TorusGeometry(0.046, 0.005, 5, 16), frame, 'glasses');
+      rim.position.set(side * 0.056, 0.03, 0.159);
+      rim.scale.set(1, 0.85, 1);
+      this.head.add(rim);
+      const arm = mesh(new THREE.BoxGeometry(0.006, 0.006, 0.1), frame, 'glasses');
+      arm.position.set(side * 0.104, 0.032, 0.112);
+      this.head.add(arm);
+    }
+    const bridge = mesh(new THREE.BoxGeometry(0.022, 0.006, 0.006), frame, 'glasses');
+    bridge.position.set(0, 0.038, 0.16);
+    this.head.add(bridge);
+    if (this.identity !== 'boy') return;
+
+    // Angular jaw silhouette with a pointed chin. No nose, mouth, pupils or lenses painted as eyes.
+    const beard = new THREE.BufferGeometry();
+    beard.setAttribute('position', new THREE.Float32BufferAttribute([
+      -0.125,-0.038,0.08, -0.08,-0.12,0.145, 0,-0.205,0.115,
+      -0.125,-0.038,0.08, 0,-0.205,0.115, 0,-0.066,0.152,
+      0,-0.066,0.152, 0,-0.205,0.115, 0.125,-0.038,0.08,
+      0.125,-0.038,0.08, 0,-0.205,0.115, 0.08,-0.12,0.145,
+      -0.125,-0.038,0.08, -0.13,-0.07,-0.015, 0,-0.205,0.115,
+      0.125,-0.038,0.08, 0,-0.205,0.115, 0.13,-0.07,-0.015,
+    ], 3));
+    beard.computeVertexNormals();
+    this.head.add(mesh(beard, '#30251f', 'beard'));
+
+    // Hats cover the quiff rather than letting it intersect the headwear.
+    if (this.outfit.head.style === 'hair' || this.outfit.head.style === 'none') {
+      const sweep = new THREE.CatmullRomCurve3([
+        new THREE.Vector3(-0.09,0.13,0.055), new THREE.Vector3(-0.045,0.185,0.105),
+        new THREE.Vector3(0.045,0.20,0.115), new THREE.Vector3(0.10,0.165,0.13),
+        new THREE.Vector3(0.078,0.135,0.151), new THREE.Vector3(0.052,0.151,0.152),
+      ]);
+      const quiff = mesh(new THREE.TubeGeometry(sweep, 18, 0.026, 6, false), '#30251f', 'hair');
+      quiff.name = 'curled-side-quiff';
+      this.head.add(quiff);
     }
   }
 

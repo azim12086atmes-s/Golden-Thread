@@ -75,8 +75,8 @@ export class VanInterior {
     key.position.set(0, 1.9, 0);
     this.scene.add(key);
     this.scene.add(this.room);
-    this.girl = new CharacterModel(girl, '#e3b58f', 0.96);
-    this.boy = new CharacterModel(boy, '#c99a74', 1.04);
+    this.girl = new CharacterModel(girl, '#e3b58f', 0.96, 1, 'girl');
+    this.boy = new CharacterModel(boy, '#c99a74', 1.04, -1, 'boy');
     // Opposite benches across the aisle: 1.7 m apart.
     this.girl.root.position.set(-0.85, 0.05, 0.4);
     this.girl.root.rotation.y = Math.PI / 2;

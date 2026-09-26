@@ -1,6 +1,6 @@
 # Working on The Golden Thread
 
-Read [docs/GAME_DESIGN.md](docs/GAME_DESIGN.md) first, then [docs/ROADMAP.md](docs/ROADMAP.md).
+Read [docs/GAME_DESIGN.md](docs/GAME_DESIGN.md) first, then [docs/ROADMAP.md](docs/ROADMAP.md), and [docs/REQUIREMENTS_EXPANSION.md](docs/REQUIREMENTS_EXPANSION.md) for the latest owner amendments.
 
 ## Non-negotiable content rules
 
@@ -11,7 +11,7 @@ test to make a feature fit; change the feature.
   movement step, including collision resolution. Vehicles seat them in separate seats at least
   `SEAT_GAP` apart with a divider; on unicorns each rides their own. Nothing may ever place them
   hand-in-hand, embracing, or sharing a seat or mount.
-- **No eyes or facial features on any person or animal.** Model builders tag meshes with
+- **No eyes on any person or animal.** Owner amendment GT-CHAR-001 permits glasses on both protagonists and beard/hair on the boy; no nose, mouth or eye geometry. Model builders tag meshes with
   `userData.part`; only `ALLOWED_PARTS` may be built.
 - **Heads float**, detached by `HEAD_GAP` (people) / `ANIMAL_HEAD_GAP` (animals).
 - **No revealing clothing.** Author outfits as `Design` references in `outfits.ts` and let

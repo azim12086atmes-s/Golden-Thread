@@ -68,3 +68,7 @@ The original source remains untouched. Run on port 5191 to keep saves separate f
 
 Help now includes Low / High graphics and Save photo. P saves a PNG without the HUD.
 Touch screens have Interact, Fly, Jump / Rise, and Run / Descend controls.
+
+## Expanded design and character review
+
+Open http://127.0.0.1:5191/?characters to inspect the updated protagonists without modifying a save. The full owner brief is in docs/REQUIREMENTS_EXPANSION.md; regional research, economy/library/invention/companionship design and Blender pipeline are under docs/research/living-world/. These documents distinguish proposed systems and blocked research from implemented features.

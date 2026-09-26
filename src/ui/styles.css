@@ -201,3 +201,9 @@ kbd { display: inline-block; min-inline-size: 22px; padding: 2px 6px; border-rad
 .touch-action { pointer-events: auto; touch-action: none; user-select: none; min-block-size: 48px; background: var(--glass-strong); }
 @media (pointer: coarse) { .touch-actions { display: grid; } .prompt { inset-block-end: 220px; } }
 :focus-visible { outline: 2px solid var(--gold); outline-offset: 3px; }
+
+.asset-review { position: fixed; inset-block-start: 14px; inset-inline-start: 14px; inline-size: calc(100vw - 28px); box-sizing: border-box; padding: 16px; background: var(--glass-strong); border-radius: 16px; color: var(--ink); font-size: 13px; }
+.asset-review h1 { font: 700 22px var(--display); margin-block: 0 8px; color: var(--gold); }
+.asset-review label { display: inline-block; margin-block: 4px; margin-inline-end: 16px; }
+.asset-review select { max-inline-size: 220px; padding: 5px; }
+.asset-review a { display: block; margin-block-start: 12px; color: var(--gold); }

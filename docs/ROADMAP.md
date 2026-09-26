@@ -53,4 +53,11 @@ PNG photo capture without HUD via Help or P. Full free-camera photo mode remains
 Acceptance: touch holds persist until release/cancel; menus and blur clear movement; low graphics
 disables shadows and bloom; a photo contains the rendered world without the DOM overlay.
 Existing content invariants are unchanged. House interiors and community projects remain future work.
-`nValidation: 222 tests pass; full TypeScript check and production bundle pass. Browser smoke test: title/start, world rendering, low/high graphics switching, PNG download inspected with no HUD, and no console errors. Touch input rules are unit-tested; physical-phone testing remains outstanding. Unused incomplete geo.ts is preserved in docs/prototypes/geo.ts.txt because its required geography-data.ts never existed in the source snapshot.
+Validation: 222 tests pass; full TypeScript check and production bundle pass. Browser smoke test: title/start, world rendering, low/high graphics switching, PNG download inspected with no HUD, and no console errors. Touch input rules are unit-tested; physical-phone testing remains outstanding. Unused incomplete geo.ts is preserved in docs/prototypes/geo.ts.txt because its required geography-data.ts never existed in the source snapshot.
+
+
+## Expanded living-world direction — 2026-09-25
+
+Read REQUIREMENTS_EXPANSION.md and research/living-world/LIVING_SYSTEMS.md for requirements and staged build gates. Research atlas, Pinterest evidence log and Blender/web contract are in research/living-world/. Pinterest image selection remains blocked on sign-in; Blender MCP was not callable. No Blender-authored assets, persistent-vehicle replacement or new living-economy systems are claimed complete.
+
+Implemented original procedural hero identity: glasses for both, angular beard and visible curled side quiff for the boy when not under headwear; character review at /?characters. Geometry tests cover the full wardrobe and idle head bobbing.
