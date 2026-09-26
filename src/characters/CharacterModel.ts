@@ -27,6 +27,16 @@ function mesh(geo: THREE.BufferGeometry, color: string, part: Part, glow = false
   return m;
 }
 
+const SKIRTS: string[] = ['skirt', 'straight-skirt', 'hakama', 'wrap'];
+
+/** A trouser leg that is looser through the thigh and opens below the knee. Top at y = 0. */
+function flaredLeg(kind: 'bell' | 'flared', hip: number): THREE.BufferGeometry {
+  const prof = kind === 'bell'
+    ? [[0.14, -hip], [0.112, -hip + 0.2], [0.082, -hip + 0.36], [0.088, -0.22], [0.094, 0]]
+    : [[0.118, -hip], [0.098, -hip + 0.16], [0.083, -hip + 0.32], [0.088, -0.22], [0.093, 0]];
+  return new THREE.LatheGeometry(prof.map(([r, y]) => new THREE.Vector2(r, y)), 10);
+}
+
 const HEM_Y: Record<Hem, number> = { floor: 0.03, ankle: 0.09, midi: 0.42, knee: 0.52, thigh: 0.66, mini: 0.72 };
 
 interface TopInfo { long: boolean; flare: number; band?: 'obi' | 'sash' | 'belt' | 'ribbon'; collar: 'cross' | 'round' | 'high' | 'hood' | 'fur' }
@@ -67,11 +77,15 @@ export const DIMS: Dimensions = { hip: 0.82, waist: 0.95, shoulder: 1.36, neck: 
 export const CHEST_MID = DIMS.waist + 0.6 * (DIMS.shoulder - DIMS.waist);
 /** Eye line on the unscaled body. There are no eyes, ever; this is the floating head's centre. */
 export const EYE_LINE = DIMS.neck + HEAD_GAP + DIMS.headR;
+/** Forehead height on the unscaled body: the upper part of the floating head. */
+export const FOREHEAD = EYE_LINE + 0.45 * DIMS.headR;
+/** Top of the shoulder line on the unscaled body. */
+export const SHOULDER_TOP = DIMS.shoulder + 0.05;
 /**
- * The travellers' sizes (owner's proportion): her eye line meets his mid-chest.
- * girl × EYE_LINE = boy × CHEST_MID.
+ * The travellers' sizes (owner's proportion): standing together, her forehead comes to just
+ * below his shoulder, 2 cm under it. girl × FOREHEAD = boy × SHOULDER_TOP − 0.02.
  */
-export const HERO_SCALE = { boy: 1.08, girl: (1.08 * CHEST_MID) / EYE_LINE } as const;
+export const HERO_SCALE = { boy: 1.08, girl: (1.08 * SHOULDER_TOP - 0.02) / FOREHEAD } as const;
 
 export interface AnimState {
   speed: number;
@@ -123,8 +137,8 @@ export class CharacterModel {
     b.scale.setScalar(this.scale);
 
     // Legs — always covered to the ankle (modesty invariant): trousers are the base layer.
-    const legGeo = new THREE.CylinderGeometry(o.lower === 'salwar' ? 0.1 : 0.075, o.lower === 'salwar' ? 0.06 : 0.07, D.hip, 7);
-    legGeo.translate(0, -D.hip / 2, 0);
+    const legGeo = o.detail?.legs ? flaredLeg(o.detail.legs, D.hip) : new THREE.CylinderGeometry(o.lower === 'salwar' ? 0.1 : 0.075, o.lower === 'salwar' ? 0.06 : 0.07, D.hip, 7);
+    if (!o.detail?.legs) legGeo.translate(0, -D.hip / 2, 0);
     for (const [leg, x] of [[this.legL, -0.1], [this.legR, 0.1]] as const) {
       leg.position.set(x, D.hip, 0);
       leg.add(mesh(legGeo.clone(), o.underTrousers, 'leg'));
@@ -157,13 +171,15 @@ export class CharacterModel {
 
     if (info.long) {
       const longHem = o.lower === 'none' ? HEM_Y[o.hem] : Math.max(hemY, o.lower === 'skirt' ? 0.5 : hemY);
-      const rb = 0.18 + info.flare * (1 - longHem / D.waist) * 0.8;
+      const rb = 0.18 + (o.detail?.hemFlare ?? info.flare) * (1 - longHem / D.waist) * 0.8;
       const body = new THREE.CylinderGeometry(0.17, rb, D.waist - longHem, 12, 1, true);
       body.translate(0, (D.waist + longHem) / 2, 0);
       b.add(mesh(body, o.topColor, 'garment'));
       this.hemTrim(b, rb, longHem, o.trim);
-      if (o.lower === 'none') this.decorate(b, rb, longHem, D.waist, o.topColor);
+      // Motifs go on the long top unless a decorated skirt shows below it.
+      if (o.lower === 'none' || !SKIRTS.includes(o.lower)) this.decorate(b, rb, longHem, D.waist, o.topColor);
     }
+    if (o.detail?.ribbon) this.ribbon(b, o.detail.ribbon);
 
     // Waist band.
     if (info.band) {
@@ -211,6 +227,17 @@ export class CharacterModel {
       const cuff = new THREE.CylinderGeometry(rEnd + 0.008, rEnd + 0.008, 0.04, 8, 1, true);
       cuff.translate(0, -len + 0.02, 0);
       arm.add(mesh(cuff, o.trim, 'trim', o.pattern === 'glow'));
+      if (o.detail?.cuffs) {
+        // A deep turned-back cuff, slightly flared, with two buttons on the outer side.
+        const deep = new THREE.CylinderGeometry(rEnd + 0.016, rEnd + 0.024, 0.11, 10, 1, true);
+        deep.translate(0, -len + 0.06, 0);
+        arm.add(mesh(deep, o.detail.cuffs, 'trim'));
+        for (const dy of [0.035, 0.08]) {
+          const bt = mesh(new THREE.SphereGeometry(0.011, 5, 4), o.detail.buttons ?? o.detail.cuffs, 'trim');
+          bt.position.set(s * (rEnd + 0.026), -len + dy, 0);
+          arm.add(bt);
+        }
+      }
       const hand = mesh(new THREE.SphereGeometry(0.05, 6, 5), this.skin, 'hand');
       hand.position.y = -len - 0.03;
       arm.add(hand);
@@ -236,6 +263,28 @@ export class CharacterModel {
     }
   }
 
+  /** A ribbon tied under the bust with a bow at the front. */
+  private ribbon(b: THREE.Group, color: string): void {
+    const y = DIMS.waist + 0.16;
+    const band = new THREE.CylinderGeometry(0.188, 0.188, 0.03, 14, 1, true);
+    band.translate(0, y, 0);
+    b.add(mesh(band, color, 'trim'));
+    const bow = new THREE.Group();
+    for (const s of [-1, 1]) {
+      const loop = mesh(new THREE.TorusGeometry(0.03, 0.009, 5, 10), color, 'trim');
+      loop.scale.set(1.2, 0.8, 0.6);
+      loop.position.x = s * 0.034;
+      bow.add(loop);
+      const tail = mesh(new THREE.BoxGeometry(0.018, 0.1, 0.006), color, 'trim');
+      tail.position.set(s * 0.018, -0.055, 0);
+      tail.rotation.z = s * 0.25;
+      bow.add(tail);
+    }
+    bow.add(mesh(new THREE.SphereGeometry(0.013, 6, 5), color, 'trim'));
+    bow.position.set(0, y, 0.2);
+    b.add(bow);
+  }
+
   /** Small surface motifs — florals, dots, stars — scattered on a skirt or robe. */
   private decorate(b: THREE.Group, rb: number, y0: number, y1: number, base: string): void {
     const p = this.outfit.pattern;
@@ -247,6 +296,23 @@ export class CharacterModel {
       const y = y0 + (y1 - y0) * t * 0.7;
       const r = rb + (0.19 - rb) * t * 0.7 + 0.012;
       const col = p === 'stars' ? '#fff3b0' : this.outfit.trim;
+      if (p === 'floral') {
+        // A little five-petal flower lying on the cloth.
+        const flower = new THREE.Group();
+        const petal = new THREE.SphereGeometry(0.016, 5, 4);
+        for (let k = 0; k < 5; k++) {
+          const pm = mesh(petal, col === base ? '#ffffff' : col, 'trim');
+          const pa = (k / 5) * Math.PI * 2;
+          pm.position.set(Math.cos(pa) * 0.018, Math.sin(pa) * 0.018, 0);
+          pm.scale.set(1, 1, 0.5);
+          flower.add(pm);
+        }
+        flower.add(mesh(new THREE.SphereGeometry(0.01, 5, 4), col === base ? '#ffffff' : col, 'trim'));
+        flower.position.set(Math.cos(a) * r, y, Math.sin(a) * r);
+        flower.lookAt(Math.cos(a) * r * 2, y, Math.sin(a) * r * 2);
+        b.add(flower);
+        continue;
+      }
       const g = p === 'geometric' ? new THREE.OctahedronGeometry(0.03) : new THREE.SphereGeometry(p === 'dots' ? 0.022 : 0.032, 5, 4);
       const m = mesh(g, col === base ? '#ffffff' : col, 'trim', p === 'stars');
       m.position.set(Math.cos(a) * r, y, Math.sin(a) * r);

@@ -48,11 +48,27 @@ export interface Design {
   /** Colour to use for anything modestify adds (under-trousers, under-sleeves, scarf). */
   layer?: string;
   note?: string;
+  /** Tailoring touches that do not change coverage. */
+  detail?: Detail;
+}
+
+export interface Detail {
+  /** Trouser leg shape: bell-bottoms, or a gentle flare at the ankle. Both stay ankle-length. */
+  legs?: 'bell' | 'flared';
+  /** Overrides how far a long top flares at its hem (the style's own value when absent). */
+  hemFlare?: number;
+  /** A ribbon tied under the bust with a bow at the front. */
+  ribbon?: string;
+  /** Deep turned-back sleeve cuffs with buttons. */
+  cuffs?: string;
+  /** Button colour for the cuffs (defaults to the cuff colour). */
+  buttons?: string;
 }
 
 /** The covering outfit the game renders. */
-export interface Outfit extends Required<Omit<Design, 'outer' | 'note' | 'layer'>> {
+export interface Outfit extends Required<Omit<Design, 'outer' | 'note' | 'layer' | 'detail'>> {
   outer?: { style: OuterStyle; color: string };
+  detail?: Detail;
   /** Always 'full' after merging. */
   sleeve: 'full';
   /** Coverage: always reaches the ankle, by the garment or by trousers beneath it. */
@@ -126,6 +142,7 @@ export function modestify(d: Design): Outfit {
     underSleeve,
     merged,
     note: d.note,
+    detail: d.detail,
   };
 }
 

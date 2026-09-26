@@ -74,14 +74,26 @@ describe('walking together', () => {
 });
 
 describe('the travellers\' proportions', () => {
-  it('her eye line (the floating head\'s centre) meets his mid-chest', async () => {
+  it("standing together, her forehead comes to just below his shoulder", async () => {
     const THREE = await import('three');
-    const { CharacterModel, CHEST_MID, HERO_SCALE } = await import('../src/characters/CharacterModel');
+    const { CharacterModel, HERO_SCALE, SHOULDER_TOP, DIMS } = await import('../src/characters/CharacterModel');
     const girl = new CharacterModel(OUTFITS['g-kurti-jeans'], '#e3b58f', HERO_SCALE.girl, 1, 'girl');
     girl.root.updateMatrixWorld(true);
-    const eye = girl.head.getWorldPosition(new THREE.Vector3()).y;
-    const chest = HERO_SCALE.boy * CHEST_MID;
-    expect(Math.abs(eye - chest)).toBeLessThan(0.02);
+    const forehead = girl.head.getWorldPosition(new THREE.Vector3()).y + 0.45 * DIMS.headR * HERO_SCALE.girl;
+    const shoulder = HERO_SCALE.boy * SHOULDER_TOP;
+    expect(forehead).toBeLessThan(shoulder);
+    expect(shoulder - forehead).toBeLessThan(0.05);
+  });
+
+  it('her kurti is wider at the hem than his; flared and bell-bottom jeans; ribbon and cuffs in white', () => {
+    const g = OUTFITS['g-kurti-jeans'].detail!, b = OUTFITS['b-kurta-jeans'].detail!;
+    expect(g.hemFlare!).toBeGreaterThan(b.hemFlare!);
+    expect(g.legs).toBe('flared');
+    expect(b.legs).toBe('bell');
+    expect(g.ribbon).toBe('#ffffff');
+    expect(b.cuffs).toBe('#ffffff');
+    expect(OUTFITS['g-kurti-jeans'].trim).toBe('#ffffff');
+    expect(OUTFITS['b-kurta-jeans'].trim).toBe('#ffffff');
   });
 
   it('both everyday kurtas end at half-thigh, over light jeans', () => {
