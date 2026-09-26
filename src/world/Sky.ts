@@ -55,6 +55,8 @@ export class Sky {
   private auroras: THREE.Mesh<THREE.PlaneGeometry, THREE.ShaderMaterial>[] = [];
   private rainbows: THREE.Mesh<THREE.TorusGeometry, THREE.ShaderMaterial>[] = [];
   readonly fog = new THREE.Fog('#cfeaff', 120, 1400);
+  /** The land's air, eased as you travel (locale.ts `atmos`). */
+  readonly air = { haze: new THREE.Color('#ffe8f0'), hazeNight: new THREE.Color('#3a3a7a'), sun: new THREE.Color('#fff0d0'), near: 140, far: 1500, light: 1.1 };
   private sunDir = new THREE.Vector3();
 
   /** Direction to the sun (unit vector). */
@@ -72,16 +74,39 @@ export class Sky {
           horizon: { value: new THREE.Color() },
           sunDir: { value: new THREE.Vector3(0, 1, 0) },
           sunCol: { value: new THREE.Color() },
+          band: { value: new THREE.Color() },
+          glowCol: { value: new THREE.Color() },
+          veil: { value: new THREE.Color() },
+          veilAmt: { value: 0 },
+          time: { value: 0 },
         },
         vertexShader: `varying vec3 vDir; void main(){ vDir = normalize(position); gl_Position = projectionMatrix * modelViewMatrix * vec4(position,1.0); }`,
         fragmentShader: `
-          uniform vec3 top; uniform vec3 horizon; uniform vec3 sunDir; uniform vec3 sunCol; varying vec3 vDir;
+          uniform vec3 top; uniform vec3 horizon; uniform vec3 sunDir; uniform vec3 sunCol;
+          uniform vec3 band; uniform vec3 glowCol; uniform vec3 veil; uniform float veilAmt; uniform float time;
+          varying vec3 vDir;
+          float hs(vec2 p) { return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453); }
+          float vn(vec2 p) { vec2 i = floor(p), f = fract(p); f = f * f * (3.0 - 2.0 * f);
+            return mix(mix(hs(i), hs(i + vec2(1, 0)), f.x), mix(hs(i + vec2(0, 1)), hs(i + vec2(1, 1)), f.x), f.y); }
+          float fbm(vec2 p) { float a = 0.5, s = 0.0; for (int i = 0; i < 4; i++) { s += vn(p) * a; p = p * 2.07 + 7.3; a *= 0.5; } return s; }
           void main(){
-            float h = clamp(vDir.y, -0.2, 1.0);
+            vec3 d = normalize(vDir);
+            float h = clamp(d.y, -0.2, 1.0);
             vec3 c = mix(horizon, top, pow(max(h, 0.0), 0.55));
+            // The land's own hue: a coloured band of air low over the horizon.
+            c = mix(c, band, exp(-max(h, 0.0) * 9.0) * 0.55);
             if (h < 0.0) c = mix(horizon, horizon * 0.7, -h * 5.0);
-            float s = max(dot(normalize(vDir), normalize(sunDir)), 0.0);
+            float s = max(dot(d, normalize(sunDir)), 0.0);
+            // Sunlight scattered through that air: a wide warm glow round the sun, tinted by the land.
+            c += glowCol * (pow(s, 5.0) * 0.32 + pow(s, 40.0) * 0.25) * (0.6 + 0.4 * exp(-max(h, 0.0) * 3.0));
             c += sunCol * (pow(s, 600.0) * 3.0 + pow(s, 12.0) * 0.25);
+            // High veils of thin cloud, drifting, lit on the sun side: texture, not a flat wash.
+            if (h > 0.0) {
+              vec2 q = d.xz / (h + 0.12) * 1.6 + vec2(time * 0.012, time * 0.004);
+              float v = fbm(q * vec2(1.0, 2.6)) ;
+              float streak = smoothstep(0.52, 0.8, v) * smoothstep(0.0, 0.08, h) * (1.0 - smoothstep(0.55, 0.9, h));
+              c = mix(c, veil + glowCol * pow(s, 3.0) * 0.4, streak * veilAmt);
+            }
             gl_FragColor = vec4(c, 1.0);
           }`,
       }),
@@ -172,27 +197,53 @@ export class Sky {
       this.tint.day.lerp(tmpA.set(L.sky.day), ease);
       this.tint.dusk.lerp(tmpA.set(L.sky.dusk), ease);
       this.tint.night.lerp(tmpA.set(L.sky.night), ease);
+      const a = L.atmos;
+      this.air.haze.lerp(tmpA.set(a.haze), ease);
+      this.air.hazeNight.lerp(tmpA.set(a.hazeNight), ease);
+      this.air.sun.lerp(tmpA.set(a.sun), ease);
+      this.air.near += (a.near - this.air.near) * ease;
+      this.air.far += (a.far - this.air.far) * ease;
+      this.air.light += (a.light - this.air.light) * ease;
     }
     const dusk = 1 - smoothstep(0, 0.35, Math.abs(this.sunDir.y));
-    // Vibrant: the land's own colours carry a good share of the sky.
-    u.top.value.lerp(this.tint.day, 0.34 * (1 - this.night) * (1 - dusk));
+    const day = (1 - this.night) * (1 - dusk);
+    // Rich, not washed out: the zenith stays a deep sky, turned towards the land's own hue, and
+    // the horizon carries the land's air at full colour — peach over the dunes, rose over the
+    // sakura, ice-blue over the Aurora, lavender over the Sky Isles.
+    richen(tmpC.copy(this.tint.day), 0.62, 0.6);
+    u.top.value.lerp(tmpC, 0.3 * day);
+    richen(tmpD.copy(this.air.haze), 0.62, 0.8);
+    u.horizon.value.lerp(tmpD, 0.62 * day);
+    u.band.value.copy(richen(tmpE.copy(this.air.haze), 0.75, 0.72)).multiplyScalar(day)
+      .add(tmpF.copy(this.air.hazeNight).multiplyScalar(0.6 * this.night))
+      .add(tmpG.copy(this.tint.dusk).multiplyScalar(dusk));
     u.top.value.lerp(this.tint.night, 0.5 * this.night);
     u.horizon.value.lerp(this.tint.dusk, 0.68 * dusk);
     u.horizon.value.lerp(this.tint.night, 0.36 * this.night);
+    // By night, a faint touch of the land's own night air on the horizon (sand, ice-blue, pearl).
+    u.horizon.value.lerp(this.air.hazeNight, 0.15 * this.night);
     if (regionId === 'skyisles') u.top.value.lerp(tmpA.set('#b8a4ff'), 0.25);
-    if (regionId === 'desert' || regionId === 'egypt' || regionId === 'middleeast') u.horizon.value.lerp(tmpA.set('#ffd6a0'), 0.25 * (1 - this.night));
+    if (regionId === 'desert' || regionId === 'egypt' || regionId === 'middleeast') u.horizon.value.lerp(tmpA.set('#ffc98a'), 0.2 * (1 - this.night));
+    u.glowCol.value.copy(this.air.sun).lerp(tmpD, 0.4).multiplyScalar((1 - this.night) * 0.9);
+    u.veil.value.copy(this.air.haze).lerp(tmpA.set('#ffffff'), 0.55).multiplyScalar(1 - this.night * 0.8).lerp(this.tint.night, this.night * 0.4);
+    u.veilAmt.value = 0.55 - this.night * 0.35;
+    u.time.value = t;
 
     this.group.position.set(focus.x, 0, focus.z);
-    this.fog.color.copy(u.horizon.value).lerp(u.top.value, 0.25);
+    // The haze: the land's own colour by day and by night, and its own depth.
+    this.fog.color.copy(u.horizon.value).lerp(u.top.value, 0.2).lerp(tmpA.copy(this.air.haze).lerp(this.air.hazeNight, this.night), 0.08 + 0.47 * (1 - this.night));
+    this.fog.near = this.air.near * (1 + this.night * 0.3);
+    this.fog.far = this.air.far * (1 + this.night * 0.15);
 
     const lightDir = this.sunDir.y > -0.05 ? this.sunDir : tmpDir.copy(this.sunDir).negate();
     this.sunLight.position.copy(focus).addScaledVector(lightDir, 200);
     this.sunLight.target.position.copy(focus);
     this.sunLight.target.updateMatrixWorld();
-    this.sunLight.color.copy(k.sunCol);
-    this.sunLight.intensity = Math.max(k.sun, this.night * 0.45);
-    this.hemi.intensity = k.amb * 1.6;
-    this.hemi.color.copy(u.top.value).lerp(tmpA.set('#ffffff'), 0.5);
+    // Sunlight takes the land's colour (golden over the dunes, cool over the ice).
+    this.sunLight.color.copy(k.sunCol).lerp(this.air.sun, 0.55 * (1 - this.night));
+    this.sunLight.intensity = Math.max(k.sun * this.air.light, this.night * 0.45);
+    this.hemi.intensity = k.amb * 1.6 * (0.94 + this.air.light * 0.08);
+    this.hemi.color.copy(u.top.value).lerp(tmpA.set('#ffffff'), 0.4).lerp(this.air.haze, 0.2 * (1 - this.night));
     this.hemi.groundColor.set(this.night > 0.5 ? '#2a2a4a' : '#7a8a5a');
 
     this.sunDisc.position.copy(this.sunDir).multiplyScalar(3300);
@@ -229,6 +280,14 @@ export class Sky {
 }
 
 const tmpDir = new THREE.Vector3();
+const tmpC = new THREE.Color(), tmpD = new THREE.Color(), tmpE = new THREE.Color(), tmpF = new THREE.Color(), tmpG = new THREE.Color();
+const hsl = { h: 0, s: 0, l: 0 };
+
+/** The same hue with at least `sat` saturation, at lightness `light` — a pastel made vivid. */
+function richen(c: THREE.Color, sat: number, light: number): THREE.Color {
+  c.getHSL(hsl);
+  return c.setHSL(hsl.h, Math.max(hsl.s * 0.7, sat) * Math.min(1, hsl.s * 4 + 0.2), light);
+}
 
 /** Aurora ribbon material: uniforms t (time) and strength (0..1). */
 export function auroraMaterial(seed: number): THREE.ShaderMaterial {

@@ -49,6 +49,8 @@ export class RegionFX {
   private fade = 0;
   private want: RegionId = 'meadow';
   private g = { sat: 1, vib: 0, tint: new THREE.Color('#ffffff'), amt: 0 };
+  /** The land's own night hue (locale.ts atmos.night), eased like the grade. */
+  private nightTint = NIGHT_TINT.clone();
 
   constructor() {
     for (let i = 0; i < N; i++) {
@@ -114,11 +116,14 @@ export class RegionFX {
     this.g.vib += (L.vib - this.g.vib) * k;
     this.g.amt += (L.amt - this.g.amt) * k;
     this.g.tint.lerp(new THREE.Color(L.tint), k);
+    this.nightTint.lerp(new THREE.Color(LOCALES[this.want].atmos.night), k);
     const u = this.grade.uniforms;
     u.sat.value = this.g.sat;
     u.vib.value = this.g.vib;
+    // The original grade, unchanged: the land's tint by day, the lavender night after dark...
     u.amt.value = this.g.amt * (1 - night * 0.4) + night * 0.1;
-    (u.tint.value as THREE.Color).copy(this.g.tint).lerp(NIGHT_TINT, night * 0.6);
+    // ...then only a minimal touch of the land's own night hue (ice-blue, sand, pearl-violet).
+    (u.tint.value as THREE.Color).copy(this.g.tint).lerp(NIGHT_TINT, night * 0.6).lerp(this.nightTint, night * 0.15);
     u.sat.value = this.g.sat + night * 0.1;
 
     const th = this.theme;

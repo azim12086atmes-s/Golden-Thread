@@ -43,6 +43,7 @@ import { HouseInterior, ROOM_NAME, roomTitle } from './housing/HouseInterior';
 import { REGION_BY_ID, regionAt, regionCenter, type RegionId, type RegionSpec } from './world/regions';
 import { Sky } from './world/Sky';
 import { SkyFX } from './world/SkyFX';
+import { Weather } from './world/Weather';
 import { surfaceAt } from './world/terrain';
 import { World } from './world/World';
 import { updateWind } from './world/wind';
@@ -93,6 +94,8 @@ export class Game {
   readonly skyLanterns = new SkyLanterns();
   /** Each land's own sky effects (world/skies.ts). */
   readonly skyFx = new SkyFX();
+  /** Each land's weather: dust, snow, mist, haze or pollen on the wind. */
+  readonly weather = new Weather();
   readonly quests: QuestSystem;
   readonly msgs: Messages;
   readonly housing: Housing;
@@ -151,7 +154,7 @@ export class Game {
 
     this.scene.fog = this.sky.fog;
     this.scene.add(...this.auras);
-    this.scene.add(this.world.group, this.sky.group, this.sky.sunLight, this.sky.sunLight.target, this.sky.hemi, this.ambience.points, this.regionFx.points, this.skyLanterns.mesh, this.skyFx.group);
+    this.scene.add(this.world.group, this.sky.group, this.sky.sunLight, this.sky.sunLight.target, this.sky.hemi, this.ambience.points, this.regionFx.points, this.skyLanterns.mesh, this.skyFx.group, this.weather.group);
 
     this.composer = new EffectComposer(this.renderer);
     this.composer.addPass(new RenderPass(this.scene, this.camera));
@@ -323,6 +326,7 @@ export class Game {
     this.ambience.update(dt, this.trav.gPos, this.t, this.sky.night);
     this.regionFx.setRegion(this.region.id);
     this.regionFx.update(dt, this.trav.gPos, this.t, this.sky.night);
+    this.weather.update(dt, this.t, this.region.id, this.trav.gPos, this.sky.night, surfaceAt(this.trav.gPos.x, this.trav.gPos.z, this.trav.gPos.y + 2));
     this.skyLanterns.everyLand = this.region.id === 'meadow' && this.celebration.festivities.level > 0.5;
     this.skyLanterns.update(dt, this.t, this.trav.gPos, this.region.id, this.sky.night);
     this.skyFx.party = this.celebration.festivities.level;

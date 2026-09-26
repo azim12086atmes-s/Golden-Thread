@@ -100,5 +100,5 @@ export const SKIES: Record<RegionId, SkyDesign> = {
 
 /** Fireworks per second at full strength; the celebration makes it a proper display. */
 export function fireworkRate(strength: number, party: number): number {
-  return strength * (0.6 + party * 1.2);
+  return strength * (1.1 + party * 2.4);
 }

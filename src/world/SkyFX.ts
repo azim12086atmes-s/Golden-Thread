@@ -542,8 +542,9 @@ export class SkyFX {
       if (party > 0.3) b.o.set(this.partyAt.x + rnd(-60, 60), this.partyAt.y + rnd(55, 100), this.partyAt.z + rnd(-70, 20));
       else {
         const ahead = Math.atan2(this.lookDir.z, this.lookDir.x);
-        const a = Math.random() < 0.8 ? ahead + rnd(-0.7, 0.7) : Math.random() * Math.PI * 2, r = rnd(110, 250);
-        b.o.set(focus.x + Math.cos(a) * r, focus.y + rnd(70, 140), focus.z + Math.sin(a) * r);
+        // Low enough over the rooftops to burst inside the view (8–25° up), mostly ahead.
+        const a = Math.random() < 0.85 ? ahead + rnd(-0.6, 0.6) : Math.random() * Math.PI * 2, r = rnd(120, 230);
+        b.o.set(focus.x + Math.cos(a) * r, focus.y + r * rnd(0.16, 0.42), focus.z + Math.sin(a) * r);
       }
       b.age = 0;
       b.rise = rnd(1, 1.6);
