@@ -7,6 +7,10 @@ import { ANIMAL_HEAD_GAP } from '../characters/anatomy';
  * adores, drawn in this world's own way: like everyone here it has no eyes and no mouth, and its
  * head floats just clear of its neck. It loops over the party and breathes harmless glitter.
  */
+/** Saddle positions along the body (unscaled): hers in front, his behind. */
+export const DRAGON_SADDLES = [0.35, -0.5] as const;
+export const DRAGON_SCALE = 1.6;
+
 const BODY = '#17181f', BELLY = '#22242e', WING = '#111218', PAW = '#1d1e26';
 
 const std = (c: string) => new THREE.MeshStandardMaterial({ color: c, roughness: 0.45, metalness: 0.15, flatShading: true, side: THREE.DoubleSide });
@@ -21,11 +25,36 @@ export class Dragon {
   private breathAge: Float32Array;
   private breathVel: Float32Array;
   private breathing = 0;
+  /** Rider's seat height above the root (0 for the dragon that only flies over the party). */
+  readonly saddleY: number;
+  private phase = 0;
 
-  constructor(scale = 1.6) {
+  /** `mount`: stands on the ground with a saddle, for riding. */
+  constructor(scale = 1.6, mount = false) {
     const body = new THREE.Group();
     body.scale.setScalar(scale);
     this.root.add(body);
+    if (mount) {
+      body.position.y = 1.05;
+      const gold = new THREE.MeshBasicMaterial({ color: new THREE.Color('#f5c451').multiplyScalar(1.4), toneMapped: false });
+      // Two separate saddles — hers in front, his behind — each with its own back-rest.
+      for (const z of DRAGON_SADDLES) {
+        const saddle = new THREE.Mesh(new THREE.BoxGeometry(0.4, 0.08, 0.42), std('#f49ac1'));
+        saddle.position.set(0, 0.36, z);
+        body.add(saddle);
+        const rim = new THREE.Mesh(new THREE.BoxGeometry(0.44, 0.04, 0.46), gold);
+        rim.position.set(0, 0.32, z);
+        body.add(rim);
+        const back = new THREE.Mesh(new THREE.BoxGeometry(0.36, 0.22, 0.05), std('#f49ac1'));
+        back.position.set(0, 0.48, z - 0.2);
+        body.add(back);
+      }
+      // A carved divider between the two saddles.
+      const divider = new THREE.Mesh(new THREE.BoxGeometry(0.3, 0.26, 0.05), gold);
+      divider.position.set(0, 0.46, (DRAGON_SADDLES[0] + DRAGON_SADDLES[1]) / 2);
+      body.add(divider);
+    }
+    this.saddleY = mount ? 1.05 + 0.41 * scale : 0;
     // A long, sleek body.
     const torso = new THREE.Mesh(new THREE.SphereGeometry(0.55, 14, 10), std(BODY));
     torso.scale.set(0.72, 0.62, 1.9);
@@ -150,8 +179,19 @@ export class Dragon {
     this.breath.frustumCulled = false;
   }
 
+  /** As a mount: wings beat with speed (folded-ish at rest), tail and head sway. */
+  update(dt: number, speed: number, t: number): void {
+    this.phase += dt * (speed > 8 ? 5.5 : speed > 0.2 ? 2.5 : 1.2);
+    const amp = speed > 8 ? 0.65 : speed > 0.2 ? 0.25 : 0.08;
+    const flap = Math.sin(this.phase);
+    this.wings[0].rotation.z = (speed > 8 ? 0 : -0.35) + flap * amp;
+    this.wings[1].rotation.z = (speed > 8 ? 0 : 0.35) - flap * amp;
+    this.tail.forEach((s, i) => { s.rotation.y = Math.sin(t * 2 - i * 0.6) * 0.15; });
+    this.head.rotation.x = Math.sin(t * 1.3) * 0.08;
+  }
+
   /** Fly a lazy figure-eight around `centre`, `height` metres up. */
-  update(dt: number, t: number, centre: THREE.Vector3, height: number): void {
+  fly(dt: number, t: number, centre: THREE.Vector3, height: number): void {
     const a = t * 0.28;
     const p = new THREE.Vector3(centre.x + Math.sin(a) * 34, centre.y + height + Math.sin(a * 2) * 6, centre.z + Math.sin(a * 2) * 16 - 6);
     const ahead = new THREE.Vector3(centre.x + Math.sin(a + 0.05) * 34, centre.y + height + Math.sin((a + 0.05) * 2) * 6, centre.z + Math.sin((a + 0.05) * 2) * 16 - 6);

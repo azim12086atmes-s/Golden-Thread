@@ -31,7 +31,10 @@ export class Celebration {
     this.festivities = new Festivities(this.castle.y);
     g.scene.add(this.festivities.group, this.chariot.root);
     this.chariot.root.visible = false;
-    if (stageOf(g.st) === 'done') this.festivities.showCrowd();
+    if (stageOf(g.st) === 'done') {
+      this.festivities.showCrowd();
+      this.grantDragon(false);
+    }
   }
 
   get done(): boolean {
@@ -110,6 +113,7 @@ export class Celebration {
         this.partyCake = false;
         if (!g.st.flags.includes(DONE_FLAG)) g.st.flags.push(DONE_FLAG);
         g.st.light += 1;
+        this.grantDragon(true);
         const { girl } = g.st.names;
         g.toast(`🎉 Congratulations, ${girl}! The party goes on all night — wander, dance with the lights, visit the unicorns.`, 'reward');
         g.guide.refresh();
@@ -117,6 +121,13 @@ export class Celebration {
         g.save();
       };
     };
+  }
+
+  /** After the party, the night dragon will carry them both (two saddles). */
+  private grantDragon(announce: boolean): void {
+    if (this.g.st.vehicles.includes('dragon')) return;
+    this.g.st.vehicles.push('dragon');
+    if (announce) this.g.toast('🐉 The night dragon has chosen you both. Two saddles — find it under Travel (V).', 'reward');
   }
 
   /** Replay from Help: the chariot returns and the evening begins again. */

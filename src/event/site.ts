@@ -87,7 +87,7 @@ export function lines(st: GameState): Lines {
   return {
     ride: [
       `${boy} has planned something special.`,
-      'The unicorns lift the chariot over the meadow, towards a castle no one has seen before.',
+      `${girl} rides in the chariot; ${boy} flies beside her on a winged unicorn, towards a castle no one has seen before.`,
     ],
     wardrobe: [
       `Inside, in a wardrobe of silk and starlight, a dress is being made just for ${girl}.`,

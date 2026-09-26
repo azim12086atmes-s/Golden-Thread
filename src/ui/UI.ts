@@ -142,7 +142,7 @@ export class UI {
       h('div', { class: 'names' }, `${st.names.girl} ✦ ${st.names.boy}`),
     );
     const mode = VEHICLES[g.trav.mode];
-    const showEnergy = g.trav.mode === 'fly' || g.trav.mode === 'unicorn' || g.trav.energy < 0.99;
+    const showEnergy = g.trav.mode === 'fly' || g.trav.mounted || g.trav.energy < 0.99;
     this.tr.replaceChildren(...[
       h('div', { class: 'row' }, h('span', { class: 'time' }, `${g.sky.night > 0.5 ? '🌙' : '☀️'} Day ${dayOf(st.minutes)} · ${clock(st.minutes)}`)),
       h('div', { class: 'row' }, h('span', { class: 'coins', title: 'Coins' }, `🪙 ${st.coins}`), h('span', { class: 'light', title: 'Shared light — grows with every kindness' }, `✦ ${st.light.toFixed(st.light % 1 ? 1 : 0)}`), h('span', { title: 'Lanterns lit' }, `🏮 ${st.lanterns.length}/${REGIONS.length}`)),
@@ -537,7 +537,7 @@ export class UI {
       else if (v.price) row.append(btn(`Buy · 🪙${v.price}`, () => { const e = this.g.buyVehicle(v.id); if (e) this.g.toast(e); this.render(); }, 'small', st.coins < v.price));
       body.append(row);
     }
-    body.append(h('p', { class: 'dim' }, 'In every vehicle you sit in separate seats. On unicorns, each of you rides your own.'));
+    body.append(h('p', { class: 'dim' }, 'In every vehicle you sit in separate seats. On unicorns, each of you rides your own; the night dragon has two separate saddles, hers in front and his behind.'));
   }
 
   private dialogue(body: HTMLElement, head: HTMLElement): void {

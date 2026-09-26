@@ -5,6 +5,8 @@ import { OUTFITS } from '../characters/outfits';
 import { auroraMaterial, rainbowMaterial } from '../world/Sky';
 import { CASTLE, guestSpot, guests } from './site';
 import { Dragon } from './Dragon';
+import { wardrobeFor } from '../npc/Townsfolk';
+import { REGIONS } from '../world/regions';
 
 /**
  * The party around the castle: petals and roses falling, fireflies of every colour, rainbow
@@ -61,6 +63,9 @@ function swarm(n: number, size: number, tex: THREE.Texture, colour: (i: number, 
   return { points, base: new Float32Array(n * 3), vel: new Float32Array(n * 3), phase: new Float32Array(n) };
 }
 
+/** Party dancers in the ring (beyond the guests lining the aisle). */
+export const DANCERS = 26;
+
 export class Festivities {
   readonly group = new THREE.Group();
   level = 0;
@@ -79,7 +84,13 @@ export class Festivities {
   readonly dragon = new Dragon();
   private crowd: Array<{ model: CharacterModel; x: number; z: number; face: number; ph: number }> = [];
   private crowdOn = false;
+  private dancers: Array<{ model: CharacterModel; a: number; r: number; ph: number }> = [];
   private tmp = new THREE.Matrix4();
+  /** Warm light over the courtyard, and coloured wash lights among the flowers. */
+  private lights: THREE.PointLight[] = [];
+  /** A dome of multi-coloured glitter and stars over the whole sky. */
+  private glitter: THREE.Points<THREE.BufferGeometry, THREE.PointsMaterial>;
+  private glitterBase: Float32Array;
 
   constructor(groundY: number) {
     this.y = groundY;
@@ -114,16 +125,25 @@ export class Festivities {
     this.lanterns.frustumCulled = false;
     this.group.add(this.lanterns);
 
-    // Aurora ribbons to the north and rainbows arching over the meadow — at night, for her.
-    for (let i = 0; i < 3; i++) {
-      const m = new THREE.Mesh(new THREE.PlaneGeometry(700, 180, 60, 1), auroraMaterial(i * 1.3 + 0.5));
-      m.position.set(this.centre.x + (i - 1) * 180, groundY + 110 + i * 22, this.centre.z - 260 - i * 50);
-      m.rotation.y = 0.15 * (i - 1);
+    // The aurora covers the sky: curtains all round the horizon and ribbons sweeping overhead.
+    for (let i = 0; i < 10; i++) {
+      const a = (i / 10) * Math.PI * 2;
+      const m = new THREE.Mesh(new THREE.PlaneGeometry(620, 200, 60, 1), auroraMaterial(i * 1.3 + 0.5));
+      m.position.set(this.centre.x + Math.cos(a) * 300, groundY + 120 + (i % 3) * 30, this.centre.z + Math.sin(a) * 300);
+      m.rotation.y = -a + Math.PI / 2;
       m.frustumCulled = false;
       this.auroras.push(m);
       this.group.add(m);
     }
-    for (const [dx, dz, r, ry] of [[-60, -40, 120, 0.5], [70, -90, 95, -0.4], [0, -180, 160, 0]] as const) {
+    for (let i = 0; i < 4; i++) {
+      const m = new THREE.Mesh(new THREE.PlaneGeometry(700, 160, 60, 1), auroraMaterial(i * 2.1 + 0.3));
+      m.rotation.set(-Math.PI / 2 + 0.25, i * 0.8, 0);
+      m.position.set(this.centre.x + (i - 1.5) * 60, groundY + 230 + i * 12, this.centre.z - 40 + (i % 2) * 80);
+      m.frustumCulled = false;
+      this.auroras.push(m);
+      this.group.add(m);
+    }
+    for (const [dx, dz, r, ry] of [[-60, -40, 120, 0.5], [70, -90, 95, -0.4], [0, -180, 160, 0], [-150, 60, 110, 1.3], [140, 40, 130, -1.2], [20, 170, 150, 3.0]] as const) {
       const m = new THREE.Mesh(new THREE.TorusGeometry(r, r * 0.05, 8, 64, Math.PI), rainbowMaterial());
       m.position.set(this.centre.x + dx, groundY - 4, this.centre.z + dz);
       m.rotation.y = ry;
@@ -132,6 +152,33 @@ export class Festivities {
       this.group.add(m);
     }
 
+    // Glitter and stars across the whole sky, in every colour, twinkling.
+    {
+      const n = 1600;
+      const pos = new Float32Array(n * 3), col = new Float32Array(n * 3);
+      this.glitterBase = new Float32Array(n * 3);
+      const c = new THREE.Color();
+      for (let i = 0; i < n; i++) {
+        const u = Math.random() * Math.PI * 2, v = Math.acos(1 - Math.random() * 0.95), r = 260 + Math.random() * 120;
+        pos.set([this.centre.x + Math.cos(u) * Math.sin(v) * r, groundY + Math.cos(v) * r, this.centre.z + Math.sin(u) * Math.sin(v) * r], i * 3);
+        c.setHSL(Math.random(), 0.85, 0.72);
+        this.glitterBase.set([c.r, c.g, c.b], i * 3);
+        col.set([c.r, c.g, c.b], i * 3);
+      }
+      const geo = new THREE.BufferGeometry();
+      geo.setAttribute('position', new THREE.BufferAttribute(pos, 3));
+      geo.setAttribute('color', new THREE.BufferAttribute(col, 3));
+      this.glitter = new THREE.Points(geo, new THREE.PointsMaterial({ size: 2.4, map: dot, vertexColors: true, transparent: true, depthWrite: false, blending: THREE.AdditiveBlending, toneMapped: false, fog: false }));
+      this.glitter.frustumCulled = false;
+      this.group.add(this.glitter);
+    }
+    // Warm light over the courtyard and cake; coloured washes out in the flowers.
+    for (const [dx, dy, dz, col, dist] of [[0, 9, 0, '#ffd9a8', 42], [0, 5, -8, '#ffe8c8', 20], [-22, 4, 10, '#ff9ad0', 26], [22, 4, 10, '#a8c8ff', 26], [0, 4, 30, '#d9b3ff', 26]] as const) {
+      const l = new THREE.PointLight(col, 0, dist, 1.6);
+      l.position.set(this.centre.x + dx, groundY + dy, this.centre.z + dz);
+      this.lights.push(l);
+      this.group.add(l);
+    }
     // Unicorns wandering the flower meadow.
     for (let i = 0; i < 4; i++) {
       const m = new AnimalModel('unicorn', 1);
@@ -169,6 +216,16 @@ export class Festivities {
       this.group.add(model.root);
       this.crowd.push({ model, x: s.x, z: s.z, face: s.face, ph: i * 0.7 });
     });
+    // More people from every land, dancing in a slow ring round the courtyard.
+    const lands = REGIONS.filter((r) => r.id !== 'skyisles');
+    for (let i = 0; i < DANCERS; i++) {
+      const who = i % 2 ? 'boy' : 'girl';
+      const land = lands[(i * 7) % lands.length].id;
+      const pool = wardrobeFor(land, who);
+      const model = new CharacterModel(pool[(i * 5) % pool.length], ['#f1c9a5', '#e0ac85', '#c68b62', '#a8704a', '#8a5a3a', '#6b4630'][i % 6], who === 'girl' ? 0.94 : 1.02);
+      this.group.add(model.root);
+      this.dancers.push({ model, a: (i / DANCERS) * Math.PI * 2, r: CASTLE.venue.r - 7 + (i % 2) * 1.6, ph: i * 0.9 });
+    }
   }
 
   /** Face the crowd towards a point (the couple). */
@@ -240,6 +297,16 @@ export class Festivities {
       a.material.uniforms.strength.value = L * Math.max(0.35, night);
     }
     for (const r of this.rainbows) r.material.uniforms.strength.value = L * 0.85;
+    {
+      const col = this.glitter.geometry.attributes.color as THREE.BufferAttribute, b = this.glitterBase;
+      for (let i = 0; i < col.count; i++) {
+        const tw = 0.45 + 0.55 * Math.max(0, Math.sin(t * (1.5 + (i % 7) * 0.4) + i));
+        col.setXYZ(i, b[i * 3] * tw, b[i * 3 + 1] * tw, b[i * 3 + 2] * tw);
+      }
+      col.needsUpdate = true;
+      this.glitter.material.opacity = L * Math.max(0.3, night);
+    }
+    this.lights.forEach((l, i) => { l.intensity = L * (0.4 + night * 1.6) * (i === 0 ? 60 : 30); });
     // Unicorns stroll in wide circles through the flowers.
     for (const u of this.unicorns) {
       u.a += u.s * dt;
@@ -248,13 +315,23 @@ export class Festivities {
       u.m.root.rotation.y = Math.atan2(-Math.sin(u.a) * Math.sign(u.s), Math.cos(u.a) * Math.sign(u.s));
       u.m.update(dt, 1.2, t);
     }
-    this.dragon.update(dt, t, this.centre, 26);
+    this.dragon.fly(dt, t, this.centre, 26);
     // Guests cheer: little hops, arms up now and then.
     for (const c of this.crowd) {
       const hop = Math.max(0, Math.sin(t * 5 + c.ph));
       c.model.root.position.y = this.y + hop * 0.18;
       c.model.root.rotation.y += Math.atan2(Math.sin(c.face - c.model.root.rotation.y), Math.cos(c.face - c.model.root.rotation.y)) * Math.min(1, dt * 3);
       c.model.update(dt, { speed: 0, airborne: Math.sin(t * 1.7 + c.ph) > 0.2, riding: false, t: t + c.ph });
+    }
+    // Dancers turn slowly round the courtyard, swaying, always a step apart from each other.
+    for (const d of this.dancers) {
+      d.a += dt * 0.12;
+      const x = this.centre.x + Math.cos(d.a) * d.r, z = this.centre.z + Math.sin(d.a) * d.r;
+      const aisle = Math.abs(x - CASTLE.aisle.x) < 6.8 && z > this.centre.z; // the aisle and the guests lining it
+      d.model.root.visible = !aisle;
+      d.model.root.position.set(x, this.y + Math.max(0, Math.sin(t * 4 + d.ph)) * 0.12, z);
+      d.model.root.rotation.y = -d.a + Math.sin(t * 2 + d.ph) * 0.6;
+      d.model.update(dt, { speed: 0.9, airborne: Math.sin(t * 1.3 + d.ph) > 0.6, riding: false, t: t + d.ph });
     }
     void focus;
   }

@@ -33,11 +33,11 @@ export class Chariot {
     add(shell, '#fbf4f8', 0, 1.35, -0.3).rotation.y = Math.PI;
     add(new THREE.BoxGeometry(2.7, 0.18, 2.1), '#fbf4f8', 0, 0.62, -0.3);
     add(new THREE.TorusGeometry(1.45, 0.05, 6, 40, Math.PI * 1.1), '#f5c451', 0, 1.25, -0.3).rotation.set(Math.PI / 2, 0, Math.PI * 0.95);
-    // Two seats with pink cushions, and a carved rail between them.
-    for (const s of [SEATS.girl, SEATS.boy]) {
-      add(new THREE.BoxGeometry(0.9, 0.2, 0.8), '#f49ac1', s.x, 0.82, s.z);
-      add(new THREE.BoxGeometry(0.9, 0.7, 0.15), '#f49ac1', s.x, 1.15, s.z - 0.45);
-    }
+    // Her cushioned seat; beside it, a basket of roses (he rides his own winged unicorn).
+    add(new THREE.BoxGeometry(0.9, 0.2, 0.8), '#f49ac1', SEATS.girl.x, 0.82, SEATS.girl.z);
+    add(new THREE.BoxGeometry(0.9, 0.7, 0.15), '#f49ac1', SEATS.girl.x, 1.15, SEATS.girl.z - 0.45);
+    add(new THREE.CylinderGeometry(0.35, 0.28, 0.35, 12), '#c9a06a', SEATS.boy.x, 0.9, SEATS.boy.z);
+    for (let i = 0; i < 9; i++) add(new THREE.SphereGeometry(0.1, 6, 5), i % 3 ? '#e0284f' : '#ffffff', SEATS.boy.x + Math.cos(i * 0.7) * 0.2, 1.12 + (i % 2) * 0.06, SEATS.boy.z + Math.sin(i * 0.7) * 0.2);
     add(new THREE.BoxGeometry(0.12, 0.55, 0.9), '#f5c451', 0, 1.0, -0.2);
     // Wheels.
     for (const [x, z] of [[-1.45, -0.9], [1.45, -0.9], [-1.4, 0.5], [1.4, 0.5]]) {

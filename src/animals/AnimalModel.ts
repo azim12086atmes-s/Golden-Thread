@@ -77,6 +77,8 @@ export class AnimalModel {
   readonly head = new THREE.Group();
   private legs: THREE.Group[] = [];
   private tail?: THREE.Object3D;
+  /** Feathered wings (unicorns): they beat slowly at rest and fast at a gallop or in the air. */
+  private wings: THREE.Group[] = [];
   private phase = Math.random() * 10;
   private headBase = new THREE.Vector3();
   /** Seat height for rideable animals. */
@@ -97,6 +99,33 @@ export class AnimalModel {
     torso.position.y = bodyY;
     body.add(torso);
     this.saddleY = (bodyY + H / 2) * scale;
+
+    if (species === 'unicorn') {
+      // Feathered wings with glowing rainbow tips, and a rainbow saddle-blanket.
+      for (const sd of [-1, 1]) {
+        const w = new THREE.Group();
+        for (let i = 0; i < 6; i++) {
+          const len = 0.55 + i * 0.12;
+          const f = part(new THREE.BoxGeometry(0.03, 0.1, len).translate(0, 0, -len / 2), '#ffffff', 'wing');
+          f.rotation.y = sd * (0.25 + i * 0.16);
+          f.position.y = -i * 0.02;
+          w.add(f);
+          const tip = part(new THREE.BoxGeometry(0.034, 0.1, 0.14), RAINBOW[i], 'wing', true);
+          tip.position.set(Math.sin(sd * (0.25 + i * 0.16)) * -len, -i * 0.02, Math.cos(sd * (0.25 + i * 0.16)) * -len);
+          tip.rotation.y = sd * (0.25 + i * 0.16);
+          w.add(tip);
+        }
+        w.position.set(sd * W * 0.42, bodyY + H * 0.32, L * 0.18);
+        w.rotation.set(0.35, sd * 1.35, sd * 0.5);
+        body.add(w);
+        this.wings.push(w);
+      }
+      RAINBOW.forEach((col, i) => {
+        const band = part(new THREE.BoxGeometry(W * 1.02, 0.02, 0.07), col, 'body', i % 2 === 0);
+        band.position.set(0, bodyY + H * 0.47, -0.2 + i * 0.07);
+        body.add(band);
+      });
+    }
 
     if (s.extra === 'wool') {
       for (let i = 0; i < 7; i++) {
@@ -299,5 +328,10 @@ export class AnimalModel {
     this.legs.forEach((l, i) => (l.rotation.x = i % 2 === (i < 2 ? 0 : 1) ? sw : -sw));
     this.head.position.y = this.headBase.y + Math.sin(t * 2 + this.phase * 0.2) * 0.015;
     if (this.tail) this.tail.rotation.y = Math.sin(t * 3 + this.phase) * 0.3;
+    if (this.wings.length) {
+      const beat = Math.sin(t * (speed > 8 ? 7 : 1.6)) * (speed > 8 ? 0.55 : 0.12);
+      this.wings[0].rotation.z = -0.5 + beat;
+      this.wings[1].rotation.z = 0.5 - beat;
+    }
   }
 }

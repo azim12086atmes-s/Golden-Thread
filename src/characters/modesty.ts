@@ -65,6 +65,10 @@ export interface Detail {
   buttons?: string;
   /** Glowing rainbow bands above the hem. */
   rainbow?: boolean;
+  /** The fabric itself glows softly (0..1). */
+  glow?: number;
+  /** Rainbow branches with little blossoms winding down the skirt. */
+  vines?: boolean;
 }
 
 /** The covering outfit the game renders. */

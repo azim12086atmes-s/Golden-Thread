@@ -1,5 +1,4 @@
 import * as THREE from 'three';
-import { AnimalModel } from '../animals/AnimalModel';
 import { CharacterModel, HERO_SCALE } from '../characters/CharacterModel';
 import { MIN_GAP, enforceGap, followStep } from '../characters/follow';
 import type { Outfit } from '../characters/modesty';
@@ -7,7 +6,7 @@ import { Thread } from '../characters/Thread';
 import type { Input } from '../core/Input';
 import { clamp, damp } from '../core/rng';
 import type { GameState } from '../core/state';
-import { VEHICLES, buildVehicle, type VehicleId, type VehicleModel } from '../vehicles/vehicles';
+import { VEHICLES, buildVehicle, type Mount, type VehicleId, type VehicleModel } from '../vehicles/vehicles';
 import { WATER_Y, groundAt, surfaceAt, terrainHeight } from '../world/terrain';
 import type { World } from '../world/World';
 
@@ -38,8 +37,13 @@ export class Travellers {
   private tension = 0;
   private bSpeed = 0;
   private vehicle: VehicleModel | null = null;
-  private boyUnicorn: AnimalModel | null = null;
+  private boyUnicorn: Mount | null = null;
   parkedVan: { model: VehicleModel; pos: THREE.Vector3; heading: number } | null = null;
+
+  /** Riding their own mounts (unicorns, or the dragon and a unicorn). */
+  get mounted(): boolean {
+    return VEHICLES[this.mode].kind === 'mount';
+  }
   private pitch = 0;
   private roll = 0;
   // Camera rig.
@@ -82,6 +86,7 @@ export class Travellers {
     if (id === this.mode) return null;
     if (id === 'fly' && this.energy < 0.15) return 'Your cape needs light. Stay close together to recharge.';
     if (this.mode === 'plane' && !this.grounded) return 'Land the plane first.';
+    if (this.mode === 'dragon' && !this.grounded) return 'Land the dragon first (Shift to descend).';
     const prev = this.mode;
     // Leaving a vehicle: step out on opposite sides.
     if (this.vehicle) {
@@ -124,7 +129,7 @@ export class Travellers {
       }
       this.grounded = true;
     } else if (def.kind === 'mount') {
-      this.vehicle = buildVehicle('unicorn');
+      this.vehicle = buildVehicle(id);
       this.scene.add(this.vehicle!.root);
       this.boyUnicorn = this.vehicle!.unicorns![1];
       this.scene.add(this.boyUnicorn.root);
@@ -152,7 +157,7 @@ export class Travellers {
   teleport(x: number, z: number): void {
     // Travelling on lands you: the "land the plane first" rule is for the player, not the road.
     this.grounded = true;
-    if (this.mode !== 'walk' && this.mode !== 'unicorn') this.setMode('walk');
+    if (this.mode !== 'walk' && !this.mounted) this.setMode('walk');
     this.gPos.set(x, surfaceAt(x, z, 1e9), z);
     this.world.resolve(this.gPos, 0.5);
     this.bPos.set(x + 1.95, surfaceAt(x + 1.95, z, 1e9), z);
@@ -183,8 +188,8 @@ export class Travellers {
     // Flight light: recharges on the ground, and in the air while the two stay close (the
     // thread shares its light — no touching needed).
     const close = this.gPos.distanceTo(this.bPos) < 4.5;
-    if (this.mode === 'fly' || (this.mode === 'unicorn' && !this.grounded)) {
-      const drain = (this.mode === 'unicorn' ? 0.03 : 0.055) / (1 + this.st.light * 0.15);
+    if (this.mode === 'fly' || (this.mounted && !this.grounded)) {
+      const drain = (this.mounted ? 0.03 : 0.055) / (1 + this.st.light * 0.15);
       this.energy = clamp(this.energy - drain * dt + (close ? 0.025 * dt : 0), 0, 1);
     } else if (this.grounded) {
       this.energy = clamp(this.energy + 0.25 * dt, 0, 1);
@@ -195,7 +200,7 @@ export class Travellers {
   }
 
   private moveOnFoot(dt: number, input: Input, a: { x: number; y: number }, fwd: THREE.Vector3, right: THREE.Vector3): void {
-    const mount = this.mode === 'unicorn';
+    const mount = this.mounted;
     const sprint = input.held('shift') && this.grounded;
     const max = mount ? (sprint ? 24 : 15) : sprint ? 11 : 6.5;
     const want = fwd.clone().multiplyScalar(a.y).addScaledVector(right, a.x).multiplyScalar(max);
@@ -295,13 +300,14 @@ export class Travellers {
   }
 
   private moveFlyingPlane(dt: number, input: Input, a: { x: number; y: number }): void {
-    const def = VEHICLES.plane;
+    const def = VEHICLES[this.mode];
+    const dragon = this.mode === 'dragon';
     const throttle = a.y > 0 ? def.maxSpeed : a.y < 0 ? 0 : this.speed;
     this.speed = damp(this.speed, throttle, a.y === 0 ? 0.1 : 0.6, dt);
     this.heading += -a.x * def.turn * dt * (this.grounded ? 0.8 : 1);
     this.roll = damp(this.roll, a.x * 0.6 * (this.grounded ? 0 : 1), 3, dt);
     this.camYaw = turnToward(this.camYaw, this.heading, 1.2 * dt);
-    const lift = this.speed > 24;
+    const lift = dragon || this.speed > 24;
     let climb = 0;
     if (input.held(' ') && lift) climb = 1;
     else if (input.held('shift')) climb = -1;
@@ -309,7 +315,7 @@ export class Travellers {
     this.pitch = damp(this.pitch, -climb * 0.35, 3, dt);
     const dir = new THREE.Vector3(Math.sin(this.heading), 0, Math.cos(this.heading));
     this.gPos.addScaledVector(dir, this.speed * dt);
-    this.gPos.y += climb * this.speed * 0.4 * dt;
+    this.gPos.y += climb * (dragon ? Math.max(8, this.speed * 0.4) : this.speed * 0.4) * dt;
     const ground = surfaceAt(this.gPos.x, this.gPos.z, this.gPos.y);
     this.gPos.y = Math.min(this.gPos.y, 900);
     if (this.gPos.y <= ground) {
@@ -334,12 +340,12 @@ export class Travellers {
     const px = this.bPos.x, pz = this.bPos.z;
     const out = followStep({
       boy: this.bPos, girl: this.gPos, heading: this.heading, speed: this.currentSpeed, dt, airborne,
-      groundAt: (x, z) => this.mode === 'unicorn' ? Math.max(surfaceAt(x, z, this.gPos.y + 2), WATER_Y) : surfaceAt(x, z, this.gPos.y + 2),
+      groundAt: (x, z) => this.mounted ? Math.max(surfaceAt(x, z, this.gPos.y + 2), WATER_Y) : surfaceAt(x, z, this.gPos.y + 2),
     });
     this.bPos.set(out.pos.x, out.pos.y, out.pos.z);
-    this.world.resolve(this.bPos, this.mode === 'unicorn' ? 0.9 : 0.35);
+    this.world.resolve(this.bPos, this.mounted ? 0.9 : 0.35);
     // Collision can push him — the gap always wins.
-    const gap = this.mode === 'unicorn' ? MOUNT_GAP : MIN_GAP;
+    const gap = this.mounted ? MOUNT_GAP : MIN_GAP;
     const safe = enforceGap(this.bPos, this.gPos, gap);
     this.bPos.set(safe.x, safe.y, safe.z);
     this.bSpeed = out.speed;

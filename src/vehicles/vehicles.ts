@@ -1,13 +1,14 @@
 import * as THREE from 'three';
 import { AnimalModel } from '../animals/AnimalModel';
 import { BODY_RADIUS } from '../characters/follow';
+import { DRAGON_SCALE, Dragon } from '../event/Dragon';
 
 /**
  * Ways to travel. In every vehicle the two sit in separate seats with a divider between them, and
  * on unicorns each rides their own — the no-touch rule holds in motion too (tests/vehicles.test.ts).
  */
 
-export type VehicleId = 'walk' | 'fly' | 'car' | 'van' | 'truck' | 'plane' | 'unicorn';
+export type VehicleId = 'walk' | 'fly' | 'car' | 'van' | 'truck' | 'plane' | 'unicorn' | 'dragon';
 export type VehicleKind = 'foot' | 'cape' | 'ground' | 'air' | 'mount';
 
 export interface Seat { x: number; y: number; z: number }
@@ -37,6 +38,7 @@ export const VEHICLES: Record<VehicleId, VehicleDef> = {
   van: { id: 'van', name: 'Safar the van', icon: '🚐', kind: 'ground', maxSpeed: 28, accel: 11, turn: 1.6, seats: [{ x: -0.62, y: 0.95, z: 1.3 }, { x: 0.62, y: 0.95, z: 1.3 }], price: 0, blurb: 'Home on wheels. Decorate the inside.' },
   truck: { id: 'truck', name: 'Old truck', icon: '🚚', kind: 'ground', maxSpeed: 24, accel: 8, turn: 1.2, seats: [{ x: -0.7, y: 1.35, z: 2.3 }, { x: 0.7, y: 1.35, z: 2.3 }], price: 260, blurb: 'Carries anything. Markets pay more for bulk deliveries.' },
   plane: { id: 'plane', name: 'Biplane', icon: '🛩️', kind: 'air', maxSpeed: 70, accel: 12, turn: 1.1, seats: [{ x: 0, y: 0.7, z: 0.6 }, { x: 0, y: 0.7, z: -0.9 }], price: 600, requires: { lanterns: 3 }, blurb: 'Tandem seats. The whole world is a short flight.' },
+  dragon: { id: 'dragon', name: 'Night Dragon', icon: '🐉', kind: 'air', maxSpeed: 40, accel: 16, turn: 1.8, seats: [{ x: 0, y: 1.45, z: 0.35 * 1.6 }, { x: 0, y: 1.45, z: -0.5 * 1.6 }], price: 0, requires: { flag: 'celebration-done' }, blurb: 'Two separate saddles, hers in front and his behind. Hold W to fly, Space to climb, Shift to dive; it can hover.' },
   unicorn: { id: 'unicorn', name: 'Unicorns', icon: '🦄', kind: 'mount', maxSpeed: 22, accel: 14, turn: 3, seats: [], price: 0, requires: { flag: 'unicorns' }, blurb: 'Two unicorns, one each. They glide over water.' },
 };
 
@@ -75,18 +77,27 @@ function wheel(g: THREE.Object3D, r: number, x: number, y: number, z: number) {
   g.add(hub);
 }
 
+/** Anything that can be ridden by one traveller. */
+export interface Mount {
+  root: THREE.Object3D;
+  saddleY: number;
+  update(dt: number, speed: number, t: number): void;
+}
+
 export interface VehicleModel {
   root: THREE.Group;
   /** Called each frame with speed for wheel/propeller animation. */
   update(dt: number, speed: number, t: number): void;
   /** Rebuild decor that is visible from outside (van). */
-  unicorns?: [AnimalModel, AnimalModel];
+  /** [girl's mount, boy's mount] — each rides their own. */
+  unicorns?: [Mount, Mount];
 }
 
 export function buildVehicle(id: VehicleId, van?: { lights: string; rug: string }): VehicleModel | null {
   const root = new THREE.Group();
   const spinners: THREE.Object3D[] = [];
-  let unicorns: [AnimalModel, AnimalModel] | undefined;
+  let unicorns: [Mount, Mount] | undefined;
+  let dragon: Dragon | undefined;
   switch (id) {
     case 'car': {
       bx(root, 2.0, 0.6, 3.8, '#e8576a', 0, 0.55, 0);
@@ -162,6 +173,11 @@ export function buildVehicle(id: VehicleId, van?: { lights: string; rug: string 
       for (const x of [-0.9, 0.9]) wheel(root, 0.3, x, 0.3, 1.2);
       break;
     }
+    case 'dragon': {
+      dragon = new Dragon(DRAGON_SCALE, true);
+      root.add(dragon.root);
+      break;
+    }
     case 'unicorn': {
       const a = new AnimalModel('unicorn');
       const b = new AnimalModel('unicorn');
@@ -181,6 +197,7 @@ export function buildVehicle(id: VehicleId, van?: { lights: string; rug: string 
       for (const s of spinners) s.rotation.z += dt * (8 + speed * 2);
       root.traverse((o) => { if (o.userData.wheel) o.rotation.x += (speed * dt) / 0.4; });
       if (unicorns) unicorns[0].update(dt, speed, t);
+      dragon?.update(dt, speed, t);
     },
   };
 }

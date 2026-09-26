@@ -20,6 +20,7 @@ import { Housing, PLOTS, PLOT_BY_ID, PLOT_SIZE, type PlotSite } from './housing/
 import { HousingView } from './housing/HousingView';
 import { VAN_OPTIONS, VanInterior } from './housing/VanInterior';
 import { Npcs, type Npc } from './npc/Npcs';
+import { Townsfolk } from './npc/Townsfolk';
 import { keeperOf } from './npc/people';
 import { Travellers } from './player/Travellers';
 import { QuestSystem } from './quests/QuestSystem';
@@ -74,6 +75,7 @@ export class Game {
   readonly housingView: HousingView;
   readonly trav: Travellers;
   readonly npcs: Npcs;
+  readonly townsfolk: Townsfolk;
   readonly animals: Animals;
   readonly van: VanInterior;
   readonly ui: UI;
@@ -92,6 +94,8 @@ export class Game {
   private mouse = new THREE.Vector2();
   private housingDirty = true;
   private raycaster = new THREE.Raycaster();
+  /** A soft light around each traveller (hers blush, his warm gold), brighter at night. */
+  private auras = [new THREE.PointLight('#ffc4dd', 0, 7, 2), new THREE.PointLight('#ffdca0', 0, 7, 2)];
   private dress = { blend: 0, yaw: 0, savedYaw: 0, from: new THREE.Vector3(), goal: new THREE.Vector3(), look: new THREE.Vector3() };
 
   constructor(host: HTMLElement) {
@@ -116,6 +120,7 @@ export class Game {
     this.input = new Input(this.renderer.domElement);
 
     this.scene.fog = this.sky.fog;
+    this.scene.add(...this.auras);
     this.scene.add(this.world.group, this.sky.group, this.sky.sunLight, this.sky.sunLight.target, this.sky.hemi, this.ambience.points);
 
     this.composer = new EffectComposer(this.renderer);
@@ -128,6 +133,7 @@ export class Game {
     this.msgs = new Messages(this.st, this.bus);
     this.housing = new Housing(this.st, this.bus);
     this.npcs = new Npcs(this.scene);
+    this.townsfolk = new Townsfolk(this.scene);
     this.animals = new Animals(this.scene, this.st);
     this.housingView = new HousingView(this.scene, this.st, this.world);
     this.trav = new Travellers(this.scene, this.world, this.st, OUTFITS[this.st.outfits.girl], OUTFITS[this.st.outfits.boy]);
@@ -136,11 +142,13 @@ export class Game {
 
     this.world.onRegionLoaded = (inst) => {
       this.npcs.onRegionLoaded(inst);
+      this.townsfolk.onRegionLoaded(inst);
       this.animals.onRegionLoaded(inst);
       this.housingDirty = true;
     };
     this.world.onRegionUnloaded = (inst) => {
       this.npcs.onRegionUnloaded(inst);
+      this.townsfolk.onRegionUnloaded(inst);
       this.animals.onRegionUnloaded(inst);
       this.housingDirty = true;
     };
@@ -247,6 +255,7 @@ export class Game {
     this.ambience.setMode(this.region.ambient);
     this.ambience.update(dt, this.trav.gPos, this.t, this.sky.night);
     this.npcs.update(dt, this.t, this.trav.gPos);
+    this.townsfolk.update(dt, this.t, this.trav.gPos);
     this.animals.update(dt, this.t, this.trav.gPos);
     this.animateNodes();
     if (this.housingDirty) {
@@ -270,6 +279,11 @@ export class Game {
 
     this.trav.updateCamera(this.camera, dt);
     this.cutscene?.update(dt, this.camera);
+    const glow = 0.25 + this.sky.night * 2.6;
+    [this.trav.girl, this.trav.boy].forEach((m, i) => {
+      this.auras[i].position.copy(m.root.position).add(new THREE.Vector3(0, 1.3, 0));
+      this.auras[i].intensity = glow;
+    });
     this.dressCamera(dt);
     this.celebration.update(dt, this.t);
     this.guide.update(dt, this.t);

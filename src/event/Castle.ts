@@ -108,6 +108,25 @@ export function buildCastle(solid: THREE.Material, glowMat: THREE.Material): Cas
     }
   }
   sphere(glow, 0.5, '#fff2c8', V.x, y + 7.3, V.z, 10);
+  // Paper lanterns: strung round the courtyard, hanging over the aisle and on tall posts.
+  const LANTERN = ['#ff6b8b', '#ffb347', '#ffd9a8', '#ff8fb8', '#e8588c', '#fff27a'];
+  const lantern = (x: number, ly: number, z: number, i: number, s = 1) => {
+    sphere(glow, 0.36 * s, LANTERN[i % LANTERN.length], x, ly, z, 8, 1.25);
+    cyl(g, 0.16 * s, 0.2 * s, 0.1 * s, GOLD, x, ly + 0.4 * s, z, 6);
+    cyl(g, 0.2 * s, 0.16 * s, 0.1 * s, GOLD, x, ly - 0.5 * s, z, 6);
+  };
+  for (let k = 0; k < 28; k++) {
+    const a = (k / 28) * Math.PI * 2;
+    lantern(V.x + Math.cos(a) * (V.r - 3.5), y + 4.4 + Math.sin(k * 1.3) * 0.3, V.z + Math.sin(a) * (V.r - 3.5), k);
+  }
+  for (let z = A.to + 5; z <= A.from; z += 6) lantern(A.x, y + 4.1, z, Math.round(z), 0.8);
+  for (let k = 0; k < 12; k++) {
+    const a = (k / 12) * Math.PI * 2 + 0.13;
+    const x = V.x + Math.cos(a) * (V.r + 3), z = V.z + Math.sin(a) * (V.r + 3);
+    if (z < front + 8 && Math.abs(x - K.x) < K.w / 2 + 4) continue;
+    cyl(g, 0.1, 0.14, 3.6, '#fbf1f4', x, y, z, 6);
+    lantern(x, y + 4.1, z, k + 2, 1.1);
+  }
 
   // ── A meadow of flowers all around, and lilac trees ──
   for (let i = 0; i < 520; i++) {

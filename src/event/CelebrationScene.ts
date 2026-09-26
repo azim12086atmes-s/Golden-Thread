@@ -4,6 +4,7 @@ import { surfaceAt } from '../world/terrain';
 import { CAKE_SPOT, CASTLE, lines, type Lines } from './site';
 import type { Celebration } from './Celebration';
 import { Wardrobe } from './Wardrobe';
+import { AnimalModel } from '../animals/AnimalModel';
 
 /**
  * The evening, as one continuous cinematic (skippable at any moment):
@@ -28,6 +29,8 @@ export class CelebrationScene {
   private land = new THREE.Vector3();
   private yaw = 0;
   private wardrobe: Wardrobe;
+  /** His winged unicorn: he rides beside her chariot, 3.4 m off its flank. */
+  private steed = new AnimalModel('unicorn', 1.05);
   private dressed = false;
   private arrived = false;
   view: { scene: THREE.Scene; camera: THREE.PerspectiveCamera } | null = null;
@@ -68,6 +71,7 @@ export class CelebrationScene {
     requestAnimationFrame(() => this.overlay.classList.add('show'));
     document.body.classList.add('cinematic');
     g.trav.thread.group.visible = false;
+    g.scene.add(this.steed.root);
   }
 
   get finished(): boolean {
@@ -139,19 +143,24 @@ export class CelebrationScene {
     ch.root.updateMatrixWorld(true);
     ch.update(dt, 4, this.t, lift > 0.1);
     this.evening(19.5, dt * 0.25);
-    // Seated in their own seats.
-    for (const who of ['girl', 'boy'] as const) {
-      const m = who === 'girl' ? tr.girl : tr.boy;
-      ch.seat(who, m.root.position);
-      m.root.position.y -= 0.05;
-      m.root.rotation.set(0, this.yaw, 0);
-      m.update(dt, { speed: 0, airborne: false, riding: true, t: this.t });
-    }
-    // Keep the travellers' logical positions with the chariot so the world streams in ahead.
-    tr.gPos.copy(pos);
-    tr.bPos.copy(pos).add(new THREE.Vector3(Math.cos(this.yaw) * 1.44, 0, -Math.sin(this.yaw) * 1.44));
+    // She sits in the chariot; he rides his winged unicorn alongside, off the chariot's flank.
     const fwd = new THREE.Vector3(Math.sin(this.yaw), 0, Math.cos(this.yaw));
     const side = new THREE.Vector3(fwd.z, 0, -fwd.x);
+    ch.seat('girl', tr.girl.root.position);
+    tr.girl.root.position.y -= 0.05;
+    tr.girl.root.rotation.set(0, this.yaw, 0);
+    tr.girl.update(dt, { speed: 0, airborne: false, riding: true, t: this.t });
+    const steedAt = pos.clone().addScaledVector(side, -3.4).addScaledVector(fwd, 1.2);
+    steedAt.y += Math.sin(this.t * 1.7) * 0.25;
+    this.steed.root.position.copy(steedAt);
+    this.steed.root.rotation.set(-lift * 0.08, this.yaw, 0);
+    this.steed.update(dt, lift > 0.1 ? 12 : 4, this.t);
+    tr.boy.root.position.copy(steedAt).add(new THREE.Vector3(0, this.steed.saddleY - 0.5, 0));
+    tr.boy.root.rotation.set(0, this.yaw, 0);
+    tr.boy.update(dt, { speed: 0, airborne: false, riding: true, t: this.t });
+    // Keep the travellers' logical positions with them so the world streams in ahead.
+    tr.gPos.copy(pos);
+    tr.bPos.copy(steedAt);
     camera.position.copy(pos).addScaledVector(fwd, -8.5).addScaledVector(side, 4 * Math.sin(this.t * 0.2)).add(new THREE.Vector3(0, 3.6, 0));
     camera.lookAt(pos.clone().addScaledVector(fwd, 5).add(new THREE.Vector3(0, 1.2, 0)));
   }
@@ -211,6 +220,7 @@ export class CelebrationScene {
     }
     tr.camYaw = tr.heading;
     tr.thread.group.visible = true;
+    this.g.scene.remove(this.steed.root);
     this.overlay.classList.remove('show');
     document.body.classList.remove('cinematic');
     setTimeout(() => this.overlay.remove(), 700);

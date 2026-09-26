@@ -6,7 +6,9 @@ import { newGame } from '../src/core/state';
 import { SEATS } from '../src/event/Chariot';
 import { CAKE_SPOT, CASTLE, DONE_FLAG, celebrationObjective, guestSpot, guests, lines } from '../src/event/site';
 import { PEOPLE_BY_ID } from '../src/npc/people';
-import { SEAT_GAP } from '../src/vehicles/vehicles';
+import { SEAT_GAP, VEHICLES } from '../src/vehicles/vehicles';
+import { HERO_ONLY, LAND_SHELF, PER_TOWN, wardrobeFor } from '../src/npc/Townsfolk';
+import { REGIONS } from '../src/world/regions';
 import { CASTLE_SITE, castleBase, terrainHeight } from '../src/world/terrain';
 import { regionAt } from '../src/world/regions';
 
@@ -35,7 +37,9 @@ describe('the celebration evening', () => {
     const gown = OUTFITS['g-starlight-gown'], sher = OUTFITS['b-celebration'];
     expect(isModest(gown) && isModest(sher)).toBe(true);
     expect(gown.detail?.rainbow).toBe(true);
-    expect(gown.pattern).toBe('stars');
+    expect(gown.pattern).toBe('floral');
+    expect(gown.detail?.vines).toBe(true);
+    expect(gown.detail?.glow).toBeGreaterThan(0);
     expect(gown.head.style).toBe('hijab');
   });
 
@@ -56,5 +60,28 @@ describe('the celebration evening', () => {
   it('they walk 25% closer than before, and still never touch', () => {
     expect(IDEAL_GAP).toBeCloseTo(2.6 * 0.75);
     expect(IDEAL_GAP).toBeGreaterThan(MIN_GAP);
+  });
+
+  it('the night dragon has two separate saddles, hers in front, a seat-gap apart, after the party', () => {
+    const d = VEHICLES.dragon;
+    expect(d.seats.length).toBe(2);
+    const [g, b] = d.seats as [{ x: number; y: number; z: number }, { x: number; y: number; z: number }];
+    expect(Math.hypot(g.x - b.x, g.y - b.y, g.z - b.z)).toBeGreaterThanOrEqual(SEAT_GAP);
+    expect(g.z).toBeGreaterThan(b.z);
+    expect(d.requires?.flag).toBe(DONE_FLAG);
+  });
+
+  it('townsfolk wear their own land’s clothes and never the travellers’ own', () => {
+    expect(PER_TOWN).toBeGreaterThanOrEqual(10);
+    for (const r of REGIONS) for (const who of ['girl', 'boy'] as const) {
+      const pool = wardrobeFor(r.id, who);
+      expect(pool.length, `${r.id} ${who}`).toBeGreaterThan(0);
+      for (const o of pool) {
+        expect(HERO_ONLY.has(o.id)).toBe(false);
+        expect(o.who).toBe(who);
+        expect(isModest(o)).toBe(true);
+      }
+    }
+    expect(Object.keys(LAND_SHELF).length).toBe(REGIONS.length);
   });
 });

@@ -20,6 +20,17 @@ function mat(color: string, glow = false): THREE.Material {
   return m;
 }
 
+/** Fabric that glows softly from within (for a gown that should shine at night). */
+function glowingFabric(color: string, k: number): THREE.Material {
+  const key = `${color}:e${k}`;
+  let m = matCache.get(key);
+  if (!m) {
+    m = new THREE.MeshStandardMaterial({ color, flatShading: true, roughness: 0.6, side: THREE.DoubleSide, emissive: new THREE.Color(color), emissiveIntensity: k });
+    matCache.set(key, m);
+  }
+  return m;
+}
+
 function mesh(geo: THREE.BufferGeometry, color: string, part: Part, glow = false): THREE.Mesh {
   const m = new THREE.Mesh(geo, mat(color, glow));
   m.userData.part = part;
@@ -159,6 +170,7 @@ export class CharacterModel {
       b.add(mesh(skirt, o.lowerColor, 'garment'));
       this.hemTrim(b, rb, hemY, o.trim);
       this.decorate(b, rb, hemY, top, o.lowerColor);
+      if (o.detail?.vines) this.vines(b, 0.19, rb, top, hemY);
     }
 
     // Torso, and the long body of the top if it has one.
@@ -250,6 +262,13 @@ export class CharacterModel {
 
     this.buildOuter(b);
     this.buildHead(b);
+    const shine = o.detail?.glow;
+    if (shine) b.traverse((x) => {
+      const mm = x as THREE.Mesh;
+      if (!mm.isMesh || !['garment', 'torso', 'sleeve'].includes(mm.userData.part)) return;
+      const c = (mm.material as THREE.MeshStandardMaterial).color;
+      if (c) mm.material = glowingFabric(`#${c.getHexString()}`, shine);
+    });
     this.buildIdentity();
   }
 
@@ -269,6 +288,50 @@ export class CharacterModel {
       t2.translate(0, y + 0.12, 0);
       b.add(mesh(t2, color, 'trim'));
     }
+  }
+
+  /** Rainbow branches winding down a skirt, with side twigs ending in little blossoms. */
+  private vines(b: THREE.Group, rTop: number, rBot: number, yTop: number, yBot: number): void {
+    const at = (f: number, a: number, lift = 0.012) => {
+      const r = rTop + (rBot - rTop) * f + lift;
+      const y = yTop - (yTop - yBot) * f;
+      return new THREE.Vector3(Math.sin(a) * r, y, Math.cos(a) * r);
+    };
+    for (let v = 0; v < 6; v++) {
+      const a0 = (v / 6) * Math.PI * 2;
+      const pts: THREE.Vector3[] = [];
+      for (let k = 0; k <= 10; k++) {
+        const f = 0.08 + (k / 10) * 0.86;
+        pts.push(at(f, a0 + f * 1.3 + Math.sin(f * 7 + v) * 0.12));
+      }
+      const col = RAINBOW[v % RAINBOW.length];
+      b.add(mesh(new THREE.TubeGeometry(new THREE.CatmullRomCurve3(pts), 28, 0.0055, 4), col, 'trim', true));
+      // Twigs off the branch, each ending in a blossom.
+      for (let k = 0; k < 4; k++) {
+        const f = 0.2 + k * 0.2, a = a0 + f * 1.3 + Math.sin(f * 7 + v) * 0.12;
+        const side = k % 2 ? 1 : -1;
+        const tip = at(f + 0.05, a + side * 0.28, 0.014);
+        b.add(mesh(new THREE.TubeGeometry(new THREE.LineCurve3(at(f, a), tip), 2, 0.004, 4), col, 'trim', true));
+        this.blossom(b, tip, k % 2 ? '#ffffff' : '#ffd1e3');
+      }
+    }
+  }
+
+  /** A little five-petal flower lying on the cloth, facing outwards. */
+  private blossom(b: THREE.Group, at: THREE.Vector3, color: string): void {
+    const flower = new THREE.Group();
+    const petal = new THREE.SphereGeometry(0.014, 5, 4);
+    for (let k = 0; k < 5; k++) {
+      const pm = mesh(petal, color, 'trim');
+      const pa = (k / 5) * Math.PI * 2;
+      pm.position.set(Math.cos(pa) * 0.016, Math.sin(pa) * 0.016, 0);
+      pm.scale.set(1, 1, 0.5);
+      flower.add(pm);
+    }
+    flower.add(mesh(new THREE.SphereGeometry(0.009, 5, 4), '#fff27a', 'trim', true));
+    flower.position.copy(at);
+    flower.lookAt(at.x * 2, at.y, at.z * 2);
+    b.add(flower);
   }
 
   /** A ribbon tied under the bust with a bow at the front. */
@@ -297,7 +360,7 @@ export class CharacterModel {
   private decorate(b: THREE.Group, rb: number, y0: number, y1: number, base: string): void {
     const p = this.outfit.pattern;
     if (p === 'none' || p === 'bands' || p === 'glow') return;
-    const n = p === 'stars' ? 14 : 10;
+    const n = (p === 'stars' ? 14 : 10) + (this.outfit.detail?.vines ? 12 : 0);
     for (let i = 0; i < n; i++) {
       const a = (i / n) * Math.PI * 2 + (i % 2) * 0.3;
       const t = 0.2 + ((i * 37) % 10) / 16;
