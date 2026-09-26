@@ -103,3 +103,35 @@ describe('the travellers\' proportions', () => {
     }
   });
 });
+
+describe('the flying cape', () => {
+  it('streams out behind her as she moves, never forwards', async () => {
+    const THREE = await import('three');
+    const { CharacterModel, HERO_SCALE } = await import('../src/characters/CharacterModel');
+    const girl = new CharacterModel(OUTFITS['g-starlight-gown'], '#e3b58f', HERO_SCALE.girl, 1, 'girl');
+    const hemZ = () => {
+      girl.root.updateMatrixWorld(true);
+      let z = 0, n = 0;
+      girl.root.traverse((o) => {
+        const m = o as import('three').Mesh;
+        if (!m.isMesh || m.userData.part !== 'cape') return;
+        const pos = m.geometry.getAttribute('position');
+        const v = new THREE.Vector3();
+        for (let i = 0; i < pos.count; i++) {
+          v.fromBufferAttribute(pos, i);
+          if (v.y > -0.8) continue; // the hem only
+          m.localToWorld(v);
+          z += v.z; n++;
+        }
+      });
+      return z / n;
+    };
+    girl.update(0.016, { speed: 0, airborne: false, riding: false, t: 0 });
+    const rest = hemZ();
+    girl.update(0.016, { speed: 8, airborne: false, riding: false, t: 0 });
+    const running = hemZ();
+    // Characters face +z; the cape hangs behind (-z) and streams further back with speed.
+    expect(rest).toBeLessThan(0);
+    expect(running).toBeLessThan(rest - 0.2);
+  });
+});

@@ -628,7 +628,9 @@ export class CharacterModel {
     this.body.position.y = moving ? Math.abs(Math.sin(this.phase)) * 0.03 : 0;
     if (this.cape) {
       // The cape flies: it lifts and streams back with speed and in the air, and ripples always.
-      this.cape.rotation.x = -0.14 - Math.min(1.15, s.speed * 0.075) - (s.airborne ? 0.55 : 0) + Math.sin(s.t * 3) * 0.06 + Math.sin(s.t * 7.3) * 0.025;
+      // The cape hangs at her back (-z); a positive tilt swings its hem backwards, away from the
+      // direction of travel — so it streams out behind her.
+      this.cape.rotation.x = 0.08 + Math.min(1.15, s.speed * 0.075) + (s.airborne ? 0.55 : 0) + Math.sin(s.t * 3) * 0.06 + Math.sin(s.t * 7.3) * 0.025;
       this.cape.rotation.z = Math.sin(s.t * 1.7) * 0.05;
     }
     if (this.capeCloth) {
