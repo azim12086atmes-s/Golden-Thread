@@ -10,6 +10,8 @@ import type { RegionId } from './regions';
  */
 
 const N = 520, BOX = 64;
+/** The night's own colour: a soft violet-blue that makes lights and glitter sing. */
+const NIGHT_TINT = new THREE.Color('#c8c4ff');
 
 function sprite(petal: boolean): THREE.Texture {
   const c = document.createElement('canvas');
@@ -114,12 +116,18 @@ export class RegionFX {
     const u = this.grade.uniforms;
     u.sat.value = this.g.sat;
     u.vib.value = this.g.vib;
-    u.amt.value = this.g.amt * (1 - night * 0.5);
-    (u.tint.value as THREE.Color).copy(this.g.tint);
+    u.amt.value = this.g.amt * (1 - night * 0.4) + night * 0.1;
+    (u.tint.value as THREE.Color).copy(this.g.tint).lerp(NIGHT_TINT, night * 0.6);
+    u.sat.value = this.g.sat + night * 0.1;
 
     const th = this.theme;
     const vis = th.night ? night : 1;
-    this.points.material.opacity = this.fade * vis * (th.glow ? 0.9 : 0.85);
+    // After dark, everything in the air catches the light: glitter and glamour.
+    const m = this.points.material;
+    const glowNow = th.glow || night > 0.55;
+    if ((m.blending === THREE.AdditiveBlending) !== glowNow) { m.blending = glowNow ? THREE.AdditiveBlending : THREE.NormalBlending; m.needsUpdate = true; }
+    m.size = th.size * (1 + night * 0.35) * (1 + Math.sin(t * 3) * 0.08 * night);
+    m.opacity = this.fade * vis * (glowNow ? 0.95 : 0.85);
     if (vis < 0.01) return;
     const half = BOX / 2, n = Math.min(N, th.count), sp = th.speed;
     for (let i = 0; i < n; i++) {

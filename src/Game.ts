@@ -33,6 +33,7 @@ import { UI } from './ui/UI';
 import { VEHICLES, type VehicleId } from './vehicles/vehicles';
 import { Ambience } from './world/Ambience';
 import { RegionFX } from './world/RegionFX';
+import { TownDressing } from './world/TownDressing';
 import type { ResourceNode } from './world/RegionBuilder';
 import { REGION_BY_ID, regionAt, regionCenter, type RegionId, type RegionSpec } from './world/regions';
 import { Sky } from './world/Sky';
@@ -85,6 +86,7 @@ export class Game {
   readonly trav: Travellers;
   readonly npcs: Npcs;
   readonly townsfolk: Townsfolk;
+  readonly dressing: TownDressing;
   readonly animals: Animals;
   readonly van: VanInterior;
   readonly ui: UI;
@@ -146,6 +148,7 @@ export class Game {
     this.housing = new Housing(this.st, this.bus);
     this.npcs = new Npcs(this.scene);
     this.townsfolk = new Townsfolk(this.scene);
+    this.dressing = new TownDressing(this.scene, this.world.solid, this.world.glow);
     this.animals = new Animals(this.scene, this.st);
     this.housingView = new HousingView(this.scene, this.st, this.world);
     this.trav = new Travellers(this.scene, this.world, this.st, OUTFITS[this.st.outfits.girl], OUTFITS[this.st.outfits.boy]);
@@ -155,12 +158,14 @@ export class Game {
     this.world.onRegionLoaded = (inst) => {
       this.npcs.onRegionLoaded(inst);
       this.townsfolk.onRegionLoaded(inst);
+      this.dressing.onRegionLoaded(inst);
       this.animals.onRegionLoaded(inst);
       this.housingDirty = true;
     };
     this.world.onRegionUnloaded = (inst) => {
       this.npcs.onRegionUnloaded(inst);
       this.townsfolk.onRegionUnloaded(inst);
+      this.dressing.onRegionUnloaded(inst);
       this.animals.onRegionUnloaded(inst);
       this.housingDirty = true;
     };
@@ -272,6 +277,7 @@ export class Game {
     this.regionFx.update(dt, this.trav.gPos, this.t, this.sky.night);
     this.npcs.update(dt, this.t, this.trav.gPos);
     this.townsfolk.update(dt, this.t, this.trav.gPos);
+    this.dressing.update(this.sky.night);
     this.animals.update(dt, this.t, this.trav.gPos);
     this.animateNodes();
     if (this.housingDirty) {

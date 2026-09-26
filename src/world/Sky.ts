@@ -1,4 +1,6 @@
 import * as THREE from 'three';
+import { LOCALES } from './locale';
+import type { RegionId } from './regions';
 import { clamp, lerp, smoothstep } from '../core/rng';
 import { REGION_BY_ID, regionCenter } from './regions';
 
@@ -46,6 +48,8 @@ export class Sky {
   private stars: THREE.Points<THREE.BufferGeometry, THREE.PointsMaterial>;
   private moon: THREE.Mesh;
   private sunDisc: THREE.Mesh;
+  /** The current land's sky colours, eased so crossing a border never snaps the sky. */
+  private tint = { day: new THREE.Color('#bfe6ff'), dusk: new THREE.Color('#ffb38a'), night: new THREE.Color('#2a2a6e') };
   private auroras: THREE.Mesh<THREE.PlaneGeometry, THREE.ShaderMaterial>[] = [];
   private rainbows: THREE.Mesh<THREE.TorusGeometry, THREE.ShaderMaterial>[] = [];
   readonly fog = new THREE.Fog('#cfeaff', 120, 1400);
@@ -156,6 +160,19 @@ export class Sky {
     u.horizon.value.copy(k.horizon);
     u.sunDir.value.copy(this.sunDir);
     u.sunCol.value.copy(k.sunCol).multiplyScalar(1 - this.night);
+    // Each land's own sky: its day colour, its dusk glow at the horizon, its night.
+    const L = LOCALES[regionId as RegionId];
+    if (L) {
+      const ease = 0.02;
+      this.tint.day.lerp(tmpA.set(L.sky.day), ease);
+      this.tint.dusk.lerp(tmpA.set(L.sky.dusk), ease);
+      this.tint.night.lerp(tmpA.set(L.sky.night), ease);
+    }
+    const dusk = 1 - smoothstep(0, 0.35, Math.abs(this.sunDir.y));
+    u.top.value.lerp(this.tint.day, 0.2 * (1 - this.night) * (1 - dusk));
+    u.top.value.lerp(this.tint.night, 0.4 * this.night);
+    u.horizon.value.lerp(this.tint.dusk, 0.5 * dusk);
+    u.horizon.value.lerp(this.tint.night, 0.25 * this.night);
     if (regionId === 'skyisles') u.top.value.lerp(tmpA.set('#b8a4ff'), 0.25);
     if (regionId === 'desert' || regionId === 'egypt' || regionId === 'middleeast') u.horizon.value.lerp(tmpA.set('#ffd6a0'), 0.25 * (1 - this.night));
 
