@@ -3,7 +3,7 @@ import { AnimalModel } from '../animals/AnimalModel';
 import { CharacterModel } from '../characters/CharacterModel';
 import type { Game } from '../Game';
 import { wardrobeFor } from '../npc/Townsfolk';
-import { REGION_BY_ID } from '../world/regions';
+import { REGION_BY_ID, regionCenter } from '../world/regions';
 import { surfaceAt } from '../world/terrain';
 import { Carpet } from './Carpet';
 import { DIMS } from '../characters/CharacterModel';
@@ -11,7 +11,7 @@ import { PET_BEDS, RIDE_CHILD_SEATS, VAN } from '../vehicles/vanLayout';
 
 /** Children are drawn at this scale of an adult. */
 const CHILD_SCALE = 0.62;
-import { CARPET_L, CARPET_W, CHILDREN, COMPANION_BY_ID, MAX_CHILDREN, TRAVELLER_CLEARANCE, CARPET_SIDE, caravanStep, canJoin, carpetTarget, type CompanionDef, type Member } from './caravan';
+import { CARPET_L, CARPET_W, CHILDREN, COMPANION_BY_ID, MAX_CHILDREN, TRAVELLER_CLEARANCE, CARPET_SIDE, caravanStep, canJoin, carpetTarget, offerFood, strayHome, PETS, type CompanionDef, type Member, type PetDef } from './caravan';
 
 /**
  * The caravan in the world: the children and pets travelling with the two, walking behind them
@@ -22,11 +22,14 @@ import { CARPET_L, CARPET_W, CHILDREN, COMPANION_BY_ID, MAX_CHILDREN, TRAVELLER_
  * it lands.
  */
 interface Body { def: CompanionDef; member: Member; child?: CharacterModel; pet?: AnimalModel; ph: number }
+/** A land's pet waiting at the plaza to be met. */
+interface Stray { def: PetDef; model: AnimalModel; x: number; z: number; ph: number }
 
 type CarpetState = 'off' | 'flying' | 'landing';
 
 export class CaravanView {
   private bodies: Body[] = [];
+  private strays = new Map<string, Stray>();
   private carpet = new Carpet();
   private carpetState: CarpetState = 'off';
   private carpetHeading = 0;
@@ -84,6 +87,56 @@ export class CaravanView {
     return best;
   }
 
+  /** The nearest pet waiting to be met. */
+  nearestStray(p: THREE.Vector3, r: number): PetDef | null {
+    let best: PetDef | null = null, bd = r;
+    for (const s of this.strays.values()) {
+      const d = Math.hypot(s.model.root.position.x - p.x, s.model.root.position.z - p.z);
+      if (d < bd) { bd = d; best = s.def; }
+    }
+    return best;
+  }
+
+  /** Offer a waiting pet its favourite food; it joins if there is room. */
+  adopt(def: PetDef): string {
+    const r = offerFood(this.g.st, def);
+    if (r.ok) {
+      const s = this.strays.get(def.id);
+      if (s) { this.g.scene.remove(s.model.root); this.strays.delete(def.id); }
+      this.add(def.id);
+      return `🐾 ${def.name} joins the caravan — ${def.blurb}`;
+    }
+    return r.reason;
+  }
+
+  /** Pets of the lands nearby wait round their plazas; those already travelling do not. */
+  private updateStrays(dt: number, t: number): void {
+    const loaded = new Set([...this.g.world.loadedRegions()].map((r) => r.spec.id));
+    for (const def of PETS) {
+      const here = loaded.has(def.origin) && !this.g.st.caravan.includes(def.id);
+      const s = this.strays.get(def.id);
+      if (here && !s) {
+        const c = regionCenter(REGION_BY_ID[def.origin]), h = strayHome(def);
+        const model = new AnimalModel(def.species, def.scale, def.tint);
+        this.g.scene.add(model.root);
+        this.strays.set(def.id, { def, model, x: c.x + h.x, z: c.z + h.z, ph: Math.random() * 10 });
+      } else if (!here && s) {
+        this.g.scene.remove(s.model.root);
+        this.strays.delete(def.id);
+      }
+    }
+    for (const s of this.strays.values()) {
+      // Pottering about a little, then sitting to watch the square.
+      const wander = Math.sin(t * 0.3 + s.ph);
+      const x = s.x + Math.sin(t * 0.21 + s.ph) * 1.6, z = s.z + Math.cos(t * 0.17 + s.ph) * 1.6;
+      const r = s.model.root;
+      const dx = x - r.position.x, dz = z - r.position.z;
+      r.position.set(x, surfaceAt(x, z, 1e9), z);
+      if (Math.hypot(dx, dz) > 1e-4) r.rotation.y = Math.atan2(dx, dz);
+      s.model.update(dt, Math.abs(wander) > 0.3 ? 0.8 : 0, t + s.ph);
+    }
+  }
+
   /** Where the children (or the pets) are, on average — for the story's camera. */
   centroid(kind: 'child' | 'pet'): THREE.Vector3 | null {
     const b = this.bodies.filter((x) => x.def.kind === kind);
@@ -104,6 +157,7 @@ export class CaravanView {
 
   update(dt: number, t: number): void {
     const g = this.g, tr = g.trav;
+    if (g.started) this.updateStrays(dt, t);
     const cutOk = !g.cutscene || !!g.cutscene.caravan;
     const below = surfaceAt(tr.gPos.x, tr.gPos.z, tr.gPos.y + 3);
     const aloft = g.started && !g.inVan && cutOk && tr.airborne && tr.gPos.y > below + 1.2;

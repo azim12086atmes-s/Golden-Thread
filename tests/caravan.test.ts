@@ -117,3 +117,28 @@ describe('the flying carpet', () => {
     }
   });
 });
+
+describe('meeting the pets', () => {
+  it('each pet waits at its own land’s plaza; its favourite food wins it over, four pets at most', async () => {
+    const { PETS, COMPANION_BY_ID, offerFood, strayHome, MAX_PETS } = await import('../src/caravan/caravan');
+    const { newGame } = await import('../src/core/state');
+    const st = newGame();
+    const waiting = PETS.filter((p) => !st.caravan.includes(p.id));
+    expect(waiting.length).toBe(11);
+    for (const p of PETS) { const h = strayHome(p); expect(Math.hypot(h.x, h.z)).toBeLessThan(50); expect(Math.min(Math.abs(h.x), Math.abs(h.z))).toBeGreaterThan(5); }
+    const [a, b, c] = waiting;
+    st.inventory = {};
+    expect(offerFood(st, a).ok).toBe(false); // nothing to offer
+    st.inventory[a.likes] = 1;
+    expect(offerFood(st, a).ok).toBe(true);
+    expect(st.caravan).toContain(a.id);
+    expect(st.inventory[a.likes] ?? 0).toBe(0);
+    st.inventory[b.likes] = (st.inventory[b.likes] ?? 0) + 1;
+    expect(offerFood(st, b).ok).toBe(true);
+    // Four pets now (Pip, Clover and two more): the fifth has to wait, and keeps your food.
+    expect(st.caravan.filter((id) => COMPANION_BY_ID[id].kind === 'pet').length).toBe(MAX_PETS);
+    st.inventory[c.likes] = 1;
+    expect(offerFood(st, c).ok).toBe(false);
+    expect(st.inventory[c.likes]).toBe(1);
+  });
+});

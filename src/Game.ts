@@ -26,6 +26,7 @@ import { Npcs, type Npc } from './npc/Npcs';
 import { Townsfolk, type Walker } from './npc/Townsfolk';
 import { talkToFolk } from './npc/folk';
 import { CaravanView } from './caravan/CaravanView';
+import type { PetDef } from './caravan/caravan';
 import { WonderSites } from './world/WonderSites';
 import { keeperOf } from './npc/people';
 import { Travellers } from './player/Travellers';
@@ -62,6 +63,7 @@ export type Interactable =
   | { kind: 'folk'; walker: Walker; label: string }
   | { kind: 'door'; door: Door; label: string }
   | { kind: 'market'; walker: Walker; label: string }
+  | { kind: 'stray'; pet: PetDef; label: string }
   | { kind: 'bed'; plotId: string; decorId: string; label: string };
 
 /** A scripted scene that takes the camera (and optionally renders its own scene). */
@@ -467,6 +469,8 @@ export class Game {
       if (d < (this.region.id === 'skyisles' ? 200 : 45)) cands.push([d * 0.2, { kind: 'lantern', region: this.region.id, label: '🏮 Light the lantern together' }]);
     }
     if (this.trav.parkedVan && onFoot && this.trav.parkedVan.pos.distanceTo(p) < 6) cands.push([this.trav.parkedVan.pos.distanceTo(p), { kind: 'van', label: 'Step inside Safar' }]);
+    const stray = onFoot ? this.caravan.nearestStray(p, 2.6) : null;
+    if (stray) cands.push([1.0, { kind: 'stray', pet: stray, label: `🐾 Offer ${ITEMS[stray.likes].icon} ${ITEMS[stray.likes].name} to ${stray.name}` }]);
     const pal = onFoot ? this.caravan.nearest(p, 2.4) : null;
     if (pal) cands.push([1.2, { kind: 'companion', id: pal.id, label: pal.kind === 'pet' ? `Pet ${pal.name}` : `Chat with ${pal.name}` }]);
     const ride = onFoot ? this.celebration.label(p) : null;
@@ -504,6 +508,7 @@ export class Game {
     switch (t.kind) {
       case 'folk': return this.talkFolk(t.walker);
       case 'door': return this.enterHouse(t.door);
+      case 'stray': return this.toast(this.caravan.adopt(t.pet), 'story');
       case 'market': this.townsfolk.turnTo(t.walker, this.trav.gPos); return this.ui.openMarket(t.walker.land);
       case 'npc': return this.talk(t.npc);
       case 'node': return this.gather(t.node);

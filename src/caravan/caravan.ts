@@ -234,3 +234,26 @@ export function carpetSeats(x: number, z: number, heading: number): P2[] {
   for (const [sx, sz] of [...CARPET_SEATS.child, ...CARPET_SEATS.pet]) out.push({ x: x + sx * c + sz * sn, z: z - sx * sn + sz * c });
   return out;
 }
+
+/** Where a land's pets wait to be met: round the edge of its plaza (local to the town centre). */
+export function strayHome(def: PetDef): P2 {
+  const k = PETS.filter((p) => p.origin === def.origin).indexOf(def);
+  // Along a diagonal of the square, well away from the avenues' lines.
+  const a = Math.PI / 4 + (def.origin.length % 4) * (Math.PI / 2) + (k - 1) * 0.3;
+  return { x: Math.cos(a) * 44, z: Math.sin(a) * 44 };
+}
+
+/**
+ * Offering a pet the food it likes: it trusts you and, if there is room, joins the caravan.
+ * Pure rule over the save: the food is used up only when it joins.
+ */
+export function offerFood(st: { inventory: Record<string, number>; caravan: string[] }, def: PetDef): { ok: boolean; reason: string } {
+  if ((st.inventory[def.likes] ?? 0) < 1) return { ok: false, reason: `${def.name} would love some ${def.likes} — you have none.` };
+  const current = st.caravan.map((id) => COMPANION_BY_ID[id]).filter(Boolean);
+  const r = canJoin(def, current, [], [def.id]);
+  if (!r.ok) return r;
+  st.inventory[def.likes] -= 1;
+  if (st.inventory[def.likes] <= 0) delete st.inventory[def.likes];
+  st.caravan.push(def.id);
+  return r;
+}
