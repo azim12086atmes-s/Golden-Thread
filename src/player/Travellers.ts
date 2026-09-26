@@ -57,7 +57,7 @@ export class Travellers {
     this.heading = st.player.heading;
     this.camYaw = this.heading;
     this.gPos.y = surfaceAt(this.gPos.x, this.gPos.z, this.gPos.y + 2);
-    this.bPos.copy(this.gPos).add(new THREE.Vector3(2.4, 0, -1));
+    this.bPos.copy(this.gPos).add(new THREE.Vector3(1.8, 0, -0.75));
     this.bPos.y = surfaceAt(this.bPos.x, this.bPos.z);
     // Safar waits nearby wherever the journey resumes.
     if (st.vehicles.includes('van')) {
@@ -155,7 +155,7 @@ export class Travellers {
     if (this.mode !== 'walk' && this.mode !== 'unicorn') this.setMode('walk');
     this.gPos.set(x, surfaceAt(x, z, 1e9), z);
     this.world.resolve(this.gPos, 0.5);
-    this.bPos.set(x + 2.4, surfaceAt(x + 2.4, z, 1e9), z);
+    this.bPos.set(x + 1.95, surfaceAt(x + 1.95, z, 1e9), z);
     // Safar comes along — it is how they travel.
     if (this.parkedVan) {
       this.parkedVan.pos.set(x - 7, 0, z + 3);

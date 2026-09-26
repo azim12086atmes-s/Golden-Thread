@@ -8,7 +8,7 @@ const MOTES = 18;
 const SPACING = 2.2;
 const TRAIL_MAX = 38;
 
-const ICON: Record<Target['kind'], string> = { npc: '◆', region: '➜', resource: '✦', lantern: '🏮', animal: '🐾' };
+const ICON: Record<Target['kind'], string> = { npc: '◆', region: '➜', resource: '✦', lantern: '🏮', animal: '🐾', point: '✧' };
 
 const el = (tag: string, cls: string, text = '') => {
   const e = document.createElement(tag);
@@ -101,7 +101,7 @@ export class Guide {
 
   private plan(): Objective {
     const p = this.g.trav.gPos;
-    return currentObjective(this.g.st, { region: this.g.region.id, x: p.x, z: p.z });
+    return this.g.celebration.objective() ?? currentObjective(this.g.st, { region: this.g.region.id, x: p.x, z: p.z });
   }
 
   refresh(): void {
@@ -171,6 +171,7 @@ export class Guide {
         break;
       }
       case 'region':
+      case 'point':
         break;
     }
     const a = targetAnchor(t);

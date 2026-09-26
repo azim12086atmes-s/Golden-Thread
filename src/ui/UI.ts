@@ -653,7 +653,8 @@ export class UI {
         btn('Low graphics', () => { this.g.setQuality('low'); this.render(); }, this.g.quality === 'low' ? 'on' : 'ghost'),
         btn('High graphics', () => { this.g.setQuality('high'); this.render(); }, this.g.quality === 'high' ? 'on' : 'ghost'),
         btn('Save photo (P)', () => this.g.takePhoto(), 'primary'),
-        btn('🎂 Replay the celebration', () => this.g.playOpening(), 'ghost')),
+        btn('🎂 Replay the opening', () => this.g.playOpening(), 'ghost'),
+        btn('🏰 Replay the celebration evening', () => this.g.celebration.replay(), 'ghost')),
       h('div', { class: 'acts' },
         btn(this.g.guide.trail ? 'Golden trail: on' : 'Golden trail: off', () => { this.g.guide.setTrail(!this.g.guide.trail); this.render(); }, this.g.guide.trail ? 'on' : 'ghost')),
       h('p', { class: 'dim' }, 'On touch screens: drag the left half to move, the right half to look. Hold Jump / Rise or Run / Descend; tap Interact or Fly. Photos save the view without menus.'));

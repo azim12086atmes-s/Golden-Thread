@@ -63,6 +63,8 @@ export interface Detail {
   cuffs?: string;
   /** Button colour for the cuffs (defaults to the cuff colour). */
   buttons?: string;
+  /** Glowing rainbow bands above the hem. */
+  rainbow?: boolean;
 }
 
 /** The covering outfit the game renders. */

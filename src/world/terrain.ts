@@ -54,6 +54,8 @@ function distToCentre(x: number, z: number): number {
  */
 export function terrainHeight(x: number, z: number): number {
   const h = naturalHeight(x, z);
+  const cd = Math.hypot(x - CASTLE_SITE.x, z - CASTLE_SITE.z) - CASTLE_SITE.r;
+  if (cd < 26) return lerp(castleBase(), h, smoothstep(0, 26, cd));
   for (const p of PLOTS) {
     const dx = Math.abs(x - p.x) - PLOT_SIZE / 2 - 2, dz = Math.abs(z - p.z) - PLOT_SIZE / 2 - 2;
     const d = Math.max(dx, dz);
@@ -62,6 +64,13 @@ export function terrainHeight(x: number, z: number): number {
     return lerp(base, h, smoothstep(0, 14, d));
   }
   return h;
+}
+
+/** The celebration castle's levelled grounds (Wanderers' Meadow, north edge). */
+export const CASTLE_SITE = { x: 0, z: -292, r: 72 } as const;
+let castleY: number | undefined;
+export function castleBase(): number {
+  return (castleY ??= Math.max(naturalHeight(CASTLE_SITE.x, CASTLE_SITE.z + 40), WATER_Y + 1.2));
 }
 
 const plotBases = new Map<string, number>();

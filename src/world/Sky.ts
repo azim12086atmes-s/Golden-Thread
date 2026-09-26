@@ -121,26 +121,7 @@ export class Sky {
     const c = regionCenter(REGION_BY_ID.aurora);
     for (let i = 0; i < 4; i++) {
       const geo = new THREE.PlaneGeometry(1400, 260, 80, 1);
-      const mat = new THREE.ShaderMaterial({
-        transparent: true,
-        depthWrite: false,
-        blending: THREE.AdditiveBlending,
-        side: THREE.DoubleSide,
-        fog: false,
-        uniforms: { t: { value: 0 }, strength: { value: 0 }, seed: { value: i * 1.7 } },
-        vertexShader: `uniform float t; uniform float seed; varying vec2 vUv;
-          void main(){ vUv = uv; vec3 p = position;
-            p.z += sin(p.x * 0.006 + t * 0.3 + seed) * 120.0 + sin(p.x * 0.017 - t * 0.5 + seed) * 40.0;
-            gl_Position = projectionMatrix * modelViewMatrix * vec4(p, 1.0); }`,
-        fragmentShader: `uniform float t; uniform float strength; uniform float seed; varying vec2 vUv;
-          void main(){
-            float fade = smoothstep(0.0, 0.25, vUv.y) * (1.0 - vUv.y) * smoothstep(0.0, 0.1, vUv.x) * smoothstep(1.0, 0.9, vUv.x);
-            float bands = 0.55 + 0.45 * sin(vUv.x * 60.0 + t * 1.3 + seed * 3.0);
-            vec3 green = vec3(0.2, 1.0, 0.55); vec3 violet = vec3(0.6, 0.3, 1.0);
-            vec3 c = mix(green, violet, vUv.y * 0.9 + 0.1 * sin(t + vUv.x * 8.0));
-            gl_FragColor = vec4(c * 0.75, fade * bands * strength * 0.5);
-          }`,
-      });
+      const mat = auroraMaterial(i * 1.7);
       const m = new THREE.Mesh(geo, mat);
       m.position.set(c.x + (i - 1.5) * 260, 150 + i * 28, c.z - 560 + i * 70);
       m.rotation.y = 0.2 * (i - 1.5);
@@ -153,21 +134,7 @@ export class Sky {
   private buildRainbows(): void {
     const c = regionCenter(REGION_BY_ID.meadow);
     for (const [dx, dz, r, ry] of [[40, -260, 260, 0.2], [-280, 120, 180, 1.4], [220, 180, 150, -0.9]] as const) {
-      const mat = new THREE.ShaderMaterial({
-        transparent: true,
-        depthWrite: false,
-        side: THREE.DoubleSide,
-        fog: false,
-        uniforms: { strength: { value: 0 } },
-        vertexShader: `varying vec2 vUv; void main(){ vUv = uv; gl_Position = projectionMatrix * modelViewMatrix * vec4(position,1.0); }`,
-        fragmentShader: `uniform float strength; varying vec2 vUv;
-          vec3 band(float v){ return clamp(abs(mod(v * 6.0 + vec3(0.0, 4.0, 2.0), 6.0) - 3.0) - 1.0, 0.0, 1.0); }
-          void main(){
-            float v = vUv.y;
-            float a = smoothstep(0.0, 0.15, v) * smoothstep(1.0, 0.85, v) * smoothstep(0.0, 0.08, vUv.x) * smoothstep(0.5, 0.42, vUv.x);
-            gl_FragColor = vec4(band(v * 0.8) * 1.15, a * strength * 0.55);
-          }`,
-      });
+      const mat = rainbowMaterial();
       const m = new THREE.Mesh(new THREE.TorusGeometry(r, r * 0.06, 8, 64, Math.PI), mat);
       m.position.set(c.x + dx, -6, c.z + dz);
       m.rotation.y = ry;
@@ -239,3 +206,46 @@ export class Sky {
 }
 
 const tmpDir = new THREE.Vector3();
+
+/** Aurora ribbon material: uniforms t (time) and strength (0..1). */
+export function auroraMaterial(seed: number): THREE.ShaderMaterial {
+  return new THREE.ShaderMaterial({
+        transparent: true,
+        depthWrite: false,
+        blending: THREE.AdditiveBlending,
+        side: THREE.DoubleSide,
+        fog: false,
+        uniforms: { t: { value: 0 }, strength: { value: 0 }, seed: { value: seed } },
+        vertexShader: `uniform float t; uniform float seed; varying vec2 vUv;
+          void main(){ vUv = uv; vec3 p = position;
+            p.z += sin(p.x * 0.006 + t * 0.3 + seed) * 120.0 + sin(p.x * 0.017 - t * 0.5 + seed) * 40.0;
+            gl_Position = projectionMatrix * modelViewMatrix * vec4(p, 1.0); }`,
+        fragmentShader: `uniform float t; uniform float strength; uniform float seed; varying vec2 vUv;
+          void main(){
+            float fade = smoothstep(0.0, 0.25, vUv.y) * (1.0 - vUv.y) * smoothstep(0.0, 0.1, vUv.x) * smoothstep(1.0, 0.9, vUv.x);
+            float bands = 0.55 + 0.45 * sin(vUv.x * 60.0 + t * 1.3 + seed * 3.0);
+            vec3 green = vec3(0.2, 1.0, 0.55); vec3 violet = vec3(0.6, 0.3, 1.0);
+            vec3 c = mix(green, violet, vUv.y * 0.9 + 0.1 * sin(t + vUv.x * 8.0));
+            gl_FragColor = vec4(c * 0.75, fade * bands * strength * 0.5);
+          }`,
+      });
+}
+
+/** Rainbow arc material for a half torus: uniform strength (0..1). */
+export function rainbowMaterial(): THREE.ShaderMaterial {
+  return new THREE.ShaderMaterial({
+        transparent: true,
+        depthWrite: false,
+        side: THREE.DoubleSide,
+        fog: false,
+        uniforms: { strength: { value: 0 } },
+        vertexShader: `varying vec2 vUv; void main(){ vUv = uv; gl_Position = projectionMatrix * modelViewMatrix * vec4(position,1.0); }`,
+        fragmentShader: `uniform float strength; varying vec2 vUv;
+          vec3 band(float v){ return clamp(abs(mod(v * 6.0 + vec3(0.0, 4.0, 2.0), 6.0) - 3.0) - 1.0, 0.0, 1.0); }
+          void main(){
+            float v = vUv.y;
+            float a = smoothstep(0.0, 0.15, v) * smoothstep(1.0, 0.85, v) * smoothstep(0.0, 0.08, vUv.x) * smoothstep(0.5, 0.42, vUv.x);
+            gl_FragColor = vec4(band(v * 0.8) * 1.15, a * strength * 0.55);
+          }`,
+      });
+}

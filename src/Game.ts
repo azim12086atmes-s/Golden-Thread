@@ -10,6 +10,7 @@ import './characters/wardrobe'; // registers the fusion outfits
 import { EventBus } from './core/events';
 import { Guide } from './guide/Guide';
 import { CakeScene } from './story/CakeScene';
+import { Celebration } from './event/Celebration';
 import { Input } from './core/Input';
 import { loadGame, saveGame, clearSave } from './core/save';
 import { DAY_MINUTES, hourOf, newGame, type GameState, type VanSlot } from './core/state';
@@ -43,7 +44,16 @@ export type Interactable =
   | { kind: 'plot'; site: PlotSite; label: string }
   | { kind: 'lantern'; region: RegionId; label: string }
   | { kind: 'van'; label: string }
+  | { kind: 'chariot'; label: string }
   | { kind: 'bed'; plotId: string; decorId: string; label: string };
+
+/** A scripted scene that takes the camera (and optionally renders its own scene). */
+export interface Cutscene {
+  update(dt: number, camera: THREE.PerspectiveCamera): void;
+  finish(skipped?: boolean): void;
+  readonly finished: boolean;
+  view?: { scene: THREE.Scene; camera: THREE.PerspectiveCamera } | null;
+}
 
 export class Game {
   readonly renderer: THREE.WebGLRenderer;
@@ -68,9 +78,10 @@ export class Game {
   readonly van: VanInterior;
   readonly ui: UI;
   readonly guide: Guide;
+  readonly celebration: Celebration;
   region: RegionSpec;
   inVan = false;
-  cutscene: CakeScene | null = null;
+  cutscene: Cutscene | null = null;
   started = false;
   build: { plotId: string; kind: string | null; rot: number } | null = null;
   target: Interactable | null = null;
@@ -90,6 +101,10 @@ export class Game {
       if (this.st.outfits.girl === 'g-meadow') this.st.outfits.girl = 'g-kurti-jeans';
       if (this.st.outfits.boy === 'b-meadow') this.st.outfits.boy = 'b-kurta-jeans';
       this.st.flags.push('kurti-default');
+    }
+    if (!this.st.flags.includes('kurti-default-2')) {
+      this.st.outfits = { girl: 'g-kurti-jeans', boy: 'b-kurta-jeans' };
+      this.st.flags.push('kurti-default-2');
     }
     this.renderer = new THREE.WebGLRenderer({ antialias: true, powerPreference: 'high-performance' });
     this.renderer.setPixelRatio(Math.min(devicePixelRatio, 1.75));
@@ -132,6 +147,7 @@ export class Game {
     for (const e of ['plot:bought', 'plot:changed', 'quest:completed'] as const) this.bus.on(e, () => (this.housingDirty = true));
 
     this.ui = new UI(this);
+    this.celebration = new Celebration(this);
     this.guide = new Guide(this);
     this.guide.onNextChanged = (o, first) => {
       this.ui.refreshTracker();
@@ -255,8 +271,11 @@ export class Game {
     this.trav.updateCamera(this.camera, dt);
     this.cutscene?.update(dt, this.camera);
     this.dressCamera(dt);
+    this.celebration.update(dt, this.t);
     this.guide.update(dt, this.t);
-    this.composer.render();
+    const view = this.cutscene?.view;
+    if (view) this.renderer.render(view.scene, view.camera);
+    else this.composer.render();
     this.ui.update(dt);
     this.input.endFrame();
   }
@@ -357,6 +376,8 @@ export class Game {
       if (d < (this.region.id === 'skyisles' ? 200 : 45)) cands.push([d * 0.2, { kind: 'lantern', region: this.region.id, label: '🏮 Light the lantern together' }]);
     }
     if (this.trav.parkedVan && onFoot && this.trav.parkedVan.pos.distanceTo(p) < 4.5) cands.push([this.trav.parkedVan.pos.distanceTo(p), { kind: 'van', label: 'Step inside Safar' }]);
+    const ride = onFoot ? this.celebration.label(p) : null;
+    if (ride) cands.push([0.5, { kind: 'chariot', label: ride }]);
     cands.sort((a, b) => a[0] - b[0]);
     return cands[0]?.[1] ?? null;
   }
@@ -392,6 +413,8 @@ export class Game {
         return;
       case 'van':
         return this.enterVan();
+      case 'chariot':
+        return this.celebration.begin();
     }
   }
 
@@ -597,7 +620,10 @@ export class Game {
     this.started = true;
     this.trav.camYaw = this.trav.heading;
     if (!this.st.quests['main-meadow'] && !this.st.flags.includes('cake')) this.playOpening();
-    else if (!this.st.quests['main-meadow']) this.wakeToast();
+    else {
+      if (!this.st.quests['main-meadow']) this.wakeToast();
+      this.celebration.invite();
+    }
   }
 
   private wakeToast(): void {
@@ -613,6 +639,7 @@ export class Game {
     scene.onDone = () => {
       this.cutscene = null;
       if (!this.st.quests['main-meadow']) this.wakeToast();
+      this.celebration.invite();
       this.guide.refresh();
       this.ui.refreshTracker();
     };

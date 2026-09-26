@@ -10,7 +10,8 @@ export interface V3 { x: number; y: number; z: number }
 
 export const BODY_RADIUS = 0.32;
 export const MIN_GAP = 1.5;
-export const IDEAL_GAP = 2.6;
+/** Walking together: 1.95 m (owner: 25% closer than the first 2.6 m). MIN_GAP still holds. */
+export const IDEAL_GAP = 1.95;
 /** Beyond this the boy hurries; the thread grows taut. */
 export const LEASH = 9;
 /** Beyond this (fast travel, falling off a map edge) he is placed beside her instead. */

@@ -17,7 +17,8 @@ export type Target =
   | { kind: 'region'; region: RegionId }
   | { kind: 'resource'; item: string; region: RegionId }
   | { kind: 'lantern'; region: RegionId }
-  | { kind: 'animal'; species: SpeciesId; region: RegionId };
+  | { kind: 'animal'; species: SpeciesId; region: RegionId }
+  | { kind: 'point'; x: number; z: number; region: RegionId };
 
 export interface Task {
   /** Stable within a plan, so the UI can notice when the next task changes. */
@@ -296,6 +297,7 @@ export function currentObjective(st: GameState, w: Where): Objective {
 
 /** Where a target is when its person or thing is not streamed in yet. */
 export function targetAnchor(t: Target): { x: number; z: number } {
+  if (t.kind === 'point') return { x: t.x, z: t.z };
   const c = regionCenter(REGION_BY_ID[t.region]);
   if (t.kind === 'npc') {
     const at = PEOPLE_BY_ID[t.npc]?.at;

@@ -112,6 +112,11 @@ export class World {
     }
   }
 
+  /** Static colliders for set pieces that are not a land's town (e.g. the castle). */
+  addColliders(list: Collider[]): void {
+    this.landmarkColliders.push(...list);
+  }
+
   isLoaded(id: string): boolean {
     return this.regions.has(id);
   }

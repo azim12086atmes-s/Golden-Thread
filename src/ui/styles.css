@@ -302,3 +302,5 @@ body.cinematic #ui > .feed { opacity: 0; }
 .shelf .outfit { min-inline-size: 0; }
 .shelf .outfit b { display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
 .shelf .outfit small { max-inline-size: 100%; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.cinema .fade { position: absolute; inset: 0; background: #0b0a1c; opacity: 0; pointer-events: none; }
+.cinema .caption.big { inset-block-end: auto; inset-block-start: 22%; max-inline-size: 22ch; font: 700 clamp(30px, 5.4vw, 60px)/1.1 var(--display); font-style: normal; color: var(--gold); text-shadow: 0 0 24px rgba(255, 180, 220, 0.7), 0 2px 20px rgba(0, 0, 0, 0.6); }

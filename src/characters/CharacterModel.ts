@@ -28,6 +28,7 @@ function mesh(geo: THREE.BufferGeometry, color: string, part: Part, glow = false
 }
 
 const SKIRTS: string[] = ['skirt', 'straight-skirt', 'hakama', 'wrap'];
+const RAINBOW = ['#ff6b8b', '#ffb347', '#fff27a', '#7dffa8', '#6bc8ff', '#b99bff'];
 
 /** A trouser leg that is looser through the thigh and opens below the knee. Top at y = 0. */
 function flaredLeg(kind: 'bell' | 'flared', hip: number): THREE.BufferGeometry {
@@ -256,6 +257,13 @@ export class CharacterModel {
     const t = new THREE.CylinderGeometry(r + 0.006, r + 0.01, 0.05, 12, 1, true);
     t.translate(0, y + 0.025, 0);
     b.add(mesh(t, color, 'trim', this.outfit.pattern === 'glow' || this.outfit.pattern === 'stars'));
+    if (this.outfit.detail?.rainbow) {
+      RAINBOW.forEach((col, i) => {
+        const ring = new THREE.CylinderGeometry(r * (0.985 - i * 0.012), r * (0.99 - i * 0.012), 0.018, 16, 1, true);
+        ring.translate(0, y + 0.07 + i * 0.02, 0);
+        b.add(mesh(ring, col, 'trim', true));
+      });
+    }
     if (this.outfit.pattern === 'bands' || this.outfit.pattern === 'stripes') {
       const t2 = new THREE.CylinderGeometry(r * 0.9, r * 0.94, 0.03, 12, 1, true);
       t2.translate(0, y + 0.12, 0);

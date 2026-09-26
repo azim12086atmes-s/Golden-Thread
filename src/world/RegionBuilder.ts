@@ -4,7 +4,7 @@ import { PLOTS, PLOT_SIZE } from './plots';
 import { buildHouse, lampPost, streetProp, type Ctx } from './architecture';
 import { GeoBuilder, box, cone, cyl, flowers, rock, sphere, tree } from './kit';
 import { CITY_RADIUS, REGION_SIZE, regionCenter, type RegionSpec } from './regions';
-import { WATER_Y, terrainHeight } from './terrain';
+import { CASTLE_SITE, WATER_Y, terrainHeight } from './terrain';
 
 export interface Collider { x: number; z: number; r: number; h: number }
 
@@ -101,7 +101,9 @@ export function buildRegion(spec: RegionSpec, solid: THREE.Material, glowMat: TH
   const wild: Array<{ x: number; z: number }> = [];
   const H = (lx: number, lz: number) => terrainHeight(c.x + lx, c.z + lz);
   const plotsHere = PLOTS.filter((p) => p.region === spec.id).map((p) => ({ x: p.x - c.x, z: p.z - c.z }));
-  const nearPlot = (x: number, z: number, pad: number) =>
+  const inCastle = (x: number, z: number, pad: number) =>
+    spec.id === 'meadow' && Math.hypot(c.x + x - CASTLE_SITE.x, c.z + z - CASTLE_SITE.z) < CASTLE_SITE.r + 8 + pad;
+  const nearPlot = (x: number, z: number, pad: number) => inCastle(x, z, pad) ||
     plotsHere.some((p) => Math.abs(x - p.x) < PLOT_SIZE / 2 + pad && Math.abs(z - p.z) < PLOT_SIZE / 2 + pad);
   const isSky = spec.id === 'skyisles';
 

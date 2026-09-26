@@ -10,7 +10,20 @@ import { surfaceAt } from '../world/terrain';
  * Plays once on a new journey (flag `cake`), can be replayed from Help, and can always be skipped.
  */
 
-const SPONGE = '#f3d49a', CREAM = '#fff8ef', ROSE = '#f7b8cc', GOLD = '#f5c451', CLOTH = '#fbf4e6';
+const GOLD = '#f5c451', CLOTH = '#fbf4e6';
+
+/** The cake's colours: sponge inside, the icing outside, the top tier, and the piped roses. */
+export interface CakePalette { sponge: string; cream: string; icing: string; top: string; rose: string; bead: string }
+export const VANILLA: CakePalette = { sponge: '#f3d49a', cream: '#fff8ef', icing: '#fff8ef', top: '#f7b8cc', rose: '#f7b8cc', bead: '#fff8ef' };
+export const CHOCOLATE: CakePalette = { sponge: '#5a3322', cream: '#f3e2cf', icing: '#4a2718', top: '#3b1f14', rose: '#e0344f', bead: '#f5c451' };
+
+export interface CakeOptions {
+  palette?: CakePalette;
+  /** Captions for the four beats: opening, the cut, the offering, the thread. */
+  lines?: [string, string, string, string];
+  /** Flag recorded once the piece is tasted (it grants a little light the first time). */
+  flag?: string;
+}
 const WEDGE = Math.PI / 4;
 
 const mat = new Map<string, THREE.Material>();
@@ -28,14 +41,14 @@ const mesh = (geo: THREE.BufferGeometry, color: string, glow = false) => {
 };
 
 /** A cylinder sector with its two cut faces closed — sponge inside, a cream stripe through it. */
-function sector(r: number, h: number, start: number, len: number, outside: string): THREE.Group {
+function sector(r: number, h: number, start: number, len: number, outside: string, pal: CakePalette): THREE.Group {
   const g = new THREE.Group();
   g.add(mesh(new THREE.CylinderGeometry(r, r, h, 40, 1, false, start, len), outside));
   for (const a of [start, start + len]) {
     const face = new THREE.Group();
-    const sponge = mesh(new THREE.PlaneGeometry(r, h), SPONGE);
+    const sponge = mesh(new THREE.PlaneGeometry(r, h), pal.sponge);
     sponge.position.x = r / 2;
-    const stripe = mesh(new THREE.PlaneGeometry(r * 0.98, h * 0.14), CREAM);
+    const stripe = mesh(new THREE.PlaneGeometry(r * 0.98, h * 0.14), pal.cream);
     stripe.position.set(r / 2, 0, 0.001);
     const stripe2 = stripe.clone();
     stripe2.position.z = -0.001;
@@ -85,13 +98,18 @@ export class CakeScene {
 
   static readonly LENGTH = 17;
 
-  constructor(private g: Game) {
+  private flag: string;
+
+  constructor(private g: Game, opts: CakeOptions = {}) {
+    const pal = opts.palette ?? VANILLA;
+    this.flag = opts.flag ?? 'cake';
     const { girl, boy } = g.st.names;
+    const L = opts.lines ?? ['The morning the journey begins, under the Great Oak.', `A small celebration before the road. From across the table, ${boy} cuts the cake with the thread's light.`, `${boy} offers ${girl} the first piece…`, '…and the golden thread between them shines a little brighter.'];
     this.beats = [
-      { at: 0.4, text: 'The morning the journey begins, under the Great Oak.' },
-      { at: 4.2, text: `A small celebration before the road. From across the table, ${boy} cuts the cake with the thread's light.` },
-      { at: 8.2, text: `${boy} offers ${girl} the first piece…` },
-      { at: 12.8, text: '…and the golden thread between them shines a little brighter.' },
+      { at: 0.4, text: L[0] },
+      { at: 4.2, text: L[1] },
+      { at: 8.2, text: L[2] },
+      { at: 12.8, text: L[3] },
       { at: 16.2 },
     ];
 
@@ -110,27 +128,27 @@ export class CakeScene {
     cake.position.y = cakeTop;
     cake.scale.setScalar(1.5);
     const r1 = 0.27, h1 = 0.17, r2 = 0.18, h2 = 0.14;
-    const rest = sector(r1, h1, WEDGE, Math.PI * 2 - WEDGE, CREAM);
+    const rest = sector(r1, h1, WEDGE, Math.PI * 2 - WEDGE, pal.icing, pal);
     rest.position.y = h1 / 2;
     cake.add(rest);
-    this.slice = sector(r1, h1, 0, WEDGE, CREAM);
+    this.slice = sector(r1, h1, 0, WEDGE, pal.icing, pal);
     // A rose on the slice, so the piece that floats is recognisably the special one.
-    const sliceRose = mesh(new THREE.SphereGeometry(0.03, 8, 6), ROSE);
+    const sliceRose = mesh(new THREE.SphereGeometry(0.03, 8, 6), pal.rose);
     sliceRose.position.set(Math.sin(WEDGE / 2) * r1 * 0.7, h1 / 2 + 0.02, Math.cos(WEDGE / 2) * r1 * 0.7);
     this.slice.add(sliceRose);
     this.slice.position.y = h1 / 2;
     cake.add(this.slice);
-    const upper = mesh(new THREE.CylinderGeometry(r2, r2, h2, 36), ROSE);
+    const upper = mesh(new THREE.CylinderGeometry(r2, r2, h2, 36), pal.top);
     upper.position.y = h1 + h2 / 2;
     cake.add(upper);
     cake.add(mesh(new THREE.TorusGeometry(r2 + 0.004, 0.012, 6, 40).rotateX(Math.PI / 2).translate(0, h1 + 0.03, 0), GOLD, true));
     for (let i = 0; i < 14; i++) {
       const a = (i / 14) * Math.PI * 2;
-      const bead = mesh(new THREE.SphereGeometry(0.018, 6, 5), CREAM);
+      const bead = mesh(new THREE.SphereGeometry(0.018, 6, 5), pal.bead);
       bead.position.set(Math.sin(a) * r2, h1 + h2, Math.cos(a) * r2);
       cake.add(bead);
       if (i % 2) continue;
-      const rose = mesh(new THREE.SphereGeometry(0.026, 7, 5), i % 4 ? ROSE : '#ffffff');
+      const rose = mesh(new THREE.SphereGeometry(0.026, 7, 5), i % 4 ? pal.rose : '#ffffff');
       rose.position.set(Math.sin(a + 0.2) * (r1 - 0.02), h1 + 0.01, Math.cos(a + 0.2) * (r1 - 0.02));
       if (a > WEDGE) cake.add(rose);
     }
@@ -151,7 +169,7 @@ export class CakeScene {
     g.scene.add(this.link);
 
     for (let i = 0; i < 26; i++) {
-      const s = mesh(new THREE.SphereGeometry(0.02, 6, 4), i % 3 ? GOLD : ROSE, true);
+      const s = mesh(new THREE.SphereGeometry(0.02, 6, 4), i % 3 ? GOLD : pal.rose, true);
       s.visible = false;
       this.sparks.push(s);
       g.scene.add(s);
@@ -281,8 +299,8 @@ export class CakeScene {
       this.slice.scale.setScalar(Math.max(0.001, scale));
       this.slice.visible = scale > 0.01;
     }
-    if (t > 12.4 && !g.st.flags.includes('cake')) {
-      g.st.flags.push('cake');
+    if (t > 12.4 && !g.st.flags.includes(this.flag)) {
+      g.st.flags.push(this.flag);
       g.st.light += 0.5;
     }
     if (t > 13.6) for (const s of this.sparks) s.visible = false;
@@ -323,8 +341,8 @@ export class CakeScene {
     if (this.done) return;
     this.done = true;
     const g = this.g;
-    if (!g.st.flags.includes('cake')) {
-      g.st.flags.push('cake');
+    if (!g.st.flags.includes(this.flag)) {
+      g.st.flags.push(this.flag);
       g.st.light += 0.5;
     }
     g.trav.boy.offer = 0;
