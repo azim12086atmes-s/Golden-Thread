@@ -319,8 +319,8 @@ export class SkyFX {
     // Milky Way and nebula.
     {
       const u = this.nightDome.material.uniforms;
-      u.milky.value = L.milkyway * night;
-      u.nebula.value = L.nebula * night;
+      u.milky.value = L.milkyway * (night + (1 - night) * 0.45);
+      u.nebula.value = L.nebula * (night + (1 - night) * 0.3);
       u.t.value = t;
       u.colA.value.copy(this.pal[0]);
       u.colB.value.copy(this.pal[1]);

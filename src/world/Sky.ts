@@ -128,7 +128,7 @@ export class Sky {
     const sg = new THREE.BufferGeometry();
     sg.setAttribute('position', new THREE.BufferAttribute(pos, 3));
     sg.setAttribute('color', new THREE.BufferAttribute(col, 3));
-    this.stars = new THREE.Points(sg, new THREE.PointsMaterial({ size: 3.2, sizeAttenuation: false, vertexColors: true, transparent: true, opacity: 0, fog: false, depthWrite: false }));
+    this.stars = new THREE.Points(sg, new THREE.PointsMaterial({ size: 3.2, sizeAttenuation: false, vertexColors: true, transparent: true, opacity: 0, fog: false, depthWrite: false, blending: THREE.AdditiveBlending, toneMapped: false }));
     this.stars.frustumCulled = false;
     this.group.add(this.stars);
 
@@ -251,7 +251,9 @@ export class Sky {
     this.sunDisc.visible = this.sunDir.y > -0.05;
     this.moon.position.copy(this.sunDir).multiplyScalar(-3300);
     this.moon.visible = this.sunDir.y < 0.1 && !this.moonHidden;
-    this.stars.material.opacity = this.night;
+    // A fairy-tale sky: the stars stay out by day too, bright points against the blue.
+    this.stars.material.opacity = this.night + (1 - this.night) * 0.6;
+    this.stars.material.color.setScalar(1 + (1 - this.night) * 0.9);
     this.stars.rotation.y = t * 0.002;
 
     // Aurora: at night, strongest over its own land. The group follows the player, so auroras
@@ -365,7 +367,7 @@ export function rainbowMaterial(opts: { k?: number; flip?: number } = {}): THREE
         float ends = smoothstep(0.0, 0.2, x) * smoothstep(1.0, 0.8, x);
         c = mix(c, vec3(0.82, 0.88, 1.0), pale * 0.8);
         float a = (body * rays * drift + sup * c01) * ends * strength * k;
-        gl_FragColor = vec4(c * 1.2 + vec3(0.08), a * 0.6);
+        gl_FragColor = vec4(c * 1.35 + vec3(0.06), min(1.0, a * 0.95));
       }`,
   });
 }

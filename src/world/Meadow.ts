@@ -133,10 +133,10 @@ export function grassy(x: number, z: number, h: number, col: THREE.Color): boole
 }
 
 /** The dense meadow round the travellers: grids of cells that move with them. */
-export const FIELD_CELL = 0.55;
-export const FIELD_CELLS = 120; // 66 m across, a tuft every 55 cm
-export const FLOWER_CELL = 2.4;
-export const FLOWER_CELLS = 36; // 86 m across
+export const FIELD_CELL = 0.45;
+export const FIELD_CELLS = 140; // 63 m across, a tuft every 45 cm
+export const FLOWER_CELL = 1.4;
+export const FLOWER_CELLS = 50; // 70 m across
 
 const cellHash = (i: number, j: number, k: number) => {
   const v = Math.sin(i * 127.1 + j * 311.7 + k * 74.7) * 43758.5453;
@@ -221,7 +221,7 @@ export class MeadowField {
     });
     this.flowers = new Field(GEO.flower, MATS.flower, FLOWER_CELL, FLOWER_CELLS, (im, k, i, j) => {
       const x = (i + 0.1 + cellHash(i, j, 21) * 0.8) * FLOWER_CELL, z = (j + 0.1 + cellHash(i, j, 22) * 0.8) * FLOWER_CELL;
-      if (cellHash(i, j, 23) > 0.55 || !this.grows(x, z, i, j)) { im.setMatrixAt(k, this.zero); return false; }
+      if (cellHash(i, j, 23) > 0.72 || !this.grows(x, z, i, j)) { im.setMatrixAt(k, this.zero); return false; }
       const land = regionAt(x, z), bloom = land.flowers, lights = LOCALES[land.id].lights, v = cellHash(i, j, 26);
       this.q.setFromAxisAngle(this.up, cellHash(i, j, 24) * Math.PI * 2);
       im.setMatrixAt(k, this.m.compose(this.p.set(x, this.h, z), this.q, this.s.setScalar(0.75 + cellHash(i, j, 27) * 0.5)));

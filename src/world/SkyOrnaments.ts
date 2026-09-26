@@ -350,14 +350,14 @@ export class SkyOrnaments {
 
     // Moons: bright at night, pale ghosts by day.
     this.moons.forEach((m, i) => {
-      const s = L.moons * (0.25 + night * 0.75);
+      const s = L.moons * (0.55 + night * 0.45);
       m.visible = s > 0.01;
       m.material.opacity = s;
       m.material.color.copy(pal[(i + 1) % pal.length]).lerp(tmpC.set('#ffffff'), 0.55).multiplyScalar(1 + night * 0.4);
     });
     // Planets.
     {
-      const s = L.planets * (0.3 + night * 0.7);
+      const s = L.planets * (0.6 + night * 0.4);
       this.planets.visible = s > 0.01;
       for (const m of this.planetMats) (m as THREE.MeshBasicMaterial).opacity = s;
       this.planets.children[0].rotation.y = t * 0.01;
@@ -390,14 +390,14 @@ export class SkyOrnaments {
     }
     // Constellations: the figures breathe softly after dark.
     {
-      const s = L.constellations * smoothstep(0.35, 0.85, night);
+      const s = L.constellations * Math.max(0.35, smoothstep(0.35, 0.85, night));
       this.cons.visible = s > 0.01;
       this.consLines.material.opacity = s * (0.45 + Math.sin(t * 0.7) * 0.15);
       this.consStars.material.opacity = s;
     }
     // The comet drifts across the night.
     {
-      const s = L.comet * smoothstep(0.3, 0.8, night);
+      const s = L.comet * Math.max(0.4, smoothstep(0.3, 0.8, night));
       this.comet.visible = s > 0.01;
       for (const m of this.cometMats) m.opacity = s * 0.85;
       this.comet.rotation.y = t * 0.003;
