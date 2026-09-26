@@ -70,7 +70,7 @@ export class Festivities {
   readonly group = new THREE.Group();
   level = 0;
   private y: number;
-  private centre: THREE.Vector3;
+  readonly centre: THREE.Vector3;
   private petals: Swarm;
   private roses: THREE.InstancedMesh;
   private roseState: Float32Array;

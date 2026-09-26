@@ -44,6 +44,8 @@ export class Sky {
   readonly sunLight = new THREE.DirectionalLight('#fff4e0', 1.8);
   readonly hemi = new THREE.HemisphereLight('#bfe6ff', '#6a8a5a', 0.7);
   night = 0;
+  /** Set by SkyFX while a crescent stands in for the full moon. */
+  moonHidden = false;
   private dome: THREE.Mesh<THREE.SphereGeometry, THREE.ShaderMaterial>;
   private stars: THREE.Points<THREE.BufferGeometry, THREE.PointsMaterial>;
   private moon: THREE.Mesh;
@@ -54,6 +56,9 @@ export class Sky {
   private rainbows: THREE.Mesh<THREE.TorusGeometry, THREE.ShaderMaterial>[] = [];
   readonly fog = new THREE.Fog('#cfeaff', 120, 1400);
   private sunDir = new THREE.Vector3();
+
+  /** Direction to the sun (unit vector). */
+  get sunDirection(): THREE.Vector3 { return this.sunDir; }
 
   constructor() {
     this.dome = new THREE.Mesh(
@@ -169,10 +174,11 @@ export class Sky {
       this.tint.night.lerp(tmpA.set(L.sky.night), ease);
     }
     const dusk = 1 - smoothstep(0, 0.35, Math.abs(this.sunDir.y));
-    u.top.value.lerp(this.tint.day, 0.2 * (1 - this.night) * (1 - dusk));
-    u.top.value.lerp(this.tint.night, 0.4 * this.night);
-    u.horizon.value.lerp(this.tint.dusk, 0.5 * dusk);
-    u.horizon.value.lerp(this.tint.night, 0.25 * this.night);
+    // Vibrant: the land's own colours carry a good share of the sky.
+    u.top.value.lerp(this.tint.day, 0.34 * (1 - this.night) * (1 - dusk));
+    u.top.value.lerp(this.tint.night, 0.5 * this.night);
+    u.horizon.value.lerp(this.tint.dusk, 0.68 * dusk);
+    u.horizon.value.lerp(this.tint.night, 0.36 * this.night);
     if (regionId === 'skyisles') u.top.value.lerp(tmpA.set('#b8a4ff'), 0.25);
     if (regionId === 'desert' || regionId === 'egypt' || regionId === 'middleeast') u.horizon.value.lerp(tmpA.set('#ffd6a0'), 0.25 * (1 - this.night));
 
@@ -192,7 +198,7 @@ export class Sky {
     this.sunDisc.position.copy(this.sunDir).multiplyScalar(3300);
     this.sunDisc.visible = this.sunDir.y > -0.05;
     this.moon.position.copy(this.sunDir).multiplyScalar(-3300);
-    this.moon.visible = this.sunDir.y < 0.1;
+    this.moon.visible = this.sunDir.y < 0.1 && !this.moonHidden;
     this.stars.material.opacity = this.night;
     this.stars.rotation.y = t * 0.002;
 

@@ -38,6 +38,7 @@ import { SkyLanterns } from './world/SkyLanterns';
 import type { ResourceNode } from './world/RegionBuilder';
 import { REGION_BY_ID, regionAt, regionCenter, type RegionId, type RegionSpec } from './world/regions';
 import { Sky } from './world/Sky';
+import { SkyFX } from './world/SkyFX';
 import { surfaceAt } from './world/terrain';
 import { World } from './world/World';
 
@@ -81,6 +82,8 @@ export class Game {
   readonly ambience = new Ambience();
   readonly regionFx = new RegionFX();
   readonly skyLanterns = new SkyLanterns();
+  /** Each land's own sky effects (world/skies.ts). */
+  readonly skyFx = new SkyFX();
   readonly quests: QuestSystem;
   readonly msgs: Messages;
   readonly housing: Housing;
@@ -136,7 +139,7 @@ export class Game {
 
     this.scene.fog = this.sky.fog;
     this.scene.add(...this.auras);
-    this.scene.add(this.world.group, this.sky.group, this.sky.sunLight, this.sky.sunLight.target, this.sky.hemi, this.ambience.points, this.regionFx.points, this.skyLanterns.mesh);
+    this.scene.add(this.world.group, this.sky.group, this.sky.sunLight, this.sky.sunLight.target, this.sky.hemi, this.ambience.points, this.regionFx.points, this.skyLanterns.mesh, this.skyFx.group);
 
     this.composer = new EffectComposer(this.renderer);
     this.composer.addPass(new RenderPass(this.scene, this.camera));
@@ -278,6 +281,11 @@ export class Game {
     this.regionFx.setRegion(this.region.id);
     this.regionFx.update(dt, this.trav.gPos, this.t, this.sky.night);
     this.skyLanterns.update(dt, this.t, this.trav.gPos, this.region.id, this.sky.night);
+    this.skyFx.party = this.celebration.festivities.level;
+    this.skyFx.partyAt.copy(this.celebration.festivities.centre);
+    this.camera.getWorldDirection(this.skyFx.lookDir);
+    this.skyFx.update(dt, this.t, this.trav.gPos, this.region.id, this.sky.night, this.sky.sunDirection);
+    this.sky.moonHidden = this.skyFx.hideMoon;
     this.npcs.update(dt, this.t, this.trav.gPos);
     this.townsfolk.update(dt, this.t, this.trav.gPos);
     this.dressing.update(this.sky.night);

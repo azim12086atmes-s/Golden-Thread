@@ -93,3 +93,11 @@ Opus 5.5 (claude-opus-5-5) writes one line per action here so Codex can see ever
 - Storyline rewritten: her new job is a proud step, not the destination. The story is the life they live together: exploring while living and owning a home, earning by helping, upskilling in every land, becoming part of the people they meet, staying connected to home (Noor: write, come back).
 - Journey guide gains a first objective card, "Live life together". The prologue gains a "keep learning" line and "never lose the way home".
 - tests/journey.test.ts checks every theme and that "promise" never appears. Story length cap raised to 120 s (longer lines need reading time).
+
+## Every land its own sky (2026-09-26)
+
+- world/skies.ts (pure, tests/skies.test.ts) gives each of the 20 lands its own sky design. Examples: Diwali fireworks and Sankranti kites (North India), searchlights (New York), the Milky Way (desert), a crescent (Middle East), alpenglow (Switzerland), a nebula (Sky Isles). Wanderers' Meadow has all 14 effects.
+- world/SkyFX.ts draws them: clouds, kites, birds, sunbeams, double rainbow opposite the sun, alpenglow, aurora, Milky Way and nebula dome, shooting stars, fireworks, searchlights, moon halo, crescent. Each eases in and out by land and by hour.
+- At the celebration (festivities.level), fireworks and searchlights gather over the castle; beams stand in an arc behind it as seen from the camera. Night layers were tuned so the party night stays deep.
+- Sky.ts: land sky tints are stronger (vibrance), sunDirection getter, moonHidden for the crescent.
+- Visually checked: North India (kites, fireworks), desert (Milky Way), New York (searchlights), Switzerland (alpenglow), Middle East (crescent), meadow by day (kites, double rainbow) and the castle party at night.
