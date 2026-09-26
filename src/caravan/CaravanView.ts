@@ -1,0 +1,107 @@
+import * as THREE from 'three';
+import { AnimalModel } from '../animals/AnimalModel';
+import { CharacterModel } from '../characters/CharacterModel';
+import type { Game } from '../Game';
+import { wardrobeFor } from '../npc/Townsfolk';
+import { REGION_BY_ID } from '../world/regions';
+import { surfaceAt } from '../world/terrain';
+import { CHILDREN, COMPANION_BY_ID, MAX_CHILDREN, caravanStep, canJoin, type CompanionDef, type Member } from './caravan';
+
+/**
+ * The caravan in the world: the children and pets travelling with the two, walking behind them
+ * (children close, pets ranging wider), always keeping clear space around the travellers and
+ * each other (caravan.ts proves it). When the travellers take a vehicle they ride along — they
+ * reappear beside them on foot.
+ */
+interface Body { def: CompanionDef; member: Member; child?: CharacterModel; pet?: AnimalModel; ph: number }
+
+export class CaravanView {
+  private bodies: Body[] = [];
+
+  constructor(private g: Game) {
+    for (const id of g.st.caravan) this.add(id);
+    // Children from a land ask to join once its chapter is done (with their family's blessing).
+    g.bus.on('quest:completed', ({ questId }) => {
+      if (!questId.startsWith('main-')) return;
+      const land = questId.slice(5);
+      for (const c of CHILDREN) {
+        if (c.joinsAfter !== land || g.st.caravan.includes(c.id)) continue;
+        const current = g.st.caravan.map((id) => COMPANION_BY_ID[id]).filter(Boolean);
+        const done = Object.keys(g.st.quests).filter((q) => q.startsWith('main-') && g.st.quests[q].status === 'done').map((q) => q.slice(5)) as CompanionDef['origin'][];
+        const ok = canJoin(c, current, done, []);
+        if (ok.ok) {
+          g.st.caravan.push(c.id);
+          this.add(c.id);
+          g.toast(`🧒 ${c.name} joins the caravan — ${c.journey}`, 'story');
+        } else if (current.filter((x) => x.kind === 'child').length >= MAX_CHILDREN) {
+          g.toast(`${c.name} would love to travel with you once there is room on the back bench.`);
+        }
+      }
+    });
+  }
+
+  private add(id: string): void {
+    const def = COMPANION_BY_ID[id];
+    if (!def || this.bodies.some((b) => b.def.id === id)) return;
+    const p = this.g.trav.gPos;
+    const member: Member = { id, kind: def.kind, x: p.x - 3, z: p.z - 3, speed: 0 };
+    const body: Body = { def, member, ph: Math.random() * 10 };
+    if (def.kind === 'child') {
+      const pool = wardrobeFor(def.origin, def.who);
+      const outfit = pool[(def.name.length * 7) % pool.length];
+      body.child = new CharacterModel(outfit, ['#f1c9a5', '#e0ac85', '#c68b62', '#a8704a'][def.name.length % 4], 0.62);
+      this.g.scene.add(body.child.root);
+    } else {
+      body.pet = new AnimalModel(def.species, def.scale);
+      this.g.scene.add(body.pet.root);
+    }
+    this.bodies.push(body);
+  }
+
+  /** Nearest companion within reach (for "Chat with Rosie" / "Pet Pip"). */
+  nearest(p: THREE.Vector3, r: number): CompanionDef | null {
+    let best: CompanionDef | null = null, bd = r;
+    for (const b of this.bodies) {
+      const d = Math.hypot(b.member.x - p.x, b.member.z - p.z);
+      if (d < bd) { bd = d; best = b.def; }
+    }
+    return best;
+  }
+
+  list(): CompanionDef[] {
+    return this.bodies.map((b) => b.def);
+  }
+
+  update(dt: number, t: number): void {
+    const g = this.g, tr = g.trav;
+    const onFoot = tr.mode === 'walk' || tr.mode === 'fly';
+    const show = g.started && onFoot && !g.inVan && !g.cutscene;
+    const girl = { x: tr.gPos.x, z: tr.gPos.z }, boy = { x: tr.bPos.x, z: tr.bPos.z };
+    if (!show) {
+      // Riding along: they catch up the moment the travellers are back on foot.
+      for (const b of this.bodies) {
+        (b.child ?? b.pet)!.root.visible = false;
+        b.member.x = girl.x - 2; b.member.z = girl.z - 2; b.member.speed = 0;
+      }
+      return;
+    }
+    const next = caravanStep(this.bodies.map((b) => b.member), girl, boy, tr.heading, Math.min(8, tr.currentSpeed), dt);
+    this.bodies.forEach((b, i) => {
+      const m = next[i], prev = b.member;
+      const dx = m.x - prev.x, dz = m.z - prev.z;
+      b.member = m;
+      const root = (b.child ?? b.pet)!.root;
+      root.visible = true;
+      root.position.set(m.x, surfaceAt(m.x, m.z, tr.gPos.y + 3), m.z);
+      if (Math.hypot(dx, dz) > 0.002) root.rotation.y = Math.atan2(dx, dz);
+      if (b.child) b.child.update(dt, { speed: m.speed, airborne: false, riding: false, t: t + b.ph });
+      else b.pet!.update(dt, m.speed, t + b.ph);
+    });
+  }
+
+  /** A short line when you stop to talk to one of them. */
+  chat(def: CompanionDef): string {
+    if (def.kind === 'pet') return `${def.name} (from ${REGION_BY_ID[def.origin].name}) — ${def.blurb}`;
+    return `${def.name}: ${def.blurb} (${def.tradition}.) Travelling to ${REGION_BY_ID[def.destination].name}: ${def.journey}`;
+  }
+}

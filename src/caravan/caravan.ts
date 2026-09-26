@@ -30,6 +30,8 @@ export interface PetDef extends Base {
   /** Item from src/economy/items.ts that wins its trust. */
   likes: 'bread' | 'milk' | 'rice';
   scale: number;
+  /** Travels with you from the first morning. */
+  starts?: boolean;
 }
 
 export interface ChildDef extends Base {
@@ -43,6 +45,8 @@ export interface ChildDef extends Base {
   joinsAfter: LandId;
   /** Where the caravan brings them — they go home or stay there with family. */
   destination: LandId;
+  /** Travels with you from the first morning. */
+  starts?: boolean;
 }
 
 export type CompanionDef = PetDef | ChildDef;
@@ -52,7 +56,8 @@ export const PETS: PetDef[] = [
   { kind: 'pet', id: 'pet-shiba', name: 'Kuri', species: 'dog', tint: '#d9894a', likes: 'rice', scale: 0.9, origin: 'japan', help: 'finds-resources', blurb: 'A foxy little dog who is certain every bush hides something good.' },
   { kind: 'pet', id: 'pet-jindo', name: 'Baekgu', species: 'dog', tint: '#f2eadb', likes: 'rice', scale: 1.0, origin: 'korea', help: 'herds-animals', blurb: 'A loyal cream-coloured dog who always finds the way back to the van.' },
   { kind: 'pet', id: 'pet-mountain-dog', name: 'Bruno', species: 'dog', tint: '#8a5a3a', likes: 'bread', scale: 1.35, origin: 'switzerland', help: 'lifts-spirits', blurb: 'A big, patient mountain dog who leans against the van door at night.' },
-  { kind: 'pet', id: 'pet-sheepdog', name: 'Pip', species: 'dog', tint: '#2e2a28', likes: 'bread', scale: 0.95, origin: 'meadow', help: 'herds-animals', blurb: 'A quick black-and-white sheepdog from the Meadow who keeps the caravan together.' },
+  { kind: 'pet', id: 'pet-sheepdog', name: 'Pip', species: 'dog', tint: '#2e2a28', likes: 'bread', scale: 0.95, origin: 'meadow', help: 'herds-animals', blurb: 'A quick black-and-white sheepdog from the Meadow who keeps the caravan together.', starts: true },
+  { kind: 'pet', id: 'pet-clover', name: 'Clover', species: 'cat', tint: '#e8a86a', likes: 'milk', scale: 0.9, origin: 'meadow', help: 'lifts-spirits', blurb: 'A marmalade kitten from Lina\'s bakery who rides on the dashboard and naps in the sun.', starts: true },
   { kind: 'pet', id: 'pet-indie', name: 'Chai', species: 'dog', tint: '#c9955f', likes: 'rice', scale: 0.95, origin: 'indianorth', help: 'finds-resources', blurb: 'A clever street dog of the plains, fond of chai-stall company.' },
   { kind: 'pet', id: 'pet-forest-cat', name: 'Skog', species: 'cat', tint: '#7a6a5a', likes: 'milk', scale: 1.2, origin: 'norway', help: 'lifts-spirits', blurb: 'A long-haired forest cat who sleeps on the warmest cushion in the van.' },
   { kind: 'pet', id: 'pet-van-cat', name: 'Bulut', species: 'cat', tint: '#f4efe6', likes: 'milk', scale: 1.0, origin: 'islamic', help: 'lifts-spirits', blurb: 'A white cat with auburn ears who loves to sit by fountains.' },
@@ -63,6 +68,8 @@ export const PETS: PetDef[] = [
 ];
 
 export const CHILDREN: ChildDef[] = [
+  { kind: 'child', id: 'child-rosie', name: 'Rosie', who: 'girl', origin: 'meadow', tradition: 'Her family bakes harvest loaves and sings round the midsummer bonfire', journey: 'Lina\'s daughter, going to learn bread and pastry from the bakers of Firenzia — with her mother\'s blessing and a jar of starter dough.', joinsAfter: 'meadow', destination: 'renaissance', help: 'learns-craft', blurb: 'Asks everyone their favourite food and remembers every answer.', starts: true },
+  { kind: 'child', id: 'child-teo', name: 'Teo', who: 'boy', origin: 'meadow', tradition: 'His grandmother is Buddhist; together they light a lamp at Vesak', journey: 'Going to visit his grandmother in Nusa Rinjani and help plant the rice terraces, with his father\'s blessing.', joinsAfter: 'meadow', destination: 'indonesia', help: 'herds-animals', blurb: 'Can whistle like any bird and is never, ever lost.', starts: true },
   { kind: 'child', id: 'child-kavya', name: 'Kavya', who: 'girl', origin: 'indiasouth', tradition: 'Hindu family; lights oil lamps for Karthigai Deepam', journey: 'Learning to cook from her aunt in Gulabi Nagar; her grandmother Lakshmi Amma asked the travellers to take her.', joinsAfter: 'indiasouth', destination: 'indianorth', help: 'learns-craft', blurb: 'Hums while she stirs; knows every spice by smell.' },
   { kind: 'child', id: 'child-tomas', name: 'Tomas', who: 'boy', origin: 'norway', tradition: 'Lutheran family; walks in the Santa Lucia candle procession', journey: 'A carpentry apprentice going to see the great clock of Alpenrose, with his mother Ingrid\'s blessing.', joinsAfter: 'norway', destination: 'switzerland', help: 'learns-craft', blurb: 'Carves small boats from anything and gives them away.' },
   { kind: 'child', id: 'child-hana', name: 'Hana', who: 'girl', origin: 'japan', tradition: 'Keeps Obon with her family and floats a lantern for her grandfather', journey: 'Visiting her grandmother in Maple Row; her parents run a tea house in Sakura Hollow.', joinsAfter: 'japan', destination: 'vintage', help: 'lifts-spirits', blurb: 'Folds paper cranes for everyone you meet.' },
@@ -75,6 +82,9 @@ export const CHILDREN: ChildDef[] = [
 ];
 
 export const COMPANIONS: CompanionDef[] = [...PETS, ...CHILDREN];
+export const COMPANION_BY_ID = Object.fromEntries(COMPANIONS.map((c) => [c.id, c])) as Record<string, CompanionDef>;
+/** Who travels with you on the first morning. */
+export const STARTING_CARAVAN: string[] = COMPANIONS.filter((c) => c.starts).map((c) => c.id);
 
 /** How many can travel at once: the van has a back bench for two children, pets ride on rugs. */
 export const MAX_CHILDREN = 2;

@@ -118,6 +118,8 @@ export class CharacterModel {
   private phase = 0;
   /** World-space anchor for the golden thread (the hand). */
   readonly handAnchor = new THREE.Object3D();
+  /** The cape's cloth, rippled every frame (base = rest positions). */
+  private capeCloth?: { mesh: THREE.Mesh; base: Float32Array; len: number };
   /** 0..1: raises the free hand (the one not holding the thread) forward, palm up, to offer something. */
   offer = 0;
   /** Added to the offering arm's forward angle: negative lifts it higher, positive lowers it. */
@@ -140,6 +142,7 @@ export class CharacterModel {
     this.body.clear();
     this.legL.clear(); this.legR.clear(); this.armL.clear(); this.armR.clear(); this.head.clear();
     this.cape = undefined;
+    this.capeCloth = undefined;
     this.build();
   }
 
@@ -401,9 +404,10 @@ export class CharacterModel {
       case 'bisht': {
         const len = o.outer.style === 'cape' ? 0.95 : 1.28;
         const w = o.outer.style === 'bisht' ? 0.62 : 0.5;
-        const geo = new THREE.CylinderGeometry(0.21, w, len, 10, 3, true, Math.PI * 0.62, Math.PI * 0.76);
+        const geo = new THREE.CylinderGeometry(0.21, w, len, 12, 8, true, Math.PI * 0.62, Math.PI * 0.76);
         geo.translate(0, -len / 2, 0);
         const cape = mesh(geo, c, 'cape');
+        this.capeCloth = { mesh: cape, base: (geo.getAttribute('position').array as Float32Array).slice(), len };
         const pivot = new THREE.Group();
         pivot.position.set(0, D.shoulder + 0.03, -0.02);
         pivot.add(cape);
@@ -622,6 +626,23 @@ export class CharacterModel {
     // The floating head bobs gently on its own — never touching the body.
     this.head.position.y = (DIMS.neck + HEAD_GAP + DIMS.headR) + Math.sin(s.t * 2.2) * 0.012 + (moving ? Math.abs(Math.cos(this.phase)) * 0.015 : 0);
     this.body.position.y = moving ? Math.abs(Math.sin(this.phase)) * 0.03 : 0;
-    if (this.cape) this.cape.rotation.x = -0.12 - Math.min(0.9, s.speed * 0.05) - (s.airborne ? 0.4 : 0) + Math.sin(s.t * 3) * 0.04;
+    if (this.cape) {
+      // The cape flies: it lifts and streams back with speed and in the air, and ripples always.
+      this.cape.rotation.x = -0.14 - Math.min(1.15, s.speed * 0.075) - (s.airborne ? 0.55 : 0) + Math.sin(s.t * 3) * 0.06 + Math.sin(s.t * 7.3) * 0.025;
+      this.cape.rotation.z = Math.sin(s.t * 1.7) * 0.05;
+    }
+    if (this.capeCloth) {
+      const { mesh: cm, base, len } = this.capeCloth;
+      const pos = cm.geometry.getAttribute('position') as THREE.BufferAttribute;
+      const amp = 0.035 + Math.min(0.1, s.speed * 0.012) + (s.airborne ? 0.06 : 0);
+      for (let i = 0; i < pos.count; i++) {
+        const x = base[i * 3], y = base[i * 3 + 1], z = base[i * 3 + 2];
+        const k = Math.min(1, -y / len); // 0 at the shoulders, 1 at the hem
+        const wave = Math.sin(s.t * 5.5 - k * 6 + x * 5) * amp * k * k;
+        pos.setXYZ(i, x + Math.sin(s.t * 3.1 + k * 4) * amp * 0.4 * k, y, z - wave - k * k * amp * 0.8);
+      }
+      pos.needsUpdate = true;
+      cm.geometry.computeVertexNormals();
+    }
   }
 }

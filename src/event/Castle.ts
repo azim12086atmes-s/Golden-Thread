@@ -87,7 +87,8 @@ export function buildCastle(solid: THREE.Material, glowMat: THREE.Material): Cas
   cyl(g, V.r, V.r + 0.4, 0.2, STONE, V.x, y - 0.12, V.z, 48);
   cyl(g, V.r - 1, V.r - 1, 0.21, '#f6e9ef', V.x, y - 0.11, V.z, 48);
   box(g, 3.2, 0.24, A.from - A.to + 8, '#e8588c', A.x, y - 0.1, (A.from + A.to) / 2);
-  for (let z = A.to + 2; z <= A.from; z += 6) {
+  // Arches start well down the aisle, so no post stands between the camera and the cake.
+  for (let z = A.to + 10; z <= A.from; z += 6) {
     for (const s of [-1, 1]) cyl(g, 0.12, 0.12, 3.6, '#ffffff', A.x + s * 2.2, y, z, 6);
     // Arch of roses: a half ring of blossoms.
     for (let k = 0; k <= 10; k++) {
@@ -119,7 +120,7 @@ export function buildCastle(solid: THREE.Material, glowMat: THREE.Material): Cas
     const a = (k / 28) * Math.PI * 2;
     lantern(V.x + Math.cos(a) * (V.r - 3.5), y + 4.4 + Math.sin(k * 1.3) * 0.3, V.z + Math.sin(a) * (V.r - 3.5), k);
   }
-  for (let z = A.to + 5; z <= A.from; z += 6) lantern(A.x, y + 4.1, z, Math.round(z), 0.8);
+  for (let z = A.to + 13; z <= A.from; z += 6) lantern(A.x, y + 4.1, z, Math.round(z), 0.8);
   for (let k = 0; k < 12; k++) {
     const a = (k / 12) * Math.PI * 2 + 0.13;
     const x = V.x + Math.cos(a) * (V.r + 3), z = V.z + Math.sin(a) * (V.r + 3);

@@ -14,11 +14,14 @@ import { PEOPLE_BY_ID } from '../npc/people';
 import { wantedCrafts } from '../guide/objectives';
 import { QUESTS } from '../quests/quests';
 import { REPLY_OPTIONS } from '../social/Messages';
+import { HOME_PRICE, PLOTS, type PlotSite } from '../housing/housing';
+import { prologue } from '../story/prologue';
+import { WONDERS, foundWonder, wonderHint, wonderPos } from '../world/wonders';
 import { VEHICLES, type VehicleId } from '../vehicles/vehicles';
 import { GRID_COLS, GRID_ROWS, REGIONS, REGION_BY_ID, type RegionId, type RegionSpec } from '../world/regions';
 import type { Game } from '../Game';
 
-type Panel = 'wardrobe' | 'bag' | 'journal' | 'map' | 'messages' | 'vehicles' | 'dialogue' | 'animal' | 'build' | 'van' | 'help' | null;
+type Panel = 'wardrobe' | 'bag' | 'journal' | 'map' | 'messages' | 'vehicles' | 'dialogue' | 'animal' | 'build' | 'van' | 'help' | 'homes' | 'property' | null;
 
 const h = (tag: string, attrs: Record<string, string> = {}, ...kids: Array<Node | string | null | false>) => {
   const el = document.createElement(tag);
@@ -63,6 +66,8 @@ export class UI {
   private wardrobeGroup: DressGroup = 'all';
   private wardrobeQuery = '';
   private vanSlot: VanSlot = 'rug';
+  private propertySite: PlotSite | null = null;
+  private storyOpen = false;
   private mapSel: RegionId | null = null;
   private hudTimer = 0;
   private labelEls = new Map<string, HTMLElement>();
@@ -87,15 +92,16 @@ export class UI {
   }
 
   get modal(): boolean {
-    return this.panel !== null && this.panel !== 'build';
+    return this.storyOpen || (this.panel !== null && this.panel !== 'build');
   }
 
   // ───────────────────────── frame ─────────────────────────
 
   handleKeys(): void {
+    if (this.storyOpen) return;
     const i = this.g.input;
     if (i.hit('p') && !this.modal) this.g.takePhoto();
-    const keys: Array<[string, Panel]> = [['c', 'wardrobe'], ['i', 'bag'], ['j', 'journal'], ['m', 'map'], ['n', 'messages'], ['v', 'vehicles'], ['h', 'help']];
+    const keys: Array<[string, Panel]> = [['c', 'wardrobe'], ['i', 'bag'], ['j', 'journal'], ['m', 'map'], ['n', 'messages'], ['v', 'vehicles'], ['h', 'help'], ['l', 'homes']];
     for (const [k, p] of keys) if (i.hit(k)) return this.toggle(p);
     if (i.hit('b')) {
       if (this.panel === 'build') return this.closePanel();
@@ -251,6 +257,46 @@ export class UI {
     this.card.classList.add('show');
   }
 
+  /** A centred moment card: an icon, a title, a line. */
+  lanternMomentText(icon: string, title: string, sub: string): void {
+    this.flash.replaceChildren(h('div', { class: 'big' }, icon), h('div', {}, title), h('small', {}, sub));
+    this.flash.classList.remove('show');
+    void this.flash.offsetWidth;
+    this.flash.classList.add('show');
+  }
+
+  /** The storybook told before the journey (and again from the journal). */
+  showPrologue(done?: () => void): void {
+    const pages = prologue(this.g.st);
+    let i = 0;
+    this.storyOpen = true;
+    this.g.input.reset();
+    const book = h('div', { class: 'storybook', role: 'dialog', 'aria-label': 'The story' });
+    const close = () => {
+      this.storyOpen = false;
+      book.classList.add('out');
+      setTimeout(() => book.remove(), 600);
+      done?.();
+    };
+    const draw = () => {
+      const p = pages[i];
+      const dots = h('div', { class: 'dots' }, ...pages.map((_, k) => h('i', { class: k === i ? 'on' : '' })));
+      book.replaceChildren(h('div', { class: 'page' },
+        h('div', { class: 'eyebrow' }, p.eyebrow),
+        h('h2', {}, p.title),
+        ...p.lines.map((l) => h('p', {}, l)),
+        dots,
+        h('div', { class: 'acts' },
+          i > 0 ? btn('‹ Back', () => { i--; draw(); }, 'ghost') : h('span', {}),
+          btn(i < pages.length - 1 ? 'Next ›' : 'Begin the journey', () => { if (i < pages.length - 1) { i++; draw(); } else close(); }, 'primary'),
+        ),
+        i < pages.length - 1 ? btn('Skip the story', close, 'ghost small skip') : null,
+      ));
+    };
+    draw();
+    this.root.append(book);
+  }
+
   lanternMoment(r: RegionSpec): void {
     this.flash.replaceChildren(h('div', { class: 'big' }, '🏮'), h('div', {}, `The lantern of ${r.name} is lit`), h('small', {}, 'The thread shines a little brighter.'));
     this.flash.classList.remove('show');
@@ -305,7 +351,7 @@ export class UI {
   }
 
   private buildDock(): void {
-    const items: Array<[Panel, string, string]> = [['wardrobe', '👗', 'Dressing room (C)'], ['bag', '🎒', 'Bag & crafts (I)'], ['journal', '📖', 'Journal (J)'], ['map', '🗺️', 'Map (M)'], ['messages', '💌', 'Messages (N)'], ['vehicles', '🚐', 'Travel (V)'], ['help', '❔', 'Help (H)']];
+    const items: Array<[Panel, string, string]> = [['wardrobe', '👗', 'Dressing room (C)'], ['bag', '🎒', 'Bag & crafts (I)'], ['journal', '📖', 'Journal (J)'], ['map', '🗺️', 'Map (M)'], ['messages', '💌', 'Messages (N)'], ['vehicles', '🚐', 'Travel (V)'], ['homes', '🏡', 'Homes & land (L)'], ['help', '❔', 'Help (H)']];
     for (const [p, icon, label] of items) {
       const b = btn(icon, () => this.toggle(p), 'dock-btn');
       b.dataset.p = p ?? '';
@@ -360,7 +406,7 @@ export class UI {
 
   render(): void {
     const body = h('div', { class: 'body' });
-    const titles: Record<string, string> = { wardrobe: 'Dressing room', bag: 'Bag & Crafts', journal: 'Journal', map: 'The World', messages: 'Messages', vehicles: 'Ways to Travel', dialogue: '', animal: '', build: 'Build', van: 'Inside Safar', help: 'How to play' };
+    const titles: Record<string, string> = { wardrobe: 'Dressing room', bag: 'Bag & Crafts', journal: 'Journal', map: 'The World', messages: 'Messages', vehicles: 'Ways to Travel', dialogue: '', animal: '', build: 'Build', van: 'Inside Safar', help: 'How to play', homes: 'Homes & Land', property: 'Land for sale' };
     const head = h('header', {}, h('h2', {}, titles[this.panel ?? ''] ?? ''), btn('✕', () => this.closePanel(), 'close'));
     switch (this.panel) {
       case 'wardrobe': this.wardrobe(body); break;
@@ -374,6 +420,8 @@ export class UI {
       case 'build': this.buildPanel(body); break;
       case 'van': this.vanPanel(body); break;
       case 'help': this.help(body); break;
+      case 'homes': this.homes(body); break;
+      case 'property': this.property(body); break;
       default: return this.closePanel();
     }
     this.panelEl.replaceChildren(head, body);
@@ -444,8 +492,61 @@ export class UI {
     body.append(list);
   }
 
+  openProperty(site: PlotSite): void {
+    this.propertySite = site;
+    this.open('property');
+  }
+
+  /** Every piece of land in the world: where it is, its price, and the way there. */
+  private homes(body: HTMLElement): void {
+    const st = this.g.st, hs = this.g.housing;
+    body.append(h('p', { class: 'dim' }, `Every land has two plots for sale just outside its town. Buy the bare land and build it yourself, or buy a ready-made home in that land's own style (land + ${HOME_PRICE} coins). You have 🪙 ${st.coins}.`));
+    const owned = PLOTS.filter((p) => hs.owns(p.id));
+    if (owned.length) {
+      body.append(h('h3', {}, 'Yours'));
+      for (const p of owned) body.append(h('div', { class: 'quest main' }, h('b', {}, `🏡 ${REGION_BY_ID[p.region].name}`), h('small', {}, `${st.plots[p.id].decor.length} things built · stand on it and press B to build`),
+        btn('Show the way', () => this.showWay(p, `Your land in ${REGION_BY_ID[p.region].name}`), 'small')));
+    }
+    body.append(h('h3', {}, 'For sale'));
+    for (const p of PLOTS.filter((x) => !hs.owns(x.id))) {
+      const known = st.discovered.includes(p.region);
+      body.append(h('div', { class: 'quest' },
+        h('b', {}, known ? REGION_BY_ID[p.region].name : 'A land not yet visited'),
+        h('small', {}, `Land 🪙 ${p.price} · Home 🪙 ${hs.homePrice(p.id)}`),
+        btn('Show the way', () => this.showWay(p, `Land for sale in ${REGION_BY_ID[p.region].name}`), 'small'),
+      ));
+    }
+  }
+
+  private showWay(p: PlotSite, title: string): void {
+    this.g.guide.pin({ title, text: 'Walk to the signpost at the land', x: p.x, z: p.z - 17, region: p.region });
+    this.closePanel();
+    this.g.toast(`Follow the golden motes to ${title.toLowerCase()}.`);
+  }
+
+  /** At a signpost: buy the land, or a home. */
+  private property(body: HTMLElement): void {
+    const site = this.propertySite;
+    if (!site) return;
+    const hs = this.g.housing, land = REGION_BY_ID[site.region];
+    body.append(
+      h('p', {}, `A ${30} × ${30} m plot of land at the edge of ${land.name}. Yours to keep: build, farm, keep animals, and come home to it.`),
+      h('div', { class: 'quest' }, h('b', {}, '🌱 The land'), h('small', {}, `🪙 ${site.price} — build everything yourself (B)`), btn(`Buy the land · 🪙 ${site.price}`, () => { this.g.buyProperty(site, false); this.closePanel(); }, 'primary')),
+      h('div', { class: 'quest main' }, h('b', {}, `🏡 A home in the ${land.name} style`), h('small', {}, `🪙 ${hs.homePrice(site.id)} — the land with a house already standing on it`), btn(`Buy the home · 🪙 ${hs.homePrice(site.id)}`, () => { this.g.buyProperty(site, true); this.closePanel(); }, 'primary')),
+      h('p', { class: 'dim' }, `You have 🪙 ${this.g.st.coins}. Earn more by making goods and selling them where they are wanted.`),
+    );
+  }
+
   private journal(body: HTMLElement): void {
     const q = this.g.quests, st = this.g.st;
+    // The story and the main objective, always at the top.
+    const wondersFound = WONDERS.filter((w) => foundWonder(st, w.id)).length;
+    body.append(h('div', { class: 'quest main' },
+      h('b', {}, '🏮 The main objective'),
+      h('p', {}, `Relight all ${REGIONS.length} lanterns — help each land's Keeper and light it together — then wake the Great Lantern above the clouds.`),
+      h('small', {}, `${st.lanterns.length} of ${REGIONS.length} lanterns · ${wondersFound} of ${WONDERS.length} hidden wonders · ${Object.keys(st.plots).length} homes & lands · ${st.caravan.length} in the caravan`),
+      btn('Read the story again', () => { this.closePanel(); this.showPrologue(); }, 'small'),
+    ));
     body.append(h('p', { class: 'dim' }, `Day ${dayOf(st.minutes)} of the journey · ${st.lanterns.length} of ${REGIONS.length} lanterns lit · shared light ✦ ${st.light.toFixed(1)}`));
     const act = q.active();
     body.append(h('h3', {}, 'Now'));
@@ -455,6 +556,20 @@ export class UI {
       h('b', {}, `${x.main ? '🏮 ' : ''}${x.title}`), h('small', {}, `${REGION_BY_ID[x.region].name} · ${PEOPLE_BY_ID[x.giver]?.name ?? ''}`), h('p', {}, x.intro), h('p', { class: 'step' }, `→ ${q.stepText(x.id)}`),
       x.id === followed ? h('span', { class: 'following' }, '✦ Following') : btn('Follow this journey', () => { this.g.guide.track(x.id); this.g.guide.refresh(); this.render(); this.refreshTracker(); }, 'small'),
     ));
+    body.append(h('h3', {}, 'The caravan'));
+    for (const c of this.g.caravan.list()) body.append(h('div', { class: 'quest' },
+      h('b', {}, `${c.kind === 'pet' ? '🐾' : '🧒'} ${c.name}`),
+      h('small', {}, c.kind === 'child' ? `${c.tradition} · going to ${REGION_BY_ID[c.destination].name}` : `from ${REGION_BY_ID[c.origin].name}`),
+      h('p', {}, c.kind === 'child' ? c.journey : c.blurb)));
+    body.append(h('h3', {}, `Hidden wonders · ${wondersFound} of ${WONDERS.length}`));
+    for (const w of WONDERS) {
+      const f = foundWonder(st, w.id);
+      body.append(h('div', { class: `quest ${f ? 'done' : ''}` },
+        h('b', {}, f ? `✨ ${w.name}` : `? Somewhere in ${st.discovered.includes(w.land) ? REGION_BY_ID[w.land].name : 'a land not yet visited'}`),
+        h('p', {}, f ? w.story : wonderHint(w)),
+        !f && st.discovered.includes(w.land) && w.land === this.g.region.id ? btn('Walk towards it', () => { const p = wonderPos(w); this.g.guide.pin({ title: 'Searching for a hidden wonder', text: 'Look for the rising sparkle', x: p.x, z: p.z, region: w.land }); this.closePanel(); }, 'small') : null,
+      ));
+    }
     const done = q.done();
     if (done.length) {
       body.append(h('h3', {}, 'Remembered'));
@@ -662,7 +777,7 @@ export class UI {
     const rows: Array<[string, string]> = [
       ['WASD / arrows', 'Walk · steer'], ['Drag · wheel', 'Look around · zoom'], ['Space', 'Jump · rise (flying, unicorn, plane climb)'], ['Shift', 'Run · descend · boost'],
       ['F', 'Cape of light — fly together'], ['E', 'Talk · gather · befriend · light lanterns'], ['V', 'Choose how to travel'], ['C', 'Dressing room for both'], ['I', 'Bag, skills and crafting'],
-      ['J', 'Journal'], ['G', 'Follow another journey'], ['M', 'Map and travel to known lands'], ['N', 'Messages from friends'], ['B', 'Build on your land'], ['Esc', 'Close'],
+      ['J', 'Journal'], ['G', 'Follow another journey'], ['L', 'Homes & land for sale'], ['M', 'Map and travel to known lands'], ['N', 'Messages from friends'], ['B', 'Build on your land'], ['Esc', 'Close'],
     ];
     body.append(h('table', { class: 'keys' }, ...rows.map(([k, v]) => h('tr', {}, h('td', {}, h('kbd', {}, k)), h('td', {}, v)))));
     body.append(

@@ -73,6 +73,8 @@ export interface GameState {
   flags: string[];
   /** Quest the guide follows; '' lets the guide choose (main story first). */
   tracked: string;
+  /** Children and pets travelling with the caravan (ids from caravan.ts). */
+  caravan: string[];
   /** Real seconds played, for the journal. */
   playSeconds: number;
 }
@@ -104,6 +106,7 @@ export function newGame(): GameState {
     unlockedDecor: ['fence', 'bench', 'flowerbed', 'farmbed', 'lamp-post', 'tree', 'tent', 'cottage', 'pen'],
     flags: [],
     tracked: '',
+    caravan: ['child-rosie', 'child-teo', 'pet-sheepdog', 'pet-clover'],
     playSeconds: 0,
   };
 }

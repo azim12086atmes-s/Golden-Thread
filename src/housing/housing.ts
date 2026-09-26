@@ -38,6 +38,8 @@ export const DECOR: DecorDef[] = [
   ...REGIONS.map((r) => ({ id: `house-${r.id}`, name: `${r.name} House`, icon: '🏠', price: 220, r: 5, style: r.id })),
 ];
 export const DECOR_BY_ID = Object.fromEntries(DECOR.map((d) => [d.id, d]));
+/** A house in the land's style costs this on top of the land when bought together. */
+export const HOME_PRICE = 160;
 
 export const CROPS: Record<string, { out: string; qty: number; grow: number }> = {
   seed_flower: { out: 'wildflower', qty: 4, grow: DAY_MINUTES * 0.5 },
@@ -60,6 +62,27 @@ export class Housing {
     this.st.coins -= p.price;
     this.st.plots[plotId] = { decor: [] };
     this.bus.emit('plot:bought', { plotId });
+    this.bus.emit('coins:changed', { coins: this.st.coins });
+    return 'ok';
+  }
+
+  /** Price of a ready-made home here: the land plus a house in the land's own style. */
+  homePrice(plotId: string): number {
+    const p = PLOT_BY_ID[plotId];
+    return p ? p.price + HOME_PRICE : Infinity;
+  }
+
+  /** Buy the land with a house already standing on it (the house style of that land). */
+  buyHome(plotId: string): 'ok' | 'owned' | 'coins' | 'unknown' {
+    const p = PLOT_BY_ID[plotId];
+    if (!p) return 'unknown';
+    if (this.owns(plotId)) return 'owned';
+    const price = this.homePrice(plotId);
+    if (this.st.coins < price) return 'coins';
+    this.st.coins -= price;
+    this.st.plots[plotId] = { decor: [{ id: `house-${p.region}-home`, kind: `house-${p.region}`, x: 0, z: -5, rot: 0 }] };
+    this.bus.emit('plot:bought', { plotId });
+    this.bus.emit('plot:changed', { plotId });
     this.bus.emit('coins:changed', { coins: this.st.coins });
     return 'ok';
   }

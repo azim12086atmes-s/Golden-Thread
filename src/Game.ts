@@ -21,6 +21,8 @@ import { HousingView } from './housing/HousingView';
 import { VAN_OPTIONS, VanInterior } from './housing/VanInterior';
 import { Npcs, type Npc } from './npc/Npcs';
 import { Townsfolk } from './npc/Townsfolk';
+import { CaravanView } from './caravan/CaravanView';
+import { WonderSites } from './world/WonderSites';
 import { keeperOf } from './npc/people';
 import { Travellers } from './player/Travellers';
 import { QuestSystem } from './quests/QuestSystem';
@@ -46,6 +48,7 @@ export type Interactable =
   | { kind: 'lantern'; region: RegionId; label: string }
   | { kind: 'van'; label: string }
   | { kind: 'chariot'; label: string }
+  | { kind: 'companion'; id: string; label: string }
   | { kind: 'bed'; plotId: string; decorId: string; label: string };
 
 /** A scripted scene that takes the camera (and optionally renders its own scene). */
@@ -81,6 +84,8 @@ export class Game {
   readonly ui: UI;
   readonly guide: Guide;
   readonly celebration: Celebration;
+  readonly caravan: CaravanView;
+  readonly wonders: WonderSites;
   region: RegionSpec;
   inVan = false;
   cutscene: Cutscene | null = null;
@@ -156,6 +161,8 @@ export class Game {
 
     this.ui = new UI(this);
     this.celebration = new Celebration(this);
+    this.caravan = new CaravanView(this);
+    this.wonders = new WonderSites(this);
     this.guide = new Guide(this);
     this.guide.onNextChanged = (o, first) => {
       this.ui.refreshTracker();
@@ -286,6 +293,8 @@ export class Game {
     });
     this.dressCamera(dt);
     this.celebration.update(dt, this.t);
+    this.caravan.update(dt, this.t);
+    this.wonders.update(dt, this.t);
     this.guide.update(dt, this.t);
     const view = this.cutscene?.view;
     if (view) this.renderer.render(view.scene, view.camera);
@@ -371,7 +380,7 @@ export class Game {
     for (const site of PLOTS) {
       const sx = site.x, sz = site.z - PLOT_SIZE / 2 - 1;
       const d = Math.hypot(p.x - sx, p.z - sz);
-      if (d < 3.5 && onFoot) cands.push([d, { kind: 'plot', site, label: this.housing.owns(site.id) ? 'Build on your land (B)' : `Buy this land · ${site.price} coins` }]);
+      if (d < 3.5 && onFoot) cands.push([d, { kind: 'plot', site, label: this.housing.owns(site.id) ? 'Build on your land (B)' : `Land for sale · or a home · from ${site.price} coins` }]);
     }
     const plot = this.housing.plotAt(p.x, p.z);
     if (plot && this.housing.owns(plot.id) && onFoot) {
@@ -390,6 +399,8 @@ export class Game {
       if (d < (this.region.id === 'skyisles' ? 200 : 45)) cands.push([d * 0.2, { kind: 'lantern', region: this.region.id, label: '🏮 Light the lantern together' }]);
     }
     if (this.trav.parkedVan && onFoot && this.trav.parkedVan.pos.distanceTo(p) < 4.5) cands.push([this.trav.parkedVan.pos.distanceTo(p), { kind: 'van', label: 'Step inside Safar' }]);
+    const pal = onFoot ? this.caravan.nearest(p, 2.4) : null;
+    if (pal) cands.push([1.2, { kind: 'companion', id: pal.id, label: pal.kind === 'pet' ? `Pet ${pal.name}` : `Chat with ${pal.name}` }]);
     const ride = onFoot ? this.celebration.label(p) : null;
     if (ride) cands.push([0.5, { kind: 'chariot', label: ride }]);
     cands.sort((a, b) => a[0] - b[0]);
@@ -403,9 +414,7 @@ export class Game {
       case 'animal': return this.ui.openAnimal(t.animal);
       case 'plot': {
         if (this.housing.owns(t.site.id)) return this.enterBuild(t.site.id);
-        const r = this.housing.buy(t.site.id);
-        if (r === 'ok') this.toast(`🏡 This land is yours. Press B here to build.`, 'reward');
-        else if (r === 'coins') this.toast(`You need ${t.site.price} coins for this land.`);
+        this.ui.openProperty(t.site);
         return;
       }
       case 'bed': {
@@ -429,6 +438,11 @@ export class Game {
         return this.enterVan();
       case 'chariot':
         return this.celebration.begin();
+      case 'companion': {
+        const def = this.caravan.list().find((c) => c.id === t.id);
+        if (def) this.toast(this.caravan.chat(def), 'story');
+        return;
+      }
     }
   }
 
@@ -455,6 +469,15 @@ export class Game {
   }
 
   // ───────────────────────── actions the UI calls ─────────────────────────
+
+  /** Buy land, or land with a house already on it. */
+  buyProperty(site: PlotSite, home: boolean): void {
+    const r = home ? this.housing.buyHome(site.id) : this.housing.buy(site.id);
+    const place = REGION_BY_ID[site.region].name;
+    if (r === 'ok') this.toast(home ? `🏡 Your home in ${place} is ready. Press B here to decorate and build more.` : `🏡 This land in ${place} is yours. Press B here to build.`, 'reward');
+    else if (r === 'coins') this.toast(`You need ${home ? this.housing.homePrice(site.id) : site.price} coins. Make and trade goods to earn more.`);
+    this.housingDirty = true;
+  }
 
   toast(text: string, kind: 'info' | 'reward' | 'story' = 'info'): void {
     this.bus.emit('toast', { text, kind });
@@ -633,11 +656,18 @@ export class Game {
     if (names) this.st.names = names;
     this.started = true;
     this.trav.camYaw = this.trav.heading;
-    if (!this.st.quests['main-meadow'] && !this.st.flags.includes('cake')) this.playOpening();
-    else {
-      if (!this.st.quests['main-meadow']) this.wakeToast();
-      this.celebration.invite();
-    }
+    const after = () => {
+      if (!this.st.quests['main-meadow'] && !this.st.flags.includes('cake')) this.playOpening();
+      else {
+        if (!this.st.quests['main-meadow']) this.wakeToast();
+        this.celebration.invite();
+      }
+    };
+    // The story comes first, once: the world, the promise, the objective and the way to live.
+    if (!this.st.flags.includes('prologue')) {
+      this.st.flags.push('prologue');
+      this.ui.showPrologue(after);
+    } else after();
   }
 
   private wakeToast(): void {

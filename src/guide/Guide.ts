@@ -2,6 +2,7 @@ import * as THREE from 'three';
 import type { Game } from '../Game';
 import { surfaceAt } from '../world/terrain';
 import { currentObjective, cycleTracked, targetAnchor, type Objective, type Target } from './objectives';
+import type { RegionId } from '../world/regions';
 
 const GOLD = new THREE.Color('#ffd27a');
 const MOTES = 18;
@@ -45,6 +46,13 @@ export class Guide {
   private refreshIn = 0;
   private lastNext = '';
   onNextChanged?: (o: Objective, first: boolean) => void;
+  /** A place the player asked to be shown the way to (a plot of land, say). */
+  private pinned: { title: string; text: string; x: number; z: number; region: RegionId } | null = null;
+
+  pin(p: { title: string; text: string; x: number; z: number; region: RegionId } | null): void {
+    this.pinned = p;
+    this.refreshIn = 0;
+  }
 
   constructor(private g: Game) {
     this.objective = this.plan();
@@ -101,6 +109,10 @@ export class Guide {
 
   private plan(): Objective {
     const p = this.g.trav.gPos;
+    if (this.pinned) {
+      const t = { id: 'pinned', text: this.pinned.text, done: false, depth: 0, target: { kind: 'point' as const, x: this.pinned.x, z: this.pinned.z, region: this.pinned.region }, hint: 'Follow the golden motes. (Open the journal to follow your story again.)' };
+      return { questId: null, title: this.pinned.title, goal: '', main: false, tasks: [t], next: t, step: [0, 0] };
+    }
     return this.g.celebration.objective() ?? currentObjective(this.g.st, { region: this.g.region.id, x: p.x, z: p.z });
   }
 
@@ -191,6 +203,10 @@ export class Guide {
       this.resolve(next!.target!, this.targetPos);
       const p = g.trav.gPos;
       this.distance = Math.hypot(this.targetPos.x - p.x, this.targetPos.z - p.z);
+      if (this.pinned && next?.id === 'pinned' && this.distance < 6) {
+        g.toast(`You have arrived: ${this.pinned.title}.`);
+        this.pin(null);
+      }
     } else this.distance = Infinity;
 
     this.updateBeam(t);
