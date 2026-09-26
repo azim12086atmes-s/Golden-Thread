@@ -30,6 +30,7 @@ import { Messages } from './social/Messages';
 import { UI } from './ui/UI';
 import { VEHICLES, type VehicleId } from './vehicles/vehicles';
 import { Ambience } from './world/Ambience';
+import { RegionFX } from './world/RegionFX';
 import type { ResourceNode } from './world/RegionBuilder';
 import { REGION_BY_ID, regionAt, regionCenter, type RegionId, type RegionSpec } from './world/regions';
 import { Sky } from './world/Sky';
@@ -72,6 +73,7 @@ export class Game {
   readonly world = new World();
   readonly sky = new Sky();
   readonly ambience = new Ambience();
+  readonly regionFx = new RegionFX();
   readonly quests: QuestSystem;
   readonly msgs: Messages;
   readonly housing: Housing;
@@ -126,12 +128,13 @@ export class Game {
 
     this.scene.fog = this.sky.fog;
     this.scene.add(...this.auras);
-    this.scene.add(this.world.group, this.sky.group, this.sky.sunLight, this.sky.sunLight.target, this.sky.hemi, this.ambience.points);
+    this.scene.add(this.world.group, this.sky.group, this.sky.sunLight, this.sky.sunLight.target, this.sky.hemi, this.ambience.points, this.regionFx.points);
 
     this.composer = new EffectComposer(this.renderer);
     this.composer.addPass(new RenderPass(this.scene, this.camera));
     this.bloom = new UnrealBloomPass(new THREE.Vector2(256, 256), 0.55, 0.5, 1.0);
     this.composer.addPass(this.bloom);
+    this.composer.addPass(this.regionFx.grade);
     this.composer.addPass(new OutputPass());
 
     this.quests = new QuestSystem(this.st, this.bus);
@@ -261,6 +264,8 @@ export class Game {
     this.sky.update(this.hour, this.trav.gPos, this.t, this.region.id);
     this.ambience.setMode(this.region.ambient);
     this.ambience.update(dt, this.trav.gPos, this.t, this.sky.night);
+    this.regionFx.setRegion(this.region.id);
+    this.regionFx.update(dt, this.trav.gPos, this.t, this.sky.night);
     this.npcs.update(dt, this.t, this.trav.gPos);
     this.townsfolk.update(dt, this.t, this.trav.gPos);
     this.animals.update(dt, this.t, this.trav.gPos);
