@@ -1,6 +1,6 @@
 import * as THREE from 'three';
 import { ANIMAL_HEAD_GAP, type Part } from '../characters/anatomy';
-import { DETAILED, buildDetailed, type DetailedId } from './detailed';
+import { BIRDS, DETAILED, buildBird, buildDetailed, type BirdId, type DetailedId } from './detailed';
 
 /**
  * Animals share the travellers' rules: no eyes or facial features, and a floating head that
@@ -82,6 +82,8 @@ export class AnimalModel {
   private tail?: THREE.Object3D;
   /** Feathered wings (unicorns): they beat slowly at rest and fast at a gallop or in the air. */
   private wings: THREE.Group[] = [];
+  /** A bird's folded wings: they twitch and ruffle. */
+  private folded: THREE.Group[] = [];
   private phase = Math.random() * 10;
   private headBase = new THREE.Vector3();
   /** Seat height for rideable animals. */
@@ -91,7 +93,7 @@ export class AnimalModel {
     const s = SPECIES[species];
     const [L, H, W] = s.body;
     const c = tint ?? s.color, a = s.accent;
-    const detailed = (DETAILED as readonly string[]).includes(species);
+    const detailed = (DETAILED as readonly string[]).includes(species), bird = (BIRDS as readonly string[]).includes(species);
     const body = new THREE.Group();
     body.scale.setScalar(scale);
     this.root.add(body);
@@ -101,7 +103,7 @@ export class AnimalModel {
     const torso = part(new THREE.SphereGeometry(0.5, 12, 9), c, 'body', glow);
     torso.scale.set(W, H, L);
     torso.position.y = bodyY;
-    if (!detailed) body.add(torso);
+    if (!detailed && !bird) body.add(torso);
     this.saddleY = (bodyY + H / 2) * scale;
 
     if (species === 'unicorn') {
@@ -124,6 +126,13 @@ export class AnimalModel {
         body.add(w);
         this.wings.push(w);
       }
+      // A pattern of little gold stars sweeping along each flank, like a trail of stardust.
+      for (const x of [-1, 1]) for (let i = 0; i < 7; i++) {
+        const st = part(new THREE.OctahedronGeometry(0.028 + (i % 2) * 0.01), i % 3 ? '#ffe89a' : '#ffd6f0', 'body', true);
+        st.scale.set(0.5, 1, 1);
+        st.position.set(x * W * 0.47, bodyY + H * (0.05 + Math.sin(i * 0.9) * 0.18), L * 0.3 - i * L * 0.1);
+        body.add(st);
+      }
       RAINBOW.forEach((col, i) => {
         const band = part(new THREE.BoxGeometry(W * 1.02, 0.02, 0.07), col, 'body', i % 2 === 0);
         band.position.set(0, bodyY + H * 0.47, -0.2 + i * 0.07);
@@ -131,14 +140,14 @@ export class AnimalModel {
       });
     }
 
-    if (s.extra === 'wool') {
+    if (s.extra === 'wool' && !detailed) {
       for (let i = 0; i < 7; i++) {
         const w = part(new THREE.SphereGeometry(H * 0.32, 7, 5), c, 'body');
         w.position.set(((i % 3) - 1) * W * 0.3, bodyY + H * 0.28, (Math.floor(i / 3) - 1) * L * 0.28);
         body.add(w);
       }
     }
-    if (s.extra === 'hump') {
+    if (s.extra === 'hump' && !detailed) {
       const hump = part(new THREE.SphereGeometry(H * 0.4, 9, 7), c, 'body');
       hump.position.set(0, bodyY + H * 0.45, -L * 0.05);
       hump.scale.set(1, 0.9, 1.2);
@@ -153,19 +162,16 @@ export class AnimalModel {
       this.headBase.copy(b.headBase);
       this.head.position.copy(this.headBase);
       body.add(this.head);
-      if (s.horn === 'unicorn') {
-        // A spiralled horn: a glowing cone wound with a golden thread.
-        const horn = part(new THREE.ConeGeometry(0.05, 0.5, 8), '#ffe89a', 'horn', true);
-        horn.position.set(0, s.headR * 1.25, s.headR * 0.55);
-        horn.rotation.x = 0.45;
-        this.head.add(horn);
-        for (let i = 0; i < 5; i++) {
-          const ring = part(new THREE.TorusGeometry(0.045 - i * 0.008, 0.008, 4, 10), '#fff6d0', 'horn', true);
-          ring.position.set(0, s.headR * 1.25 + Math.cos(0.45) * (-0.18 + i * 0.09), s.headR * 0.55 + Math.sin(0.45) * (-0.18 + i * 0.09));
-          ring.rotation.x = 0.45 + Math.PI / 2;
-          this.head.add(ring);
-        }
-      }
+      return;
+    }
+    if (bird) {
+      const b = buildBird(species as BirdId, part, body, this.head, { L, H, W, bodyY, headR: s.headR, neck: s.neck, leg: s.leg }, c, a, glow);
+      this.legs = b.legs;
+      this.tail = b.tail;
+      this.folded = b.wings;
+      this.headBase.copy(b.headBase);
+      this.head.position.copy(this.headBase);
+      body.add(this.head);
       return;
     }
 
@@ -361,6 +367,7 @@ export class AnimalModel {
     });
     this.head.position.y = this.headBase.y + Math.sin(t * 2 + this.phase * 0.2) * 0.015;
     if (this.tail) this.tail.rotation.y = Math.sin(t * 3 + this.phase) * 0.3;
+    this.folded.forEach((w, i) => (w.rotation.z = (i ? -1 : 1) * (Math.max(0, Math.sin(t * 1.3 + this.phase)) * 0.12 + (moving ? Math.abs(Math.sin(this.phase * 2)) * 0.2 : 0))));
     if (this.wings.length) {
       const beat = Math.sin(t * (speed > 8 ? 7 : 1.6)) * (speed > 8 ? 0.55 : 0.12);
       this.wings[0].rotation.z = -0.5 + beat;

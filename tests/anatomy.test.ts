@@ -73,6 +73,12 @@ describe('no eyes, no faces, floating heads (brief)', () => {
       let min = Infinity;
       for (const h of head) for (const b of body) min = Math.min(min, h.distanceTo(b));
       expect(min, `${id} head clearance`).toBeGreaterThanOrEqual(0.03);
+      // Real structure, not a blob: jointed legs (a knee or hock on each), a head built of parts.
+      const legs = (a as unknown as { legs: THREE.Group[]; knees: THREE.Group[] }).legs;
+      expect(legs.length, id).toBe(SPECIES[id].kind === 'quad' ? 4 : 2);
+      for (const l of legs) expect(l.getObjectsByProperty('type', 'Group').length, `${id} jointed leg`).toBeGreaterThanOrEqual(2);
+      expect(ms.filter((m) => inside(m, a.head)).length, `${id} head parts`).toBeGreaterThanOrEqual(3);
+      expect(ms.filter((m) => m.userData.part === 'body').length, `${id} torso parts`).toBeGreaterThanOrEqual(3);
     });
   }
 });

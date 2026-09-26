@@ -84,6 +84,21 @@ export class Dragon {
       nub.rotation.x = -0.4;
       body.add(nub);
     }
+    // Its pattern: a line of softly glowing scales down the spine, and constellations of little
+    // star-scales along each flank, teal and violet like the night sky it flies in.
+    const starMat = (c: string) => new THREE.MeshBasicMaterial({ color: new THREE.Color(c).multiplyScalar(1.3), toneMapped: false });
+    for (let i = 0; i < 10; i++) {
+      const sc = new THREE.Mesh(new THREE.OctahedronGeometry(0.035), starMat(i % 2 ? '#7affe0' : '#b99bff'));
+      sc.scale.set(1, 0.5, 1.4);
+      sc.position.set(0, 0.35 - Math.abs(i - 4) * 0.012, 0.9 - i * 0.2);
+      body.add(sc);
+    }
+    for (const x of [-1, 1]) for (let i = 0; i < 9; i++) {
+      const a = i * 0.7;
+      const st = new THREE.Mesh(new THREE.OctahedronGeometry(0.022 + (i % 3) * 0.008), starMat(i % 3 ? '#9ad8ff' : '#ffd6f0'));
+      st.position.set(x * (0.36 + Math.sin(a) * 0.03), 0.02 + Math.sin(a * 1.3) * 0.12, 0.7 - i * 0.17);
+      body.add(st);
+    }
     // The floating head: big, round and cat-like, with a short rounded snout and swept-back ear
     // flaps. No eyes and no mouth, ever.
     const skull = new THREE.Mesh(new THREE.SphereGeometry(0.34, 14, 10), std(BODY));
