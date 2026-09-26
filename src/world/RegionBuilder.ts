@@ -134,6 +134,31 @@ export function buildRegion(spec: RegionSpec, solid: THREE.Material, glowMat: TH
       box(g, 9, 0.12, 13, spec.road, x, H(x, z) - 0.04, z, -a);
     }
     cyl(g, 50, 50, 0.14, spec.road, 0, H(0, 0) - 0.06, 0, 36);
+    // Patterned paths in the land's own colours: a mosaic runner down each avenue, a tiled
+    // border along the ring road, and a star mosaic in the plaza.
+    const [pa, pb] = LAND_STYLE[spec.id].frieze;
+    for (let d = 58; d < CITY_RADIUS + 36; d += 3) {
+      const k = Math.round(d / 3) % 2;
+      for (const [x, z, ry] of [[0, d, 0], [0, -d, 0], [d, 0, Math.PI / 2], [-d, 0, Math.PI / 2]] as const) {
+        g.frame(x, H(x, z) + 0.075, z, ry, 1, () => {
+          box(g, 0.9, 0.04, 0.9, k ? pa : pb, 0, 0, 0, Math.PI / 4);
+          for (const sx of [-1, 1]) box(g, 0.35, 0.04, 0.35, k ? pb : pa, sx * 1.4, 0, 0, Math.PI / 4);
+          for (const sx of [-1, 1]) box(g, 0.12, 0.035, 3, pb, sx * (AVENUE * 0.8 - 0.3), 0, 0);
+        });
+      }
+    }
+    for (let a = 0; a < Math.PI * 2; a += 0.045) for (const r of [RING - 5.8, RING + 5.8]) {
+      const x = Math.cos(a) * r, z = Math.sin(a) * r;
+      box(g, 0.55, 0.035, 0.55, Math.round(a / 0.045) % 2 ? pa : pb, x, H(x, z) + 0.085, z, -a + Math.PI / 4);
+    }
+    const py = H(0, 0) + 0.085;
+    for (let ring = 0; ring < 5; ring++) {
+      const r = 42 - ring * 3.2, n = 16 + ring * 4;
+      for (let i = 0; i < n; i++) {
+        const a = (i / n) * Math.PI * 2 + ring * 0.1;
+        box(g, 1.1, 0.04, 1.1, (i + ring) % 2 ? pa : pb, Math.cos(a) * r, py, Math.sin(a) * r, a + Math.PI / 4);
+      }
+    }
   }
 
   // Houses on a jittered grid inside the city.
