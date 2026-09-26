@@ -18,34 +18,86 @@ import { WIND_GLSL, WIND_UNIFORMS } from './wind';
  */
 
 
-/** Blade tufts: five curved blades in a loose fan; y is 0 at the root and 1 at the tip. */
+/**
+ * Blade tufts: six blades in a loose fan. Each blade is a flat, gently bending strip that carries
+ * a picture of a grass blade (see `bladeTexture`): the picture gives it its tapering shape, its
+ * pale midrib and fine veins, so the geometry stays simple. y is 0 at the root and 1 at the tip.
+ */
 function tuftGeo(): THREE.BufferGeometry {
-  const pos: number[] = [], tip: number[] = [];
-  for (let b = 0; b < 5; b++) {
-    const a = (b / 5) * Math.PI * 2 + b * 0.7, lean = 0.18 + (b % 3) * 0.06;
-    const ox = Math.cos(a) * 0.09, oz = Math.sin(a) * 0.09, w = 0.05;
+  const pos: number[] = [], uv: number[] = [], tip: number[] = [];
+  const BLADES = 6;
+  for (let b = 0; b < BLADES; b++) {
+    const a = (b / BLADES) * Math.PI * 2 + b * 0.7, lean = 0.16 + (b % 3) * 0.07;
+    const ox = Math.cos(a) * 0.08, oz = Math.sin(a) * 0.08, w = 0.075;
+    // The strip faces sideways to its lean, so the blade shows its face as it bends outwards.
     const px = Math.cos(a + Math.PI / 2) * w, pz = Math.sin(a + Math.PI / 2) * w;
-    const h = 0.75 + (b % 2) * 0.35;
+    const h = 0.72 + (b % 3) * 0.2;
     const P = (k: number) => [ox + Math.cos(a) * lean * k * k, h * k, oz + Math.sin(a) * lean * k * k];
-    const [m0, m1] = [P(0.5), P(1)];
-    // Two quads narrowing to a point.
-    const quad = (y0: number[], y1: number[], w0: number, w1: number, t0: number, t1: number) => {
-      const a0 = [y0[0] - px * w0, y0[1], y0[2] - pz * w0], b0 = [y0[0] + px * w0, y0[1], y0[2] + pz * w0];
-      const a1 = [y1[0] - px * w1, y1[1], y1[2] - pz * w1], b1 = [y1[0] + px * w1, y1[1], y1[2] + pz * w1];
+    const ks = [0, 0.5, 1];
+    for (let i = 0; i < ks.length - 1; i++) {
+      const k0 = ks[i], k1 = ks[i + 1], y0 = P(k0), y1 = P(k1);
+      const a0 = [y0[0] - px, y0[1], y0[2] - pz], b0 = [y0[0] + px, y0[1], y0[2] + pz];
+      const a1 = [y1[0] - px, y1[1], y1[2] - pz], b1 = [y1[0] + px, y1[1], y1[2] + pz];
       pos.push(...a0, ...b0, ...a1, ...b0, ...b1, ...a1);
-      tip.push(t0, t0, t1, t0, t1, t1);
-    };
-    quad([ox, 0, oz], m0, 1, 0.7, 0, 0.5);
-    quad(m0, m1, 0.7, 0.05, 0.5, 1);
+      uv.push(0, k0, 1, k0, 0, k1, 1, k0, 1, k1, 0, k1);
+      tip.push(k0, k0, k1, k0, k1, k1);
+    }
   }
   const g = new THREE.BufferGeometry();
   g.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3));
+  g.setAttribute('uv', new THREE.Float32BufferAttribute(uv, 2));
   g.setAttribute('tip', new THREE.Float32BufferAttribute(tip, 1));
   g.computeVertexNormals();
   // Grass lit from above looks right: point every normal up-ish.
   const n = g.getAttribute('normal');
   for (let i = 0; i < n.count; i++) n.setXYZ(i, n.getX(i) * 0.3, 1, n.getZ(i) * 0.3);
   return g;
+}
+
+/**
+ * A picture of one grass blade, in soft greys (each tuft's colour tints it): broad at the root and
+ * tapering to a fine point with a slight curve, a pale midrib, faint parallel veins, darker edges
+ * and a sun-bleached tip. Transparent round the blade, so the strip shows only the blade.
+ */
+function bladeTexture(): THREE.Texture | null {
+  if (typeof document === 'undefined') return null;
+  const W = 64, H = 256, c = document.createElement('canvas');
+  c.width = W; c.height = H;
+  const x = c.getContext('2d')!;
+  const cx = W / 2, half = (v: number) => (W * 0.46) * Math.pow(1 - v, 0.85) * (0.9 + 0.1 * Math.sin(v * 3));
+  const bend = (v: number) => Math.sin(v * 1.4) * 6 * v;
+  // The blade's outline.
+  x.beginPath();
+  for (let i = 0; i <= 64; i++) { const v = i / 64; x.lineTo(cx + bend(v) - half(v), H - v * H); }
+  for (let i = 64; i >= 0; i--) { const v = i / 64; x.lineTo(cx + bend(v) + half(v), H - v * H); }
+  x.closePath();
+  const g = x.createLinearGradient(0, H, 0, 0);
+  g.addColorStop(0, 'rgb(150,160,140)');
+  g.addColorStop(0.35, 'rgb(225,232,215)');
+  g.addColorStop(0.85, 'rgb(245,248,230)');
+  g.addColorStop(1, 'rgb(255,246,205)');
+  x.fillStyle = g;
+  x.fill();
+  x.save();
+  x.clip();
+  // Darker edges, so each blade reads as curved.
+  const e = x.createLinearGradient(0, 0, W, 0);
+  e.addColorStop(0, 'rgba(40,60,30,0.35)'); e.addColorStop(0.3, 'rgba(40,60,30,0)');
+  e.addColorStop(0.7, 'rgba(40,60,30,0)'); e.addColorStop(1, 'rgba(40,60,30,0.35)');
+  x.fillStyle = e; x.fillRect(0, 0, W, H);
+  // Faint parallel veins and the pale midrib.
+  for (const [off, alpha, lw] of [[-0.55, 0.14, 1], [-0.28, 0.14, 1], [0.28, 0.14, 1], [0.55, 0.14, 1], [0, 0.55, 2.2]] as const) {
+    x.strokeStyle = off === 0 ? `rgba(255,255,240,${alpha})` : `rgba(30,50,20,${alpha})`;
+    x.lineWidth = lw;
+    x.beginPath();
+    for (let i = 0; i <= 48; i++) { const v = i / 48; x.lineTo(cx + bend(v) + off * half(v), H - v * H); }
+    x.stroke();
+  }
+  x.restore();
+  const t = new THREE.CanvasTexture(c);
+  t.colorSpace = THREE.SRGBColorSpace;
+  t.anisotropy = 4;
+  return t;
 }
 
 /** A meadow flower: a stalk, five petals and a bright heart. */
@@ -84,7 +136,7 @@ export const GRASS_UNIFORMS = { uNight: { value: 0 }, uFocus: { value: new THREE
  * `tip` colouring (dark root → the instance colour → a light tip) and a night glimmer.
  */
 function swayingMaterial(kind: 'grass' | 'flower'): THREE.MeshLambertMaterial {
-  const m = new THREE.MeshLambertMaterial({ side: THREE.DoubleSide });
+  const m = new THREE.MeshLambertMaterial({ side: THREE.DoubleSide, ...(kind === 'grass' ? { map: bladeTexture(), alphaTest: 0.45 } : {}) });
   m.onBeforeCompile = (sh) => {
     Object.assign(sh.uniforms, WIND_UNIFORMS, GRASS_UNIFORMS);
     sh.vertexShader = sh.vertexShader
@@ -105,7 +157,7 @@ function swayingMaterial(kind: 'grass' | 'flower'): THREE.MeshLambertMaterial {
       .replace('#include <common>', `#include <common>\nvarying float vTip;\nuniform float uNight;`)
       .replace('#include <color_fragment>', `#include <color_fragment>
         ${kind === 'grass'
-          ? 'diffuseColor.rgb *= mix(0.55, 1.25, clamp(vTip, 0.0, 1.0));'
+          ? 'diffuseColor.rgb *= mix(0.85, 1.15, clamp(vTip, 0.0, 1.0));'
           : 'if (vTip < 0.5) diffuseColor.rgb = vec3(0.25, 0.5, 0.2); else if (vTip > 1.5) diffuseColor.rgb = vec3(1.0, 0.9, 0.45);'}`)
       .replace('#include <emissivemap_fragment>', `#include <emissivemap_fragment>
         ${kind === 'grass'
