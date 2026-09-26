@@ -16,6 +16,7 @@ import { QUESTS } from '../quests/quests';
 import { REPLY_OPTIONS } from '../social/Messages';
 import { HOME_PRICE, PLOTS, type PlotSite } from '../housing/housing';
 import { prologue } from '../story/prologue';
+import { features, objectives, type Card } from '../story/intro';
 import { WONDERS, foundWonder, wonderHint, wonderPos } from '../world/wonders';
 import { VEHICLES, type VehicleId } from '../vehicles/vehicles';
 import { GRID_COLS, GRID_ROWS, REGIONS, REGION_BY_ID, type RegionId, type RegionSpec } from '../world/regions';
@@ -251,6 +252,7 @@ export class UI {
   }
 
   private titleCard(r: RegionSpec, first: boolean): void {
+    if (this.g.cutscene) return; // cinematics tell their own places
     this.card.replaceChildren(h('div', { class: 'eyebrow' }, first ? 'A new land' : 'Returning to'), h('div', { class: 'big' }, r.name), h('div', { class: 'sub' }, r.subtitle));
     this.card.classList.remove('show');
     void this.card.offsetWidth;
@@ -263,6 +265,43 @@ export class UI {
     this.flash.classList.remove('show');
     void this.flash.offsetWidth;
     this.flash.classList.add('show');
+  }
+
+  /** "Your journey": the objectives and everything there is to do (after the story; and in Help). */
+  showIntroGuide(done?: () => void): void {
+    this.storyOpen = true;
+    this.g.input.reset();
+    const st = this.g.st;
+    const card = (c: Card) => h('div', { class: 'icard' },
+      h('span', { class: 'ic' }, c.icon),
+      h('div', {}, h('b', {}, c.title), h('p', {}, c.text), c.how ? h('small', {}, c.how) : null));
+    const book = h('div', { class: 'storybook intro', role: 'dialog', 'aria-label': 'Your journey' });
+    let closed = false;
+    const onKey = (e: KeyboardEvent) => { if (e.key === 'Escape') close(); };
+    const close = () => {
+      if (closed) return;
+      closed = true;
+      removeEventListener('keydown', onKey);
+      this.storyOpen = false;
+      book.classList.add('out');
+      setTimeout(() => book.remove(), 600);
+      done?.();
+    };
+    addEventListener('keydown', onKey);
+    const x = btn('✕', close, 'close intro-close');
+    x.setAttribute('aria-label', 'Close');
+    x.title = 'Close (Esc)';
+    book.append(h('div', { class: 'page wide' },
+      x,
+      h('div', { class: 'eyebrow' }, 'Your journey'),
+      h('h2', {}, `${st.names.girl} & ${st.names.boy}`),
+      h('h3', {}, 'Objectives'),
+      h('div', { class: 'cards' }, ...objectives(st).map(card)),
+      h('h3', {}, 'Travel, friends and home'),
+      h('div', { class: 'cards' }, ...features(st).map(card)),
+      h('div', { class: 'acts' }, h('span', {}), btn('Begin the journey', close, 'primary')),
+    ));
+    this.root.append(book);
   }
 
   /** The storybook told before the journey (and again from the journal). */
@@ -543,9 +582,11 @@ export class UI {
     const wondersFound = WONDERS.filter((w) => foundWonder(st, w.id)).length;
     body.append(h('div', { class: 'quest main' },
       h('b', {}, '🏮 The main objective'),
-      h('p', {}, `Relight all ${REGIONS.length} lanterns — help each land's Keeper and light it together — then wake the Great Lantern above the clouds.`),
+      h('p', {}, `Go to new places, work beside the people you meet and solve their problems, make friends — and relight all ${REGIONS.length} lanterns, then wake the Great Lantern above the clouds. Her new job is one chapter of a lifelong journey of exploring and bonding.`),
       h('small', {}, `${st.lanterns.length} of ${REGIONS.length} lanterns · ${wondersFound} of ${WONDERS.length} hidden wonders · ${Object.keys(st.plots).length} homes & lands · ${st.caravan.length} in the caravan`),
-      btn('Read the story again', () => { this.closePanel(); this.showPrologue(); }, 'small'),
+      h('div', { class: 'acts' },
+        btn('▶ Watch the story again', () => { this.closePanel(); this.g.playStory(); }, 'small'),
+        btn('Read it', () => { this.closePanel(); this.showPrologue(); }, 'small ghost')),
     ));
     body.append(h('p', { class: 'dim' }, `Day ${dayOf(st.minutes)} of the journey · ${st.lanterns.length} of ${REGIONS.length} lanterns lit · shared light ✦ ${st.light.toFixed(1)}`));
     const act = q.active();
@@ -769,7 +810,9 @@ export class UI {
         btn('High graphics', () => { this.g.setQuality('high'); this.render(); }, this.g.quality === 'high' ? 'on' : 'ghost'),
         btn('Save photo (P)', () => this.g.takePhoto(), 'primary'),
         btn('🎂 Replay the opening', () => this.g.playOpening(), 'ghost'),
-        btn('🏰 Replay the celebration evening', () => this.g.celebration.replay(), 'ghost')),
+        btn('🏰 Replay the celebration evening', () => this.g.celebration.replay(), 'ghost'),
+        btn('🧭 Objectives & features', () => { this.closePanel(); this.showIntroGuide(); }, 'ghost'),
+        btn('▶ Watch the story', () => this.g.playStory(), 'ghost')),
       h('div', { class: 'acts' },
         btn(this.g.guide.trail ? 'Golden trail: on' : 'Golden trail: off', () => { this.g.guide.setTrail(!this.g.guide.trail); this.render(); }, this.g.guide.trail ? 'on' : 'ghost')),
       h('p', { class: 'dim' }, 'On touch screens: drag the left half to move, the right half to look. Hold Jump / Rise or Run / Descend; tap Interact or Fly. Photos save the view without menus.'));

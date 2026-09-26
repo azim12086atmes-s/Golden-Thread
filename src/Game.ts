@@ -10,6 +10,8 @@ import './characters/wardrobe'; // registers the fusion outfits
 import { EventBus } from './core/events';
 import { Guide } from './guide/Guide';
 import { CakeScene } from './story/CakeScene';
+import { StoryScene } from './story/StoryScene';
+import { STORY_FLAG } from './story/storyline';
 import { Celebration } from './event/Celebration';
 import { Input } from './core/Input';
 import { loadGame, saveGame, clearSave } from './core/save';
@@ -58,6 +60,8 @@ export interface Cutscene {
   finish(skipped?: boolean): void;
   readonly finished: boolean;
   view?: { scene: THREE.Scene; camera: THREE.PerspectiveCamera } | null;
+  /** The caravan walks on screen during this scene. */
+  caravan?: boolean;
 }
 
 export class Game {
@@ -668,15 +672,31 @@ export class Game {
         this.celebration.invite();
       }
     };
-    // The story comes first, once: the world, the promise, the objective and the way to live.
-    if (!this.st.flags.includes('prologue')) {
-      this.st.flags.push('prologue');
-      this.ui.showPrologue(after);
+    // The story comes first, once — told as a cinematic over the world itself.
+    if (!this.st.flags.includes(STORY_FLAG)) {
+      this.st.flags.push(STORY_FLAG);
+      if (!this.st.flags.includes('prologue')) this.st.flags.push('prologue');
+      this.playStory(() => this.ui.showIntroGuide(after));
     } else after();
   }
 
   private wakeToast(): void {
     this.toast(`${this.st.names.girl} and ${this.st.names.boy} set out from Wanderers' Meadow. Grandmother Noor is waiting by the Great Oak.`, 'story');
+  }
+
+  /** The story of the journey, over the world (replayable from the journal). */
+  playStory(done?: () => void): void {
+    if (this.cutscene || this.inVan) return;
+    this.ui.closePanel();
+    if (this.trav.mode !== 'walk') this.chooseVehicle('walk');
+    const scene = new StoryScene(this);
+    this.cutscene = scene;
+    scene.onDone = () => {
+      this.cutscene = null;
+      this.guide.refresh();
+      this.ui.refreshTracker();
+      done?.();
+    };
   }
 
   /** The cake under the Great Oak. Plays on a new journey; replayable from Help. */

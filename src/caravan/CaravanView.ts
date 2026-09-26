@@ -68,6 +68,15 @@ export class CaravanView {
     return best;
   }
 
+  /** Where the children (or the pets) are, on average — for the story's camera. */
+  centroid(kind: 'child' | 'pet'): THREE.Vector3 | null {
+    const b = this.bodies.filter((x) => x.def.kind === kind);
+    if (!b.length) return null;
+    const v = new THREE.Vector3();
+    for (const x of b) v.add((x.child ?? x.pet)!.root.position);
+    return v.multiplyScalar(1 / b.length);
+  }
+
   list(): CompanionDef[] {
     return this.bodies.map((b) => b.def);
   }
@@ -75,7 +84,7 @@ export class CaravanView {
   update(dt: number, t: number): void {
     const g = this.g, tr = g.trav;
     const onFoot = tr.mode === 'walk' || tr.mode === 'fly';
-    const show = g.started && onFoot && !g.inVan && !g.cutscene;
+    const show = g.started && onFoot && !g.inVan && (!g.cutscene || !!g.cutscene.caravan);
     const girl = { x: tr.gPos.x, z: tr.gPos.z }, boy = { x: tr.bPos.x, z: tr.bPos.z };
     if (!show) {
       // Riding along: they catch up the moment the travellers are back on foot.

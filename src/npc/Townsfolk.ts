@@ -7,6 +7,7 @@ import { Rng } from '../core/rng';
 import type { RegionInstance } from '../world/RegionBuilder';
 import { REGION_BY_ID, regionCenter, type RegionId } from '../world/regions';
 import { surfaceAt } from '../world/terrain';
+import { GeoBuilder, box } from '../world/kit';
 
 /**
  * Townsfolk: people going about their day so every town feels lived in. They stroll the avenues
@@ -39,14 +40,27 @@ export function wardrobeFor(land: RegionId, who: 'girl' | 'boy'): Outfit[] {
 type Path =
   | { kind: 'avenue'; axis: 'x' | 'z'; lane: number; s: number; dir: number }
   | { kind: 'ring'; a: number; dir: number }
-  | { kind: 'chat'; x: number; z: number; face: number };
+  | { kind: 'chat'; x: number; z: number; face: number }
+  /** Stallholders at work (arms busy) and shoppers at the stalls. */
+  | { kind: 'stall'; x: number; z: number; face: number; working: boolean };
 
 interface Walker { model: CharacterModel; land: RegionId; path: Path; speed: number; ph: number }
 
-export const PER_TOWN = 14;
+export const PER_TOWN = 30;
+
+/**
+ * A market street in every town: stalls line both sides of the south avenue, just beyond the
+ * central plaza. Local coordinates (relative to the town centre); `face` points at the street.
+ */
+export const STALLS: Array<{ x: number; z: number; face: number }> = [66, 78, 90].flatMap((z) => [
+  { x: 12.5, z, face: -Math.PI / 2 },
+  { x: -12.5, z, face: Math.PI / 2 },
+]);
+const AWNINGS = ['#e8576a', '#f2c14e', '#3a9ec8', '#7fb35a', '#c38fd9', '#ff9a1f'];
 
 export class Townsfolk {
   readonly list: Walker[] = [];
+  private stalls = new Map<string, THREE.Mesh>();
 
   constructor(private scene: THREE.Scene) {}
 
@@ -54,14 +68,41 @@ export class Townsfolk {
     const land = inst.spec.id;
     if (land === 'skyisles') return;
     const rng = new Rng(`townsfolk:${land}`);
+    // The market's stalls: a table, four posts, a striped awning and goods laid out.
+    const kit = new GeoBuilder();
+    const c = regionCenter(inst.spec);
+    STALLS.forEach((st, k) => {
+      const out = st.face;
+      kit.frame(c.x + st.x, surfaceAt(c.x + st.x, c.z + st.z, 1e9), c.z + st.z, out, 1, () => {
+        box(kit, 3, 0.9, 1.2, '#a8703f', 0, 0, 0.4);
+        for (const [px, pz] of [[-1.4, -0.3], [1.4, -0.3], [-1.4, 1.0], [1.4, 1.0]]) box(kit, 0.1, 2.4, 0.1, '#6b4a2a', px, 0, pz);
+        box(kit, 3.3, 0.08, 1.9, AWNINGS[(k + land.length) % AWNINGS.length], 0, 2.4, 0.35);
+        box(kit, 3.3, 0.3, 0.05, '#ffffff', 0, 2.2, 1.3);
+        for (let j = 0; j < 6; j++) box(kit, 0.32, 0.22, 0.32, ['#ff6b6b', '#f2d14e', '#7fb35a', '#ffb347', '#c38fd9'][(j + k) % 5], -1.1 + j * 0.44, 0.9, 0.55);
+      });
+    });
+    const stallMesh = kit.build(new THREE.MeshStandardMaterial({ vertexColors: true, flatShading: true, roughness: 0.85 }));
+    if (stallMesh) {
+      stallMesh.castShadow = true;
+      this.scene.add(stallMesh);
+      this.stalls.set(land, stallMesh);
+    }
     for (let i = 0; i < PER_TOWN; i++) {
       const who = i % 2 ? 'boy' : 'girl';
       const pool = wardrobeFor(land, who);
       const model = new CharacterModel(pool[rng.int(0, pool.length - 1)], SKINS[rng.int(0, SKINS.length - 1)], who === 'girl' ? rng.range(0.9, 0.98) : rng.range(0.98, 1.06));
       let path: Path;
-      if (i < 8) path = { kind: 'avenue', axis: i % 2 ? 'x' : 'z', lane: (i % 4 < 2 ? 1 : -1) * 3.2, s: rng.range(-220, 220), dir: rng.chance(0.5) ? 1 : -1 };
-      else if (i < 12) path = { kind: 'ring', a: rng.range(0, Math.PI * 2), dir: rng.chance(0.5) ? 1 : -1 };
-      else {
+      if (i < 10) path = { kind: 'avenue', axis: i % 2 ? 'x' : 'z', lane: (i % 4 < 2 ? 1 : -1) * 3.2, s: rng.range(-220, 220), dir: rng.chance(0.5) ? 1 : -1 };
+      else if (i < 16) path = { kind: 'ring', a: rng.range(0, Math.PI * 2), dir: rng.chance(0.5) ? 1 : -1 };
+      else if (i < 22) {
+        // A stallholder behind each stall, busy with their work.
+        const st = STALLS[i - 16];
+        path = { kind: 'stall', x: st.x + Math.sign(st.x) * 1.2, z: st.z, face: st.face, working: true };
+      } else if (i < 26) {
+        // Shoppers in front of the stalls, a step back from the counter.
+        const st = STALLS[(i - 22) * 1 + 1];
+        path = { kind: 'stall', x: st.x - Math.sign(st.x) * 1.9, z: st.z + (i % 2 ? 0.6 : -0.6), face: st.face + Math.PI, working: false };
+      } else {
         const s = inst.spots.length ? inst.spots[rng.int(0, inst.spots.length - 1)] : { x: 30, z: 30 };
         path = { kind: 'chat', x: s.x + (i % 2) * 1.6, z: s.z, face: i % 2 ? -Math.PI / 2 : Math.PI / 2 };
       }
@@ -71,6 +112,12 @@ export class Townsfolk {
   }
 
   onRegionUnloaded(inst: RegionInstance): void {
+    const m = this.stalls.get(inst.spec.id);
+    if (m) {
+      this.scene.remove(m);
+      m.geometry.dispose();
+      this.stalls.delete(inst.spec.id);
+    }
     for (let i = this.list.length - 1; i >= 0; i--) {
       if (this.list[i].land !== inst.spec.id) continue;
       this.scene.remove(this.list[i].model.root);
@@ -95,11 +142,16 @@ export class Townsfolk {
         x = Math.cos(p.a) * 140;
         z = Math.sin(p.a) * 140;
         heading = Math.atan2(-Math.sin(p.a) * p.dir, Math.cos(p.a) * p.dir);
+      } else if (p.kind === 'stall') {
+        x = p.x; z = p.z; heading = p.face; speed = 0;
+        // Stallholders' hands are busy — weighing, wrapping, kneading.
+        w.model.offer = p.working ? 0.7 : 0;
+        w.model.offerLift = p.working ? Math.sin(t * 3 + w.ph) * 0.35 : 0;
       } else {
         x = p.x; z = p.z; heading = p.face; speed = 0;
       }
       c.set(centre.x + x, 0, centre.z + z);
-      const far = Math.hypot(c.x - player.x, c.z - player.z) > 170;
+      const far = Math.hypot(c.x - player.x, c.z - player.z) > 150;
       w.model.root.visible = !far;
       if (far) continue;
       c.y = surfaceAt(c.x, c.z, 1e9);

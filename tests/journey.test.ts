@@ -77,3 +77,55 @@ describe('homes and land', () => {
     expect(hs.buyHome(plot.id)).toBe('owned');
   });
 });
+
+describe('the story cinematic', () => {
+  it('is about real living: places, work, problems, her new job, a lifelong journey of bonding', async () => {
+    const { storyline } = await import('../src/story/storyline');
+    const st = newGame();
+    const shots = storyline(st);
+    const text = shots.flatMap((s) => s.lines).join(' ');
+    for (const w of ['new places', 'work', 'problem', 'secured her new job', 'lifelong journey', 'bonding', 'promised']) expect(text).toContain(w);
+    expect(text).toContain(st.names.girl);
+    expect(text).toContain('something to celebrate');
+    st.flags.push('celebration-done');
+    expect(storyline(st).flatMap((s) => s.lines).join(' ')).not.toContain('something to celebrate');
+    // Each shot is long enough to read both lines; the whole story stays near a minute.
+    for (const s of shots) { expect(s.dur).toBeGreaterThanOrEqual(8); expect(s.lines.length).toBe(2); }
+    const total = shots.reduce((a, s) => a + s.dur, 0);
+    expect(total).toBeGreaterThan(45);
+    expect(total).toBeLessThan(100);
+    // The children and pets travelling with them are introduced by name, and Noor speaks.
+    for (const n of ['Rosie', 'Teo', 'Pip', 'Clover']) expect(text).toContain(n);
+    expect(shots.some((s) => s.focus === 'market')).toBe(true);
+    expect(text).toContain('Grandmother Noor: "');
+  });
+});
+
+describe('busier towns', () => {
+  it('every town has a market street with stalls clear of the avenue, and many more people', async () => {
+    const { PER_TOWN, STALLS } = await import('../src/npc/Townsfolk');
+    expect(PER_TOWN).toBeGreaterThanOrEqual(30);
+    expect(STALLS.length).toBe(6);
+    for (const s of STALLS) {
+      expect(Math.abs(s.x)).toBeGreaterThan(10); // off the avenue (walkers use lanes at ±3.2)
+      expect(Math.hypot(s.x, s.z)).toBeGreaterThan(55); // beyond the central plaza and landmark
+    }
+  });
+});
+
+describe('the journey guide', () => {
+  it('lists the objectives and every feature: children, pets, dragon, unicorns and all vehicles', async () => {
+    const { features, objectives } = await import('../src/story/intro');
+    const { VEHICLES } = await import('../src/vehicles/vehicles');
+    const st = newGame();
+    const o = objectives(st).map((c) => c.title).join(' | ');
+    for (const w of ['lanterns', 'Work', 'Celebrate', 'Explore', 'Bond']) expect(o).toContain(w);
+    const f = features(st);
+    const titles = f.map((c) => c.title);
+    for (const v of Object.values(VEHICLES)) if (v.id !== 'walk') expect(titles).toContain(v.name);
+    expect(titles).toContain('Children');
+    expect(titles).toContain('Pets');
+    expect(f.find((c) => c.title === 'Night Dragon')?.how).toBe('After the celebration evening');
+    expect(f.find((c) => c.title === 'Children')?.text).toContain('Rosie');
+  });
+});

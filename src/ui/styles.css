@@ -317,3 +317,22 @@ body.cinematic #ui > .feed { opacity: 0; }
 .storybook .dots i.on { background: var(--gold); }
 .storybook .acts { display: flex; justify-content: space-between; gap: 10px; }
 .storybook .skip { justify-self: center; }
+
+.cinema.story .chapter { position: absolute; inset-block-start: calc(11vh + 14px); inset-inline: 0; text-align: center; font: 700 11px var(--sans); letter-spacing: 0.3em; text-transform: uppercase; color: rgba(255, 244, 220, 0.75); text-shadow: 0 1px 8px rgba(0, 0, 0, 0.6); }
+.cinema.story .caption { max-inline-size: 44ch; }
+.cinema.story .vignette { position: absolute; inset: 0; pointer-events: none; background: radial-gradient(ellipse at 50% 50%, rgba(0, 0, 0, 0) 55%, rgba(8, 6, 20, 0.55) 100%); }
+.cinema.story .caption .word { opacity: 0; display: inline; animation: word 0.5s ease-out forwards; }
+.cinema.story .caption .speaker { display: block; margin-block-end: 4px; font: 700 12px var(--sans); font-style: normal; letter-spacing: 0.22em; text-transform: uppercase; color: var(--gold); }
+@keyframes word { from { opacity: 0; filter: blur(3px); } to { opacity: 1; filter: none; } }
+
+.storybook.intro { overflow-y: auto; place-items: start center; padding-block: 24px; }
+.storybook .page.wide { inline-size: min(980px, 100%); }
+.storybook h3 { margin: 6px 0 0; font: 700 13px var(--sans); letter-spacing: 0.2em; text-transform: uppercase; color: var(--gold); }
+.storybook .cards { display: grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); gap: 10px; }
+.icard { display: grid; grid-template-columns: 34px 1fr; gap: 10px; align-items: start; padding: 12px; border-radius: 14px; background: rgba(255, 255, 255, 0.05); border: 1px solid var(--line); }
+.icard .ic { font-size: 24px; line-height: 1; }
+.icard b { display: block; font: 700 15px var(--display); color: #fff4dc; }
+.icard p { margin: 4px 0; font: 400 13px/1.45 var(--sans); color: var(--ink); }
+.icard small { font-size: 11.5px; color: #ffe0a0; }
+.storybook .page.wide { position: relative; }
+.storybook .intro-close { position: absolute; inset-block-start: 14px; inset-inline-end: 14px; padding: 6px 11px; }
