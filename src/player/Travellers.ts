@@ -331,6 +331,7 @@ export class Travellers {
       return;
     }
     const airborne = this.mode === 'fly' || !this.grounded;
+    const px = this.bPos.x, pz = this.bPos.z;
     const out = followStep({
       boy: this.bPos, girl: this.gPos, heading: this.heading, speed: this.currentSpeed, dt, airborne,
       groundAt: (x, z) => this.mode === 'unicorn' ? Math.max(surfaceAt(x, z, this.gPos.y + 2), WATER_Y) : surfaceAt(x, z, this.gPos.y + 2),
@@ -343,8 +344,7 @@ export class Travellers {
     this.bPos.set(safe.x, safe.y, safe.z);
     this.bSpeed = out.speed;
     this.tension = out.tension;
-    if (out.speed > 0.3) this.bHeading = turnToward(this.bHeading, Math.atan2(this.gPos.x - this.bPos.x, this.gPos.z - this.bPos.z), 6 * dt);
-    else this.bHeading = turnToward(this.bHeading, this.heading, 2 * dt);
+    this.bHeading = turnToward(this.bHeading, companionHeading(this.bPos.x - px, this.bPos.z - pz, dt, this.heading, this.bHeading), (out.speed > 0.3 ? 8 : 2) * dt);
   }
 
   private place(dt: number, t: number): void {
@@ -419,6 +419,19 @@ export class Travellers {
   save(): void {
     this.st.player = { x: this.gPos.x, y: this.gPos.y, z: this.gPos.z, heading: this.heading };
   }
+}
+
+/**
+ * Which way he faces: the way he is actually walking — and when that is roughly her way, exactly
+ * her way, so side by side they walk straight together instead of him turning to face her.
+ */
+export function companionHeading(dx: number, dz: number, dt: number, herHeading: number, current: number): number {
+  const speed = Math.hypot(dx, dz) / Math.max(dt, 1e-4);
+  if (speed < 0.3) return herHeading;
+  const moving = Math.atan2(dx, dz);
+  const off = Math.atan2(Math.sin(moving - herHeading), Math.cos(moving - herHeading));
+  if (Math.abs(off) < Math.PI / 3) return herHeading;
+  return Number.isFinite(moving) ? moving : current;
 }
 
 function turnToward(a: number, b: number, k: number): number {

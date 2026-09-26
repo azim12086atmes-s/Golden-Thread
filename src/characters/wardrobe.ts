@@ -24,7 +24,7 @@ export const DRESS_GROUPS: Array<[DressGroup, string]> = [
 
 const BY_CULTURE: Record<string, DressGroup> = {
   Japan: 'east', Korea: 'east', China: 'east',
-  'North India': 'south', 'South India': 'south', Mughal: 'south', 'South Asia': 'south', Indonesia: 'south',
+  'North India': 'south', 'Modern India': 'south', 'South India': 'south', Mughal: 'south', 'South Asia': 'south', Indonesia: 'south',
   Egypt: 'west-asia', 'Middle East': 'west-asia', 'Desert Tribes': 'west-asia', Persia: 'west-asia', Morocco: 'west-asia',
   Levant: 'west-asia', Ottoman: 'west-asia', 'Central Asia': 'west-asia', Andalusia: 'west-asia',
   Fantasy: 'fantasy', 'Sci-fi': 'fantasy',

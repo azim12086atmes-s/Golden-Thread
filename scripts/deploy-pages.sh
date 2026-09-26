@@ -7,7 +7,7 @@ REPO="${PAGES_REPO:-$(git remote get-url pages 2>/dev/null || true)}"
 if [ -z "$REPO" ]; then echo "Set PAGES_REPO or add a git remote named 'pages'." >&2; exit 1; fi
 
 "$NODE" node_modules/typescript/bin/tsc --noEmit
-"$NODE" node_modules/vitest/vitest.mjs run
+"$NODE" node_modules/vitest/vitest.mjs run --maxWorkers=1
 rm -rf dist
 "$NODE" node_modules/vite/bin/vite.js build --base ./
 touch dist/.nojekyll

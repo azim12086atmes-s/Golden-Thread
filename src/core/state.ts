@@ -85,7 +85,7 @@ export function newGame(): GameState {
     coins: 40,
     light: 1,
     player: { x: 6, y: 0, z: 34, heading: Math.PI }, // by the Great Oak, facing Noor
-    outfits: { girl: 'g-meadow', boy: 'b-meadow' },
+    outfits: { girl: 'g-kurti-jeans', boy: 'b-kurta-jeans' },
     inventory: { wood: 2, wool: 1, tea: 2 },
     skills: {
       weaving: 0, carpentry: 0, cooking: 0, pottery: 0,

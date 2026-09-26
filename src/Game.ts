@@ -85,6 +85,12 @@ export class Game {
 
   constructor(host: HTMLElement) {
     this.st = loadGame() ?? newGame();
+    // One-time: journeys still in the old default clothes move to the new everyday default.
+    if (!this.st.flags.includes('kurti-default')) {
+      if (this.st.outfits.girl === 'g-meadow') this.st.outfits.girl = 'g-kurti-jeans';
+      if (this.st.outfits.boy === 'b-meadow') this.st.outfits.boy = 'b-kurta-jeans';
+      this.st.flags.push('kurti-default');
+    }
     this.renderer = new THREE.WebGLRenderer({ antialias: true, powerPreference: 'high-performance' });
     this.renderer.setPixelRatio(Math.min(devicePixelRatio, 1.75));
     this.renderer.shadowMap.enabled = true;

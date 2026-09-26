@@ -47,3 +47,28 @@ describe('the van interior', () => {
     expect(gh.distanceTo(bh)).toBeGreaterThan(0.8);
   });
 });
+
+describe('everyday default clothes', () => {
+  it('a new journey starts in the pink kurti with jeans and the blue kurta with pink jeans', () => {
+    const st = newGame();
+    const g = OUTFITS[st.outfits.girl], b = OUTFITS[st.outfits.boy];
+    expect(g.name).toBe('Pink Kurti & Jeans');
+    expect(b.name).toBe('Blue Kurta & Pink Jeans');
+    expect(isModest(g) && isModest(b)).toBe(true);
+    expect(g.head.style).toBe('hijab');
+    expect(dressGroup(g)).toBe('south');
+  });
+});
+
+describe('walking together', () => {
+  it('he faces the way they are both walking, not towards her', async () => {
+    const { companionHeading } = await import('../src/player/Travellers');
+    const her = 0.4;
+    // Walking alongside, drifting slightly towards her: he still faces straight ahead, as she does.
+    expect(companionHeading(Math.sin(her + 0.3) * 0.05, Math.cos(her + 0.3) * 0.05, 1 / 60, her, 0)).toBe(her);
+    // Standing still: he turns to her heading.
+    expect(companionHeading(0, 0, 1 / 60, her, 2)).toBe(her);
+    // Catching up from far off to one side: he faces where he walks.
+    expect(companionHeading(0.05, 0, 1 / 60, her, 0)).toBeCloseTo(Math.PI / 2);
+  });
+});
