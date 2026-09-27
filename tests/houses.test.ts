@@ -6,6 +6,7 @@ import { buildLandmark } from '../src/world/architecture';
 import { GeoBuilder } from '../src/world/kit';
 import { landmarkDoor } from '../src/world/World';
 import { Rng } from '../src/core/rng';
+import { PEOPLE_IN_NEED } from '../src/charity/charity';
 import { buildRegion } from '../src/world/RegionBuilder';
 import { REGIONS } from '../src/world/regions';
 import { WATER_Y } from '../src/world/terrain';
@@ -80,6 +81,20 @@ describe('landmarks and your own home', () => {
       expect(box.max.x).toBeLessThanOrEqual(ROOM.halfW + 0.2);
       expect(box.min.z).toBeGreaterThanOrEqual(ROOM.back - 0.2);
       expect((room as unknown as { host: unknown }).host).toBeNull();
+    }
+  });
+
+  it('people who live in your home stand apart from the two and from each other', () => {
+    const room = new HouseInterior(OUTFITS['g-kurti-jeans'], OUTFITS['b-kurta-jeans']);
+    const door = { id: 'home:meadow-a', land: 'meadow', x: 0, z: 0, y: 0, facing: 0, kind: 'home', r: 5 };
+    room.enter(door, 0.2, false, { rug: 'plain', curtains: 'plain', quilt: 'plain', lights: 'none', plant: 'none', art: 'none', lamp: 'none', cushions: 'plain' }, PEOPLE_IN_NEED.slice(0, 8));
+    const s = room as unknown as { girl: { root: THREE.Object3D }; boy: { root: THREE.Object3D }; residents: Array<{ root: THREE.Object3D }> };
+    expect(s.residents.length).toBe(8);
+    for (const r of s.residents) {
+      expect(r.root.position.distanceTo(s.girl.root.position)).toBeGreaterThan(1.5);
+      expect(r.root.position.distanceTo(s.boy.root.position)).toBeGreaterThan(1.5);
+      expect(Math.abs(r.root.position.x)).toBeLessThan(ROOM.halfW);
+      for (const o of s.residents) if (o !== r) expect(r.root.position.distanceTo(o.root.position)).toBeGreaterThan(1);
     }
   });
 });

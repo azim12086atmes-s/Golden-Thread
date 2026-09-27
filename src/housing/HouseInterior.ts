@@ -9,6 +9,7 @@ import { LOCALES } from '../world/locale';
 import { REGION_BY_ID, type RegionId } from '../world/regions';
 import type { Door } from '../world/RegionBuilder';
 import type { VanSlot } from '../core/state';
+import type { Person } from '../charity/charity';
 import { VAN_OPTIONS } from './VanInterior';
 
 /**
@@ -42,6 +43,8 @@ export const ROOM = { halfW: 4.5, back: -4, front: 4, height: 3.6 } as const;
 /** Where the two sit: either side of the room, 3.4 m apart, facing in. */
 export const ROOM_SEATS: Array<[number, number, number]> = [[-1.7, 0, 0.9], [1.7, 0, 0.9]];
 /** The thing to gather sits here. */
+/** Where the people who live in your home stand: along the walls, well away from the two seats. */
+export const RESIDENT_SPOTS: Array<[number, number]> = [[-3.4, -3.0], [-1.6, -3.1], [0.2, -3.1], [3.6, -0.4], [-3.6, -0.8], [3.6, 1.4], [-3.6, 1.4], [1.9, -3.1]];
 export const GATHER_SPOT: [number, number, number] = [2.8, 0, -2.7];
 
 /** Each land's landmark, by name, for its door. */
@@ -75,6 +78,7 @@ export class HouseInterior {
   private girl: CharacterModel;
   private boy: CharacterModel;
   private host: CharacterModel | null = null;
+  private residents: CharacterModel[] = [];
   private mote: THREE.Mesh;
   private t = 0;
   door: Door | null = null;
@@ -100,7 +104,7 @@ export class HouseInterior {
   }
 
   /** Build the room behind this door. `night` sets what the windows show. */
-  enter(door: Door, night: number, gathered: boolean, home?: Record<VanSlot, string>): void {
+  enter(door: Door, night: number, gathered: boolean, home?: Record<VanSlot, string>, residents: Person[] = []): void {
     this.door = door;
     const land = door.land as RegionId, spec = REGION_BY_ID[land], st = LAND_STYLE[land], fam = FAMILY[land];
     const rng = new Rng(`room:${door.id}`);
@@ -109,6 +113,8 @@ export class HouseInterior {
       if ((c as THREE.Mesh).geometry) (c as THREE.Mesh).geometry.dispose();
     }
     if (this.host) this.scene.remove(this.host.root);
+    for (const r of this.residents) this.scene.remove(r.root);
+    this.residents = [];
     for (const l of this.scene.children.filter((o) => (o as THREE.PointLight).isPointLight)) this.scene.remove(l);
 
     const g = new GeoBuilder(), glow = new GeoBuilder();
@@ -200,7 +206,21 @@ export class HouseInterior {
     this.boy.root.rotation.y = -Math.PI / 2 + 0.35;
     // The host, in their land's clothes, by the back wall.
     // A home of your own has no host; everywhere else someone welcomes you in.
-    if (home) { this.host = null; this.camera.position.set(0, 2.4, F + 1.2); this.camera.lookAt(0, 0.9, -1.2); return; }
+    if (home) {
+      this.host = null;
+      // The people who live with you, each in their own place about the room.
+      residents.slice(0, RESIDENT_SPOTS.length).forEach((p, i) => {
+        const who = p.id.length % 2 ? 'girl' : 'boy', pool = wardrobeFor(p.land, who);
+        const m = new CharacterModel(pool[(i * 3 + p.name.length) % pool.length], ['#f1c9a5', '#e0ac85', '#c68b62', '#a8704a', '#8a5a3a'][(i + p.name.length) % 5], p.kind === 'orphan' ? 0.72 : p.kind === 'elder' ? 0.94 : 1);
+        const [x, z] = RESIDENT_SPOTS[i];
+        m.root.position.set(x, 0, z);
+        m.root.rotation.y = Math.atan2(-x, 1.5 - z);
+        this.scene.add(m.root);
+        this.residents.push(m);
+      });
+      this.camera.position.set(0, 2.4, F + 1.2); this.camera.lookAt(0, 0.9, -1.2);
+      return;
+    }
     const who = rng.chance(0.5) ? 'girl' : 'boy';
     const pool = wardrobeFor(land, who);
     this.host = new CharacterModel(pool[rng.int(0, pool.length - 1)], ['#f1c9a5', '#e0ac85', '#c68b62', '#a8704a', '#8a5a3a'][rng.int(0, 4)], who === 'girl' ? 0.95 : 1.02);
@@ -220,6 +240,7 @@ export class HouseInterior {
     this.t += dt;
     this.girl.update(dt, { speed: 0, airborne: false, riding: true, t: this.t });
     this.boy.update(dt, { speed: 0, airborne: false, riding: true, t: this.t + 1 });
+    this.residents.forEach((r, i) => r.update(dt, { speed: 0, airborne: false, riding: false, t: this.t + 3 + i }));
     if (this.host) {
       this.host.offer = Math.max(0, Math.sin(this.t * 0.8)) * 0.5;
       this.host.offerLift = Math.sin(this.t * 3) * 0.25;

@@ -2,6 +2,8 @@ import * as THREE from 'three';
 import { Rng } from '../core/rng';
 import type { GameState, PlacedDecor } from '../core/state';
 import { buildHouse, lampPost } from '../world/architecture';
+import { addStoreys } from '../world/models/homeStoreys';
+import { floorBuilding, floorsOf } from '../charity/charity';
 import { GeoBuilder, box, cyl, flowers, sphere, tent, tree } from '../world/kit';
 import { REGION_BY_ID, type RegionId } from '../world/regions';
 import { surfaceAt } from '../world/terrain';
@@ -9,14 +11,17 @@ import type { World } from '../world/World';
 import { CROPS, DECOR_BY_ID, PLOT_BY_ID, PLOT_SIZE } from './housing';
 
 /** Builds the look of a piece of decor. Used for placed decor and for the build-mode ghost. */
-export function buildDecor(kind: string, region: RegionId, seed: string, growth = 0, crop?: string): { g: GeoBuilder; glow: GeoBuilder } {
+export function buildDecor(kind: string, region: RegionId, seed: string, growth = 0, crop?: string, storeys?: { floors: number; scaffold: boolean }): { g: GeoBuilder; glow: GeoBuilder } {
   const g = new GeoBuilder(), glow = new GeoBuilder();
   const rng = new Rng(seed);
   const spec = REGION_BY_ID[region];
   const ctx = { g, glow, rng, s: spec };
   const def = DECOR_BY_ID[kind];
   if (def?.style) {
-    buildHouse({ ...ctx, s: REGION_BY_ID[def.style] });
+    const hc = { ...ctx, s: REGION_BY_ID[def.style] };
+    const fp = buildHouse(hc);
+    // A home that has grown floors (charity/charity.ts) — or has one being built — gets its storeys.
+    if (storeys && (storeys.floors > 0 || storeys.scaffold)) addStoreys(hc, fp, storeys.floors, storeys.scaffold);
     return { g, glow };
   }
   switch (kind) {
@@ -151,7 +156,8 @@ export class HousingView {
       box(g, PLOT_SIZE, 0.06, PLOT_SIZE, '#8fc86a', 0, y0 - 0.02, 0);
       for (const d of plot.decor) {
         const y = surfaceAt(site.x + d.x, site.z + d.z);
-        const built = buildDecor(d.kind, site.region, d.id, growthOf(d), d.crop?.seed);
+        const storeys = d.kind.startsWith('house-') ? { floors: floorsOf(this.st, plotId), scaffold: floorBuilding(this.st, plotId) !== null } : undefined;
+        const built = buildDecor(d.kind, site.region, d.id, growthOf(d), d.crop?.seed, storeys);
         const m1 = built.g.build(this.world.solid), m2 = built.glow.build(this.world.glow);
         for (const m of [m1, m2]) {
           if (!m) continue;

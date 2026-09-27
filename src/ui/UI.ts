@@ -1,3 +1,4 @@
+import { DAY_COINS, FLOOR_COST, MAX_FLOORS, NEED_LABEL, PEOPLE_IN_NEED, PERSON_BY_ID, buildFloor, daysLeft, floorBuilding, floorsOf, giftsFor, give, homeCapacity, ownedHomes, residentsOf, sponsorOf, takeHome, type Person } from '../charity/charity';
 import * as THREE from 'three';
 import type { Animal } from '../animals/Animals';
 import { SPECIES } from '../animals/AnimalModel';
@@ -23,7 +24,7 @@ import { VEHICLES, type VehicleId } from '../vehicles/vehicles';
 import { GRID_COLS, GRID_ROWS, REGIONS, REGION_BY_ID, regionCenter, type RegionId, type RegionSpec } from '../world/regions';
 import type { Game } from '../Game';
 
-type Panel = 'wardrobe' | 'bag' | 'journal' | 'map' | 'messages' | 'vehicles' | 'dialogue' | 'animal' | 'build' | 'van' | 'house' | 'farm' | 'market' | 'help' | 'homes' | 'property' | null;
+type Panel = 'care' | 'wardrobe' | 'bag' | 'journal' | 'map' | 'messages' | 'vehicles' | 'dialogue' | 'animal' | 'build' | 'van' | 'house' | 'farm' | 'market' | 'help' | 'homes' | 'property' | null;
 
 const h = (tag: string, attrs: Record<string, string> = {}, ...kids: Array<Node | string | null | false>) => {
   const el = document.createElement(tag);
@@ -112,7 +113,7 @@ export class UI {
     if (i.hit('p') && !this.modal) this.g.takePhoto();
     if (i.hit('t') && !this.modal) this.g.setTimeOfDay(nextTime(this.g.st.minutes));
     if (i.hit('o') && !this.modal) this.setTrackerHidden(!this.trackerHidden);
-    const keys: Array<[string, Panel]> = [['c', 'wardrobe'], ['i', 'bag'], ['j', 'journal'], ['m', 'map'], ['n', 'messages'], ['v', 'vehicles'], ['h', 'help'], ['l', 'homes']];
+    const keys: Array<[string, Panel]> = [['c', 'wardrobe'], ['i', 'bag'], ['j', 'journal'], ['m', 'map'], ['n', 'messages'], ['v', 'vehicles'], ['h', 'help'], ['l', 'homes'], ['k', 'care']];
     for (const [k, p] of keys) if (i.hit(k)) return this.toggle(p);
     if (i.hit('b')) {
       if (this.panel === 'build') return this.closePanel();
@@ -451,7 +452,7 @@ export class UI {
   }
 
   private buildDock(): void {
-    const items: Array<[Panel, string, string]> = [['wardrobe', '👗', 'Dressing room (C)'], ['bag', '🎒', 'Bag & crafts (I)'], ['journal', '📖', 'Journal (J)'], ['map', '🗺️', 'Map (M)'], ['messages', '💌', 'Messages (N)'], ['vehicles', '🚐', 'Travel (V)'], ['homes', '🏡', 'Homes & land (L)'], ['help', '❔', 'Help (H)']];
+    const items: Array<[Panel, string, string]> = [['wardrobe', '👗', 'Dressing room (C)'], ['bag', '🎒', 'Bag & crafts (I)'], ['journal', '📖', 'Journal (J)'], ['map', '🗺️', 'Map (M)'], ['messages', '💌', 'Messages (N)'], ['vehicles', '🚐', 'Travel (V)'], ['homes', '🏡', 'Homes & land (L)'], ['care', '🤲', 'Care & sponsorship (K)'], ['help', '❔', 'Help (H)']];
     for (const [p, icon, label] of items) {
       const b = btn(icon, () => this.toggle(p), 'dock-btn');
       b.dataset.p = p ?? '';
@@ -579,7 +580,7 @@ export class UI {
 
   render(): void {
     const body = h('div', { class: 'body' });
-    const titles: Record<string, string> = { wardrobe: 'Dressing room', bag: 'Bag & Crafts', journal: 'Journal', map: 'The World', messages: 'Messages', vehicles: 'Ways to Travel', dialogue: '', animal: '', build: 'Build', van: 'Inside Safar', house: this.g.houseTitle(), farm: 'Farm bed', market: 'Market stall', help: 'How to play', homes: 'Homes & Land', property: 'Land for sale' };
+    const titles: Record<string, string> = { wardrobe: 'Dressing room', bag: 'Bag & Crafts', journal: 'Journal', map: 'The World', messages: 'Messages', vehicles: 'Ways to Travel', dialogue: '', animal: '', build: 'Build', van: 'Inside Safar', house: this.g.houseTitle(), farm: 'Farm bed', market: 'Market stall', help: 'How to play', care: 'Care & sponsorship', homes: 'Homes & Land', property: 'Land for sale' };
     const head = this.panel === 'van'
       ? h('header', {}, h('h2', {}, titles.van),
         h('span', { class: 'head-acts' },
@@ -602,6 +603,7 @@ export class UI {
       case 'market': this.marketPanel(body); break;
       case 'help': this.help(body); break;
       case 'homes': this.homes(body); break;
+      case 'care': this.carePanel(body); break;
       case 'property': this.property(body); break;
       default: return this.closePanel();
     }
@@ -696,6 +698,53 @@ export class UI {
         h('small', {}, `Land 🪙 ${p.price} · Home 🪙 ${hs.homePrice(p.id)}`),
         btn('Show the way', () => this.showWay(p, `Land for sale in ${REGION_BY_ID[p.region].name}`), 'small'),
       ));
+    }
+  }
+
+  /**
+   * Care & sponsorship (charity/charity.ts): the people in need in this land — sponsor them in
+   * coins or in kind, take them into a home you own — everyone in your care, and your homes'
+   * floors and residents.
+   */
+  private carePanel(body: HTMLElement): void {
+    const g = this.g, st = g.st, land = g.region.id;
+    const act = (fn: () => string | null, ok: string) => { const e = fn(); g.toast(e ?? ok, e ? 'info' : 'reward'); this.render(); };
+    const homes = ownedHomes(st);
+    const card = (p: Person) => {
+      const s = sponsorOf(st, p.id), need = NEED_LABEL[p.kind];
+      const row = h('div', { class: `quest ${s ? 'main' : ''}` },
+        h('b', {}, `${need.icon} ${p.name}`), h('small', {}, `${need.name} · ${REGION_BY_ID[p.land].name} · needs ${need.needs}`),
+        h('p', { class: 'story' }, `“${p.hope}”`));
+      if (s) {
+        const left = daysLeft(st, s);
+        row.append(h('small', {}, `Wellbeing ${Math.round(s.wellbeing)} · ${left > 0 ? `${left.toFixed(1)} days of care paid` : 'waiting on your care'}${s.home ? ` · lives in your home in ${REGION_BY_ID[PLOT_BY_ID[s.home].region].name}` : ''}`),
+          h('div', { class: 'meter' }, h('i', { style: `inline-size:${Math.round(s.wellbeing)}%` })));
+      }
+      const acts = h('div', { class: 'acts' },
+        btn(`${s ? 'Give' : 'Sponsor'} a day · ${DAY_COINS}🪙`, () => act(() => give(st, p.id, { coins: DAY_COINS }), `${p.name} is cared for today.`), 'small primary', st.coins < DAY_COINS),
+        btn(`A week · ${DAY_COINS * 7}🪙`, () => act(() => give(st, p.id, { coins: DAY_COINS * 7 }), `A week of care for ${p.name}.`), 'small ghost', st.coins < DAY_COINS * 7),
+        ...giftsFor(st, p.id).slice(0, 3).map((gf) => btn(`${ITEMS[gf.item].icon} ${ITEMS[gf.item].name} · +${gf.days} day${gf.days === 1 ? '' : 's'}`, () => act(() => give(st, p.id, { item: gf.item }), `${p.name} thanks you for the ${ITEMS[gf.item].name.toLowerCase()}.`), 'small ghost')));
+      if (s) for (const hid of homes) if (s.home !== hid) {
+        const room = residentsOf(st, hid).length < homeCapacity(st, hid);
+        acts.append(btn(`🏡 Take home to ${REGION_BY_ID[PLOT_BY_ID[hid].region].name}${room ? '' : ' (full)'}`, () => act(() => takeHome(st, p.id, hid), `${p.name} moves into your home.`), 'small ghost', !room));
+      }
+      row.append(acts);
+      return row;
+    };
+    body.append(h('p', { class: 'dim' }, `Sponsor people in need with coins (🪙 ${st.coins}) or in kind — meals, blankets, balms, lamps. Cared for, they grow in wellbeing; in your own home, faster. Each has a hope you may one day help them reach.`));
+    body.append(h('h3', {}, `In ${REGION_BY_ID[land].name}`), ...PEOPLE_IN_NEED.filter((p) => p.land === land).map(card));
+    const elsewhere = st.sponsored.filter((s) => PERSON_BY_ID[s.id] && PERSON_BY_ID[s.id].land !== land);
+    if (elsewhere.length) body.append(h('h3', {}, 'In your care elsewhere'), ...elsewhere.map((s) => card(PERSON_BY_ID[s.id])));
+    body.append(h('h3', {}, 'Your homes'));
+    if (!homes.length) body.append(h('p', { class: 'dim' }, 'Buy a home (🏡 Homes & land) to take people in and build more floors for more of them.'));
+    for (const hid of homes) {
+      const building = floorBuilding(st, hid), floors = floorsOf(st, hid), res = residentsOf(st, hid);
+      body.append(h('div', { class: 'quest' },
+        h('b', {}, `🏡 ${REGION_BY_ID[PLOT_BY_ID[hid].region].name} · ${floors + 1} storey${floors ? 's' : ''}`),
+        h('small', {}, `Room for ${homeCapacity(st, hid)} · living here: ${res.length ? res.map((r) => PERSON_BY_ID[r.id]?.name).join(', ') : 'no one yet'}${building ? ` · a floor is being built (${Math.max(0, (building - st.minutes) / 60).toFixed(1)} h left)` : ''}`),
+        floors >= MAX_FLOORS ? h('small', { class: 'dim' }, 'All the floors it can take.') : h('div', { class: 'acts' },
+          btn(`Build a floor · ${FLOOR_COST.coins.coins}🪙 + ${FLOOR_COST.coins.items.wood} wood`, () => act(() => buildFloor(st, hid, 'coins'), 'The builders begin — the floor will be ready in a day.'), 'small primary', !!building),
+          btn(`Pay in kind · ${FLOOR_COST.kind.items.wood} wood + ${FLOOR_COST.kind.food} food for the builders`, () => act(() => buildFloor(st, hid, 'kind'), 'The builders begin, fed from your stores — ready in a day.'), 'small ghost', !!building))));
     }
   }
 

@@ -36,6 +36,7 @@ import { Messages } from './social/Messages';
 import { UI } from './ui/UI';
 import { VEHICLES, setVehicleEnvironment, type VehicleId } from './vehicles/vehicles';
 import { Traffic } from './traffic/Traffic';
+import { PERSON_BY_ID, floorBuilding, floorsOf, residentsOf, tickCharity } from './charity/charity';
 import { Ambience } from './world/Ambience';
 import { RegionFX } from './world/RegionFX';
 import { TownDressing } from './world/TownDressing';
@@ -100,6 +101,8 @@ export class Game {
   readonly weather = new Weather();
   /** Each land's traffic: its roads, waters and skies alive with vehicles, boats, craft and creatures. */
   readonly traffic = new Traffic();
+  private charityClock = 0;
+  private floorsSig = '';
   readonly quests: QuestSystem;
   readonly msgs: Messages;
   readonly housing: Housing;
@@ -348,6 +351,14 @@ export class Game {
     this.camera.getWorldDirection(this.skyFx.lookDir);
     this.skyFx.update(dt, this.t, this.trav.gPos, this.region.id, this.sky.night, this.sky.sunDirection);
     this.traffic.update(dt, this.t, this.region.id, this.trav.gPos, this.sky.night);
+    // The people in your care: news when someone thrives or their paid days run out.
+    if ((this.charityClock -= dt) <= 0) {
+      this.charityClock = 2;
+      for (const n of tickCharity(this.st)) this.toast(`🤲 ${n.text}`, 'story');
+      // Homes change shape as floors start and finish.
+      const sig = Object.keys(this.st.homeFloors).map((id) => `${id}:${floorsOf(this.st, id)}:${floorBuilding(this.st, id) !== null}`).join('|');
+      if (sig !== this.floorsSig) { this.floorsSig = sig; this.housingDirty = true; }
+    }
     this.sky.moonHidden = this.skyFx.hideMoon;
     this.npcs.update(dt, this.t, this.trav.gPos);
     this.townsfolk.update(dt, this.t, this.trav.gPos);
@@ -776,7 +787,9 @@ export class Game {
   enterHouse(d: Door): void {
     this.inHouse = true;
     this.target = null;
-    this.house.enter(d, this.sky.night, this.houseGathered(d), d.kind === 'home' ? this.homeDecor(d.id.slice(5)) : undefined);
+    const plot = d.kind === 'home' ? d.id.slice(5) : '';
+    const residents = plot ? residentsOf(this.st, plot).map((r) => PERSON_BY_ID[r.id]).filter((p) => !!p) : [];
+    this.house.enter(d, this.sky.night, this.houseGathered(d), plot ? this.homeDecor(plot) : undefined, residents);
     this.ui.openHouse(d);
   }
 
@@ -810,7 +823,7 @@ export class Game {
     if (!removeItems(this.st, opt.cost)) return `Needs ${Object.entries(opt.cost).map(([k, n]) => `${n}× ${ITEMS[k].name}`).join(', ')}.`;
     home[slot] = optionId;
     const d = this.house.door;
-    if (d) this.house.enter(d, this.sky.night, true, home);
+    if (d) this.house.enter(d, this.sky.night, true, home, residentsOf(this.st, plotId).map((r) => PERSON_BY_ID[r.id]).filter((p) => !!p));
     return null;
   }
 
