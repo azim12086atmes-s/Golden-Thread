@@ -300,6 +300,39 @@ keep the ids, `realm`, rough `len`, and the animated pieces (`flapL/R`, `spinX/Y
 10. **Budget** ≤ 3 k triangles per design (≤ 6 k for tall ship, ferry, airliner), few pieces (each piece is a draw call
     per design).
 
+### 12.4 Ships (NEW — the owner asked for ships as well as boats)
+
+Today the waters have only boats (lakes 24–34 m across, ponds, rivers 8–11 m wide), plus one small `tall-ship`. Real
+ships need the **sea**: the world is an island and beyond the lands the ground slopes into the sea (`terrain.ts`
+`outside()`). **Logic (Claude)** will add sea lanes round the coast, harbours in the coastal lands (Fjordhavn, Old London
+on its river, New Yonder, Souq al-Qamar, Nile Crossing's delta, Kaveri Coast, Nusa Rinjani) and ships sailing between
+them, docking, and carrying goods for the supply chain. **Your part** is the ships, as `Design`s in `designs.ts` with
+`realm: 'water'` (add ids and tell Claude; the roster and routes are Claude's). Long ships are fine at sea
+(up to ~120 m for liners; use a lower level of detail far away).
+
+| Ship (`id` to add) | Reference | Must have | Length | Land(s) |
+|---|---|---|---|---|
+| `cargo-ship` | general cargo ship | a long hull with a raked bow, the bridge and funnel aft, deck cranes, hatch covers, stacked cargo | 60–90 m | New Yonder, London, Souq al-Qamar |
+| `container-ship` | feeder container ship | stacks of coloured containers (instanced boxes), bridge aft, gantry | 80–120 m | New Yonder, Nusa Rinjani |
+| `ocean-liner` | a 1930s liner (Queen Mary–like) | black hull, white superstructure in tiers, three red-and-black funnels, rows of lit portholes, lifeboats on davits | 90–120 m | Old London, Maple Row |
+| `cruise-ship` | a modern solarpunk cruise ship | white stepped superstructure, balcony rows, solar sails/wings, a garden deck | 90–120 m | New Yonder |
+| `ferry-large` | ro-ro car ferry | bow visor, car deck doors, two funnels, open passenger decks | 50–70 m | Fjordhavn, Old London, Kaveri Coast |
+| `fishing-trawler` | North Sea trawler | high bow, wheelhouse, gantry and nets, orange floats | 20–30 m | Fjordhavn, Aurora Huts |
+| `hurtigruten` | coastal steamer | a Norwegian coastal steamer with a single funnel and a mast | 50–70 m | Fjordhavn, Aurora Huts |
+| `dhow-large` | baghlah / boom (ocean dhow) | high carved stern, two lateen sails, teak hull | 30–40 m | Souq al-Qamar, Madinat an-Nur |
+| `junk-large` | Chinese treasure-ship style junk | several battened sails in red-brown, a high stern castle, painted eyes are **not** allowed — use painted flowers/waves | 40–60 m | Jade Terraces |
+| `phinisi-large` | Bugis phinisi schooner | two masts with seven sails, a curved wooden hull | 30–50 m | Nusa Rinjani |
+| `kettuvallam-large` | a big Kerala rice barge / houseboat | thatched barrel roofs, a verandah deck | 25–30 m | Kaveri Coast |
+| `tall-ship` (exists, improve) | three-masted full-rigged ship | square sails on all three masts, rigging lines, figurehead of flowers (no face), stern lanterns | 24→50 m | Maple Row, Firenzia, Old London |
+| `hospital-ship` | a white hospital ship with a green crescent/herb-leaf sign (no cross) | white hull, a wide superstructure of wards, helipad | 70–90 m | any coastal land — ties to the clinics and charity |
+| `research-vessel` | a polar research ship | red hull, ice-strengthened bow, cranes, a helideck, a radar mast | 50–70 m | Aurora Huts |
+| `sky-galleon` | a magical airborne galleon (Sky Isles) | a tall ship's hull with feathered wings and glowing sails | 40 m | The Sky Isles (realm `sky`) |
+
+Rules as for every vehicle (§12.2): real proportions, a waterline, rigging as thin rods, portholes and windows dark by day
+and glowing at night, navigation lights (red port, green starboard, white masthead), no people on deck, no faces or
+eyes on figureheads or bows. Budget: ≤ 12 k triangles per ship, instanced where parts repeat (containers, portholes,
+lifeboats).
+
 ### 12.3 Does Safar need a revamp? **Yes.**
 
 Safar (`buildVan` in `src/vehicles/vehicles.ts`) is built from flat boxes: teal and cream wall panels, window cut-outs,

@@ -95,6 +95,10 @@ sections C1–C7) and `3D_BUILDS_HANDOFF.md` (3D work, sections 2a and 3.x). Tic
 - [ ] Townsfolk crossing streets; Sky Isles cable gondolas; distance culling
 - [ ] Rebuild the travellers' own vehicles (Safar as a VW Type 2 split-screen, car, truck, biplane) — keep seats and `SEAT_GAP`
 
+## I2. Ships and the sea (NEW)
+- [ ] 3D: ships — cargo, container, ocean liner, cruise, large ferry, trawler, coastal steamer, ocean dhow, large junk, phinisi, rice barge, full-rigged tall ship, hospital ship, research vessel, sky galleon (`CHATGPT_3D_MODELS.md` §12.4)
+- [ ] Logic (Claude): sea lanes round the island's coast, harbours in the coastal lands, ships sailing between them, docking, carrying goods for the supply chain
+
 ## J. Carried over from earlier sessions
 - [ ] Walk-around interiors (rooms are dioramas now)
 - [ ] Children going home at their destination (caravan limit)
