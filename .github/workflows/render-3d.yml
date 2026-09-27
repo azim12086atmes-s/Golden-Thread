@@ -5,7 +5,6 @@ on:
     branches: [codex/3d-model-renders]
     paths:
       - .github/workflows/render-3d.yml
-      - scripts/probe/probe.cjs
   workflow_dispatch:
 
 permissions:
@@ -14,7 +13,7 @@ permissions:
 jobs:
   render:
     runs-on: ubuntu-latest
-    timeout-minutes: 45
+    timeout-minutes: 30
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
@@ -24,19 +23,17 @@ jobs:
       - run: npm ci
       - run: npm install --no-save playwright
       - run: npx playwright install --with-deps chromium
-      - name: Start game preview
+      - name: Start monument viewer
         run: |
           npx vite --host 127.0.0.1 --port 5191 --strictPort > vite.log 2>&1 &
           for i in {1..30}; do
-            if curl -fsS http://127.0.0.1:5191/ > /dev/null; then exit 0; fi
+            if curl -fsS http://127.0.0.1:5191/monument-preview.html > /dev/null; then exit 0; fi
             sleep 2
           done
           cat vite.log
           exit 1
-      - name: Capture 19 actual in-game models
-        run: |
-          mkdir -p art/monument-renders
-          SHOTS=art/monument-renders PORT=5191 node scripts/probe/probe.cjs scripts/probe/monument-renders.js
+      - name: Capture historical monuments
+        run: node scripts/probe/render-standalone.cjs
       - uses: actions/upload-artifact@v4
         if: always()
         with:
@@ -44,7 +41,9 @@ jobs:
           path: art/monument-renders/*.png
           if-no-files-found: warn
       - name: Publish screenshots to preview branch
+        if: always()
         run: |
+          if ! compgen -G 'art/monument-renders/*.png' > /dev/null; then exit 0; fi
           git config user.name 'github-actions[bot]'
           git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
           git add art/monument-renders
