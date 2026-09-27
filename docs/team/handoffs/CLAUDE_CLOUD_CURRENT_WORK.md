@@ -109,6 +109,8 @@ Publish with `bash scripts/deploy-pages.sh` (builds, tests, copies to gh-pages r
 - A full caravan cannot yet say goodbye (children going home at their destination is described but not built), so a fifth
   child/pet waits.
 - Wind moves grass, foliage, flowers, the carpet and particles; robes and headscarves do not sway (capes already ripple).
-- Rivers have no bridges (water is a walkable surface, as before).
+- Rivers have bridges wherever they cross the line of an avenue (22, walkable); elsewhere the water is a walkable surface, as before.
 - Crowd figures far away are simple instanced shapes; up close they swap to full outfits.
 - Sky ornaments were screenshot-checked in the Meadow, Islamic, Egypt, Norway and Sky Isles; others are covered by tests only.
+
+**Claude's remaining logic work** is listed, in order, in `MASTER_BUILD_LIST.md` section L.

@@ -23,9 +23,15 @@ then this file. Master checklist: `docs/team/handoffs/MASTER_BUILD_LIST.md`.
   behaviour), `src/world/trees.ts` (species habits), `src/world/lanterns.ts`, `src/world/SkyOrnaments.ts`,
   `src/world/models/*` (the contracts below), `src/event/Castle.ts`, `src/traffic/designs.ts`, `src/traffic/creatures.ts`,
   `src/traffic/shaper.ts`, the model parts of `src/vehicles/vehicles.ts` and `src/housing/HousingView.ts` `buildDecor`.
+  Also the *looks* of the ground and the effects: `groundColor` in `src/world/terrain.ts`, `src/world/Meadow.ts`
+  `patternGround`, `src/world/surfaces.ts`, the water shader in `src/world/Water.ts`, and the particle/sky files listed
+  in §17. Read §23 first: most of these already hold looks the owner approved.
 - **Files Claude owns** (do not edit): `src/core/*`, `src/charity/*`, `src/institutions/*`, `src/economy/*`, `src/housing/housing.ts`,
   `src/housing/HouseInterior.ts` rules, `src/ui/*`, `src/Game.ts`, `src/traffic/Traffic.ts` and `roster.ts`,
   `src/world/RegionBuilder.ts` placement, `tests/*` (you may *add* test files for your models).
+  Also the *shape* of the land: terrain heights in `src/world/terrain.ts` (`naturalHeight`, `terrainHeight`, the island
+  edge, plot and castle levelling, platforms), `src/world/waters.ts` (where lakes, ponds and rivers are), and
+  `WATER_Y`. Harbours, sea lanes, bridges, fields, plots, caves and houses are all placed from them (§23).
 - **Every push**: `npx tsc --noEmit` and `npx vitest run` pass; screenshots (day and night) of everything changed, via
   `scripts/probe/`, attached to your report in `docs/team/handoffs/CHATGPT_3D_REPORT.md` with what was verified by eye.
 - **Content rules** (tests enforce them): no eyes/nose/mouth on any person, animal, statue, carving or creature-shaped
@@ -403,6 +409,8 @@ per tree and ≤ 40 leaf cards per crown on average; `tests/foliage.test.ts` and
 
 ## 14. Terrain and texturing
 
+> Add to the ground's look; never change its shape — see §23.
+
 ### 14.1 How the ground is drawn now
 - `src/world/terrain.ts`: heights (`naturalHeight`: relief, dunes via `duneShape`, carved water) and per-vertex ground
   colour (`groundColor`: the land's `ground`/`groundAlt` blended by noise, snow above the snowline, rock on slopes via
@@ -456,6 +464,8 @@ Bengal-style roofs on jharokhas and Mughal pavilions (faced forward). Check othe
 write: a `CylinderGeometry` half (thetaLength π) must be turned so its curve faces up.
 
 ## 17. Particles and sky effects (NEW)
+
+> Add effects; keep the owner-approved skies, stars and lanterns exactly as they are — see §23.
 
 Particle and sky systems live in `src/world/Weather.ts`, `Ambience.ts`, `RegionFX.ts`, `SkyFX.ts`, `SkyOrnaments.ts`,
 `SkyLanterns.ts` (you may edit these; keep their public methods). Keep particle counts modest (a few hundred per effect).
@@ -622,6 +632,50 @@ Ships sail a sea lane along each coast and tie up at the pier head (`traffic/Tra
 **Ships:** add the §12.4 ids to `designs.ts`. The sea lanes already name them, and each one sails the moment its id
 exists (`resolveShip`); until then a stand-in sails in its place. Ships up to ~120 m long fit the lanes (each coast
 lane is ~640 m long with lanes 24 m apart).
+
+---
+
+## 23. Existing terrain and effects — keep them, add to them (READ BEFORE §14 and §17)
+
+**Decision:** we are *not* replacing the terrain and effects that exist. §14 and §17 ask you to **add** layers on top
+(richer ground patterns, rock strata, sastrugi, flames, mist, festival lanterns). Everything that is there now
+stays unless the owner asks for a change.
+
+### 23.1 Do not change — the shape of the land (Claude owns it)
+- **Heights:** everything in `terrain.ts` that decides height: `naturalHeight`, `terrainHeight`, `outside` (the island
+  edge and the sea), dune height (`DUNES`, `duneShape`), plot and castle levelling, platforms, and `WATER_Y`.
+- **Water placement:** `waters.ts`, which decides where lakes, ponds and rivers are and how they are carved.
+- **Why:** these place things. The 14 harbours and their sea lanes are found from the shore; the 22 bridges from where
+  rivers cross the avenues; the two fields per land need dry, even ground. Plots, caves, houses, trees and the
+  walkways on piers and bridges depend on them too. Tests check all of this (`tests/harbours.test.ts`,
+  `tests/bridges.test.ts`, `tests/supply.test.ts`, `tests/nature.test.ts`, `tests/world.test.ts`).
+- **If you need a height change** (a hollow for a cave, a terrace, a riverbank), write it under Contract requests and
+  Claude will make it and re-check the placements.
+
+### 23.2 Free to improve — the look of the land
+- **Ground:** `groundColor` (ground colours, rock on slopes, snow, sand at water edges), `patternGround`, `surfaces.ts`,
+  and the water shader in `Water.ts`. Keep its uniforms and `setWaterLook`.
+- **Effects:** the effect files of §17. Keep their public methods, and keep every pattern world-space and faded with
+  distance.
+
+### 23.3 Owner-approved looks — keep exactly as they are
+- **Sky colours** (`locale.ts` `LOCALES[land].sky`, blended in `Sky.ts`):
+  - the Meadow keeps its **pink** sky ("pink is needed for meadows");
+  - the grass lands have a light, **white sky tinted a little blue**;
+  - the desert lands are **white with a yellowish tint**;
+  - the owner asked to lose the pinkish cast everywhere except the Meadow.
+- **Night sky:** stars dimmed; a **faint** Milky Way and a **dim** nebula. Keep them subtle; do not brighten them.
+- **Bagh-e-Noor's crescent** moon with its orbit (`SkyFX.ts`). The owner remembers it; keep it.
+- **Each land's lanterns:** its own lantern design on posts and in the sky, glowing by intensity, and the day/night
+  switch of the sky ornaments.
+- **The Meadow celebration:** every land's particles at once; the aurora-like rainbows, brighter at night.
+- **Grass and trees:** dense, even grass tufts; translucent leafy tree crowns; wind in grass, foliage and particles.
+- **The crowns** (characters are shared, so ask before editing `CharacterModel.ts`): the girl's grand arched crown with
+  rose and ruby gems is bigger than the boy's pearl tiara, both float above the head, and **neither spins**.
+
+### 23.4 When you change an existing effect
+Take before-and-after screenshots, by day and by night, in the same place, and put them in your report. If a change
+alters any look in 23.3, don't make it: ask under Contract requests.
 
 ---
 

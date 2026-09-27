@@ -16,8 +16,9 @@ sections C1–C7) and `3D_BUILDS_HANDOFF.md` (3D work, sections 2a and 3.x). Tic
 - [x] Own institutes by building them on your land, in stages, each stage a real building (e.g. watch boutique → workshop → manufacture → school)
 - [x] Join and grow inside established institutes in each town (course, intern, teach, enrol a sponsored learner)
 - [x] Every stage needs a skilled person: you, someone you pay, or someone you sponsor and teach / sponsor to learn
-- [ ] Clinics upgradable to hospitals; libraries and knowledge institutions; schools, madrasas, tent schools, universities; a Hogwarts-style magic school
-- [ ] Each land's own science and institute ladder (Chinese medicine, Ayurveda, Swiss watchmaking, Islamic sciences, London engineering, New Yonder tech, Meadow magic, and the rest — research and cite sources)
+- [x] Clinics that grow into hospitals; libraries; tent school → madrasa/college → university; the Meadow's castle school of wizardry (logic and stages in `institutions/catalogue.ts`; buildings are 3D §2)
+- [x] Each land's own science and four-stage ladder (Chinese medicine, Ayurveda, Swiss watchmaking, Islamic sciences, London engineering, New Yonder tech, Meadow magic, and the rest)
+- [ ] Cite real-world sources for each land's science in `docs/research/` (owner: "search what every place has")
 - [x] Build time; payment in coins or in kind (wood, the land's goods, food)
 
 ## C. Work, skills and learning (C3, C4)
@@ -116,3 +117,50 @@ sections C1–C7) and `3D_BUILDS_HANDOFF.md` (3D work, sections 2a and 3.x). Tic
 - [ ] 3D: interiors for monuments, the castle (great hall, library, tower), every institute stage, penthouses and caverns (`CHATGPT_3D_MODELS.md` §20; contract `src/world/models/interiors.ts`)
 - [x] Logic: doors ask `buildInterior` first (monuments, institutes via “Step inside”, caverns after exploring, castle, penthouses) and use its seats, spots, gather point and camera; scenes seating the two closer than 2.2 m are refused (`HouseInterior.safeInterior`); the institute panel opens from inside
 - [ ] Logic: a door into the celebration castle, and penthouses to buy (after their models)
+
+## L. Claude's logic queue — still to do (in order)
+
+Everything here is logic (rules, state, placement, wiring, UI, tests); 3D models stay with Codex.
+
+1. **Travel between lands**
+   - Vehicles drive out of one land and into the next, with no popping in at the borders.
+   - Couriers and ships run their whole journey.
+   - Buses and ferries run between towns.
+2. **Stops and riding**
+   - Stops: bus stops, taxi ranks, ferry piers (the harbour piers exist), jetties, airfields, drone docks.
+   - Take-off, landing and docking at them.
+   - The travellers ride buses, taxis, trams, ferries, gondolas and air taxis, in separate seats at least `SEAT_GAP`
+     apart.
+3. **Junctions**
+   - Turning at the ring road, traffic lights or roundabouts.
+   - Townsfolk crossing the streets.
+   - Distance culling of far traffic.
+4. **Time of day for traffic**
+   - Quieter nights.
+   - Lantern boats at dusk.
+   - Kites and balloons by day.
+   - Sky Isles cable gondolas.
+5. **The celebration castle's door**
+   - Walk into the castle.
+   - Its great hall, library and tower as built interiors (`buildInterior` `castle`; the wiring is done).
+6. **Penthouses in New Yonder**
+   - Buy one, furnish it, and live there or house people you sponsor.
+   - After the 3D side builds the penthouse and its interior.
+7. **Pay in opportunities**
+   - Pay someone with a course, training or a certificate instead of coins.
+   - Certificates from courses unlock job ranks and service tiers.
+8. **Markets fill up for your own sales too.** Today only couriers' sales lower a market's price.
+9. **Manufacturing and inventions**
+   - Make and sell the inventions from your theses at your institutes.
+   - Healthcare, tech and logistics as businesses you run: the "economy of services" still open in D.
+10. **Children going home** at their destinations when the caravan is full (J).
+11. **Performance**
+    - Instanced party guests at the celebration.
+    - A real-GPU frame-rate check.
+12. **Research notes**: cite the real sources for each land's science and institutes (B).
+13. **Wiring for Codex's work as it lands**
+    - Add new ship ids to `SEA_TRAFFIC`.
+    - Place penthouses, screens and sky artifacts once their models exist.
+    - Answer Codex's contract requests.
+
+Keep this list, the handoffs and `CHATGPT_3D_MODELS.md` up to date after each piece.
