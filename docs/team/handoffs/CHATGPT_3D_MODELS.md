@@ -149,8 +149,8 @@ stone lantern beside it in Sakura Hollow). Contract to add: `lotusPond(c, r)` in
 
 ## 8. The Sky Isles (NEW)
 
-More and **larger** trees (the isles' trees read tiny next to the houses; 60 trees now vs 340 elsewhere — Claude will
-raise the count; you add the species): new branching fantasy habits in `trees.ts` `HABITS` — pastel blossom trees,
+More and **larger** trees (the isles' trees read tiny next to the houses; Claude has raised the count to 280 and the size
+×1.9 in `nature.ts`; you add the species): new branching fantasy habits in `trees.ts` `HABITS` — pastel blossom trees,
 silver-barked moon trees, cloud willows, crystal-fruit trees — with leaf-picture crowns, including giants. Ground
 texture: patterns in `Meadow.ts` `patternGround` for the isles (cloud-stone paving, star-dust veins, moss, flower
 meadows). Richer surfaces for buildings (moonstone ashlar, pearl tiles, silver filigree, cloud plaster). Floating islands
