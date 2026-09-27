@@ -291,6 +291,8 @@ body.cinematic #ui > .feed { opacity: 0; }
 .worn .merged { color: #bfe8c8; }
 .chips { display: flex; gap: 6px; overflow-x: auto; padding-block-end: 4px; scrollbar-width: thin; scrollbar-color: rgba(245, 196, 81, 0.5) transparent; }
 .chips .btn { flex: none; }
+.chips.wrap { flex-wrap: wrap; overflow: visible; }
+.chip { flex: none; padding: 3px 8px; border-radius: 999px; background: rgba(255, 244, 214, 0.1); border: 1px solid rgba(245, 196, 81, 0.35); font-size: 12px; white-space: nowrap; }
 .chips input { flex: none; inline-size: 150px; padding: 6px 12px; border-radius: 999px; border: 1px solid var(--line); background: rgba(255, 255, 255, 0.08); color: var(--ink); font: 700 12px var(--sans); }
 .chips input:focus { outline: 2px solid var(--gold); }
 .shelf { display: grid; grid-auto-flow: column; grid-template-rows: repeat(2, auto); grid-auto-columns: 138px; gap: 8px; overflow-x: auto; overflow-y: hidden; padding-block-end: 8px; scroll-snap-type: x proximity; scrollbar-width: thin; scrollbar-color: rgba(245, 196, 81, 0.6) rgba(255, 255, 255, 0.06); }

@@ -32,6 +32,8 @@ import { features, objectives, type Card } from '../story/intro';
 import { WONDERS, foundWonder, wonderHint, wonderPos } from '../world/wonders';
 import { VEHICLES, type VehicleId } from '../vehicles/vehicles';
 import { GRID_COLS, GRID_ROWS, REGIONS, REGION_BY_ID, regionCenter, type RegionId, type RegionSpec } from '../world/regions';
+import { INSTITUTE_SITES } from '../institutions/sites';
+import { FIELD_SITES } from '../world/plots';
 import type { Game } from '../Game';
 
 type Panel = 'finder' | 'work' | 'harbour' | 'field' | 'institute' | 'care' | 'wardrobe' | 'bag' | 'journal' | 'map' | 'messages' | 'vehicles' | 'dialogue' | 'animal' | 'build' | 'van' | 'house' | 'farm' | 'market' | 'help' | 'homes' | 'property' | null;
@@ -722,6 +724,7 @@ export class UI {
       for (const p of owned) body.append(h('div', { class: 'quest main' }, h('b', {}, `🏡 ${REGION_BY_ID[p.region].name}`), h('small', {}, `${st.plots[p.id].decor.length} things built · stand on it and press B to build`),
         btn('Show the way', () => this.showWay(p, `Your land in ${REGION_BY_ID[p.region].name}`), 'small')));
     }
+    body.append(...this.buildGuide(this.g.region.id));
     body.append(h('h3', {}, 'For sale'));
     for (const p of PLOTS.filter((x) => !hs.owns(x.id))) {
       const known = st.discovered.includes(p.region);
@@ -1140,7 +1143,27 @@ export class UI {
       h('div', { class: 'quest' }, h('b', {}, '🌱 The land'), h('small', {}, `🪙 ${site.price} — build everything yourself (B)`), btn(`Buy the land · 🪙 ${site.price}`, () => { this.g.buyProperty(site, false); this.closePanel(); }, 'primary')),
       h('div', { class: 'quest main' }, h('b', {}, `🏡 A home in the ${land.name} style`), h('small', {}, `🪙 ${hs.homePrice(site.id)} — the land with a house already standing on it`), btn(`Buy the home · 🪙 ${hs.homePrice(site.id)}`, () => { this.g.buyProperty(site, true); this.closePanel(); }, 'primary')),
       h('p', { class: 'dim' }, `You have 🪙 ${this.g.st.coins}. Earn more by making goods and selling them where they are wanted.`),
+      ...this.buildGuide(site.region),
     );
+  }
+
+  /**
+   * What can be built, and where: on a plot of your own (with B), and in the land itself — its
+   * institute sites and farmland — so the player can see it all before buying.
+   */
+  private buildGuide(land: RegionId): HTMLElement[] {
+    const name = REGION_BY_ID[land].name;
+    const onPlot = DECOR.filter((d) => !d.style && d.price > 0);
+    const houses = DECOR.filter((d) => d.style);
+    const own = houses.find((d) => d.style === land);
+    const sites = INSTITUTE_SITES.filter((q) => q.land === land).length, fields = FIELD_SITES.filter((f) => f.land === land).length;
+    return [
+      h('h3', {}, '🔨 What you can build on your land'),
+      h('div', { class: 'chips wrap' }, ...onPlot.map((d) => h('span', { class: 'chip' }, `${d.icon} ${d.name} · 🪙 ${d.price}`))),
+      h('small', { class: 'dim' }, `A house in any land's style (🪙 ${houses[0]?.price ?? 220})${own ? ` — here, the ${own.name}` : ''}. Stand on your land and press B to place things; walk in to furnish your home.`),
+      h('h3', {}, `🏛️ What you can build in ${name}`),
+      h('p', { class: 'dim' }, `${sites} open institute site${sites === 1 ? '' : 's'}: found ${institutesOf(land).map((d) => d.name.toLowerCase()).join(', ')} — and grow it in four stages. ${fields ? `${fields} field${fields === 1 ? '' : 's'} of farmland to rent and sow.` : ''} Walk onto a site or field and press E.`),
+    ];
   }
 
   private journal(body: HTMLElement): void {

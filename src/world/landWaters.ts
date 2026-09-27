@@ -19,7 +19,8 @@ import type { RegionId } from './regions';
 /** The four squares (local to the land's centre): on the diagonals between the avenues. */
 export const SQUARE_R = 12;
 export function squaresOf(land: RegionId): Array<{ x: number; z: number }> {
-  const d = land === 'skyisles' ? 62 : 100;
+  // Nile Crossing's pyramids fill its inner quarters, so its squares lie just beyond the ring road.
+  const d = land === 'skyisles' ? 62 : land === 'egypt' ? 172 : 100;
   return [0, 1, 2, 3].map((k) => { const a = Math.PI / 4 + (k * Math.PI) / 2; return { x: Math.cos(a) * d, z: Math.sin(a) * d }; });
 }
 

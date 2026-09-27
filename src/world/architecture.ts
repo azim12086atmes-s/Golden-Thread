@@ -1096,7 +1096,7 @@ const landmarks: Record<RegionId, LandmarkFn> = {
 
   egypt(c, o) {
     const stone = '#e0c48a';
-    // The pyramids on their plateau west of the town (reserved.ts), as at Giza west of the Nile:
+    // The pyramids in the heart of the town (reserved.ts), in the quarters between the avenues:
     // true square pyramids with flat faces (so their stone courses run level), each set on the
     // lowest ground under it, a gilded capstone on top.
     const cc = regionCenter(c.s);
