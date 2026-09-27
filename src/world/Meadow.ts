@@ -180,13 +180,17 @@ export const GRASS_UNIFORMS = { uNight: { value: 0 }, uFocus: { value: new THREE
  * A Lambert material whose instances bend with the wind by how far up the blade they are, with
  * `tip` colouring (dark root → the instance colour → a light tip) and a night glimmer.
  */
-function swayingMaterial(kind: 'grass' | 'flower'): THREE.MeshLambertMaterial {
-  const m = new THREE.MeshLambertMaterial({ side: THREE.DoubleSide, map: kind === 'grass' ? tuftTexture() : flowerTexture(), alphaTest: 0.4 });
+const TEX: { grass?: THREE.Texture | null; flower?: THREE.Texture | null } = {};
+/** The ring of the meadow a material draws: tufts fade in at `inner` and out at `outer` (metres). */
+interface Ring { inner: { value: number }; outer: { value: number } }
+function swayingMaterial(kind: 'grass' | 'flower', ring: Ring): THREE.MeshLambertMaterial {
+  const map = kind === 'grass' ? (TEX.grass ??= tuftTexture()) : (TEX.flower ??= flowerTexture());
+  const m = new THREE.MeshLambertMaterial({ side: THREE.DoubleSide, map, alphaTest: 0.4 });
   m.onBeforeCompile = (sh) => {
-    Object.assign(sh.uniforms, WIND_UNIFORMS, GRASS_UNIFORMS);
+    Object.assign(sh.uniforms, WIND_UNIFORMS, GRASS_UNIFORMS, { uInner: ring.inner, uOuter: ring.outer });
     sh.vertexShader = sh.vertexShader
       .replace('#include <common>', `#include <common>\nattribute float tip;\nvarying float vTip;\n${WIND_GLSL}`)
-      .replace('#include <common>\nattribute float tip;', '#include <common>\nattribute float tip;\nuniform vec3 uFocus; uniform float uFieldR;')
+      .replace('#include <common>\nattribute float tip;', '#include <common>\nattribute float tip;\nuniform vec3 uFocus; uniform float uFieldR; uniform float uInner; uniform float uOuter;')
       .replace('#include <uv_vertex>', `#include <uv_vertex>
         ${kind === 'flower' ? `{
           // Which of the eight flowers grows here: fixed by the place, so it never changes.
@@ -196,9 +200,11 @@ function swayingMaterial(kind: 'grass' | 'flower'): THREE.MeshLambertMaterial {
         }` : ''}`)
       .replace('#include <project_vertex>', `
         vTip = tip;
-        // Fade out towards the edge of the field so it never shows a border.
+        // Each ring of the meadow grows in where the ring inside it thins out, and thins out
+        // towards its own edge, so the field never shows a border.
         vec3 rootW = (modelMatrix * instanceMatrix * vec4(0.0, 0.0, 0.0, 1.0)).xyz;
-        transformed *= 1.0 - smoothstep(uFieldR * 0.45, uFieldR, length(rootW.xz - uFocus.xz));
+        float rd = length(rootW.xz - uFocus.xz);
+        transformed *= smoothstep(uInner * 0.65, uInner, rd) * (1.0 - smoothstep(uOuter * 0.55, uOuter, rd));
         vec4 wpG = modelMatrix * instanceMatrix * vec4(transformed, 1.0);
         float bend = ${kind === 'grass' ? 'tip * tip * 0.55' : 'min(tip, 1.0) * 0.35'};
         wpG.xz += windOffset(wpG.xyz, bend);
@@ -214,7 +220,7 @@ function swayingMaterial(kind: 'grass' | 'flower'): THREE.MeshLambertMaterial {
       .replace('#include <emissivemap_fragment>', `#include <emissivemap_fragment>
         ${kind === 'grass'
           ? 'totalEmissiveRadiance += diffuseColor.rgb * smoothstep(0.7, 1.0, vTip) * uNight * 0.55;'
-          : 'totalEmissiveRadiance += min(diffuseColor.rgb, vec3(0.85)) * petal * (0.42 + uNight * 0.7);'}`);
+          : 'totalEmissiveRadiance += min(diffuseColor.rgb, vec3(0.7)) * petal * (0.22 + uNight * 0.75);'}`);
     if (kind === 'flower') {
       // Only the petals take the flower's colour (and glow); stems, leaves and hearts keep their paint.
       sh.fragmentShader = sh.fragmentShader.replace('#include <color_fragment>', `
@@ -229,7 +235,14 @@ function swayingMaterial(kind: 'grass' | 'flower'): THREE.MeshLambertMaterial {
   return m;
 }
 
-const MATS = { grass: swayingMaterial('grass'), flower: swayingMaterial('flower') };
+const ring = (inner: number, outer: number): Ring => ({ inner: { value: inner }, outer: { value: outer } });
+/** The meadow in rings: dense near the travellers, larger clumps further out, big clumps to the far distance. */
+const RINGS = { near: ring(0, 32), mid: ring(26, 100), far: ring(88, 240) };
+const MATS = {
+  grass: swayingMaterial('grass', RINGS.near), flower: swayingMaterial('flower', RINGS.near),
+  midGrass: swayingMaterial('grass', RINGS.mid), midFlower: swayingMaterial('flower', RINGS.mid),
+  farGrass: swayingMaterial('grass', RINGS.far),
+};
 
 /** Where grass may grow: green ground, above the water, off the roads and out of the plaza. */
 export function grassy(x: number, z: number, h: number, col: THREE.Color): boolean {
@@ -250,6 +263,9 @@ export const FIELD_CELL = 0.34;
 export const FIELD_CELLS = 190; // 65 m across, a tuft every 34 cm, each wide enough to overlap its neighbours
 export const FLOWER_CELL = 0.7;
 export const FLOWER_CELLS = 92; // 64 m across: a field carpeted with flowers
+/** Further out: clumps every metre to 100 m, then big clumps every 2.6 m to 240 m. */
+export const MID_CELL = 1.0, MID_CELLS = 200, FAR_CELL = 2.6, FAR_CELLS = 186;
+export const MID_FLOWER_CELL = 1.8, MID_FLOWER_CELLS = 112;
 
 const cellHash = (i: number, j: number, k: number) => {
   const v = Math.sin(i * 127.1 + j * 311.7 + k * 74.7) * 43758.5453;
@@ -283,8 +299,14 @@ class Field {
   /** Slots holding something right now. */
   grown = 0;
 
+  private lastI = NaN;
+  private lastJ = NaN;
+
   update(fx: number, fz: number): void {
     const G = this.cells, fi = Math.floor(fx / this.cell) - G / 2, fj = Math.floor(fz / this.cell) - G / 2;
+    // Nothing to replant until the travellers cross into a new cell.
+    if (fi === this.lastI && fj === this.lastJ) return;
+    this.lastI = fi; this.lastJ = fj;
     let changed = false;
     for (let a = 0; a < G; a++) {
       const wi = fi + ((((a - fi) % G) + G) % G);
@@ -310,6 +332,9 @@ export class MeadowField {
   readonly group = new THREE.Group();
   private grass: Field;
   private flowers: Field;
+  private midGrass: Field;
+  private farGrass: Field;
+  private midFlowers: Field;
   private m = new THREE.Matrix4();
   private q = new THREE.Quaternion();
   private s = new THREE.Vector3();
@@ -320,31 +345,45 @@ export class MeadowField {
   enabled = true;
 
   constructor() {
-    this.grass = new Field(GEO.tuft, MATS.grass, FIELD_CELL, FIELD_CELLS, (im, k, i, j) => {
-      // Evenly spaced: one tuft near the middle of every cell, nudged only a little.
-      const x = (i + 0.2 + cellHash(i, j, 1) * 0.6) * FIELD_CELL, z = (j + 0.2 + cellHash(i, j, 2) * 0.6) * FIELD_CELL;
+    this.grass = new Field(GEO.tuft, MATS.grass, FIELD_CELL, FIELD_CELLS, this.plantGrass(FIELD_CELL, 1));
+    this.flowers = new Field(GEO.flower, MATS.flower, FLOWER_CELL, FLOWER_CELLS, this.plantFlower(FLOWER_CELL, 1, 0.8));
+    // The rings further out: fewer, larger clumps, so green ground reads as grass as far as you can see.
+    this.midGrass = new Field(GEO.tuft, MATS.midGrass, MID_CELL, MID_CELLS, this.plantGrass(MID_CELL, 1.9));
+    this.farGrass = new Field(GEO.tuft, MATS.farGrass, FAR_CELL, FAR_CELLS, this.plantGrass(FAR_CELL, 3.6));
+    this.midFlowers = new Field(GEO.flower, MATS.midFlower, MID_FLOWER_CELL, MID_FLOWER_CELLS, this.plantFlower(MID_FLOWER_CELL, 1.5, 0.6));
+    for (const f of [this.midGrass, this.farGrass, this.midFlowers]) f.mesh.receiveShadow = false;
+    this.group.add(this.grass.mesh, this.flowers.mesh, this.midGrass.mesh, this.farGrass.mesh, this.midFlowers.mesh);
+  }
+
+  /** Plant grass tufts in a grid of `cell` metres, `size` times the near field's tufts. */
+  private plantGrass(cell: number, size: number) {
+    return (im: THREE.InstancedMesh, k: number, i: number, j: number): boolean => {
+      // Evenly spaced: one tuft near the middle of every cell, nudged a little.
+      const x = (i + 0.2 + cellHash(i, j, 1) * 0.6) * cell, z = (j + 0.2 + cellHash(i, j, 2) * 0.6) * cell;
       if (!this.grows(x, z, i, j)) { im.setMatrixAt(k, this.zero); return false; }
       this.q.setFromAxisAngle(this.up, cellHash(i, j, 4) * Math.PI * 2);
-      const sc = 0.6 + cellHash(i, j, 8) * 0.2;
-      im.setMatrixAt(k, this.m.compose(this.p.set(x, this.h - 0.02, z), this.q, this.s.set(sc * 1.35, sc * (0.66 + cellHash(i, j, 9) * 0.3), sc * 1.35)));
-      // Vibrant: the ground's own green, richer, with a touch of blue-green or gold.
+      const sc = (0.6 + cellHash(i, j, 8) * 0.2) * size;
+      im.setMatrixAt(k, this.m.compose(this.p.set(x, this.h - 0.02, z), this.q, this.s.set(sc * 1.35, sc * (0.66 + cellHash(i, j, 9) * 0.3) / Math.sqrt(size), sc * 1.35)));
       // Every tuft its own green: patches drift between yellow-green, fresh green, blue-green and
       // olive, with lighter and darker tufts mixed through them.
       const patch = Math.sin(x * 0.11 + Math.sin(z * 0.07) * 2) * Math.sin(z * 0.09 - x * 0.03);
       this.c.offsetHSL(patch * 0.06 + (cellHash(i, j, 10) - 0.5) * 0.1, 0.18 + cellHash(i, j, 12) * 0.12, 0.1 + (cellHash(i, j, 11) - 0.5) * 0.14);
       im.setColorAt(k, this.c);
       return true;
-    });
-    this.flowers = new Field(GEO.flower, MATS.flower, FLOWER_CELL, FLOWER_CELLS, (im, k, i, j) => {
-      const x = (i + 0.1 + cellHash(i, j, 21) * 0.8) * FLOWER_CELL, z = (j + 0.1 + cellHash(i, j, 22) * 0.8) * FLOWER_CELL;
-      if (cellHash(i, j, 23) > 0.8 || !this.grows(x, z, i, j)) { im.setMatrixAt(k, this.zero); return false; }
+    };
+  }
+
+  /** Plant wildflowers in a grid of `cell` metres (`share` of cells bloom), `size` times the near ones. */
+  private plantFlower(cell: number, size: number, share: number) {
+    return (im: THREE.InstancedMesh, k: number, i: number, j: number): boolean => {
+      const x = (i + 0.1 + cellHash(i, j, 21) * 0.8) * cell, z = (j + 0.1 + cellHash(i, j, 22) * 0.8) * cell;
+      if (cellHash(i, j, 23) > share || !this.grows(x, z, i, j)) { im.setMatrixAt(k, this.zero); return false; }
       const land = regionAt(x, z), bloom = land.flowers, lights = LOCALES[land.id].lights, v = cellHash(i, j, 26);
       this.q.setFromAxisAngle(this.up, cellHash(i, j, 24) * Math.PI * 2);
-      im.setMatrixAt(k, this.m.compose(this.p.set(x, this.h, z), this.q, this.s.setScalar(1.05 + cellHash(i, j, 27) * 0.5)));
+      im.setMatrixAt(k, this.m.compose(this.p.set(x, this.h, z), this.q, this.s.setScalar((1.05 + cellHash(i, j, 27) * 0.5) * size)));
       im.setColorAt(k, this.c.set(v < 0.2 ? lights[Math.floor(v * 5 * lights.length) % lights.length] : bloom[Math.floor(v * 97) % bloom.length]));
       return true;
-    });
-    this.group.add(this.grass.mesh, this.flowers.mesh);
+    };
   }
 
   private h = 0;
@@ -363,12 +402,15 @@ export class MeadowField {
 
   update(focus: THREE.Vector3, ground: number): void {
     // High in the air the meadow is too far below to matter.
-    this.group.visible = this.enabled && focus.y - ground < 22;
+    this.group.visible = this.enabled && focus.y - ground < 60;
     if (!this.group.visible) return;
     GRASS_UNIFORMS.uFocus.value.copy(focus);
     GRASS_UNIFORMS.uFieldR.value = Math.min(FIELD_CELL * FIELD_CELLS, FLOWER_CELL * FLOWER_CELLS) / 2 - 1;
     this.grass.update(focus.x, focus.z);
     this.flowers.update(focus.x, focus.z);
+    this.midGrass.update(focus.x, focus.z);
+    this.farGrass.update(focus.x, focus.z);
+    this.midFlowers.update(focus.x, focus.z);
   }
 }
 

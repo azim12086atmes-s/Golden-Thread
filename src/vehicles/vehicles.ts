@@ -64,7 +64,9 @@ function finish(c: string): THREE.Material {
   if (hsl.l < 0.2) mat = new THREE.MeshStandardMaterial({ color: c, roughness: 0.85, metalness: 0 });
   else if (hsl.s < 0.12 && hsl.l > 0.55 && hsl.l < 0.84) mat = new THREE.MeshStandardMaterial({ color: c, roughness: 0.3, metalness: 0.85, envMapIntensity: 0.75 });
   else if (hsl.h > 0.04 && hsl.h < 0.12 && hsl.s < 0.5 && hsl.l < 0.45) mat = new THREE.MeshStandardMaterial({ color: c, roughness: 0.8, metalness: 0 });
-  else mat = new THREE.MeshPhysicalMaterial({ color: c, roughness: 0.38, metalness: 0.35, clearcoat: 0.8, clearcoatRoughness: 0.2, envMapIntensity: 0.55 });
+  // Light paint gets a softer shine so it never glares.
+  else if (hsl.l > 0.78) mat = new THREE.MeshPhysicalMaterial({ color: c, roughness: 0.5, metalness: 0.05, clearcoat: 0.4, clearcoatRoughness: 0.35, envMapIntensity: 0.22 });
+  else mat = new THREE.MeshPhysicalMaterial({ color: c, roughness: 0.4, metalness: 0.3, clearcoat: 0.7, clearcoatRoughness: 0.22, envMapIntensity: 0.45 });
   mat.envMap = vehicleEnv;
   return mat;
 }
