@@ -999,56 +999,110 @@ const landmarks: Record<RegionId, LandmarkFn> = {
   },
 
   switzerland(c, o) {
-    box(c.g, 9, 26, 9, '#e8dcc0');
-    archPanel(c.g, 5, 7, '#3a2a22', 0, 0, 4.51);
-    box(c.g, 9.4, 1, 9.4, '#c23b3b', 0, 12, 0);
-    for (let i = 0; i < 4; i++) {
-      c.glow.frame(0, 20, 0, (i * Math.PI) / 2, 1, () => {
-        c.glow.add(cylinderDisc(2.6, 4.5), '#fff4d0');
-      });
-    }
-    hip(c.g, 10.5, 10.5, 9, '#5a3a26', 0, 26, 0);
-    cyl(c.g, 0.2, 0.2, 3, '#e2b43a', 0, 35, 0, 5);
-    o.colliders.push({ x: 0, z: 0, r: 6.4, h: 38 });
-    o.height = 38;
+    const stone = '#d7c9a8', gold = '#cba855', roof = '#6c4031';
+    box(c.g, 10, 28, 10, stone);
+    archPanel(c.g, 4.6, 7.3, '#51483e', 0, 0, 5.1, 0, 0.2, true);
+    for (const h of [9, 16, 24, 28]) box(c.g, 10.5, 0.35, 10.5, '#b7a584', 0, h, 0);
+    // Zytglogge's astronomical dial and smaller dial face each street.
+    for (let side = 0; side < 4; side++) c.g.frame(0, 0, 0, side * Math.PI / 2, 1, () => c.glow.frame(0, 0, 0, side * Math.PI / 2, 1, () => {
+      c.g.add(cylinderDisc(3.05, 5.2), gold, M(0, 19.3, 0));
+      c.glow.add(cylinderDisc(2.4, 5.28), '#f4d892', M(0, 19.3, 0));
+      for (let i = 0; i < 12; i++) {
+        const a = i * Math.PI / 6;
+        sphere(c.g, 0.13, '#3e4e65', Math.sin(a) * 2.7, 19.3 + Math.cos(a) * 2.7, 5.39, 5);
+      }
+      box(c.g, 0.1, 1.8, 0.08, '#294d65', 0, 19.3, 5.48);
+      box(c.g, 1.4, 0.1, 0.08, '#294d65', 0, 19.3, 5.5);
+      c.g.add(cylinderDisc(1.0, 5.35), '#365f7c', M(0, 10.7, 0));
+      for (const x of [-2.7, 2.7]) {
+        box(c.g, 0.55, 1.3, 0.45, '#a76f47', x, 12.4, 5.28);
+        sphere(c.g, 0.18, gold, x, 13.7, 5.28, 6);
+      }
+    }));
+    box(c.g, 8, 0.5, 8, roof, 0, 28.3, 0);
+    for (const x of [-3.1, 3.1]) for (const z of [-3.1, 3.1]) cyl(c.g, 0.34, 0.38, 4.5, stone, x, 28.8, z, 7);
+    sphere(c.g, 1.25, '#8d7141', 0, 30.2, 0, 10);
+    hip(c.g, 10, 10, 8.5, roof, 0, 33.3, 0);
+    cyl(c.g, 0.15, 0.15, 2.5, gold, 0, 41.8, 0, 6);
+    o.colliders.push({ x: 0, z: 0, r: 6.2, h: 44.3 });
+    o.height = 44.3;
   },
 
   london(c, o) {
-    box(c.g, 60, 14, 14, '#d9c9a0', 0, 0, 14);
-    for (let i = 0; i < 18; i++) win(c, -28 + i * 3.3, 3, 21.02, 1.2, 6, 0, true);
-    for (let i = 0; i < 12; i++) cone(c.g, 0.6, 3, '#d9c9a0', -27 + i * 5, 14, 21, 4);
-    box(c.g, 11, 60, 11, '#d9c9a0');
-    for (let y = 4; y < 54; y += 6) for (let i = 0; i < 4; i++) {
-      c.glow.frame(0, y, 0, (i * Math.PI) / 2, 1, () => box(c.glow, 1.4, 3.4, 0.1, c.s.glow, 0, 0, 5.52));
+    const stone = '#d3c7aa', dark = '#35353c', gold = '#c8a35b';
+    // Westminster's long Gothic facade and river terrace.
+    box(c.g, 64, 15, 15, stone, 0, 0, -18);
+    for (let i = 0; i < 19; i++) {
+      const x = -30 + i * 3.3;
+      for (const h of [1.8, 8]) {
+        archPanel(c.glow, 1.45, 4.7, c.s.glow, x, h, -10.4, 0, 0.08, true);
+        box(c.g, 0.15, 4.5, 0.15, stone, x, h, -10.27);
+        box(c.g, 1.6, 0.18, 0.35, '#a99b7d', x, h, -10.18);
+      }
+      if (i % 2 === 0) cone(c.g, 0.42, 3.3, stone, x, 15, -10.3, 6);
     }
-    box(c.g, 12.5, 12, 12.5, '#c9b88a', 0, 58, 0);
-    for (let i = 0; i < 4; i++) {
-      c.glow.frame(0, 64, 0, (i * Math.PI) / 2, 1, () => c.glow.add(cylinderDisc(4.4, 6.25), '#fff8e0'));
-    }
-    hip(c.g, 12, 12, 16, '#3a3a44', 0, 70, 0);
-    cyl(c.g, 0.3, 0.3, 6, '#e2b43a', 0, 86, 0, 5);
-    o.colliders.push({ x: 0, z: 0, r: 8, h: 92 }, { x: -18, z: 14, r: 12, h: 14 }, { x: 18, z: 14, r: 12, h: 14 }, { x: 0, z: 14, r: 8, h: 14 });
-    o.height = 92;
+    box(c.g, 66, 0.7, 4, '#9d987f', 0, 0, -28.5);
+    for (let x = -32; x <= 32; x += 2) box(c.g, 0.28, 1.1, 0.28, stone, x, 0.7, -30);
+    box(c.g, 65, 0.2, 0.3, stone, 0, 1.8, -30);
+    box(c.g, 10, 54, 10, stone);
+    for (const h of [4, 14, 24, 34, 44]) box(c.g, 10.8, 0.65, 10.8, '#bdae8e', 0, h, 0);
+    for (let y = 5; y < 49; y += 5) for (let side = 0; side < 4; side++) c.glow.frame(0, y, 0, side * Math.PI / 2, 1, () => archPanel(c.glow, 1.5, 2.4, c.s.glow, 0, 0, 5.08, 0, 0.07, true));
+    box(c.g, 11.5, 10, 11.5, '#c5b897', 0, 52, 0);
+    for (let side = 0; side < 4; side++) c.g.frame(0, 0, 0, side * Math.PI / 2, 1, () => c.glow.frame(0, 0, 0, side * Math.PI / 2, 1, () => {
+      c.g.add(cylinderDisc(4.1, 5.8), gold, M(0, 55, 0));
+      c.glow.add(cylinderDisc(3.5, 5.95), '#fff2c7', M(0, 55, 0));
+      for (let i = 0; i < 12; i++) {
+        const a = i * Math.PI / 6;
+        sphere(c.g, 0.13, dark, Math.sin(a) * 3.1, 55 + Math.cos(a) * 3.1, 6.13, 5);
+      }
+      box(c.g, 0.13, 2.5, 0.1, dark, 0, 55, 6.2);
+    }));
+    for (const x of [-3.8, 3.8]) for (const z of [-3.8, 3.8]) cyl(c.g, 0.4, 0.45, 5, stone, x, 62, z, 8);
+    hip(c.g, 11.5, 11.5, 9, dark, 0, 67, 0);
+    cyl(c.g, 0.18, 0.18, 3, gold, 0, 76, 0, 6);
+    o.colliders.push({ x: 0, z: 0, r: 7, h: 79 }, { x: -23, z: -18, r: 13, h: 18 }, { x: 0, z: -18, r: 13, h: 18 }, { x: 23, z: -18, r: 13, h: 18 });
+    o.height = 79;
   },
 
   newyork(c, o) {
-    const stone = '#c9c2b5';
-    let y = 0, w = 40;
+    const stone = '#bdb8ac', steel = '#c8d0d3', glass = '#506a79', solar = '#264b69';
+    let y = 0, w = 30;
     for (let i = 0; i < 5; i++) {
-      const h = 50 - i * 8;
-      box(c.g, w, h, w, stone, 0, y, 0);
-      for (let yy = y + 3; yy < y + h - 1; yy += 3.4) box(c.glow, w + 0.1, 0.7, w + 0.1, NY_WINDOW, 0, yy, 0);
+      const h = [28, 23, 22, 18, 15][i];
+      box(c.g, w, h, w, i % 2 ? glass : stone, 0, y, 0);
+      for (let yy = y + 3; yy < y + h - 2; yy += 3.3) {
+        box(c.glow, w + 0.12, 0.65, w + 0.12, '#b8b393', 0, yy, 0);
+        for (const x of [-w / 3, 0, w / 3]) box(c.g, 0.3, 2.4, 0.2, steel, x, yy, w / 2 + 0.12);
+      }
       y += h;
-      w *= 0.74;
+      box(c.g, w + 1.3, 0.55, w + 1.3, steel, 0, y - 0.55, 0);
+      for (const x of [-w * 0.38, w * 0.38]) {
+        box(c.g, 2.6, 0.75, 0.9, '#587357', x, y, w / 2 - 1.1);
+        sphere(c.g, 0.8, '#658c60', x, y + 1.25, w / 2 - 1.1, 7);
+      }
+      for (let x = -w / 2 + 2; x < w / 2 - 2; x += 3) box(c.g, 2.2, 0.08, 1.2, solar, x, y + 0.25, -w / 2 + 2);
+      w *= 0.77;
     }
+    // Stainless sunburst crown and narrow illuminated arches.
     for (let i = 0; i < 5; i++) {
-      const r = w * 0.9 - i * 1.2;
-      cyl(c.glow, r * 0.95, r, 3, '#fff0b0', 0, y + i * 3.2, 0, 8);
-      cyl(c.g, r, r * 0.95, 0.4, '#d9d9e0', 0, y + i * 3.2 + 3, 0, 8);
+      const r = Math.max(1.4, w * 0.9 - i * 0.7);
+      cyl(c.g, r, r + 0.25, 1.4, steel, 0, y + i * 1.5, 0, 12);
+      for (let k = 0; k < 12; k++) {
+        const a = k * Math.PI / 6;
+        box(c.glow, 0.25, 1.1, 0.12, '#d9e6ee', Math.sin(a) * r, y + i * 1.5 + 0.2, Math.cos(a) * r, a);
+      }
     }
-    cone(c.g, 2.4, 40, '#e0e0ea', 0, y + 16, 0, 8);
-    o.colliders.push({ x: 0, z: 0, r: 25, h: y + 56 });
-    o.height = y + 56;
+    y += 8;
+    cone(c.g, 1.8, 12, steel, 0, y, 0, 10);
+    cyl(c.g, 0.1, 0.12, 4, '#d7be7e', 0, y + 12, 0, 6);
+    // Plaza-facing display panels are dark by day, edged in soft neon.
+    for (const x of [-9, 9]) {
+      box(c.g, 8, 5, 0.15, '#2a4052', x, 5, 15.15);
+      box(c.glow, 8.2, 0.2, 0.2, '#65d7cf', x, 10.1, 15.25);
+      for (let i = 0; i < 6; i++) box(c.glow, 0.75, 0.5, 0.08, i % 2 ? '#79a6b4' : '#8cc9a7', x - 3.3 + i * 1.2, 7, 15.28);
+    }
+    o.colliders.push({ x: 0, z: 0, r: 20, h: y + 16 });
+    o.height = y + 16;
   },
 
   renaissance(c, o) {
@@ -1081,33 +1135,46 @@ const landmarks: Record<RegionId, LandmarkFn> = {
   },
 
   vintage(c, o) {
-    // Carousel.
-    cyl(c.g, 10, 10.4, 1, '#f4f1de', 0, 0, 0, 20);
-    cyl(c.g, 1.2, 1.2, 8, '#e2b43a', 0, 1, 0, 12);
+    const cream = '#f4edda', rose = '#d86c78', blue = '#6e9db1', gold = '#caa958';
+    cyl(c.g, 10.5, 10.5, 0.8, cream, 0, 0, 0, 20);
     for (let i = 0; i < 12; i++) {
-      const a = (i / 12) * Math.PI * 2;
-      cyl(c.g, 0.1, 0.1, 6, '#e2b43a', Math.cos(a) * 7, 1, Math.sin(a) * 7, 5);
-      sphere(c.g, 0.7, i % 3 === 0 ? '#ffffff' : i % 3 === 1 ? '#ffc4dc' : '#bfe3d9', Math.cos(a) * 7, 3, Math.sin(a) * 7, 6, 0.7);
+      const a = i * Math.PI / 6, x = Math.cos(a) * 7.7, z = Math.sin(a) * 7.7;
+      cyl(c.g, 0.11, 0.11, 6.2, gold, x, 0.8, z, 6);
+      // Faceless carousel horse silhouette, with its head floating clear.
+      sphere(c.g, 0.83, i % 3 ? cream : '#c9ab8a', x, 1.95, z, 8, 0.7);
+      box(c.g, 0.17, 1.0, 0.17, gold, x, 0.8, z);
+      sphere(c.g, 0.34, i % 3 ? cream : '#c9ab8a', x + 1.15, 3.0, z, 7);
+      box(c.g, 0.28, 0.48, 0.28, rose, x, 2.8, z);
     }
-    cyl(c.g, 10.6, 10.6, 1, '#e07a5f', 0, 7, 0, 20);
+    cyl(c.g, 1.3, 1.3, 7.5, gold, 0, 0.8, 0, 12);
+    cyl(c.g, 11, 11, 0.45, gold, 0, 7, 0, 20);
     for (let i = 0; i < 20; i++) {
-      const a = (i / 20) * Math.PI * 2;
-      sphere(c.glow, 0.2, '#fff0b3', Math.cos(a) * 10.7, 7.5, Math.sin(a) * 10.7, 4);
+      const a = i * Math.PI / 10;
+      sphere(c.glow, 0.16, '#ffe7a5', Math.cos(a) * 11, 7.3, Math.sin(a) * 11, 5);
     }
-    cone(c.g, 11, 5, '#e07a5f', 0, 8, 0, 20);
-    cone(c.g, 11.05, 1.6, '#ffffff', 0, 8, 0, 20);
-    sphere(c.g, 0.8, '#e2b43a', 0, 13.3, 0, 8);
-    // Bandstand.
-    c.g.frame(30, 0, -18, 0, 1, () => {
-      cyl(c.g, 6, 6.2, 1.2, '#ffffff', 0, 0, 0, 8);
+    cone(c.g, 11.2, 5, rose, 0, 7.45, 0, 20);
+    for (let i = 0; i < 10; i++) {
+      const a = i * Math.PI / 5;
+      box(c.g, 0.45, 3.2, 0.05, cream, Math.cos(a) * 5.8, 8.2, Math.sin(a) * 5.8, a);
+    }
+    sphere(c.g, 0.72, gold, 0, 12.6, 0, 8);
+    c.g.frame(-26, 0, -14, 0, 1, () => {
+      cyl(c.g, 6.2, 6.2, 1, cream, 0, 0, 0, 10);
       for (let i = 0; i < 8; i++) {
-        const a = (i / 8) * Math.PI * 2;
-        cyl(c.g, 0.18, 0.18, 4, '#ffffff', Math.cos(a) * 5.4, 1.2, Math.sin(a) * 5.4, 6);
+        const a = i * Math.PI / 4;
+        cyl(c.g, 0.22, 0.22, 4.4, cream, Math.cos(a) * 5.5, 1, Math.sin(a) * 5.5, 7);
       }
-      cone(c.g, 6.8, 3, '#5a8ab5', 0, 5.2, 0, 8);
+      cone(c.g, 7, 3.2, blue, 0, 5.4, 0, 10);
     });
-    o.colliders.push({ x: 0, z: 0, r: 10.5, h: 14 }, { x: 30, z: -18, r: 6.2, h: 8 });
-    o.height = 14;
+    // Victorian pleasure pier pavilion beyond the bandstand.
+    c.g.frame(28, 0, -17, 0, 1, () => {
+      box(c.g, 12, 0.6, 10, '#8b6a50');
+      for (const x of [-5, 5]) for (const z of [-4, 4]) cyl(c.g, 0.2, 0.25, 5, cream, x, 0.6, z, 6);
+      gable(c.g, 14, 12, 4, blue, 0, 5.6, 0);
+      for (const x of [-4, 0, 4]) box(c.glow, 1.3, 2.1, 0.08, '#f6d9a3', x, 2.4, 5.1);
+    });
+    o.colliders.push({ x: 0, z: 0, r: 10.8, h: 13 }, { x: -26, z: -14, r: 6.2, h: 9 }, { x: 28, z: -17, r: 8, h: 10 });
+    o.height = 13;
   },
 
   islamic(c, o) {
