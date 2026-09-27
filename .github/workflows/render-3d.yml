@@ -1,0 +1,51 @@
+name: Render historical 3D models
+
+on:
+  push:
+    branches: [codex/3d-model-renders]
+    paths:
+      - .github/workflows/render-3d.yml
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  render:
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - run: npm install --no-save playwright
+      - run: npx playwright install --with-deps chromium
+      - name: Start game preview
+        run: |
+          npx vite --host 127.0.0.1 --port 5191 --strictPort > vite.log 2>&1 &
+          for i in {1..30}; do
+            if curl -fsS http://127.0.0.1:5191/ > /dev/null; then exit 0; fi
+            sleep 2
+          done
+          cat vite.log
+          exit 1
+      - name: Capture 19 actual in-game models
+        run: |
+          mkdir -p art/monument-renders
+          SHOTS=art/monument-renders PORT=5191 node scripts/probe/probe.cjs scripts/probe/monument-renders.js
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: historical-monument-renders
+          path: art/monument-renders/*.png
+          if-no-files-found: warn
+      - name: Publish screenshots to preview branch
+        run: |
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add art/monument-renders
+          git commit -m 'Add historical monument renders [skip ci]'
+          git push origin HEAD:codex/3d-model-renders
