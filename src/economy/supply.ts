@@ -1,6 +1,7 @@
 import { DAY_MINUTES, type GameState } from '../core/state';
 import { INSTITUTE_BY_KIND } from '../institutions/catalogue';
 import { SITE_BY_ID, instituteAt, isEmployed, pantryOf, servesWith } from '../institutions/institutions';
+import { hasHarbour } from '../world/harbours';
 import { FIELD_BY_ID } from '../world/plots';
 import { REGION_BY_ID, REGIONS, type RegionId } from '../world/regions';
 import { sellPrice } from './economy';
@@ -51,7 +52,7 @@ export function landDistance(a: RegionId, b: RegionId): number {
 
 /** Minutes a courier takes from one land to another: loading and unloading, then the road. */
 export const tripMinutes = (w: Worker, from: RegionId, to: RegionId): number =>
-  Math.round(120 + (landDistance(from, to) * 360) / (w.speed ?? 1));
+  Math.round((w.role === 'ship' ? 240 : 120) + (landDistance(from, to) * 360) / (w.speed ?? 1));
 
 /** How much of an item has been sold into a land lately (fading a fifth a day). */
 export function glutOf(st: GameState, land: RegionId, item: string): number {
@@ -77,11 +78,12 @@ function sellInto(st: GameState, land: RegionId, item: string, n: number): numbe
 /** Set a courier's standing route (one each; a new one replaces the old). */
 export function addRoute(st: GameState, courierId: string, from: string, to: string): string | null {
   const w = WORKER_BY_ID[courierId];
-  if (!w || w.role !== 'courier') return 'Only a courier can carry goods.';
+  if (!w || (w.role !== 'courier' && w.role !== 'ship')) return 'Only a courier or a ship can carry goods.';
   if (!isEmployed(st, courierId)) return `Employ ${w.name} first.`;
   if (!st.fields[from] || !FIELD_BY_ID[from]) return 'Couriers collect from the barn of a field you own.';
   const land = destLand(to);
   if (!land) return 'There is nowhere like that to deliver.';
+  if (w.role === 'ship' && (!hasHarbour(FIELD_BY_ID[from].land) || !hasHarbour(land))) return 'Ships sail from harbour to harbour — both lands must be on the coast.';
   if (to.startsWith('pantry:')) {
     const inst = instituteAt(st, to.slice(7));
     if (!inst || (inst.kind !== 'kitchen' && inst.kind !== 'clinic')) return 'Deliveries go to a soup kitchen or clinic you run.';
@@ -148,12 +150,12 @@ export function bestMarkets(st: GameState, item: string): Array<{ land: RegionId
 }
 
 /** Your couriers on the road in a land — leaving from a field there, or delivering there — for the traffic to show. */
-export function couriersIn(st: GameState, land: RegionId): Array<{ vehicle: string; side: 1 | -1 }> {
-  const out: Array<{ vehicle: string; side: 1 | -1 }> = [];
+export function couriersIn(st: GameState, land: RegionId): Array<{ vehicle: string; standIn?: string; side: 1 | -1 }> {
+  const out: Array<{ vehicle: string; standIn?: string; side: 1 | -1 }> = [];
   for (const s of st.shipments) {
     const f = FIELD_BY_ID[s.from], w = WORKER_BY_ID[s.courier];
     if (!f || !w?.vehicle || (f.land !== land && destLand(s.to) !== land)) continue;
-    out.push({ vehicle: w.vehicle, side: f.land === land && f.id.endsWith('-f2') ? -1 : 1 });
+    out.push({ vehicle: w.wants ?? w.vehicle, standIn: w.vehicle, side: f.land === land && f.id.endsWith('-f2') ? -1 : 1 });
   }
   return out;
 }

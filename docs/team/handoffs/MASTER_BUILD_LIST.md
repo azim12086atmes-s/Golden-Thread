@@ -98,7 +98,8 @@ sections C1–C7) and `3D_BUILDS_HANDOFF.md` (3D work, sections 2a and 3.x). Tic
 
 ## I2. Ships and the sea (NEW)
 - [ ] 3D: ships — cargo, container, ocean liner, cruise, large ferry, trawler, coastal steamer, ocean dhow, large junk, phinisi, rice barge, full-rigged tall ship, hospital ship, research vessel, sky galleon (`CHATGPT_3D_MODELS.md` §12.4)
-- [ ] Logic (Claude): sea lanes round the island's coast, harbours in the coastal lands, ships sailing between them, docking, carrying goods for the supply chain
+- [x] Logic: a harbour in each of the 14 coastal lands at the real shore (walkable quay and pier), a sea lane along each coast, ships docking at the pier head, chartered shipping lines carrying 90 loads harbour to harbour (`world/harbours.ts`, `Traffic` sea routes, `supply.ts`)
+- [ ] 3D: harbours in each land's style (`CHATGPT_3D_MODELS.md` §22; contract `world/models/harbour.ts`)
 
 ## J. Carried over from earlier sessions
 - [ ] Walk-around interiors (rooms are dioramas now)

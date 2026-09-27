@@ -209,7 +209,7 @@ export class Travellers {
     const sprint = input.held('shift') && this.grounded;
     const max = mount ? (sprint ? 24 : 15) : sprint ? 11 : 6.5;
     const want = fwd.clone().multiplyScalar(a.y).addScaledVector(right, a.x).multiplyScalar(max);
-    const swimming = !mount && terrainHeight(this.gPos.x, this.gPos.z) < WATER_Y - 0.9;
+    const swimming = !mount && groundAt(this.gPos.x, this.gPos.z, this.gPos.y) < WATER_Y - 0.9;
     if (swimming) want.multiplyScalar(0.5);
     this.vel.x = damp(this.vel.x, want.x, this.grounded ? 10 : 3, dt);
     this.vel.z = damp(this.vel.z, want.z, this.grounded ? 10 : 3, dt);

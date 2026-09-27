@@ -1,4 +1,5 @@
 import { folkOf } from '../npc/folk';
+import { SHIP_LINE } from '../traffic/roster';
 import { REGIONS, type RegionId } from '../world/regions';
 import type { SkillId } from './items';
 
@@ -6,11 +7,12 @@ import type { SkillId } from './items';
  * People the travellers can employ for everyday work (owner's brief — NEXT_WORK C3/C5: "hire
  * couriers … farm workers … as employees, paid in coins, food or housing"). Every land has a
  * farmhand who tends your fields and a courier who carries your goods on the land's own vehicle —
- * the same vehicles you see in its traffic (traffic/roster.ts). They are employed through
- * `employ` like any expert (institutions.ts), so their wage, keep or a room in your home work
- * the same way. Pure data (tests/supply.test.ts).
+ * the same vehicles you see in its traffic (traffic/roster.ts) — and every harbour land a
+ * shipping line whose ship carries far more, from harbour to harbour along the sea lanes. They are
+ * employed through `employ` like any expert (institutions.ts), so their wage, keep or a room in
+ * your home work the same way. Pure data (tests/supply.test.ts).
  */
-export type Role = 'farmhand' | 'courier';
+export type Role = 'farmhand' | 'courier' | 'ship';
 
 export interface Worker {
   id: string;
@@ -24,6 +26,8 @@ export interface Worker {
   vehicle?: string;
   capacity?: number;
   speed?: number;
+  /** Ships: the ship wanted from the 3D side (`vehicle` sails in its place until it exists). */
+  wants?: string;
 }
 
 /** Each land's delivery vehicle: [traffic design, capacity, speed]. */
@@ -40,6 +44,8 @@ export const WORKERS: Worker[] = REGIONS.flatMap((r, ri) => {
   return [
     { id: `farmhand-${r.id}`, land: r.id, name: folkOf(r.id, 700 + ri * 7, 0).name, role: 'farmhand' as Role, level: 2 + (ri % 2), skill: 'gardening' as SkillId },
     { id: `courier-${r.id}`, land: r.id, name: folkOf(r.id, 800 + ri * 7, 0).name, role: 'courier' as Role, level: 2, vehicle, capacity, speed },
+    // Harbour lands: a shipping line whose captain you can charter, harbour to harbour.
+    ...(SHIP_LINE[r.id] ? [{ id: `ship-${r.id}`, land: r.id, name: `Captain ${folkOf(r.id, 850 + ri * 7, 0).name}`, role: 'ship' as Role, level: 6, vehicle: SHIP_LINE[r.id]![1], wants: SHIP_LINE[r.id]![0], capacity: 90, speed: 2.2 }] : []),
   ];
 });
 export const WORKER_BY_ID: Record<string, Worker> = Object.fromEntries(WORKERS.map((w) => [w.id, w]));

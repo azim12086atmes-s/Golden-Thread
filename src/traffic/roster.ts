@@ -77,3 +77,36 @@ export const LAND_TRAFFIC: Record<RegionId, Roster> = {
     [],
     [['sky-whale', 2], ['sky-ship', 2], ['crystal-skiff', 2], ['light-birds', 3], ['unicorns-flying', 1], ['pegasi', 1], ['solar-blimp', 1]]),
 };
+
+/**
+ * Ships on each coastal land's sea lane (world/harbours.ts), and the ship its shipping line
+ * charters. Each entry names the ship wanted (CHATGPT_3D_MODELS.md §12.4) and what sails in its
+ * place until the 3D side builds it: `resolveShip` picks whichever exists.
+ */
+export const SEA_TRAFFIC: Partial<Record<RegionId, Array<[string, string, number]>>> = {
+  aurora: [['research-vessel', 'fishing-boat', 1], ['fishing-trawler', 'fishing-boat', 2], ['hurtigruten', 'ferry', 1]],
+  norway: [['hurtigruten', 'ferry', 1], ['fishing-trawler', 'fishing-boat', 2], ['ferry-large', 'ferry', 1], ['longship', 'longship', 1]],
+  switzerland: [['ferry-large', 'paddle-steamer', 1], ['cargo-ship', 'ferry', 1], ['yacht', 'yacht', 1]],
+  london: [['ocean-liner', 'tall-ship', 1], ['cargo-ship', 'ferry', 1], ['ferry-large', 'ferry', 1], ['tall-ship', 'tall-ship', 1]],
+  newyork: [['cruise-ship', 'ferry', 1], ['container-ship', 'ferry', 1], ['cargo-ship', 'ferry', 1], ['yacht', 'yacht', 2]],
+  korea: [['cargo-ship', 'ferry', 1], ['turtle-ship', 'turtle-ship', 1], ['fishing-trawler', 'fishing-boat', 2]],
+  vintage: [['ocean-liner', 'tall-ship', 1], ['tall-ship', 'tall-ship', 1], ['yacht', 'yacht', 1], ['catboat', 'catboat', 1]],
+  china: [['junk-large', 'junk', 2], ['container-ship', 'ferry', 1], ['sampan', 'sampan', 1]],
+  middleeast: [['dhow-large', 'dhow', 2], ['cargo-ship', 'ferry', 1], ['abra', 'abra', 1]],
+  indiasouth: [['kettuvallam-large', 'kettuvallam', 1], ['ferry-large', 'ferry', 1], ['snake-boat', 'snake-boat', 1], ['fishing-trawler', 'fishing-boat', 1]],
+  indianorth: [['cargo-ship', 'ferry', 1], ['dhow-large', 'dhow', 1], ['fishing-trawler', 'fishing-boat', 1]],
+  mughal: [['hospital-ship', 'ferry', 1], ['dhow-large', 'dhow', 1], ['cargo-ship', 'ferry', 1]],
+  egypt: [['cargo-ship', 'ferry', 1], ['felucca', 'felucca', 2], ['dhow-large', 'dhow', 1]],
+  desert: [['dhow-large', 'dhow', 2], ['cargo-ship', 'ferry', 1]],
+};
+
+/** The shipping line's own ship in each harbour land (wanted, stand-in). */
+export const SHIP_LINE: Partial<Record<RegionId, [string, string]>> = {
+  aurora: ['research-vessel', 'fishing-boat'], norway: ['hurtigruten', 'ferry'], switzerland: ['cargo-ship', 'ferry'],
+  london: ['cargo-ship', 'tall-ship'], newyork: ['container-ship', 'ferry'], korea: ['cargo-ship', 'ferry'],
+  vintage: ['cargo-ship', 'tall-ship'], china: ['junk-large', 'junk'], middleeast: ['dhow-large', 'dhow'],
+  indiasouth: ['kettuvallam-large', 'kettuvallam'], indianorth: ['cargo-ship', 'ferry'], mughal: ['cargo-ship', 'dhow'],
+  egypt: ['cargo-ship', 'dhow'], desert: ['dhow-large', 'dhow'],
+};
+
+export const resolveShip = (wanted: string, standIn: string, exists: (id: string) => boolean): string => exists(wanted) ? wanted : standIn;

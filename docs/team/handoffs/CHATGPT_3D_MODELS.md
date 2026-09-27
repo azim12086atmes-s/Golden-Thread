@@ -577,6 +577,46 @@ land's centre, beside the east and west avenues (`FIELD_SITES` in `src/world/plo
 
 ---
 
+## 22. Harbours (NEW — contract `src/world/models/harbour.ts`)
+
+The 14 coastal lands now have harbours: `src/world/harbours.ts` finds the real shore at the end of each land's
+seaward avenue and puts a quay there and a pier out to deep water. The piers are 35–145 m long, set from the terrain.
+Ships sail a sea lane along each coast and tie up at the pier head (`traffic/Traffic.ts`, `SEA_TRAFFIC` in
+`traffic/roster.ts`).
+
+- **Which lands:** Aurora Huts, Fjordhavn, Alpenrose and Old London face north; New Yonder faces north; Hanok Village
+  and Jade Terraces face west; Maple Row and Souq al-Qamar face east; Kaveri Coast, Gulabi Nagar, Bagh-e-Noor, Nile
+  Crossing and Tents of Rimal face south.
+- **Nusa Rinjani is inland on this map**, so it has no harbour. The ships wanted there sail from Jade Terraces and
+  Kaveri Coast instead.
+
+**Replace the body of `buildHarbour`; keep its signature, `DECK` and `WAREHOUSE`.**
+
+- **Local frame:** the origin is on the quay at the shore; +z points out to sea; the deck is at y = 0.
+- **The pier** runs from z = 0 to z = `pier`, 4 m wide and flat: the game makes it walkable with platforms along
+  x = 0 and a quay about 26 × 10 m. Keep those walkable areas where they are.
+- **On land (z < 0):** the harbour office or warehouse at `WAREHOUSE`, which is also its collider.
+- **Each land's style:**
+  - Old London and New Yonder: brick warehouses, cranes, bollards; New Yonder adds a solarpunk terminal with green
+    roofs and screens.
+  - Fjordhavn and Aurora Huts: red fishing sheds, fish-drying racks, a lighthouse.
+  - Hanok Village and Jade Terraces: stone quays with lantern posts and curved-roof pavilions.
+  - Souq al-Qamar and Tents of Rimal: dhow slipways and palm-thatch shades.
+  - Kaveri Coast: stilted boathouses and Chinese fishing nets.
+  - Nile Crossing: a felucca landing with steps.
+  - Maple Row: a painted pier pavilion.
+  - Gulabi Nagar and Bagh-e-Noor: ghats with steps and chhatris.
+  - Alpenrose: a lake-steamer landing stage.
+- **Lamps** along the pier go in `c.glow`, small.
+- **Grounding:** `ground(x, z)` is the terrain height relative to the deck; sit the land-side buildings on it.
+- **Budget:** ≤ 30 k triangles; no people, no faces.
+
+**Ships:** add the §12.4 ids to `designs.ts`. The sea lanes already name them, and each one sails the moment its id
+exists (`resolveShip`); until then a stand-in sails in its place. Ships up to ~120 m long fit the lanes (each coast
+lane is ~640 m long with lanes 24 m apart).
+
+---
+
 ## Contract requests
 
 (ChatGPT: write here any change you need to a contract or to a Claude-owned file, with the reason. Claude answers here.)

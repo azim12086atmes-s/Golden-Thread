@@ -39,6 +39,8 @@ import { Traffic } from './traffic/Traffic';
 import { PERSON_BY_ID, floorBuilding, floorsOf, residentsOf, tickCharity } from './charity/charity';
 import { InstitutesView } from './institutions/InstitutesView';
 import { FieldsView } from './economy/FieldsView';
+import { HarboursView } from './economy/HarboursView';
+import { harbours } from './world/harbours';
 import { FIELD_SITES, FIELD_SIZE, fieldGrowth, tickFields } from './economy/fields';
 import { couriersIn, tickSupply } from './economy/supply';
 import { CAVE_LANDS, caveMouth, type Cave } from './world/caves';
@@ -78,7 +80,8 @@ export type Interactable =
   | { kind: 'bed'; plotId: string; decorId: string; label: string }
   | { kind: 'institute'; site: string; label: string }
   | { kind: 'cave'; cave: Cave; label: string }
-  | { kind: 'field'; field: string; label: string };
+  | { kind: 'field'; field: string; label: string }
+  | { kind: 'harbour'; land: RegionId; label: string };
 
 /** A scripted scene that takes the camera (and optionally renders its own scene). */
 export interface Cutscene {
@@ -120,6 +123,7 @@ export class Game {
   /** Institute sites: the town's own institute and the ones you found (institutions/). */
   readonly institutesView: InstitutesView;
   readonly fieldsView: FieldsView;
+  readonly harboursView: HarboursView;
   readonly trav: Travellers;
   readonly npcs: Npcs;
   readonly townsfolk: Townsfolk;
@@ -201,6 +205,7 @@ export class Game {
     this.housingView = new HousingView(this.scene, this.st, this.world);
     this.institutesView = new InstitutesView(this.scene, this.st, this.world);
     this.fieldsView = new FieldsView(this.scene, this.st, this.world);
+    this.harboursView = new HarboursView(this.scene, this.world);
     this.trav = new Travellers(this.scene, this.world, this.st, OUTFITS[this.st.outfits.girl], OUTFITS[this.st.outfits.boy]);
     this.van = new VanInterior(this.st, OUTFITS[this.st.outfits.girl], OUTFITS[this.st.outfits.boy]);
     this.house = new HouseInterior(OUTFITS[this.st.outfits.girl], OUTFITS[this.st.outfits.boy]);
@@ -376,6 +381,7 @@ export class Game {
       for (const n of tickFields(this.st)) this.toast(`🌾 ${n.text}`, 'reward');
       for (const n of tickSupply(this.st)) this.toast(`🚚 ${n.text}`, 'reward');
       this.fieldsView.update();
+      this.harboursView.update();
       // Homes change shape as floors start and finish.
       const sig = Object.keys(this.st.homeFloors).map((id) => `${id}:${floorsOf(this.st, id)}:${floorBuilding(this.st, id) !== null}`).join('|');
       if (sig !== this.floorsSig) { this.floorsSig = sig; this.housingDirty = true; }
@@ -549,6 +555,14 @@ export class Game {
         cands.push([2.4, { kind: 'field', field: fs.id, label }]);
       }
     }
+    // Harbours: on the quay or along the pier.
+    if (onFoot) for (const hb of harbours()) {
+      const [dx, dz] = hb.dir, rx = p.x - hb.x, rz = p.z - hb.z, along = rx * dx + rz * dz, across = Math.abs(rx * dz - rz * dx);
+      if ((along > -14 && along < 4 && across < 14) || (along >= 4 && along < hb.pier + 2 && across < 3.5)) {
+        cands.push([2.3, { kind: 'harbour', land: hb.land, label: `⚓ The harbour of ${REGION_BY_ID[hb.land].name}` }]);
+        break;
+      }
+    }
     // Front doors: every building in town can be entered.
     if (onFoot) for (const d of [...this.world.loadedRegions().flatMap((r) => r.doors), ...this.world.landmarkDoors, ...this.homeDoors()]) {
       const dd = Math.hypot(d.x - p.x, d.z - p.z);
@@ -584,6 +598,7 @@ export class Game {
       case 'door': return this.enterHouse(t.door);
       case 'institute': return this.ui.openInstitute(t.site);
       case 'field': return this.ui.openField(t.field);
+      case 'harbour': return this.ui.openHarbour(t.land);
       case 'cave': return this.toast(this.exploreCave(t.cave), 'reward');
       case 'stray': return this.toast(this.caravan.adopt(t.pet), 'story');
       case 'market': this.townsfolk.turnTo(t.walker, this.trav.gPos); return this.ui.openMarket(t.walker.land);

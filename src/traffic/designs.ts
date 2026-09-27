@@ -889,6 +889,9 @@ export const DESIGNS: Record<string, () => Design> = {
   'sky-jet': () => skyJet(),
 };
 
+/** Whether a design exists (ships the 3D side adds later are used as soon as they do). */
+export const hasDesign = (id: string): boolean => id in DESIGNS;
+
 export function makeDesign(id: string): Design {
   const f = DESIGNS[id];
   if (!f) throw new Error(`No design ${id}`);

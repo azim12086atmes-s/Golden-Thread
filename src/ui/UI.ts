@@ -5,7 +5,8 @@ import { DAY_COINS, FLOOR_COST, MAX_FLOORS, NEED_LABEL, PEOPLE_IN_NEED, PERSON_B
 import * as THREE from 'three';
 import { FIELD_BY_ID, FIELD_ROWS, barnCount, buyField, fieldGrowTime, fieldGrowth, fieldYield, harvestField, plantField, setHand, takeFromBarn, waterField, type Hand } from '../economy/fields';
 import { addRoute, bestMarkets, destLabel, marketDest, pantryDest, removeRoute, shipmentOf, tripMinutes } from '../economy/supply';
-import { workersOf } from '../economy/workers';
+import { WORKER_BY_ID, workersOf, type Worker } from '../economy/workers';
+import { hasHarbour } from '../world/harbours';
 import { buySeed } from '../housing/housing';
 import type { Animal } from '../animals/Animals';
 import { SPECIES } from '../animals/AnimalModel';
@@ -31,7 +32,7 @@ import { VEHICLES, type VehicleId } from '../vehicles/vehicles';
 import { GRID_COLS, GRID_ROWS, REGIONS, REGION_BY_ID, regionCenter, type RegionId, type RegionSpec } from '../world/regions';
 import type { Game } from '../Game';
 
-type Panel = 'field' | 'institute' | 'care' | 'wardrobe' | 'bag' | 'journal' | 'map' | 'messages' | 'vehicles' | 'dialogue' | 'animal' | 'build' | 'van' | 'house' | 'farm' | 'market' | 'help' | 'homes' | 'property' | null;
+type Panel = 'harbour' | 'field' | 'institute' | 'care' | 'wardrobe' | 'bag' | 'journal' | 'map' | 'messages' | 'vehicles' | 'dialogue' | 'animal' | 'build' | 'van' | 'house' | 'farm' | 'market' | 'help' | 'homes' | 'property' | null;
 
 const h = (tag: string, attrs: Record<string, string> = {}, ...kids: Array<Node | string | null | false>) => {
   const el = document.createElement(tag);
@@ -587,7 +588,7 @@ export class UI {
 
   render(): void {
     const body = h('div', { class: 'body' });
-    const titles: Record<string, string> = { wardrobe: 'Dressing room', bag: 'Bag & Crafts', journal: 'Journal', map: 'The World', messages: 'Messages', vehicles: 'Ways to Travel', dialogue: '', animal: '', build: 'Build', van: 'Inside Safar', house: this.g.houseTitle(), farm: 'Farm bed', market: 'Market stall', help: 'How to play', care: 'Care & sponsorship', institute: this.instituteTitle(), field: this.fieldTitle(), homes: 'Homes & Land', property: 'Land for sale' };
+    const titles: Record<string, string> = { wardrobe: 'Dressing room', bag: 'Bag & Crafts', journal: 'Journal', map: 'The World', messages: 'Messages', vehicles: 'Ways to Travel', dialogue: '', animal: '', build: 'Build', van: 'Inside Safar', house: this.g.houseTitle(), farm: 'Farm bed', market: 'Market stall', help: 'How to play', care: 'Care & sponsorship', institute: this.instituteTitle(), field: this.fieldTitle(), harbour: `The harbour of ${REGION_BY_ID[this.harbourLand]?.name ?? ''}`, homes: 'Homes & Land', property: 'Land for sale' };
     const head = this.panel === 'van'
       ? h('header', {}, h('h2', {}, titles.van),
         h('span', { class: 'head-acts' },
@@ -613,6 +614,7 @@ export class UI {
       case 'care': this.carePanel(body); break;
       case 'institute': this.institutePanel(body); break;
       case 'field': this.fieldPanel(body); break;
+      case 'harbour': this.harbourPanel(body); break;
       case 'property': this.property(body); break;
       default: return this.closePanel();
     }
@@ -828,22 +830,65 @@ export class UI {
       body.append(h('div', { class: 'quest' }, h('b', {}, `${ITEMS[id]?.icon ?? ''} ${n}× ${ITEMS[id]?.name ?? id}`), h('small', {}, `Best markets today: ${best}`)),
         h('div', { class: 'acts' }, btn('Take 5', () => { takeFromBarn(st, site.id, id, 5); this.render(); }, 'small ghost'), btn('Take all', () => { takeFromBarn(st, site.id, id, n); this.render(); }, 'small ghost')));
     }
-    // Couriers.
-    body.append(h('h3', {}, 'Couriers'));
-    body.append(h('p', { class: 'dim' }, 'A courier collects from this barn, carries a load to a market or your soup kitchen or clinic, and comes back for the next. Markets fill up — spread your goods, and carry them far from where they grow.'));
+    // Couriers and ships.
+    body.append(h('h3', {}, 'Couriers and ships'));
+    body.append(h('p', { class: 'dim' }, `A courier collects from this barn, carries a load to a market or your soup kitchen or clinic, and comes back for the next.${hasHarbour(land) ? ' From a harbour land, a chartered ship carries far more, to any other harbour.' : ''} Markets fill up — spread your goods, and carry them far from where they grow.`));
+    const carriers = [...new Set([...workersOf(land, 'courier'), ...(hasHarbour(land) ? workersOf(land, 'ship') : []),
+      ...st.hires.map((x) => WORKER_BY_ID[x.id]).filter((w): w is Worker => !!w && w.role !== 'farmhand')])];
+    this.carrierRows(body, carriers, site.id, store[0]?.[0], act);
+  }
+
+  /** Each courier or ship: employ them, and send them from this barn to a market or pantry. */
+  private carrierRows(body: HTMLElement, carriers: Worker[], fieldId: string, main: string | undefined, act: (fn: () => string | null, ok: string) => void): void {
+    const st = this.g.st, from = FIELD_BY_ID[fieldId]?.land;
     const pantries = st.institutes.filter((i) => i.kind === 'kitchen' || i.kind === 'clinic');
-    const main = store[0]?.[0];
-    const dests = [...(main ? bestMarkets(st, main).slice(0, 4).map((m) => marketDest(m.land)) : [marketDest(land)]), ...pantries.map((i) => pantryDest(i.site))];
-    const couriers = [...new Set([...workersOf(land, 'courier'), ...st.hires.map((x) => x.id).filter((id) => id.startsWith('courier-')).map((id) => workersOf(id.slice(8) as RegionId, 'courier')[0]).filter(Boolean)])];
-    for (const w of couriers) {
-      const hw = hireOf(st, w.id), on = !!hw && st.minutes < hw.paidUntil, route = st.routes.find((r) => r.courier === w.id), ship = shipmentOf(st, w.id);
-      const note = ship ? `On the road to ${destLabel(st, ship.to)} — arrives in about ${Math.max(1, Math.ceil((ship.arrive - st.minutes) / 60))} h.` : route ? `Carries from ${route.from === site.id ? 'this barn' : 'another barn'} to ${destLabel(st, route.to)}.` : on ? 'Employed — give them a route.' : 'Not employed.';
-      body.append(h('div', { class: 'quest' }, h('b', {}, `🚚 ${w.name} of ${REGION_BY_ID[w.land].name} · ${w.vehicle} · carries ${w.capacity}`), h('small', {}, note)),
+    for (const w of carriers) {
+      const ship = w.role === 'ship', hw = hireOf(st, w.id), on = !!hw && st.minutes < hw.paidUntil;
+      const route = st.routes.find((r) => r.courier === w.id), trip = shipmentOf(st, w.id);
+      const ok = (l: RegionId) => !ship || hasHarbour(l);
+      const dests = !from || !ok(from) ? [] : [
+        ...(main ? bestMarkets(st, main).filter((m) => ok(m.land)).slice(0, 4).map((m) => marketDest(m.land)) : [marketDest(from)]),
+        ...pantries.filter((i) => ok(SITE_BY_ID[i.site].land)).map((i) => pantryDest(i.site))];
+      const note = trip ? `${ship ? 'At sea' : 'On the road'} to ${destLabel(st, trip.to)} — arrives in about ${Math.max(1, Math.ceil((trip.arrive - st.minutes) / 60))} h.`
+        : route ? `Carries from ${route.from === fieldId ? 'this barn' : 'another barn'} to ${destLabel(st, route.to)}.` : on ? 'Employed — give them a route.' : 'Not employed.';
+      body.append(h('div', { class: 'quest' }, h('b', {}, `${ship ? '🚢' : '🚚'} ${w.name} of ${REGION_BY_ID[w.land].name} · ${w.vehicle} · carries ${w.capacity}`), h('small', {}, note)),
         h('div', { class: 'acts' },
-          btn(`Employ · 5 days · ${wage(w) * 5}🪙`, () => act(() => employ(st, w.id, 5), `${w.name} is employed.`), 'small ghost', st.coins < wage(w) * 5),
-          ...(on ? dests.map((to) => btn(`→ ${destLabel(st, to).replace(/^the market in /, '🛒 ')} · ${Math.round(tripMinutes(w, land, (to.startsWith('market:') ? to.slice(7) : SITE_BY_ID[to.slice(7)].land) as RegionId) / 60)} h`, () => act(() => addRoute(st, w.id, site.id, to), `${w.name} will carry from this barn to ${destLabel(st, to)}.`), `small ${route?.to === to && route.from === site.id ? 'on' : 'ghost'}`)) : []),
+          btn(`${ship ? 'Charter' : 'Employ'} · 5 days · ${wage(w) * 5}🪙`, () => act(() => employ(st, w.id, 5), `${w.name} is ${ship ? 'chartered' : 'employed'}.`), 'small ghost', st.coins < wage(w) * 5),
+          ...(on && from ? dests.map((to) => btn(`→ ${destLabel(st, to).replace(/^the market in /, '🛒 ')} · ${Math.round(tripMinutes(w, from, (to.startsWith('market:') ? to.slice(7) : SITE_BY_ID[to.slice(7)].land) as RegionId) / 60)} h`,
+            () => act(() => addRoute(st, w.id, fieldId, to), `${w.name} will carry from this barn to ${destLabel(st, to)}.`), `small ${route?.to === to && route.from === fieldId ? 'on' : 'ghost'}`)) : []),
           route ? btn('Stop the route', () => { removeRoute(st, w.id); this.render(); }, 'small ghost') : null));
     }
+  }
+
+  // ───── harbours ─────
+  private harbourLand: RegionId = 'london';
+
+  openHarbour(land: RegionId): void {
+    this.harbourLand = land;
+    this.open('harbour');
+  }
+
+  /** A harbour: its shipping line, the ships on this coast, and your cargo coming and going. */
+  private harbourPanel(body: HTMLElement): void {
+    const g = this.g, st = g.st, land = this.harbourLand, name = REGION_BY_ID[land].name;
+    const act = (fn: () => string | null, ok: string) => { const e = fn(); g.toast(e ?? ok, e ? 'info' : 'reward'); this.render(); };
+    body.append(h('p', { class: 'dim' }, `Ships sail out and back along the coast of ${name} and tie up at the pier head. Charter the shipping line to carry the harvest of your fields in any harbour land to the market or kitchens of another — ninety loads at a time.`));
+    const [ship] = workersOf(land, 'ship');
+    const mine = Object.keys(st.fields).filter((id) => hasHarbour(FIELD_BY_ID[id]?.land));
+    if (ship) {
+      body.append(h('h3', {}, 'The shipping line'));
+      if (!mine.length) body.append(h('p', { class: 'dim' }, 'You have no field in a harbour land yet — buy one (walk onto farmland at the edge of a coastal town), then send its harvest by sea.'));
+      if (mine.length) for (const id of mine) {
+        body.append(h('p', { class: 'dim' }, `From your field in ${REGION_BY_ID[FIELD_BY_ID[id].land].name} (${Object.values(st.fields[id].store).reduce((a, b) => a + b, 0)} in the barn):`));
+        this.carrierRows(body, [ship], id, Object.keys(st.fields[id].store)[0], act);
+      }
+      if (!mine.length) this.carrierRows(body, [ship], '', undefined, act);
+    }
+    // Cargo at sea to or from here.
+    const here = st.shipments.filter((x) => WORKER_BY_ID[x.courier]?.role === 'ship' && (FIELD_BY_ID[x.from]?.land === land || x.to.endsWith(`:${land}`)));
+    body.append(h('h3', {}, 'Your cargo at sea'));
+    body.append(here.length ? h('div', {}, ...here.map((x) => h('div', { class: 'quest' }, h('b', {}, `🚢 ${Object.entries(x.items).map(([i, n]) => `${n}× ${ITEMS[i]?.name ?? i}`).join(', ')}`), h('small', {}, `to ${destLabel(st, x.to)} · in about ${Math.max(1, Math.ceil((x.arrive - st.minutes) / 60))} h`))))
+      : h('p', { class: 'dim' }, 'None at the moment.'));
   }
 
   // ───── institutes ─────

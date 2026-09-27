@@ -9,7 +9,7 @@ import {
 export const WATER_Y = -1.5;
 
 /** A walkable surface that is not terrain: floating islands, platforms, temple terraces. */
-export interface Platform { x: number; z: number; r: number; y: number }
+export interface Platform { x: number; z: number; r: number; y: number; /** Who added it, to remove it again. */ tag?: string }
 const platforms: Platform[] = [];
 export const addPlatform = (p: Platform) => platforms.push(p);
 export const removePlatforms = (pred: (p: Platform) => boolean) => {

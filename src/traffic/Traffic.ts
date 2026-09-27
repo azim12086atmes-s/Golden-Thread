@@ -4,7 +4,9 @@ import { WATER_Y, terrainHeight } from '../world/terrain';
 import { WATERS } from '../world/waters';
 import type { Anim, Piece } from './creatures';
 import { type Design, makeDesign } from './designs';
-import { LAND_TRAFFIC } from './roster';
+import { harbourOf } from '../world/harbours';
+import { LAND_TRAFFIC, SEA_TRAFFIC, resolveShip } from './roster';
+import { hasDesign } from './designs';
 
 /**
  * The land's traffic, alive: vehicles and carts going up and down the avenues and round the ring
@@ -20,6 +22,8 @@ export interface Route {
   at(u: number, out: THREE.Vector3): THREE.Vector3;
   /** Road routes follow the ground; water sits on the water; sky flies at its own height. */
   realm: Design['realm'];
+  /** Sea lanes: where along the route ships stop at the harbour's pier head. */
+  dock?: number;
 }
 
 /** Lands whose traffic keeps to the left. */
@@ -84,6 +88,9 @@ interface Mover {
   phase: number;
   /** Where each member of the group sits: along (behind the leader) and across. */
   members: Array<[number, number]>;
+  /** Ships: seconds left tied up at the pier, and whether they have stopped on this pass. */
+  wait?: number;
+  docked?: boolean;
 }
 
 interface Drawn {
@@ -100,9 +107,17 @@ const _p = new THREE.Vector3(), _q = new THREE.Vector3(), _f = new THREE.Vector3
 const _quat = new THREE.Quaternion(), _e = new THREE.Euler(0, 0, 0, 'YXZ'), _one = new THREE.Vector3(1, 1, 1), _c = new THREE.Color();
 
 /** The routes a land offers each realm. */
-export function landRoutes(land: RegionId): { road: Route[]; water: Array<{ route: Route; room: number }> } {
+export function landRoutes(land: RegionId): { road: Route[]; water: Array<{ route: Route; room: number }>; sea: Route[] } {
   const c = regionCenter(REGION_BY_ID[land]);
-  const road: Route[] = [], water: Array<{ route: Route; room: number }> = [];
+  const road: Route[] = [], water: Array<{ route: Route; room: number }> = [], sea: Route[] = [];
+  // The sea lane along the coast (world/harbours.ts): out on the far lane, back on the near one,
+  // stopping at the pier head on the way back.
+  const hb = harbourOf(land);
+  if (hb) {
+    const [dx, dz] = hb.dir, R = hb.laneHalfWidth;
+    const route = avenueRoute(c.x + dx * hb.lane, c.z + dz * hb.lane, -dz, dx, -hb.reach, hb.reach, R);
+    sea.push({ ...route, realm: 'water', dock: 3 * hb.reach + Math.PI * R });
+  }
   if (land !== 'skyisles') {
     const lane = LEFT.includes(land) ? -2.8 : 2.8;
     for (const [ax, az] of [[0, 1], [0, -1], [1, 0], [-1, 0]] as const) {
@@ -120,11 +135,11 @@ export function landRoutes(land: RegionId): { road: Route[]; water: Array<{ rout
     water.push({ route: circleRoute(w.x, w.z, w.r * 0.58, 1, 'water'), room: w.r * 0.8 });
     if (w.kind === 'lake') water.push({ route: circleRoute(w.x, w.z, w.r * 0.3, -1, 'water'), room: w.r * 0.35 });
   }
-  return { road, water };
+  return { road, water, sea };
 }
 
 /** A courier on the road in this land (economy/supply.ts `couriersIn`): their vehicle, and which side of town their field is. */
-export interface CourierRide { vehicle: string; side: 1 | -1 }
+export interface CourierRide { vehicle: string; standIn?: string; side: 1 | -1 }
 
 export class Traffic {
   readonly group = new THREE.Group();
@@ -183,15 +198,25 @@ export class Traffic {
     }
     // Your couriers, on the outer avenue between their field and the town (east avenue for the
     // east field, west for the west; in the sky for sky-borne couriers).
-    for (const [i, cr] of couriers.entries()) {
+    for (const [i, c0] of couriers.entries()) {
+      const cr = { ...c0, vehicle: hasDesign(c0.vehicle) ? c0.vehicle : c0.standIn ?? c0.vehicle };
       const d = design(cr.vehicle);
       if (d.realm === 'road' && routes.road.length) {
         const route = routes.road[cr.side > 0 ? 5 : 7];
         push(cr.vehicle, { route, u: route.len * (0.25 + 0.37 * i) % route.len, speed: 0, alt: 0 });
+      } else if (d.realm === 'water' && routes.sea[0]) {
+        const route = routes.sea[0];
+        push(cr.vehicle, { route, u: route.len * (0.1 + 0.29 * i) % route.len, speed: d.speed, alt: 0 });
       } else if (d.realm === 'sky') {
         const route = circleRoute(c.x, c.z, 120 + i * 25, 1, 'sky');
         push(cr.vehicle, { route, u: rnd() * route.len, speed: d.speed, alt: ground + 30 + i * 6 });
       }
+    }
+    // Ships on the sea lane, spread evenly along it.
+    const seaRoute = routes.sea[0];
+    if (seaRoute) {
+      const ships = (SEA_TRAFFIC[land] ?? []).flatMap(([want, stand, n]) => Array.from({ length: n }, () => resolveShip(want, stand, hasDesign)));
+      ships.forEach((id, k) => push(id, { route: seaRoute, u: (seaRoute.len * k) / ships.length + rnd() * 10, speed: design(id).speed, alt: 0 }));
     }
     // Water: big boats on the lakes, small craft anywhere there is room.
     for (const [id, n] of roster.water) {
@@ -257,6 +282,22 @@ export class Traffic {
         }
         m.speed += Math.max(-8 * dt, Math.min(3 * dt, want - m.speed));
       }
+      // Ships on a sea lane ease into the pier head, tie up a while, and keep their distance.
+      if (d.realm === 'water') for (const m of dr.movers) {
+        const dock = m.route.dock;
+        if (dock === undefined) continue;
+        if ((m.wait ?? 0) > 0) { m.wait! -= dt; m.speed = 0; continue; }
+        const L = m.route.len, toDock = (((dock - m.u) % L) + L) % L;
+        if (toDock > 5 && toDock < L - 5) m.docked = false;
+        if (!m.docked && toDock < 0.6) { m.wait = 20; m.docked = true; m.speed = 0; continue; }
+        let want = m.docked ? d.speed : Math.min(d.speed, Math.max(0.5, (d.speed * toDock) / 40));
+        for (const o of this.seaMovers(m.route)) {
+          if (o === m) continue;
+          const gap = (((o.u - m.u) % L) + L) % L, need = d.len / 2 + o.design.len / 2 + 6;
+          if (gap < need + 20) want = Math.min(want, gap < need ? 0 : o.speed);
+        }
+        m.speed += Math.max(-2 * dt, Math.min(1 * dt, want - m.speed));
+      }
       for (const m of dr.movers) {
         const step = m.speed * dt;
         m.u += step;
@@ -264,6 +305,10 @@ export class Traffic {
       }
       this.draw(dr, t);
     }
+  }
+
+  private *seaMovers(route: Route): Generator<Mover> {
+    for (const d of this.drawn) if (d.design.realm === 'water') for (const m of d.movers) if (m.route === route) yield m;
   }
 
   private *roadMovers(): Generator<Mover> {
