@@ -1,4 +1,5 @@
 import * as THREE from 'three';
+import { mergeGeometries } from 'three/addons/utils/BufferGeometryUtils.js';
 import { mergeVertices } from 'three/addons/utils/BufferGeometryUtils.js';
 import { HEAD_GAP, type Part } from './anatomy';
 import type { Hem, Outfit, TopStyle } from './modesty';
@@ -643,7 +644,7 @@ export class CharacterModel {
 
   /**
    * The two travellers each wear a designer crown that floats above the head (never touching
-   * it or the headwear) and turns slowly: hers the grand arched gold crown set with rose and ruby
+   * it or the headwear), facing forward and still apart from a gentle float: hers the grand arched gold crown set with rose and ruby
    * gems under a star, the larger of the two; his a fine gold tiara of pearls round a sapphire.
    */
   crown: THREE.Group | null = null;
@@ -691,6 +692,48 @@ export class CharacterModel {
       const star = mesh(new THREE.OctahedronGeometry(r * 0.12), '#fff0b0', 'headwear', true);
       star.position.y = H / 2 + R * 0.7 + r * 0.14;
       g.add(star);
+      // Adornments: pearls along the rim, a band of rubies and emeralds, gold leaves between the
+      // points, pearls strung along the arches, a cluster round the front gem, and short pearl drops.
+      // Merged by colour so the many small pieces cost only a few draw calls.
+      const pearl = '#fff4f0';
+      const bits = new Map<string, THREE.BufferGeometry[]>();
+      const bit = (geo: THREE.BufferGeometry, col: string, glow: boolean, x: number, y: number, z: number, ry = 0) => {
+        if (ry) geo.rotateY(ry);
+        geo.translate(x, y, z);
+        const key = `${col}|${glow ? 1 : 0}`;
+        (bits.get(key) ?? bits.set(key, []).get(key)!).push(geo.index ? geo.toNonIndexed() : geo);
+      };
+      for (let i = 0; i < 28; i++) {
+        const a = (i / 28) * Math.PI * 2;
+        bit(new THREE.SphereGeometry(r * 0.028, 6, 4), pearl, false, Math.sin(a) * R * 1.04, -H / 2 + r * 0.02, Math.cos(a) * R * 1.04);
+      }
+      for (let i = 0; i < 12; i++) {
+        const a = ((i + 0.5) / 12) * Math.PI * 2;
+        bit(new THREE.OctahedronGeometry(r * 0.045), i % 2 ? '#2fbf7a' : '#e8342a', true, Math.sin(a) * R * 1.05, r * 0.02, Math.cos(a) * R * 1.05);
+      }
+      for (let i = 0; i < n; i++) {
+        const a = ((i + 0.5) / n) * Math.PI * 2;
+        bit(new THREE.SphereGeometry(r * 0.09, 8, 6).scale(0.55, 1, 0.25), gold, false, Math.sin(a) * R * 1.01, H / 2 + r * 0.1, Math.cos(a) * R * 1.01, a);
+        bit(new THREE.SphereGeometry(r * 0.035, 6, 4), gemA, true, Math.sin(a) * R * 1.03, H / 2 + r * 0.19, Math.cos(a) * R * 1.03);
+      }
+      for (const ry of [0, Math.PI / 2]) for (let k = 1; k < 10; k++) {
+        const t = (k / 10) * Math.PI;
+        bit(new THREE.SphereGeometry(r * 0.025, 6, 4), pearl, false, Math.cos(t) * R * 0.95 * Math.cos(ry), H / 2 + Math.sin(t) * R * 0.95 * 0.7 + r * 0.03, -Math.cos(t) * R * 0.95 * Math.sin(ry));
+      }
+      for (let k = 0; k < 6; k++) {
+        const a = (k / 6) * Math.PI * 2;
+        bit(new THREE.SphereGeometry(r * 0.03, 6, 4), k % 2 ? pearl : '#ffd6e8', k % 2 === 0, Math.cos(a) * r * 0.13, Math.sin(a) * r * 0.15, R * 1.05);
+      }
+      for (let i = 0; i < 10; i++) {
+        const a = ((i + 0.25) / 10) * Math.PI * 2;
+        bit(new THREE.SphereGeometry(r * 0.03, 6, 4).scale(1, 1.5, 1), pearl, false, Math.sin(a) * R * 1.03, -H / 2 - r * 0.05, Math.cos(a) * R * 1.03);
+      }
+      for (const [key, geos] of bits) {
+        const [col, glow] = key.split('|');
+        const merged = mergeGeometries(geos, false);
+        for (const q of geos) q.dispose();
+        if (merged) g.add(mesh(merged, col, 'headwear', glow === '1'));
+      }
     }
     this.crown = g;
     this.head.add(g);
@@ -773,7 +816,6 @@ export class CharacterModel {
     this.head.position.y = (DIMS.neck + HEAD_GAP + DIMS.headR) + Math.sin(s.t * 2.2) * 0.012 + (moving ? Math.abs(Math.cos(this.phase)) * 0.015 : 0);
     this.body.position.y = moving ? Math.abs(Math.sin(this.phase)) * 0.03 : 0;
     if (this.crown) {
-      this.crown.rotation.y = s.t * 0.5;
       this.crown.position.y = DIMS.headR * (['gat', 'wide-hat', 'hijab-hat', 'turban', 'songkok'].includes(this.outfit.head.style) ? 2.5 : 1.85) + Math.sin(s.t * 1.6) * 0.012;
     }
     if (this.cape) {
