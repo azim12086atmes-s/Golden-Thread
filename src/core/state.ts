@@ -70,6 +70,15 @@ export interface GameState {
   sponsored: Array<{ id: string; since: number; paidUntil: number; wellbeing: number; home?: string; at: number }>;
   /** Floors added to homes you own (by plot id), and a floor under construction. */
   homeFloors: Record<string, { floors: number; buildingUntil?: number }>;
+  /** Institutes you founded (institutions/institutions.ts): site, kind, the stage reached, a stage being built, who runs it. */
+  institutes: Array<{ site: string; kind: string & import('../institutions/catalogue').InstituteKind; stage: number; buildingUntil?: number; at: number;
+    staff?: { who: 'you' } | { who: 'learner'; id: string } | { who: 'hire'; id: string } | { who: 'freelance'; id: string } }>;
+  /** What the people you sponsor have learned (skill xp), by person. */
+  learners: Record<string, Partial<Record<SkillId, number>>>;
+  /** Experts you employ and until when their wages are paid. */
+  hires: Array<{ id: string; since: number; paidUntil: number }>;
+  /** Who you taught today (person:skill → day), one lesson a day each. */
+  taught: Record<string, number>;
   vehicles: string[];
   discovered: string[];
   lanterns: string[];
@@ -110,6 +119,10 @@ export function newGame(): GameState {
     homes: {},
     sponsored: [],
     homeFloors: {},
+    institutes: [],
+    learners: {},
+    hires: [],
+    taught: {},
     vehicles: ['walk', 'fly', 'van'],
     discovered: ['meadow'],
     lanterns: [],

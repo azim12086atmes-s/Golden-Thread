@@ -1,3 +1,5 @@
+import { INSTITUTE_BY_KIND, institutesOf, type InstituteKind } from '../institutions/catalogue';
+import { COURSE_FEE, DAILY_INCOME, EXPERTS, EXPERT_BY_ID, SITE_BY_ID, assignStaff, buildStage, candidates, employ, freelanceFee, hireOf, instituteAt, intern, isBuilding, kindFood, landScience, learnerLevel, standingStage, takeCourse, teachClass, teachLearner, wage, type Staff } from '../institutions/institutions';
 import { DAY_COINS, FLOOR_COST, MAX_FLOORS, NEED_LABEL, PEOPLE_IN_NEED, PERSON_BY_ID, buildFloor, daysLeft, floorBuilding, floorsOf, giftsFor, give, homeCapacity, ownedHomes, residentsOf, sponsorOf, takeHome, type Person } from '../charity/charity';
 import * as THREE from 'three';
 import type { Animal } from '../animals/Animals';
@@ -24,7 +26,7 @@ import { VEHICLES, type VehicleId } from '../vehicles/vehicles';
 import { GRID_COLS, GRID_ROWS, REGIONS, REGION_BY_ID, regionCenter, type RegionId, type RegionSpec } from '../world/regions';
 import type { Game } from '../Game';
 
-type Panel = 'care' | 'wardrobe' | 'bag' | 'journal' | 'map' | 'messages' | 'vehicles' | 'dialogue' | 'animal' | 'build' | 'van' | 'house' | 'farm' | 'market' | 'help' | 'homes' | 'property' | null;
+type Panel = 'institute' | 'care' | 'wardrobe' | 'bag' | 'journal' | 'map' | 'messages' | 'vehicles' | 'dialogue' | 'animal' | 'build' | 'van' | 'house' | 'farm' | 'market' | 'help' | 'homes' | 'property' | null;
 
 const h = (tag: string, attrs: Record<string, string> = {}, ...kids: Array<Node | string | null | false>) => {
   const el = document.createElement(tag);
@@ -580,7 +582,7 @@ export class UI {
 
   render(): void {
     const body = h('div', { class: 'body' });
-    const titles: Record<string, string> = { wardrobe: 'Dressing room', bag: 'Bag & Crafts', journal: 'Journal', map: 'The World', messages: 'Messages', vehicles: 'Ways to Travel', dialogue: '', animal: '', build: 'Build', van: 'Inside Safar', house: this.g.houseTitle(), farm: 'Farm bed', market: 'Market stall', help: 'How to play', care: 'Care & sponsorship', homes: 'Homes & Land', property: 'Land for sale' };
+    const titles: Record<string, string> = { wardrobe: 'Dressing room', bag: 'Bag & Crafts', journal: 'Journal', map: 'The World', messages: 'Messages', vehicles: 'Ways to Travel', dialogue: '', animal: '', build: 'Build', van: 'Inside Safar', house: this.g.houseTitle(), farm: 'Farm bed', market: 'Market stall', help: 'How to play', care: 'Care & sponsorship', institute: this.instituteTitle(), homes: 'Homes & Land', property: 'Land for sale' };
     const head = this.panel === 'van'
       ? h('header', {}, h('h2', {}, titles.van),
         h('span', { class: 'head-acts' },
@@ -604,6 +606,7 @@ export class UI {
       case 'help': this.help(body); break;
       case 'homes': this.homes(body); break;
       case 'care': this.carePanel(body); break;
+      case 'institute': this.institutePanel(body); break;
       case 'property': this.property(body); break;
       default: return this.closePanel();
     }
@@ -745,6 +748,96 @@ export class UI {
         floors >= MAX_FLOORS ? h('small', { class: 'dim' }, 'All the floors it can take.') : h('div', { class: 'acts' },
           btn(`Build a floor · ${FLOOR_COST.coins.coins}🪙 + ${FLOOR_COST.coins.items.wood} wood`, () => act(() => buildFloor(st, hid, 'coins'), 'The builders begin — the floor will be ready in a day.'), 'small primary', !!building),
           btn(`Pay in kind · ${FLOOR_COST.kind.items.wood} wood + ${FLOOR_COST.kind.food} food for the builders`, () => act(() => buildFloor(st, hid, 'kind'), 'The builders begin, fed from your stores — ready in a day.'), 'small ghost', !!building))));
+    }
+  }
+
+  // ───── institutes ─────
+  private instSite = '';
+  private instKind: InstituteKind | null = null;
+
+  openInstitute(siteId: string): void {
+    this.instSite = siteId;
+    this.instKind = null;
+    this.open('institute');
+  }
+
+  private instituteTitle(): string {
+    const site = SITE_BY_ID[this.instSite];
+    if (!site) return 'Institute';
+    const inst = instituteAt(this.g.st, site.id);
+    if (site.established) return `${INSTITUTE_BY_KIND[landScience(site.land)].name} — the institute of ${REGION_BY_ID[site.land].name}`;
+    if (inst) return `Your ${INSTITUTE_BY_KIND[inst.kind].name.toLowerCase()} in ${REGION_BY_ID[site.land].name}`;
+    return `Open ground in ${REGION_BY_ID[site.land].name}`;
+  }
+
+  /**
+   * An institute site: learn at the town's own institute (courses, interning, teaching, enrolling
+   * someone you sponsor), or found and grow your own — stage by stage, paid in coins or in kind,
+   * run by you, someone you sponsor and have taught, or an expert you employ or pay as a freelancer.
+   */
+  private institutePanel(body: HTMLElement): void {
+    const g = this.g, st = g.st, site = SITE_BY_ID[this.instSite];
+    if (!site) return;
+    const act = (fn: () => string | null, ok: string) => { const e = fn(); g.toast(e ?? ok, e ? 'info' : 'reward'); g.institutesView.update(); this.render(); };
+    const inst = instituteAt(st, site.id);
+    const science = INSTITUTE_BY_KIND[landScience(site.land)];
+    const staffButtons = (skill: SkillId, lvl: number, go: (s: Staff) => void, freelance = true) => h('div', { class: 'acts' },
+      ...candidates(st, site.land, skill).filter((c) => c.level >= lvl && (freelance || c.staff.who !== 'freelance')).map((c) => btn(`${c.staff.who === 'you' ? '🧭' : c.staff.who === 'learner' ? '🤲' : c.staff.who === 'freelance' ? '🧾' : '🧑‍🔧'} ${c.name} · lvl ${c.level} · ${c.note}`, () => go(c.staff), 'small ghost')));
+    if (site.established) {
+      const lvl = level(st, science.skill), mat = REGION_BY_ID[site.land].materials[0];
+      body.append(h('p', { class: 'dim' }, `${science.blurb} This is the land's ${science.stages[3].name.toLowerCase()}. Your ${SKILLS[science.skill].name}: level ${lvl}. Skills grow by doing.`),
+        h('div', { class: 'acts' },
+          btn(`📚 Take a course · ${COURSE_FEE}🪙`, () => act(() => takeCourse(st, site.id, 'you'), `A good day's learning (+${SKILLS[science.skill].name}).`), 'primary', st.coins < COURSE_FEE),
+          btn(`📚 Pay in kind · 3× ${ITEMS[mat].name}`, () => act(() => takeCourse(st, site.id, 'you', 'kind'), 'A good day’s learning.'), 'ghost'),
+          btn('🧑‍🎓 Intern under the masters · +6🪙', () => act(() => intern(st, site.id), 'You learn by working beside the masters.'), 'ghost'),
+          btn('🧑‍🏫 Teach a class (level 3)', () => act(() => teachClass(st, site.id), 'Your class goes well — you are paid, and you learn by teaching.'), 'ghost', lvl < 3)));
+      const learners = st.sponsored.filter((s) => PERSON_BY_ID[s.id]);
+      if (learners.length) {
+        body.append(h('h3', {}, 'Enrol someone you sponsor'));
+        for (const s of learners) {
+          const p = PERSON_BY_ID[s.id];
+          body.append(h('div', { class: 'quest' }, h('b', {}, `${p.name}`), h('small', {}, `${SKILLS[science.skill].name} level ${learnerLevel(st, p.id, science.skill)} · hopes to learn ${SKILLS[p.learn].name.toLowerCase()}`),
+            h('div', { class: 'acts' },
+              btn(`Enrol in a course · ${COURSE_FEE}🪙`, () => act(() => takeCourse(st, site.id, p.id), `${p.name} starts the course, eyes bright.`), 'small ghost', st.coins < COURSE_FEE),
+              btn(`Teach them ${SKILLS[science.skill].name} yourself`, () => act(() => teachLearner(st, p.id, science.skill), `You teach ${p.name}; you both grow.`), 'small ghost'))));
+        }
+      }
+    } else if (inst) {
+      const def = INSTITUTE_BY_KIND[inst.kind], stage = standingStage(st, inst), next = inst.stage + 1;
+      const staffName = inst.staff ? (inst.staff.who === 'you' ? 'you both' : inst.staff.who === 'learner' ? PERSON_BY_ID[inst.staff.id]?.name : EXPERT_BY_ID[inst.staff.id]?.name) : 'no one';
+      body.append(h('p', { class: 'dim' }, `${def.blurb}`),
+        h('div', { class: 'quest main' }, h('b', {}, stage >= 0 ? def.stages[stage].name : 'Being founded'), h('small', {}, stage >= 0 ? def.stages[stage].what : ''),
+          h('small', {}, `Run by ${staffName}${stage >= 0 ? ` · earns ${DAILY_INCOME[stage]}🪙 a day when staffed at ${SKILLS[def.skill].name} level ${def.stages[stage].level}` : ''}`)));
+      if (isBuilding(st, inst)) body.append(h('p', { class: 'story' }, `Building the ${def.stages[inst.stage].name.toLowerCase()} — ${((inst.buildingUntil! - st.minutes) / 60).toFixed(1)} hours left.`));
+      else if (next <= 3) {
+        const s = def.stages[next];
+        body.append(h('h3', {}, `Grow it: ${s.name}`), h('p', { class: 'dim' }, `${s.what} ${s.days} day${s.days > 1 ? 's' : ''} to build. Needs ${SKILLS[def.skill].name} level ${s.level}. Costs ${s.coins}🪙 + ${s.goods.wood} wood — or in kind: ${Object.entries(s.goods).map(([k, n]) => `${n}× ${ITEMS[k]?.name ?? k}`).join(', ')} and ${kindFood(s)} food for the builders.`));
+        for (const how of ['coins', 'kind'] as const) {
+          body.append(h('small', {}, how === 'coins' ? 'Pay in coins, led by:' : 'Pay in kind, led by:'), staffButtons(def.skill, s.level, (sf) => act(() => buildStage(st, site.id, inst.kind, how, sf), `Work begins on the ${s.name.toLowerCase()}.`)));
+        }
+      }
+      if (stage >= 0) body.append(h('h3', {}, 'Who runs it'), staffButtons(def.skill, def.stages[stage].level, (sf) => act(() => assignStaff(st, site.id, sf), 'They take charge.'), false));
+    } else {
+      body.append(h('p', { class: 'dim' }, 'Found an institute here. Each begins small and grows in four stages, each its own building. Choose what it will be:'));
+      body.append(h('div', { class: 'chips' }, ...institutesOf(site.land).map((d) => btn(`${d.land ? '✨ ' : ''}${d.name}`, () => { this.instKind = d.kind; this.render(); }, `small ${this.instKind === d.kind ? 'on' : 'ghost'}`))));
+      const d = this.instKind ? INSTITUTE_BY_KIND[this.instKind] : null;
+      if (d) {
+        const s = d.stages[0];
+        body.append(h('div', { class: 'quest main' }, h('b', {}, `${s.name} → ${d.stages[1].name} → ${d.stages[2].name} → ${d.stages[3].name}`), h('small', {}, d.blurb), h('small', {}, `First: ${s.what} ${s.days} day to build · needs ${SKILLS[d.skill].name} level ${s.level} · ${s.coins}🪙 + ${s.goods.wood} wood, or in kind`)));
+        for (const how of ['coins', 'kind'] as const) {
+          body.append(h('small', {}, how === 'coins' ? 'Pay in coins, led by:' : 'Pay in kind, led by:'), staffButtons(d.skill, s.level, (sf) => act(() => buildStage(st, site.id, d.kind, how, sf), `Work begins on the ${s.name.toLowerCase()}.`)));
+        }
+        body.append(h('small', { class: 'dim' }, `No one skilled enough? Learn at the town's institute, teach someone you sponsor, or employ one of the land's experts below.`));
+      }
+    }
+    body.append(h('h3', {}, 'Experts of this land'));
+    for (const e of EXPERTS.filter((x) => x.land === site.land)) {
+      const hr = hireOf(st, e.id), on = hr && st.minutes < hr.paidUntil;
+      body.append(h('div', { class: 'quest' }, h('b', {}, `${e.name} · ${SKILLS[e.skill].icon} ${SKILLS[e.skill].name} level ${e.level}`),
+        h('small', {}, on ? `Employed · paid ${((hr!.paidUntil - st.minutes) / 1440).toFixed(1)} more days` : `Wage ${wage(e)}🪙 a day, or their keep in food · freelance from ${freelanceFee(e, 0)}🪙 a build`),
+        h('div', { class: 'acts' },
+          btn(`Employ 3 days · ${wage(e) * 3}🪙`, () => act(() => employ(st, e.id, 3), `${e.name} joins you.`), 'small ghost', st.coins < wage(e) * 3),
+          btn('Employ 3 days · 3 food', () => act(() => employ(st, e.id, 3, 'kind'), `${e.name} joins you, fed from your stores.`), 'small ghost'))));
     }
   }
 

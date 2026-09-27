@@ -155,6 +155,12 @@ export class World {
     this.landmarkColliders.push(...list);
   }
 
+  /** Colliders that change as the game goes (institutes growing): replaced whole under a key. */
+  private dynamicColliders = new Map<string, Collider[]>();
+  setColliders(key: string, list: Collider[]): void {
+    if (list.length) this.dynamicColliders.set(key, list); else this.dynamicColliders.delete(key);
+  }
+
   isLoaded(id: string): boolean {
     return this.regions.has(id);
   }
@@ -168,6 +174,7 @@ export class World {
     const out: Collider[] = [];
     const test = (c: Collider) => { if (Math.abs(c.x - x) < radius + c.r && Math.abs(c.z - z) < radius + c.r) out.push(c); };
     for (const c of this.landmarkColliders) test(c);
+    for (const list of this.dynamicColliders.values()) for (const c of list) test(c);
     for (const r of this.regions.values()) {
       const rc = regionCenter(r.spec);
       if (Math.abs(rc.x - x) > REGION_SIZE / 2 + radius + 20 || Math.abs(rc.z - z) > REGION_SIZE / 2 + radius + 20) continue;

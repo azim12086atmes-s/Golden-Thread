@@ -5,6 +5,7 @@ import { LAND_STYLE, VARIANT_SHARE, buildVariant } from './buildings';
 import { houseDecor } from './houseDecor';
 import { lotusSpots } from './Water';
 import { TRADITIONS } from './traditions';
+import { INSTITUTE_SITES, SITE_SIZE } from '../institutions/sites';
 import { buildHouse, lampPost, streetProp, type Ctx } from './architecture';
 import { GeoBuilder, box, cone, cyl, flowers, rock, sphere, tree } from './kit';
 import { CITY_RADIUS, REGION_SIZE, regionCenter, type RegionSpec } from './regions';
@@ -126,8 +127,11 @@ export function buildRegion(spec: RegionSpec, solid: THREE.Material, glowMat: TH
   const plotsHere = PLOTS.filter((p) => p.region === spec.id).map((p) => ({ x: p.x - c.x, z: p.z - c.z }));
   const inCastle = (x: number, z: number, pad: number) =>
     spec.id === 'meadow' && Math.hypot(c.x + x - CASTLE_SITE.x, c.z + z - CASTLE_SITE.z) < CASTLE_SITE.r + 8 + pad;
+  // Institute sites (institutions/sites.ts) are kept clear like plots.
+  const sitesHere = INSTITUTE_SITES.filter((s) => s.land === spec.id).map((s) => ({ x: s.x - c.x, z: s.z - c.z }));
   const nearPlot = (x: number, z: number, pad: number) => inCastle(x, z, pad) ||
-    plotsHere.some((p) => Math.abs(x - p.x) < PLOT_SIZE / 2 + pad && Math.abs(z - p.z) < PLOT_SIZE / 2 + pad);
+    plotsHere.some((p) => Math.abs(x - p.x) < PLOT_SIZE / 2 + pad && Math.abs(z - p.z) < PLOT_SIZE / 2 + pad) ||
+    sitesHere.some((p) => Math.abs(x - p.x) < SITE_SIZE / 2 + pad && Math.abs(z - p.z) < SITE_SIZE / 2 + pad);
   const isSky = spec.id === 'skyisles';
 
   // Roads: two avenues and a ring, laid in short segments that follow the ground.

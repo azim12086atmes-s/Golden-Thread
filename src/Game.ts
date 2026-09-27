@@ -37,6 +37,9 @@ import { UI } from './ui/UI';
 import { VEHICLES, setVehicleEnvironment, type VehicleId } from './vehicles/vehicles';
 import { Traffic } from './traffic/Traffic';
 import { PERSON_BY_ID, floorBuilding, floorsOf, residentsOf, tickCharity } from './charity/charity';
+import { InstitutesView } from './institutions/InstitutesView';
+import { instituteAt, landScience, siteAt, tickInstitutes } from './institutions/institutions';
+import { INSTITUTE_BY_KIND } from './institutions/catalogue';
 import { Ambience } from './world/Ambience';
 import { RegionFX } from './world/RegionFX';
 import { TownDressing } from './world/TownDressing';
@@ -68,7 +71,8 @@ export type Interactable =
   | { kind: 'door'; door: Door; label: string }
   | { kind: 'market'; walker: Walker; label: string }
   | { kind: 'stray'; pet: PetDef; label: string }
-  | { kind: 'bed'; plotId: string; decorId: string; label: string };
+  | { kind: 'bed'; plotId: string; decorId: string; label: string }
+  | { kind: 'institute'; site: string; label: string };
 
 /** A scripted scene that takes the camera (and optionally renders its own scene). */
 export interface Cutscene {
@@ -107,6 +111,8 @@ export class Game {
   readonly msgs: Messages;
   readonly housing: Housing;
   readonly housingView: HousingView;
+  /** Institute sites: the town's own institute and the ones you found (institutions/). */
+  readonly institutesView: InstitutesView;
   readonly trav: Travellers;
   readonly npcs: Npcs;
   readonly townsfolk: Townsfolk;
@@ -186,6 +192,7 @@ export class Game {
     this.dressing = new TownDressing(this.scene, this.world.solid, this.world.glow);
     this.animals = new Animals(this.scene, this.st);
     this.housingView = new HousingView(this.scene, this.st, this.world);
+    this.institutesView = new InstitutesView(this.scene, this.st, this.world);
     this.trav = new Travellers(this.scene, this.world, this.st, OUTFITS[this.st.outfits.girl], OUTFITS[this.st.outfits.boy]);
     this.van = new VanInterior(this.st, OUTFITS[this.st.outfits.girl], OUTFITS[this.st.outfits.boy]);
     this.house = new HouseInterior(OUTFITS[this.st.outfits.girl], OUTFITS[this.st.outfits.boy]);
@@ -355,6 +362,8 @@ export class Game {
     if ((this.charityClock -= dt) <= 0) {
       this.charityClock = 2;
       for (const n of tickCharity(this.st)) this.toast(`🤲 ${n.text}`, 'story');
+      for (const n of tickInstitutes(this.st)) this.toast(`🏛️ ${n.text}`, 'reward');
+      this.institutesView.update();
       // Homes change shape as floors start and finish.
       const sig = Object.keys(this.st.homeFloors).map((id) => `${id}:${floorsOf(this.st, id)}:${floorBuilding(this.st, id) !== null}`).join('|');
       if (sig !== this.floorsSig) { this.floorsSig = sig; this.housingDirty = true; }
@@ -505,6 +514,15 @@ export class Game {
     if (pal) cands.push([1.2, { kind: 'companion', id: pal.id, label: pal.kind === 'pet' ? `Pet ${pal.name}` : `Chat with ${pal.name}` }]);
     const ride = onFoot ? this.celebration.label(p) : null;
     if (ride) cands.push([0.5, { kind: 'chariot', label: ride }]);
+    // Institute sites: the town's own institute, and open ground to found one.
+    if (onFoot) {
+      const site = siteAt(p.x, p.z, 4);
+      if (site) {
+        const inst = instituteAt(this.st, site.id);
+        const name = site.established ? `the ${INSTITUTE_BY_KIND[landScience(site.land)].name.toLowerCase()} institute` : inst ? `your ${INSTITUTE_BY_KIND[inst.kind].stages[Math.max(0, inst.stage)].name.toLowerCase()}` : 'an open site — found an institute';
+        cands.push([2.2, { kind: 'institute', site: site.id, label: `🏛️ ${site.established ? 'Visit' : inst ? 'Visit' : 'Here:'} ${name}` }]);
+      }
+    }
     // Front doors: every building in town can be entered.
     if (onFoot) for (const d of [...this.world.loadedRegions().flatMap((r) => r.doors), ...this.world.landmarkDoors, ...this.homeDoors()]) {
       const dd = Math.hypot(d.x - p.x, d.z - p.z);
@@ -538,6 +556,7 @@ export class Game {
     switch (t.kind) {
       case 'folk': return this.talkFolk(t.walker);
       case 'door': return this.enterHouse(t.door);
+      case 'institute': return this.ui.openInstitute(t.site);
       case 'stray': return this.toast(this.caravan.adopt(t.pet), 'story');
       case 'market': this.townsfolk.turnTo(t.walker, this.trav.gPos); return this.ui.openMarket(t.walker.land);
       case 'npc': return this.talk(t.npc);

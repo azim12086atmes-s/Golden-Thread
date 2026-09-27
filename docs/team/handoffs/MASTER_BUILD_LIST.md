@@ -5,22 +5,23 @@ sections C1–C7) and `3D_BUILDS_HANDOFF.md` (3D work, sections 2a and 3.x). Tic
 
 ## A. Charity, sponsorship and homes (rules side; C1)
 - [x] Rules: people in need in every land, sponsor in coins or in kind, wellbeing, take them home, floors (`src/charity/charity.ts`)
-- [ ] Charity panel in the UI (meet people in need, sponsor, give coins/food/goods, take them home, build floors)
-- [ ] Call `tickCharity` in the game loop and show its news (thriving / days run out) as toasts and letters
-- [ ] Residents shown inside your home; more rooms and beds as floors grow
-- [ ] Homes visibly grow a storey per floor, scaffolding while building (3D)
+- [x] Charity panel in the UI (meet people in need, sponsor, give coins/food/goods, take them home, build floors)
+- [x] Call `tickCharity` in the game loop and show its news (thriving / days run out) as toasts and letters
+- [x] Residents shown inside your home (more rooms per floor still to model)
+- [x] Homes grow a storey per floor, scaffolding while building (logic wired; placeholder model — 3D side to replace `addStoreys`)
 - [ ] Soup kitchens: supply ingredients, hire a chef, queues of people fed
 - [ ] Charity employment paid in housing, food, necessities and opportunities
 
 ## B. Institutions (C2, C7)
-- [ ] Own institutes by building them on your land, in stages, each stage a real building (e.g. watch boutique → workshop → manufacture → school)
-- [ ] Join and grow inside established institutes in each town
-- [ ] Every stage needs a skilled person: you, someone you pay, or someone you sponsor and teach / sponsor to learn
+- [x] Own institutes by building them on your land, in stages, each stage a real building (e.g. watch boutique → workshop → manufacture → school)
+- [x] Join and grow inside established institutes in each town (course, intern, teach, enrol a sponsored learner)
+- [x] Every stage needs a skilled person: you, someone you pay, or someone you sponsor and teach / sponsor to learn
 - [ ] Clinics upgradable to hospitals; libraries and knowledge institutions; schools, madrasas, tent schools, universities; a Hogwarts-style magic school
 - [ ] Each land's own science and institute ladder (Chinese medicine, Ayurveda, Swiss watchmaking, Islamic sciences, London engineering, New Yonder tech, Meadow magic, and the rest — research and cite sources)
-- [ ] Build time; payment in coins, food, rations, necessities, amenities
+- [x] Build time; payment in coins or in kind (wood, the land's goods, food)
 
 ## C. Work, skills and learning (C3, C4)
+- [x] Employ experts (daily wage in coins or food) or pay them freelance for one build; teach someone you sponsor; courses, interning, teaching; skills grow by doing
 - [ ] Hire people as employees or freelancers: teachers, chefs, builders, tent-layers, weavers, doctors, researchers, couriers
 - [ ] Pay in coins or in kind (housing, food, necessities, training)
 - [ ] Skills grow only by doing them; services need a skill level and pay more at higher levels; new skills (teaching, medicine, research, building, software, hardware, logistics)
