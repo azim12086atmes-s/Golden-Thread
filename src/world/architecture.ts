@@ -807,7 +807,7 @@ const landmarks: Record<RegionId, LandmarkFn> = {
       for (const x of [-1.5, 1.5]) box(c.g, 0.2, 2.8, 0.2, '#6b4a2a', x, 0, 0);
       gable(c.g, 3.6, 3, 1.2, '#e07a5f', 0, 2.8, 0);
     });
-    c.g.frame(-26, 0, -14, 0.4, 1, () => {
+    c.g.frame(-26, 0, -14, 0.4, 1, () => c.glow.frame(-26, 0, -14, 0.4, 1, () => {
       cyl(c.g, 2.4, 3.4, 12, '#fff4e0', 0, 0, 0, 8);
       cone(c.g, 3, 3, '#e07a5f', 0, 12, 0, 8);
       for (let i = 0; i < 4; i++) {
@@ -816,7 +816,7 @@ const landmarks: Record<RegionId, LandmarkFn> = {
         c.g.add(blade, '#f4ead8', M(0, 11, 3.5, 0, 1, 1, 1, 0, (i * Math.PI) / 2 + 0.4));
       }
       box(c.glow, 1, 1.4, 0.1, c.s.glow, 0, 5, 3.25);
-    });
+    }));
     o.colliders.push({ x: 0, z: 0, r: 3.6, h: 32 }, { x: 18, z: 6, r: 2, h: 3 }, { x: -26, z: -14, r: 3.4, h: 15 });
     o.height = 32;
   },
@@ -1152,13 +1152,17 @@ const landmarks: Record<RegionId, LandmarkFn> = {
     const white = '#fbf7ee', red = '#b5552e';
     box(c.g, 70, 4, 70, '#f2eee4', 0, 0, -30);
     o.platforms.push({ x: 0, z: -30, r: 34, y: 4 });
-    c.g.frame(0, 4, -30, 0, 1, () => {
-      cyl(c.g, 17, 17, 22, white, 0, 0, 0, 8);
-      for (let i = 0; i < 8; i++) {
-        const a = (i / 8) * Math.PI * 2 + Math.PI / 8;
-        archPanel(c.g, 8, 16, '#e8e2d4', Math.sin(a) * 15.8, 1, Math.cos(a) * 15.8, a, 0.2, true);
-        archPanel(c.glow, 3.4, 6, c.s.glow, Math.sin(a) * 16, 3, Math.cos(a) * 16, a, 0.1, true);
-      }
+    c.g.frame(0, 4, -30, 0, 1, () => c.glow.frame(0, 4, -30, 0, 1, () => {
+      // The octagonal tomb, turned so a great arched face (the pishtaq) looks straight down the garden's
+      // axis to the gate, as at the real Taj; each window sits in its arch.
+      c.g.frame(0, 0, 0, Math.PI / 8, 1, () => c.glow.frame(0, 0, 0, Math.PI / 8, 1, () => {
+        cyl(c.g, 17, 17, 22, white, 0, 0, 0, 8);
+        for (let i = 0; i < 8; i++) {
+          const a = (i / 8) * Math.PI * 2 + Math.PI / 8;
+          archPanel(c.g, 8, 16, '#e8e2d4', Math.sin(a) * 15.8, 1, Math.cos(a) * 15.8, a, 0.2, true);
+          archPanel(c.glow, 3.4, 6, c.s.glow, Math.sin(a) * 16, 3, Math.cos(a) * 16, a, 0.1, true);
+        }
+      }));
       cyl(c.g, 9, 9, 6, white, 0, 22, 0, 16);
       onion(c.g, 11, white, 0, 26, 0, '#d4af37');
       for (const [x, z] of [[-11, -11], [11, -11], [-11, 11], [11, 11]] as const) chhatri(c, x, 22, z, 2.6, white, white);
@@ -1168,7 +1172,7 @@ const landmarks: Record<RegionId, LandmarkFn> = {
         chhatri(c, x, 30, z, 1.6, white, white);
         o.colliders.push({ x, z: z - 30, r: 2.2, h: 40 });
       }
-    });
+    }));
     // Charbagh — four-fold garden with water channels and cypress avenues.
     box(c.g, 4, 0.3, 90, '#7fc8e0', 0, 0, 44);
     box(c.g, 90, 0.3, 4, '#7fc8e0', 0, 0, 44);
@@ -1229,10 +1233,10 @@ const landmarks: Record<RegionId, LandmarkFn> = {
     }
     for (let i = 0; i < 6; i++) {
       const a = (i / 6) * Math.PI * 2 + 0.3;
-      c.g.frame(Math.cos(a) * 28, 0, Math.sin(a) * 28, 0, 1, () => {
+      c.g.frame(Math.cos(a) * 28, 0, Math.sin(a) * 28, 0, 1, () => c.glow.frame(Math.cos(a) * 28, 0, Math.sin(a) * 28, 0, 1, () => {
         dome(c.g, 3, '#cfe8ff', 0, 0, 0, 14);
         sphere(c.glow, 1, c.s.glow, 0, 0.6, 0, 8, 0.6);
-      });
+      }));
       o.colliders.push({ x: Math.cos(a) * 28, z: Math.sin(a) * 28, r: 3, h: 3 });
     }
     o.colliders.push({ x: 0, z: 0, r: 10, h: 19 });

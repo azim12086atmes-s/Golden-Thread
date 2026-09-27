@@ -699,6 +699,16 @@ inverted V), the snow igloo's entrance tunnel (was upside down), the Nubian barr
 Bengal-style roofs on jharokhas and Mughal pavilions (faced forward). Check other rotated half-cylinders and arcs you
 write: a `CylinderGeometry` half (thetaLength π) must be turned so its curve faces up.
 
+**Frames must include the glow.** `c.g.frame(...)` moves only the solid builder. Anything drawn into `c.glow` inside
+it lands at the unmoved origin unless you wrap the glow too: `c.g.frame(x, y, z, ry, s, () => c.glow.frame(x, y, z,
+ry, s, () => { … }))`. Three landmarks had this slip, and it is fixed now:
+- the Taj Mahal's windows were drawn 30 m in front of their arches;
+- the Meadow windmill's window glowed near the Great Tree;
+- the Aurora ice hall's six domes all glowed at its centre.
+
+Also fixed on the Taj: the octagonal tomb is turned so a great arched face looks straight down the garden axis to the
+gate, not a corner.
+
 ## 17. Particles and sky effects (NEW)
 
 > Add effects; keep the owner-approved skies, stars and lanterns exactly as they are — see §23.

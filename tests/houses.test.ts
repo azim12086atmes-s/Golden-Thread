@@ -26,7 +26,7 @@ describe('every building can be entered', () => {
       }
       for (const n of inst.nodes) for (const h of houses) expect(Math.hypot(n.x - h.x, n.z - h.z), `${n.id}`).toBeGreaterThan(h.r);
       inst.dispose();
-    });
+    }, 15_000); // builds a whole land: slow when the whole suite runs in parallel
   }
 });
 
