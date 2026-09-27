@@ -26,13 +26,13 @@ sections C1–C7) and `3D_BUILDS_HANDOFF.md` (3D work, sections 2a and 3.x). Tic
 - [x] Hire people as employees or freelancers: farmhands, couriers, shipping lines, builders (tent-layers in the tent lands) who speed up building, weavers who weave your fibre; experts in every land's sciences plus cooking, medicine, teaching and research (`economy/workers.ts`, `economy/crews.ts`; Work panel lists who you can employ)
 - [x] Pay in coins, food, or a room in your home (training as pay still to come)
 - [x] Skills grow only by doing them; services need a skill level and pay more at higher levels; new skills: teaching, medicine, research, building, software, hardware, logistics (`economy/items.ts`, `economy/services.ts`)
-- [ ] Teaching as a service; interning; doing a course (fee in coins or goods, certificate)
+- [x] Teaching as a service; interning; doing a course (fee in coins or goods, certificate) (`institutions/certificates.ts`, `institutions/opportunities.ts`)
 - [x] Research under professors (assist for pay; scientific and magic theses → degree, invention, purse)
 - [x] Service jobs: two employers in every land (a shift a day; Apprentice → Master, pay rising with skill) and a daily freelance board — remote software, hardware builds with parts, and every land's trades (Work panel, U)
 - [x] Institutes and experts use the new skills: clinics, Chinese medicine, Ayurveda, Siddha → medicine; schools → teaching; libraries, the Islamic sciences, star lore, polar science → research; New Yonder tech → software; radio → hardware; irrigation → building
 
 ## D. Economy of services, agriculture and supply (C5)
-- [ ] Services economy: health care, tech, logistics, supply, agriculture, research, manufacturing, inventions
+- [x] Services economy: health care, tech, logistics, supply, agriculture, research, manufacturing, inventions (`economy/manufacture.ts`, `economy/business.ts`)
 - [x] Agriculture land: two 40 m fields per land, eight rows of the land's own crops, barn, farmhands who water, harvest and re-sow (`economy/fields.ts`, panel on the field)
 - [x] Supply chain: couriers carry from your barns to any land's market (prices fall as a market fills, recover a fifth a day) or to your soup kitchens and clinics (`economy/supply.ts`)
 - [x] Hired couriers ride their land's traffic vehicle on the avenue while a load is on the road (`Traffic` `couriers`)
@@ -108,7 +108,7 @@ sections C1–C7) and `3D_BUILDS_HANDOFF.md` (3D work, sections 2a and 3.x). Tic
 
 ## J. Carried over from earlier sessions
 - [ ] Walk-around interiors (rooms are dioramas now)
-- [ ] Children going home at their destination (caravan limit)
+- [x] Children going home at their destination (caravan limit) (`caravan.bringHome`)
 - [ ] Robes and headscarves swaying in the wind
 - [ ] Instanced party guests at the celebration (performance)
 - [ ] Real-GPU frame-rate measurement
@@ -116,7 +116,7 @@ sections C1–C7) and `3D_BUILDS_HANDOFF.md` (3D work, sections 2a and 3.x). Tic
 ## K. Interiors (NEW)
 - [ ] 3D: interiors for monuments, the castle (great hall, library, tower), every institute stage, penthouses and caverns (`CHATGPT_3D_MODELS.md` §20; contract `src/world/models/interiors.ts`)
 - [x] Logic: doors ask `buildInterior` first (monuments, institutes via “Step inside”, caverns after exploring, castle, penthouses) and use its seats, spots, gather point and camera; scenes seating the two closer than 2.2 m are refused (`HouseInterior.safeInterior`); the institute panel opens from inside
-- [ ] Logic: a door into the celebration castle, and penthouses to buy (after their models)
+- [ ] Logic: penthouses to buy (after their models). The castle door is done (`event/site.ts` `CASTLE_DOOR`)
 
 ## L. Claude's logic queue — still to do (in order)
 
