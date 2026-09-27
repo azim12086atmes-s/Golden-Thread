@@ -1,4 +1,5 @@
 import * as THREE from 'three';
+import { markerSprite, tendMarker } from '../world/markers';
 import { CharacterModel } from '../characters/CharacterModel';
 import type { Outfit } from '../characters/modesty';
 import { OUTFITS } from '../characters/outfits';
@@ -197,8 +198,19 @@ export class Townsfolk {
     w.faceAt = Math.atan2(p.x - w.x, p.z - w.z);
   }
 
-  update(dt: number, t: number, player: THREE.Vector3): void {
+  /** People waiting for you to bring something (npc/folk.ts errands): they stand still, marked ❗. */
+  private errandMarks = new Map<string, THREE.Sprite>();
+
+  update(dt: number, t: number, player: THREE.Vector3, errands: ReadonlyArray<{ key: string; x: number; z: number }> = []): void {
     this.t = t;
+    const waiting = new Map(errands.map((e) => [e.key, e]));
+    for (const [k, s] of this.errandMarks) if (!waiting.has(k)) { this.scene.remove(s); this.errandMarks.delete(k); }
+    for (const e of errands) {
+      let s = this.errandMarks.get(e.key);
+      if (!s) { s = markerSprite('❗', '#ff9a1f'); this.scene.add(s); this.errandMarks.set(e.key, s); }
+      s.position.set(e.x, surfaceAt(e.x, e.z, 1e9) + 2.7, e.z);
+      tendMarker(s, player, t, true, 4, 600);
+    }
     this.lodClock -= dt;
     const relod = this.lodClock <= 0;
     if (relod) this.lodClock = 0.25;
@@ -207,7 +219,14 @@ export class Townsfolk {
       const near = Math.hypot(town.cx - player.x, town.cz - player.z) < TOWN_VIEW;
       town.crowd.visible = near;
       if (!near) continue;
-      for (const w of town.people) step(w, dt, t, town.cx, town.cz);
+      for (const w of town.people) {
+        const e = waiting.get(`${w.land}:${w.idx}`);
+        if (e && t >= w.faceUntil) {
+          // Waiting where they asked, looking out for you.
+          w.x = e.x; w.z = e.z; w.y = surfaceAt(e.x, e.z, 1e9); w.moving = false;
+          w.heading = Math.atan2(player.x - e.x, player.z - e.z);
+        } else step(w, dt, t, town.cx, town.cz);
+      }
       if (relod) {
         const close = town.people
           .map((w) => [w, Math.hypot(w.x - player.x, w.z - player.z)] as const)

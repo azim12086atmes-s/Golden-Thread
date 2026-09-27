@@ -4,7 +4,7 @@ import { isEmployed, SERVE_PER_DAY, pantryOf, servesWith, stockPantry, COURSE_FE
 import { hasMet, needSpot, DAY_COINS, FLOOR_COST, MAX_FLOORS, NEED_LABEL, PEOPLE_IN_NEED, PERSON_BY_ID, buildFloor, daysLeft, floorBuilding, floorsOf, giftsFor, give, homeCapacity, ownedHomes, residentsOf, sponsorOf, takeHome, type Person } from '../charity/charity';
 import * as THREE from 'three';
 import { FIELD_BY_ID, FIELD_ROWS, barnCount, buyField, fieldGrowTime, fieldGrowth, fieldYield, harvestField, plantField, setHand, takeFromBarn, waterField, type Hand } from '../economy/fields';
-import { addRoute, bestMarkets, destLabel, marketDest, pantryDest, removeRoute, shipmentOf, tripMinutes } from '../economy/supply';
+import { addRoute, bestMarkets, destLabel, destLand, homeDest, marketDest, pantryDest, removeRoute, shipmentOf, tripMinutes } from '../economy/supply';
 import { WORKER_BY_ID, roleTitle, workersOf, type Role, type Worker } from '../economy/workers';
 import { HAND_HOURS, helpedToday, hurry, hurryShare, type Project } from '../economy/crews';
 import { hasHarbour } from '../world/harbours';
@@ -17,13 +17,14 @@ import { DRESS_GROUPS, dressGroup, type DressGroup } from '../characters/wardrob
 import type { Outfit } from '../characters/modesty';
 import { dayOf, type VanSlot } from '../core/state';
 import { SKY_PAUSED, TIMES, TIME_LABEL, nextTime, timeOfDay } from '../core/time';
-import { canCraft, count, level } from '../economy/economy';
+import { BAG_CAP, bagRoom, canCraft, count, level, loadOf } from '../economy/economy';
 import { ITEMS, LEVEL_XP, RECIPES, SKILLS, type SkillId } from '../economy/items';
 import { CROPS, DECOR, DECOR_BY_ID, PLOT_BY_ID, SEED_SHOP, seedPrice } from '../housing/housing';
 import { SLOT_NAMES, VAN_OPTIONS } from '../housing/VanInterior';
 import type { Npc } from '../npc/Npcs';
 import { PEOPLE_BY_ID } from '../npc/people';
 import { friendDef } from '../social/friends';
+import { mealsIn, putAway, storeCap, storeOf, storeRoom, takeOut } from '../economy/storage';
 import { wantedCrafts } from '../guide/objectives';
 import { QUESTS } from '../quests/quests';
 import { REPLY_OPTIONS } from '../social/Messages';
@@ -687,7 +688,8 @@ export class UI {
   private bag(body: HTMLElement): void {
     const st = this.g.st;
     const inv = Object.entries(st.inventory).filter(([, n]) => n > 0);
-    body.append(h('h3', {}, `Carrying · 🪙 ${st.coins}`));
+    body.append(h('h3', {}, `Carrying ${loadOf(st.inventory)} / ${BAG_CAP} · 🪙 ${st.coins}`));
+    if (bagRoom(st) === 0) body.append(h('p', { class: 'dim' }, 'Your bag is full — anything more goes to the van. Put things away in the van or at a home.'));
     const grid = h('div', { class: 'grid items' });
     if (!inv.length) grid.append(h('p', { class: 'dim' }, 'Empty. Gather things marked with a floating light.'));
     for (const [id, n] of inv) grid.append(h('div', { class: 'item', title: ITEMS[id]?.name ?? id }, h('span', { class: 'ic' }, ITEMS[id]?.icon ?? '?'), h('small', {}, ITEMS[id]?.name ?? id), h('b', {}, `×${n}`)));
@@ -897,14 +899,15 @@ export class UI {
       const ok = (l: RegionId) => !ship || hasHarbour(l);
       const dests = !from || !ok(from) ? [] : [
         ...(main ? bestMarkets(st, main).filter((m) => ok(m.land)).slice(0, 4).map((m) => marketDest(m.land)) : [marketDest(from)]),
-        ...pantries.filter((i) => ok(SITE_BY_ID[i.site].land)).map((i) => pantryDest(i.site))];
+        ...pantries.filter((i) => ok(SITE_BY_ID[i.site].land)).map((i) => pantryDest(i.site)),
+        ...ownedHomes(st).filter((id) => ok(PLOT_BY_ID[id].region)).map((id) => homeDest(id))];
       const note = trip ? `${ship ? 'At sea' : 'On the road'} to ${destLabel(st, trip.to)} — arrives in about ${Math.max(1, Math.ceil((trip.arrive - st.minutes) / 60))} h.`
         : route ? `Carries from ${route.from === fieldId ? 'this barn' : 'another barn'} to ${destLabel(st, route.to)}.` : on ? 'Employed — give them a route.' : 'Not employed.';
       body.append(h('div', { class: 'quest' }, h('b', {}, `${ship ? '🚢' : '🚚'} ${w.name} of ${REGION_BY_ID[w.land].name} · ${w.vehicle} · carries ${w.capacity}`), h('small', {}, note)),
         h('div', { class: 'acts' },
           btn(`${ship ? 'Charter' : 'Employ'} · 5 days · ${wage(w) * 5}🪙`, () => act(() => employ(st, w.id, 5), `${w.name} is ${ship ? 'chartered' : 'employed'}.`), 'small ghost', st.coins < wage(w) * 5),
-          ...(on && from ? dests.map((to) => btn(`→ ${destLabel(st, to).replace(/^the market in /, '🛒 ')} · ${Math.round(tripMinutes(w, from, (to.startsWith('market:') ? to.slice(7) : SITE_BY_ID[to.slice(7)].land) as RegionId) / 60)} h`,
-            () => act(() => addRoute(st, w.id, fieldId, to), `${w.name} will carry from this barn to ${destLabel(st, to)}.`), `small ${route?.to === to && route.from === fieldId ? 'on' : 'ghost'}`)) : []),
+          ...(on && from ? dests.map((to) => btn(`→ ${destLabel(st, to).replace(/^the market in /, '🛒 ').replace(/^your home in /, '🏡 ')} · ${Math.round(tripMinutes(w, from, (destLand(to) ?? from) as RegionId) / 60)} h`,
+            () => act(() => addRoute(st, w.id, fieldId, to), `${w.name} will carry from this barn to ${destLabel(st, to)}.`), `small ${route?.to === to && route?.from === fieldId ? 'on' : 'ghost'}`)) : []),
           route ? btn('Stop the route', () => { removeRoute(st, w.id); this.render(); }, 'small ghost') : null));
     }
   }
@@ -1266,7 +1269,7 @@ export class UI {
   }
 
   private journal(body: HTMLElement): void {
-    const q = this.g.quests, st = this.g.st;
+    const q = this.g.quests, st = this.g.st, g2 = this.g;
     // The story and the main objective, always at the top.
     const wondersFound = WONDERS.filter((w) => foundWonder(st, w.id)).length;
     body.append(h('div', { class: 'quest main' },
@@ -1286,6 +1289,12 @@ export class UI {
       h('b', {}, `${x.main ? '🏮 ' : ''}${x.title}`), h('small', {}, `${REGION_BY_ID[x.region].name} · ${PEOPLE_BY_ID[x.giver]?.name ?? ''}`), h('p', {}, x.intro), h('p', { class: 'step' }, `→ ${q.stepText(x.id)}`),
       x.id === followed ? h('span', { class: 'following' }, '✦ Following') : btn('Follow this journey', () => { this.g.guide.track(x.id); this.g.guide.refresh(); this.render(); this.refreshTracker(); }, 'small'),
     ));
+    if (st.errands.length) {
+      body.append(h('h3', {}, '❗ People waiting for you'));
+      for (const e of st.errands) body.append(h('div', { class: 'quest' }, h('b', {}, `${e.name} in ${REGION_BY_ID[e.land as RegionId]?.name ?? e.land}`),
+        h('small', {}, `needs ${e.qty}× ${ITEMS[e.item]?.icon ?? ''} ${ITEMS[e.item]?.name ?? e.item} · waits ${Math.max(1, Math.ceil((e.until - st.minutes) / 60))} more hours · you have ${count(st, e.item)}`),
+        btn('Show the way', () => { g2.guide.pin({ title: `Bringing ${ITEMS[e.item]?.name ?? e.item} to ${e.name}`, text: 'They are waiting under the ❗', x: e.x, z: e.z, region: e.land as RegionId }); this.closePanel(); }, 'small')));
+    }
     body.append(h('h3', {}, 'The caravan'));
     for (const c of this.g.caravan.list()) body.append(h('div', { class: 'quest' },
       h('b', {}, `${c.kind === 'pet' ? '🐾' : '🧒'} ${c.name}`),
@@ -1509,6 +1518,30 @@ export class UI {
       btn('🌅 Rest until morning', () => { g.setTimeOfDay('dawn'); this.render(); }, 'ghost small'),
       btn('🌙 Stay until night', () => { g.setTimeOfDay('night'); this.render(); }, 'ghost small'),
       btn('🚪 Step outside', () => g.exitHouse(), 'ghost small')));
+    this.storeSection(body, plotId);
+  }
+
+  /** A store (the van, or a home): what is in it, what you carry, and moving things between them. */
+  private storeSection(body: HTMLElement, id: string): void {
+    const g = this.g, st = g.st, s = storeOf(st, id);
+    const act = (e: string | null) => { if (e) g.toast(e); this.render(); };
+    body.append(h('h3', {}, `${id === 'van' ? '🚐 The van\'s store' : '🏡 The store room'} · ${loadOf(s)} / ${storeCap(st, id)}`));
+    if (id !== 'van') {
+      const people = residentsOf(st, id);
+      body.append(h('p', { class: 'dim' }, people.length
+        ? `${people.map((p) => PERSON_BY_ID[p.id]?.name ?? p.id).join(', ')} ${people.length > 1 ? 'live' : 'lives'} here and eat from this store each day — ${mealsIn(st, id)} meals' worth now. Raw produce is cooked two to a meal (one, for someone who has learnt to cook). Bring food, or send a courier here from your fields.`
+        : 'Keep your harvest here. Anyone you invite to live here eats from this store.'));
+    }
+    const inStore = Object.entries(s).filter(([, n]) => n > 0);
+    const grid = h('div', { class: 'grid items' });
+    if (!inStore.length) grid.append(h('p', { class: 'dim' }, 'Empty.'));
+    for (const [k, n] of inStore) grid.append(h('div', { class: 'item', title: ITEMS[k]?.name ?? k }, h('span', { class: 'ic' }, ITEMS[k]?.icon ?? '?'), h('small', {}, ITEMS[k]?.name ?? k), h('b', {}, `×${n}`),
+      btn('Take 1', () => act(takeOut(st, id, k, 1)), 'small ghost'), n > 1 ? btn(`All`, () => act(takeOut(st, id, k, Math.min(n, bagRoom(st)))), 'small ghost') : null));
+    body.append(grid, h('small', { class: 'dim' }, `From your bag (${loadOf(st.inventory)} / ${BAG_CAP}):`));
+    const bagGrid = h('div', { class: 'grid items' });
+    for (const [k, n] of Object.entries(st.inventory).filter(([, v]) => v > 0)) bagGrid.append(h('div', { class: 'item', title: ITEMS[k]?.name ?? k }, h('span', { class: 'ic' }, ITEMS[k]?.icon ?? '?'), h('small', {}, ITEMS[k]?.name ?? k), h('b', {}, `×${n}`),
+      btn('Put away', () => act(putAway(st, id, k, 1)), 'small ghost'), n > 1 ? btn('All', () => act(putAway(st, id, k, Math.min(n, storeRoom(st, id)))), 'small ghost') : null));
+    body.append(bagGrid);
   }
 
   private vanPanel(body: HTMLElement): void {
@@ -1530,6 +1563,7 @@ export class UI {
       shelf.append(card);
     }
     body.append(shelf, h('p', { class: 'dim fine' }, 'Each piece uses up the item. ✕ or Esc to step outside.'));
+    this.storeSection(body, 'van');
   }
 
 

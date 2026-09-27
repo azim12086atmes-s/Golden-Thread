@@ -1,4 +1,5 @@
 import { bonus } from './inventions';
+import { bagRoom } from './economy';
 import { DAY_MINUTES, type GameState } from '../core/state';
 import { CROPS, SEED_SHOP, WATER_BOOST } from '../housing/housing';
 import { staffLevel } from '../institutions/institutions';
@@ -95,7 +96,8 @@ export function harvestField(st: GameState, id: string): { error: string } | { i
 /** Carry some of the barn's store into your bag. */
 export function takeFromBarn(st: GameState, id: string, item: string, n: number): number {
   const f = st.fields[id];
-  const k = Math.min(n, f?.store[item] ?? 0);
+  // Only what fits in the bag.
+  const k = Math.min(n, f?.store[item] ?? 0, bagRoom(st));
   if (!f || k <= 0) return 0;
   f.store[item] -= k;
   if (f.store[item] <= 0) delete f.store[item];

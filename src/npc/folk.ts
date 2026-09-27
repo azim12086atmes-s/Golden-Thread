@@ -132,10 +132,31 @@ export type HelpResult =
  * Talking with someone in town. The first time they need a hand they ask; talk again to help.
  * Favours that need something take it from the bag. Each person can be helped once a day.
  */
-export function talkToFolk(st: { minutes: number; coins: number; light: number; inventory: Record<string, number>; folk: FolkDay }, land: RegionId, idx: number): HelpResult {
+/** How long someone waits for what you said you would bring (days). */
+export const ERRAND_DAYS = 2;
+type Errand = { key: string; land: string; name: string; item: string; qty: number; coins: number; done: string; x: number; z: number; until: number };
+
+/**
+ * Talk to someone in town. A favour that needs something from your bag becomes an errand: they
+ * wait where they are (`at`), marked from far off, until you bring it — or for ERRAND_DAYS.
+ */
+export function talkToFolk(st: { minutes: number; coins: number; light: number; inventory: Record<string, number>; folk: FolkDay; errands?: Errand[] }, land: RegionId, idx: number, at?: { x: number; z: number }): HelpResult {
   const day = Math.floor(st.minutes / 1440);
   if (st.folk.day !== day) st.folk = { day, asked: [], helped: [] };
   const f = folkOf(land, idx, day), key = `${land}:${idx}`;
+  // Someone waiting for you: hand it over, or be reminded.
+  const e = st.errands?.find((x) => x.key === key);
+  if (e) {
+    const name = ITEMS[e.item]?.name ?? e.item, icon = ITEMS[e.item]?.icon ?? '';
+    if ((st.inventory[e.item] ?? 0) < e.qty) return { kind: 'need', text: `${e.name} is still waiting for ${e.qty}× ${icon} ${name}.` };
+    st.inventory[e.item] -= e.qty;
+    if (st.inventory[e.item] <= 0) delete st.inventory[e.item];
+    st.errands = st.errands!.filter((x) => x !== e);
+    st.folk.helped.push(key);
+    st.coins += e.coins;
+    st.light += 0.05;
+    return { kind: 'helped', text: `${e.done} ${e.name} thanks you both. +${e.coins} 🪙`, coins: e.coins };
+  }
   if (!f.favour || st.folk.helped.includes(key)) return { kind: 'line', text: `${f.name}: "${f.line}"` };
   if (!st.folk.asked.includes(key)) {
     st.folk.asked.push(key);
@@ -143,7 +164,11 @@ export function talkToFolk(st: { minutes: number; coins: number; light: number; 
   }
   const n = f.favour.needs;
   if (n) {
-    if ((st.inventory[n.item] ?? 0) < n.qty) return { kind: 'need', text: `${f.name} needs ${n.qty}× ${ITEMS[n.item]?.icon ?? ''} ${ITEMS[n.item]?.name ?? n.item} — come back when you have some.` };
+    if ((st.inventory[n.item] ?? 0) < n.qty) {
+      // They will wait here for you.
+      if (st.errands && at) st.errands.push({ key, land, name: f.name, item: n.item, qty: n.qty, coins: f.favour.coins, done: f.favour.done, x: at.x, z: at.z, until: st.minutes + ERRAND_DAYS * 1440 });
+      return { kind: 'need', text: `${f.name} needs ${n.qty}× ${ITEMS[n.item]?.icon ?? ''} ${ITEMS[n.item]?.name ?? n.item} — they will wait here for you (${ERRAND_DAYS} days). Look for the ❗.` };
+    }
     st.inventory[n.item] -= n.qty;
     if (st.inventory[n.item] <= 0) delete st.inventory[n.item];
   }
@@ -152,3 +177,11 @@ export function talkToFolk(st: { minutes: number; coins: number; light: number; 
   st.light += 0.05;
   return { kind: 'helped', text: `${f.favour.done} ${f.name} thanks you both. +${f.favour.coins} 🪙`, coins: f.favour.coins };
 }
+
+/** Errands past their time: they gave up waiting. Returns their names. */
+export function expireErrands(st: { minutes: number; errands: Errand[] }): string[] {
+  const gone = st.errands.filter((e) => st.minutes > e.until);
+  st.errands = st.errands.filter((e) => st.minutes <= e.until);
+  return gone.map((e) => e.name);
+}
+

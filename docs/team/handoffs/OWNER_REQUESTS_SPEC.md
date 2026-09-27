@@ -188,3 +188,16 @@ The owner's order: **institutional buildings first, then complete the game logic
 - **Colours:** her crown's gems shine gently instead of glowing; the Starlight Gown's flowers are
   light blue (few white); the Midnight Sherwani is light blue with mostly pink stars.
 
+## 13. Errands, carrying limits and homes that feed their people (owner, 2026-09-27, late night) — Done
+
+- **Errands that wait** (`npc/folk.ts`): a townsperson who asks for something from your bag (tomatoes,
+  rice…) now waits where they asked — they stop walking, marked by a ❗ seen from far off — for two
+  days, and are listed in the journal with "Show the way". Bring it any time and they thank you.
+- **Carrying** (`economy/economy.ts`, `economy/storage.ts`): the bag holds 50 things; what will not
+  fit goes to the van's store (150), and beyond that is left behind (you are told). Each home you own
+  has a store room (120, +60 per floor). Put things away and take them out in the van or at home.
+- **Homes feed the people living there**: residents eat each day only from that home's store —
+  what you bring or a courier delivers from your fields (homes are now courier destinations; only
+  food goes). A prepared dish is a meal; raw produce is cooked two to a meal (one if they have
+  learnt to cook). A meal is a day of their care; with the store empty they go hungry and you hear.
+

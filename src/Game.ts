@@ -51,6 +51,9 @@ import { couriersIn, marketPrice, sellHere, tickSupply } from './economy/supply'
 import { tickBusinesses } from './economy/business';
 import { tickInventions } from './economy/inventions';
 import { befriend, befriendMet } from './social/friends';
+import { tickHomes } from './economy/storage';
+import { carryNews } from './economy/economy';
+import { expireErrands } from './npc/folk';
 import { tickWeavers } from './economy/crews';
 import { CAVE_LANDS, CAVE_NAME, caveMouth, type Cave } from './world/caves';
 import { SITE_BY_ID, instituteAt, landScience, siteAt, standingStage, tickInstitutes } from './institutions/institutions';
@@ -400,6 +403,9 @@ export class Game {
       for (const n of tickSupply(this.st)) this.toast(`🚚 ${n.text}`, 'reward');
       for (const n of tickBusinesses(this.st)) this.toast(n.text, 'reward');
       for (const n of tickInventions(this.st)) this.toast(n.text, 'reward');
+      for (const n of tickHomes(this.st)) this.toast(n.text, 'info');
+      for (const name of expireErrands(this.st)) this.toast(`${name} could not wait any longer and went on with their day.`, 'info');
+      while (carryNews.length) this.toast(carryNews.shift()!, 'info');
       for (const n of tickWeavers(this.st)) this.toast(`🧶 ${n.text}`, 'reward');
       this.fieldsView.update();
       this.harboursView.update();
@@ -412,7 +418,7 @@ export class Game {
     this.npcs.update(dt, this.t, this.trav.gPos);
     this.needFolk.update(dt, this.t, this.camera.position);
     this.plotsView.update(dt, this.t, this.sky.night, this.housing.plotAt(this.trav.gPos.x, this.trav.gPos.z)?.id ?? null);
-    this.townsfolk.update(dt, this.t, this.trav.gPos);
+    this.townsfolk.update(dt, this.t, this.trav.gPos, this.st.errands);
     this.dressing.update(this.sky.night);
     this.animals.update(dt, this.t, this.trav.gPos);
     this.animateNodes();
@@ -600,11 +606,12 @@ export class Game {
     const folk = onFoot ? this.townsfolk.nearest(p, 2.6) : null;
     if (folk) {
       const f = this.townsfolk.who(folk, this.day);
-      const needs = f.favour && !(this.st.folk.day === this.day && this.st.folk.helped.includes(`${folk.land}:${folk.idx}`));
+      const errand = this.st.errands.find((e) => e.key === `${folk.land}:${folk.idx}`);
+      const needs = errand || (f.favour && !(this.st.folk.day === this.day && this.st.folk.helped.includes(`${folk.land}:${folk.idx}`)));
       const stall = folk.path.kind === 'stall' && folk.path.working;
       cands.push([Math.hypot(folk.x - p.x, folk.z - p.z) + 0.4, stall
         ? { kind: 'market', walker: folk, label: `🛒 ${f.name}'s stall — seeds & produce` }
-        : { kind: 'folk', walker: folk, label: needs ? `❗ ${f.name} needs a hand` : `💬 Talk with ${f.name}` }]);
+        : { kind: 'folk', walker: folk, label: errand ? `❗ Give ${f.name} ${errand.qty}× ${ITEMS[errand.item]?.icon ?? ''} ${ITEMS[errand.item]?.name ?? errand.item}` : needs ? `❗ ${f.name} needs a hand` : `💬 Talk with ${f.name}` }]);
     }
     cands.sort((a, b) => a[0] - b[0]);
     return cands[0]?.[1] ?? null;
@@ -615,7 +622,7 @@ export class Game {
   /** Talking with someone in town — and helping them, which is how the two earn their way. */
   private talkFolk(w: Walker): void {
     this.townsfolk.turnTo(w, this.trav.gPos);
-    const r = talkToFolk(this.st, w.land, w.idx);
+    const r = talkToFolk(this.st, w.land, w.idx, { x: w.x, z: w.z });
     if (r.kind === 'helped') this.bus.emit('coins:changed', { coins: this.st.coins });
     this.toast(r.text, r.kind === 'helped' ? 'reward' : r.kind === 'need' ? 'info' : 'story');
   }

@@ -3,7 +3,9 @@ import { DAY_MINUTES, type GameState } from '../core/state';
 import { INSTITUTE_BY_KIND } from '../institutions/catalogue';
 import { SITE_BY_ID, instituteAt, isEmployed, pantryOf, servesWith } from '../institutions/institutions';
 import { hasHarbour } from '../world/harbours';
-import { FIELD_BY_ID } from '../world/plots';
+import { ownsHome } from '../charity/charity';
+import { FIELD_BY_ID, PLOT_BY_ID } from '../world/plots';
+import { edible, storeOf, storeRoom } from './storage';
 import { REGION_BY_ID, REGIONS, type RegionId } from '../world/regions';
 import { logisticsBonus } from './business';
 import { removeItems, sellPrice } from './economy';
@@ -31,17 +33,21 @@ export type Shipment = GameState['shipments'][number];
 /** Where a route delivers: `market:<land>` or `pantry:<site id>`. */
 export const marketDest = (land: RegionId) => `market:${land}`;
 export const pantryDest = (siteId: string) => `pantry:${siteId}`;
+/** A home you own: its store feeds the people living there (economy/storage.ts). */
+export const homeDest = (plotId: string) => `home:${plotId}`;
 
 export function destLand(to: string): RegionId | null {
   const [kind, id] = to.split(':');
   if (kind === 'market') return REGION_BY_ID[id as RegionId] ? (id as RegionId) : null;
   if (kind === 'pantry') return SITE_BY_ID[id]?.land ?? null;
+  if (kind === 'home') return PLOT_BY_ID[id]?.region ?? null;
   return null;
 }
 
 export function destLabel(st: GameState, to: string): string {
   const [kind, id] = to.split(':');
   if (kind === 'market') return `the market in ${REGION_BY_ID[id as RegionId]?.name ?? id}`;
+  if (kind === 'home') return `your home in ${REGION_BY_ID[PLOT_BY_ID[id]?.region]?.name ?? id}`;
   const inst = instituteAt(st, id), land = SITE_BY_ID[id]?.land;
   return `your ${inst ? INSTITUTE_BY_KIND[inst.kind].stages[Math.max(0, inst.stage)].name.toLowerCase() : 'pantry'} in ${land ? REGION_BY_ID[land].name : id}`;
 }
@@ -95,6 +101,7 @@ export function addRoute(st: GameState, courierId: string, from: string, to: str
   const land = destLand(to);
   if (!land) return 'There is nowhere like that to deliver.';
   if (w.role === 'ship' && (!hasHarbour(FIELD_BY_ID[from].land) || !hasHarbour(land))) return 'Ships sail from harbour to harbour — both lands must be on the coast.';
+  if (to.startsWith('home:') && !ownsHome(st, to.slice(5))) return 'Deliveries go to a home you own.';
   if (to.startsWith('pantry:')) {
     const inst = instituteAt(st, to.slice(7));
     if (!inst || (inst.kind !== 'kitchen' && inst.kind !== 'clinic')) return 'Deliveries go to a soup kitchen or clinic you run.';
@@ -112,6 +119,7 @@ export const shipmentOf = (st: GameState, courierId: string): Shipment | undefin
 
 /** What a load for this destination may hold from the barn: all of it for a market, what it can use for a pantry. */
 function usable(st: GameState, to: string, item: string): boolean {
+  if (to.startsWith('home:')) return edible(item);
   if (!to.startsWith('pantry:')) return true;
   const inst = instituteAt(st, to.slice(7));
   return !!inst && servesWith(inst.kind, item);
@@ -129,6 +137,17 @@ export function tickSupply(st: GameState): SupplyNews[] {
     if (land && s.to.startsWith('market:')) {
       const coins = Object.entries(s.items).reduce((a, [id, k]) => a + sellInto(st, land, id, k), 0);
       out.push({ courier: s.courier, text: `${w?.name ?? 'Your courier'} sold ${what} at ${destLabel(st, s.to)} for ${coins} coins.` });
+    } else if (land && s.to.startsWith('home:')) {
+      // Into the home's store, as far as there is room; the rest goes back to the barn.
+      const id = s.to.slice(5), store = storeOf(st, id);
+      let put = 0;
+      for (const [k, v] of Object.entries(s.items)) {
+        const n = Math.min(v, storeRoom(st, id));
+        if (n > 0) { store[k] = (store[k] ?? 0) + n; put += n; }
+        const back = st.fields[s.from];
+        if (v > n && back) back.store[k] = (back.store[k] ?? 0) + v - n;
+      }
+      out.push({ courier: s.courier, text: `${w?.name ?? 'Your courier'} brought ${put} ${put === 1 ? 'good' : 'goods'} to ${destLabel(st, s.to)}: ${what}.` });
     } else if (land) {
       const p = pantryOf(st, s.to.slice(7));
       for (const [id, k] of Object.entries(s.items)) p[id] = (p[id] ?? 0) + k;
