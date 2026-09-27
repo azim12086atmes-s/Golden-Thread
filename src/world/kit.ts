@@ -1,4 +1,5 @@
 import * as THREE from 'three';
+import { rockGeometry } from './rocks';
 import { mergeGeometries } from 'three/addons/utils/BufferGeometryUtils.js';
 import { HABITS, growTree } from './trees';
 
@@ -460,9 +461,10 @@ function trunkWithBark(g: GeoBuilder, rTop: number, rBot: number, h: number, c: 
 
 const lighten = (c: string) => '#' + new THREE.Color(c).lerp(new THREE.Color('#fff6c8'), 0.28).getHexString();
 
+/** A boulder of organic shape (rocks.ts): no two alike. */
 export function rock(g: GeoBuilder, x: number, y: number, z: number, s: number, c: C): void {
-  const geo = new THREE.DodecahedronGeometry(s, 0);
-  g.add(geo, c, M(x, y + s * 0.4, z, s * 3, 1, 0.7, 1.2));
+  const seed = Math.floor(Math.abs(x * 13.1 + z * 7.7 + s * 101)) % 997;
+  g.add(rockGeometry(s * 1.2, { style: s > 1.1 ? 'crag' : 'pebble', seed, detail: 2 }), c, M(x, y - 0.05, z, seed));
 }
 
 export function flowers(g: GeoBuilder, x: number, y: number, z: number, cols: readonly string[], rng: () => number, n = 6): void {

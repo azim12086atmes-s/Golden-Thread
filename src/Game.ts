@@ -48,7 +48,7 @@ import { BridgesView } from './world/BridgesView';
 import { FIELD_SITES, FIELD_SIZE, fieldGrowth, tickFields } from './economy/fields';
 import { couriersIn, tickSupply } from './economy/supply';
 import { tickWeavers } from './economy/crews';
-import { CAVE_LANDS, caveMouth, type Cave } from './world/caves';
+import { CAVE_LANDS, CAVE_NAME, caveMouth, type Cave } from './world/caves';
 import { SITE_BY_ID, instituteAt, landScience, siteAt, standingStage, tickInstitutes } from './institutions/institutions';
 import { INSTITUTE_BY_KIND } from './institutions/catalogue';
 import { Ambience } from './world/Ambience';
@@ -552,7 +552,7 @@ export class Game {
     // Caves: explore once a day.
     if (onFoot) for (const r of this.world.loadedRegions()) for (const cv of r.caves) {
       const m = caveMouth(cv), dd = Math.hypot(m.x - p.x, m.z - p.z);
-      if (dd < 3.2) cands.push([dd + 0.2, { kind: 'cave', cave: cv, label: `🕳️ Explore the ${cv.style === 'ice' ? 'ice cavern' : 'cave'}` }]);
+      if (dd < 3.2) cands.push([dd + 0.2, { kind: 'cave', cave: cv, label: `🕳️ Explore the ${CAVE_NAME[cv.style]}` }]);
     }
     // Institute sites: the town's own institute, and open ground to found one.
     if (onFoot) {
@@ -893,7 +893,7 @@ export class Game {
 
   /** A cavern you can walk into, when the 3D side has built one for this cave's style. */
   private cavernDoor(cv: Cave): Door | null {
-    const d: Door = { id: `cavern:${cv.style}:${cv.id}`, land: cv.land, x: cv.x, z: cv.z, y: surfaceAt(cv.x, cv.z), facing: 0, kind: 'cavern', r: 1, name: `the ${cv.style === 'ice' ? 'ice cavern' : 'cave'}` };
+    const d: Door = { id: `cavern:${cv.style}:${cv.id}`, land: cv.land, x: cv.x, z: cv.z, y: surfaceAt(cv.x, cv.z), facing: 0, kind: 'cavern', r: 1, name: `the ${CAVE_NAME[cv.style]}` };
     const spec = interiorSpecFor(d, this.sky.night), b = spec ? safeInterior(buildInterior(spec)) : null;
     if (!b) return null;
     b.group.traverse((o) => { if ((o as THREE.Mesh).geometry) (o as THREE.Mesh).geometry.dispose(); });
@@ -908,7 +908,7 @@ export class Game {
     const got = [finds[(day + cv.id.length) % finds.length], finds[(day + 1) % finds.length]];
     for (const id of got) { addItem(this.st, id, 1); this.bus.emit('item:gained', { id, qty: 1 }); }
     this.st.gathered[key] = this.st.minutes;
-    return `${cv.style === 'ice' ? 'Blue light glimmers through the ice.' : 'Your lantern finds the glint of the cave walls.'} You bring out ${got.map((id) => `${ITEMS[id].icon} ${ITEMS[id].name}`).join(' and ')}.`;
+    return `${cv.style === 'ice' ? 'Blue light glimmers through the ice.' : cv.style === 'crystal' ? 'The crystals ring softly and light the way in every colour.' : 'Your lantern finds the glint of the cave walls.'} You bring out ${got.map((id) => `${ITEMS[id].icon} ${ITEMS[id].name}`).join(' and ')}.`;
   }
 
   /** The front doors of the homes you own (a home stands on the plot once you buy it). */

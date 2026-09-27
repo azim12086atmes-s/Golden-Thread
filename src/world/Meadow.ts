@@ -294,6 +294,14 @@ export const FLOWER_CELLS = 92; // 64 m across: a field carpeted with flowers
 export const MID_CELL = 1.0, MID_CELLS = 200, FAR_CELL = 2.6, FAR_CELLS = 186;
 export const MID_FLOWER_CELL = 1.8, MID_FLOWER_CELLS = 112;
 
+/** Smooth value noise 0…1 (for where grass grows thick or thin). */
+function smoothNoise(x: number, z: number): number {
+  const i = Math.floor(x), j = Math.floor(z), fx = x - i, fz = z - j;
+  const u = fx * fx * (3 - 2 * fx), v = fz * fz * (3 - 2 * fz);
+  const a = cellHash(i, j, 41), b = cellHash(i + 1, j, 41), c = cellHash(i, j + 1, 41), d = cellHash(i + 1, j + 1, 41);
+  return a + (b - a) * u + (c - a) * v + (a - b - c + d) * u * v;
+}
+
 const cellHash = (i: number, j: number, k: number) => {
   const v = Math.sin(i * 127.1 + j * 311.7 + k * 74.7) * 43758.5453;
   return v - Math.floor(v);
@@ -397,12 +405,14 @@ export class MeadowField {
   /** Plant grass tufts in a grid of `cell` metres, `size` times the near field's tufts. */
   private plantGrass(cell: number, size: number) {
     return (im: THREE.InstancedMesh, k: number, i: number, j: number): boolean => {
-      // Evenly spaced: one tuft near the middle of every cell, nudged a little.
-      const x = (i + 0.2 + cellHash(i, j, 1) * 0.6) * cell, z = (j + 0.2 + cellHash(i, j, 2) * 0.6) * cell;
-      if (!this.grows(x, z, i, j)) { im.setMatrixAt(k, this.zero); return false; }
+      // Anywhere in its cell; thick in some patches, thin in others, with the odd bare clearing.
+      const x = (i + cellHash(i, j, 1)) * cell, z = (j + cellHash(i, j, 2)) * cell;
+      const thick = smoothNoise(x * 0.05, z * 0.05) * 0.65 + smoothNoise(x * 0.19 + 7, z * 0.19 + 3) * 0.35;
+      if (cellHash(i, j, 5) > 0.35 + thick * 0.9 || !this.grows(x, z, i, j)) { im.setMatrixAt(k, this.zero); return false; }
       this.q.setFromAxisAngle(this.up, cellHash(i, j, 4) * Math.PI * 2);
-      const sc = (0.6 + cellHash(i, j, 8) * 0.2) * size;
-      im.setMatrixAt(k, this.m.compose(this.p.set(x, this.h - 0.02, z), this.q, this.s.set(sc * 1.35, sc * (0.66 + cellHash(i, j, 9) * 0.3) / Math.sqrt(size), sc * 1.35)));
+      // Taller where it grows thick, short and tufty where it is thin.
+      const sc = (0.5 + cellHash(i, j, 8) * 0.3 + thick * 0.15) * size;
+      im.setMatrixAt(k, this.m.compose(this.p.set(x, this.h - 0.02, z), this.q, this.s.set(sc * 1.35, sc * (0.5 + thick * 0.45 + cellHash(i, j, 9) * 0.3) / Math.sqrt(size), sc * 1.35)));
       // Every tuft its own green: patches drift between yellow-green, fresh green, blue-green and
       // olive, with lighter and darker tufts mixed through them.
       const patch = Math.sin(x * 0.11 + Math.sin(z * 0.07) * 2) * Math.sin(z * 0.09 - x * 0.03);
@@ -494,16 +504,28 @@ export function patternGround(mat: THREE.MeshStandardMaterial): void {
         varying vec3 vGW; uniform float uNight; uniform vec2 uWindDir;
         float gh(vec2 p) { return fract(sin(dot(p, vec2(12.9898, 78.233))) * 43758.5453); }
         float vn(vec2 p) { vec2 i = floor(p), f = fract(p); f = f * f * (3.0 - 2.0 * f);
-          return mix(mix(gh(i), gh(i + vec2(1.0, 0.0)), f.x), mix(gh(i + vec2(0.0, 1.0)), gh(i + vec2(1.0, 1.0)), f.x), f.y); }`)
+          return mix(mix(gh(i), gh(i + vec2(1.0, 0.0)), f.x), mix(gh(i + vec2(0.0, 1.0)), gh(i + vec2(1.0, 1.0)), f.x), f.y); }
+        // Rotated octaves, so no pattern lines up with the world's axes or with itself.
+        const mat2 R1 = mat2(0.80, 0.60, -0.60, 0.80), R2 = mat2(0.28, -0.96, 0.96, 0.28), R3 = mat2(-0.53, 0.85, -0.85, -0.53);
+        float fbm(vec2 p) { return vn(R1 * p) * 0.5 + vn(R2 * p * 2.07 + 3.1) * 0.3 + vn(R3 * p * 4.3 + 7.7) * 0.2; }
+        vec2 gh2(vec2 p) { return vec2(gh(p), gh(p + 19.19)); }
+        // Scattered round spots (grit, pebbles, glints): one per cell at a random place, a random
+        // size, many cells left empty — in a rotated, warped frame, so they never read as a grid.
+        float spots(vec2 p, float share, float size) {
+          vec2 c = floor(p), f = fract(p), o = gh2(c);
+          float keep = step(1.0 - share, gh(c + 5.3));
+          float r = size * (0.4 + 0.6 * gh(c + 9.1));
+          return keep * (1.0 - smoothstep(r * 0.55, r, length(f - (0.2 + 0.6 * o))));
+        }`)
       .replace('#include <color_fragment>', `#include <color_fragment>
         float greenish = smoothstep(0.02, 0.12, diffuseColor.g - max(diffuseColor.r, diffuseColor.b) * 0.92);
         vec2 gp = vGW.xz;
         // Patches of light and shade on the grass, of every size — where it lies flatter, grows
         // thicker, or has been walked — and here and there a sun-dried, golden stretch.
-        float pn = vn(gp * 0.04) * 0.55 + vn(gp * 0.13 + 5.0) * 0.3 + vn(gp * 0.45 + 9.0) * 0.15;
+        float pn = fbm(gp * 0.04) * 0.6 + fbm(gp * 0.21 + 5.0) * 0.4;
         diffuseColor.rgb *= mix(1.0, 0.84 + pn * 0.3, greenish);
         diffuseColor.rgb = mix(diffuseColor.rgb, diffuseColor.rgb * vec3(0.95, 1.12, 0.9), greenish * 0.6);
-        float dry = smoothstep(0.6, 0.85, vn(gp * 0.017 + 11.0));
+        float dry = smoothstep(0.6, 0.85, fbm(gp * 0.017 + 11.0));
         diffuseColor.rgb = mix(diffuseColor.rgb, diffuseColor.rgb * vec3(1.14, 1.03, 0.78), greenish * dry * 0.55);
         // Sand is grainy up close: fine grains of lighter and darker sand, bits of grit and the odd
         // pebble, and broad drifts of pinker and more ochre sand across the land.
@@ -511,20 +533,21 @@ export function patternGround(mat: THREE.MeshStandardMaterial): void {
           vec3 dc0 = vColor.rgb;
           float sandish = smoothstep(0.05, 0.18, dc0.r - dc0.b) * (1.0 - greenish) * (1.0 - smoothstep(0.0, 0.08, dc0.g - dc0.r));
           float near = 1.0 - smoothstep(16.0, 70.0, length(vViewPosition));
-          float grain = (gh(floor(gp * 26.0)) - 0.5) * 0.16 + (gh(floor(gp * 9.0) + 17.0) - 0.5) * 0.1;
-          diffuseColor.rgb *= 1.0 + grain * sandish * near;
-          vec2 pf = fract(gp * 2.6) - 0.5;
-          float peb = step(0.972, gh(floor(gp * 2.6) + 5.0)) * (1.0 - smoothstep(0.1, 0.22, length(pf)));
-          diffuseColor.rgb *= 1.0 - peb * 0.32 * sandish * near;
+          // Coarse and fine sand lie in patches; the grains themselves are soft specks of every size.
+          vec2 wq = gp + (vec2(vn(gp * 0.7), vn(gp * 0.7 + 4.0)) - 0.5) * 0.6;
+          float coarse = 0.5 + 0.8 * vn(R2 * gp * 0.08 + 13.0);
+          float grain = (vn(R1 * wq * 34.0) - 0.5) * 0.2 + (vn(R3 * wq * 14.0 + 2.0) - 0.5) * 0.14 + (fbm(gp * 1.3) - 0.5) * 0.1;
+          diffuseColor.rgb *= 1.0 + grain * coarse * sandish * near;
+          float grit = spots(R2 * wq * 9.0, 0.35, 0.22) * 0.25 + spots(R1 * wq * 2.3 + 5.0, 0.06 * coarse, 0.3) * 0.4;
+          diffuseColor.rgb *= 1.0 - grit * sandish * near;
           float tint = vn(gp * 0.03 + 21.0);
           diffuseColor.rgb *= mix(vec3(1.0), mix(vec3(1.05, 0.95, 0.93), vec3(0.97, 1.0, 1.03), tint), sandish);
         }
         // Blossom speckles.
-        vec2 cell = floor(gp * 1.3);
-        float s = gh(cell);
-        if (s > 0.93 && greenish > 0.5) {
-          vec2 f = fract(gp * 1.3) - 0.5;
-          float dot0 = 1.0 - smoothstep(0.08, 0.16, length(f));
+        vec2 bq = R2 * gp * 1.3;
+        float s = gh(floor(bq) + 2.2);
+        if (greenish > 0.5) {
+          float dot0 = spots(bq, 0.07 * smoothstep(0.3, 0.7, fbm(gp * 0.05 + 2.0)) * 2.0, 0.2);
           vec3 petal = s > 0.975 ? vec3(1.0, 0.75, 0.85) : s > 0.955 ? vec3(1.0, 0.95, 0.6) : vec3(0.95, 0.95, 1.0);
           diffuseColor.rgb = mix(diffuseColor.rgb, petal, dot0 * 0.85);
         }`)
@@ -539,14 +562,20 @@ export function patternGround(mat: THREE.MeshStandardMaterial): void {
           vec2 wd = normalize(uWindDir + vec2(0.0001));
           vec2 wp = vec2(dot(vGW.xz, wd), dot(vGW.xz, vec2(-wd.y, wd.x)));
           // The crests wander: bent by broad eddies, never quite parallel.
-          float warp = (vn(wp * vec2(0.018, 0.05)) - 0.5) * 16.0 + sin(wp.y * 0.11) * 1.4;
+          float warp = (fbm(wp * vec2(0.018, 0.05)) - 0.5) * 18.0 + (vn(wp * vec2(0.06, 0.02) + 9.0) - 0.5) * 5.0;
           // Ripples: crests across the wind, 1.2–2 m apart (tighter in some hollows, wider on the
           // crests), strong in some patches and faint in others, breaking off and forking here and there.
           float patchS = smoothstep(0.2, 0.75, vn(vGW.xz * 0.012));
           float lam = mix(5.2, 3.1, vn(vGW.xz * 0.021 + 3.0));
-          float ph = (wp.x + warp) * lam;
+          // Along each crest its line shifts a little, so crests end and fork (Y-junctions); and a
+          // second set of ripples at a slight angle takes over in places.
+          float ph = (wp.x + warp) * lam + (vn(vec2(wp.x * 0.15, wp.y * 0.35)) - 0.5) * 7.0;
           float rip = pow(0.5 + 0.5 * cos(ph), 1.7) - 0.4 + 0.2 * cos(ph * 2.0 + 1.2);
-          rip *= 0.35 + 0.65 * smoothstep(0.25, 0.6, vn(vec2(wp.x * 0.28, wp.y * 0.4)));
+          vec2 wp2 = mat2(0.978, 0.208, -0.208, 0.978) * wp;
+          float ph2 = (wp2.x + warp * 0.8) * lam * 0.83 + (vn(vec2(wp2.x * 0.2, wp2.y * 0.3) + 3.0) - 0.5) * 6.0;
+          float rip2 = pow(0.5 + 0.5 * cos(ph2), 1.5) - 0.4;
+          rip = mix(rip, rip2, smoothstep(0.35, 0.7, fbm(vGW.xz * 0.02 + 17.0)));
+          rip *= 0.25 + 0.75 * smoothstep(0.25, 0.65, fbm(vec2(wp.x * 0.22, wp.y * 0.3)));
           // Megaripples, 8–12 m apart, low and broad.
           float mega = sin((wp.x + warp * 2.0) * 0.62 + vn(wp * 0.03) * 4.0);
           vec2 gR = wd * (rip * 0.22 * (0.3 + 0.7 * patchS) + mega * 0.05) * sandy;
@@ -554,17 +583,20 @@ export function patternGround(mat: THREE.MeshStandardMaterial): void {
           // and spacing), elsewhere drifted smooth into soft, low swells.
           float patchW = smoothstep(0.3, 0.7, vn(vGW.xz * 0.014 + 8.0));
           float stF = mix(1.1, 2.6, vn(wp * vec2(0.02, 0.06) + 2.0));
-          float st = sin(wp.y * stF + (vn(wp * vec2(0.05, 0.2)) - 0.5) * 6.0) * smoothstep(0.2, 0.7, vn(vec2(wp.x * 0.07, wp.y * 0.5) + 4.0));
-          float drift = vn(wp * vec2(0.04, 0.1) + 6.0) - 0.5;
+          // Sastrugi: ridges along the wind that start, swell and taper off, each its own width.
+          float st = sin(wp.y * stF + (fbm(wp * vec2(0.04, 0.16)) - 0.5) * 9.0) * smoothstep(0.2, 0.7, fbm(vec2(wp.x * 0.06, wp.y * 0.45) + 4.0));
+          st = sign(st) * pow(abs(st), 1.6);
+          float drift = fbm(wp * vec2(0.035, 0.09) + 6.0) - 0.5;
           vec2 gS = (vec2(-wd.y, wd.x) * st * 0.17 * patchW + wd * drift * 0.12) * snowy;
           vec3 bw = vec3(gR.x + gS.x, 0.0, gR.y + gS.y);
           normal = normalize(normal - (viewMatrix * vec4(bw, 0.0)).xyz);
           // Snow glitters where the sun catches single crystals: in drifting clusters that shift as
           // you move, some bright, most faint — never an even sprinkle.
-          vec2 sc = floor(vGW.xz * 6.0);
           float look = floor(dot(normalize(vViewPosition), vec3(7.0, 3.0, 5.0)) * 3.0);
-          float cluster = smoothstep(0.5, 0.9, vn(vGW.xz * 0.09 + look * 0.37));
-          float glint = step(1.0 - 0.025 * cluster, gh(sc + look)) * snowy * (0.3 + 0.7 * gh(sc + 3.1));
+          float cluster = smoothstep(0.45, 0.85, fbm(vGW.xz * 0.07 + look * 0.37));
+          vec2 gq = vGW.xz + (vec2(vn(vGW.xz * 0.9), vn(vGW.xz * 0.9 + 6.0)) - 0.5) * 0.5;
+          float glint = (spots(R1 * gq * 5.0 + look, 0.05 * cluster, 0.16) * (0.3 + 0.7 * gh(floor(R1 * gq * 5.0) + 3.1))
+            + spots(R3 * gq * 11.0 + look * 1.7, 0.03 * cluster, 0.2) * 0.5) * snowy;
           totalEmissiveRadiance += vec3(1.0, 0.98, 0.92) * glint * 0.9 * (1.0 - uNight * 0.6);
         }`)
       .replace('#include <emissivemap_fragment>', `#include <emissivemap_fragment>

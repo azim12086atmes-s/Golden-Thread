@@ -16,7 +16,7 @@ import { INSTITUTE_SITES, SITE_SIZE } from '../institutions/sites';
  * modelled by the 3D side (world/models/caves.ts).
  */
 
-export type CaveStyle = 'sandstone' | 'rock' | 'ice';
+export type CaveStyle = 'sandstone' | 'rock' | 'ice' | 'crystal';
 
 export interface Cave {
   id: string;
@@ -37,7 +37,11 @@ export const CAVE_LANDS: Partial<Record<RegionId, { style: CaveStyle; count: num
   aurora: { style: 'ice', count: 5, finds: ['ice', 'cavecrystal', 'pinecone'] },
   switzerland: { style: 'ice', count: 3, finds: ['ice', 'cavecrystal', 'edelweiss'] },
   norway: { style: 'rock', count: 3, finds: ['cavecrystal', 'birch', 'fleece'] },
+  skyisles: { style: 'crystal', count: 4, finds: ['stardust', 'cavecrystal', 'cloud'] },
 };
+
+/** What a cave is called in the game's words. */
+export const CAVE_NAME: Record<CaveStyle, string> = { sandstone: 'cave', rock: 'cave', ice: 'ice cavern', crystal: 'crystal grotto' };
 
 function place(land: RegionId): Cave[] {
   const cfg = CAVE_LANDS[land];

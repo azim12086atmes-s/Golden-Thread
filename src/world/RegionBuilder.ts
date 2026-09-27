@@ -9,11 +9,13 @@ import { NATURE, pickTree, zoneAt } from './nature';
 import { CAVES, type Cave } from './caves';
 import { buildCave } from './models/caves';
 import { buildBanks } from './banks';
+import { bridgesOf } from './bridges';
+import { OUTCROPS, outcrop } from './outcrops';
 import { crystalCluster } from './islands';
 import { dressGulabi, gateTowers } from './gulabi';
 import { harbours } from './harbours';
 import { clearPaved, setPaved, type Paved } from './paved';
-import { LANDMARK_GROUNDS, RESERVED, reservedAt } from './reserved';
+import { LANDMARK_GROUNDS, NILE_W, RESERVED, nileX, reservedAt } from './reserved';
 import { waterEdge } from './waters';
 import { INSTITUTE_SITES, SITE_SIZE } from '../institutions/sites';
 import { buildHouse, lampPost, streetProp, type Ctx } from './architecture';
@@ -301,6 +303,7 @@ export function buildRegion(spec: RegionSpec, solid: THREE.Material, glowMat: TH
       if (rng.next() > 0.25 + drift * 0.75) continue;
       if (d < 56 || onRoad(x, z, 1) || nearPlot(x, z, 1)) continue;
       if (buildings.some((b) => Math.hypot(x - b.x, z - b.z) < b.r + 1.2)) continue;
+      if (CAVES.some((cv) => cv.land === spec.id && Math.hypot(c.x + x - cv.x, c.z + z - cv.z) < cv.r + 3)) continue;
       const y = H(x, z);
       if (y < WATER_Y + 0.3) continue;
       const spire = d > CITY_RADIUS && rng.chance(0.04);
@@ -370,6 +373,23 @@ export function buildRegion(spec: RegionSpec, solid: THREE.Material, glowMat: TH
     else flowers(g, x, y, z, spec.flowers, () => rng.next(), spec.id === 'meadow' ? 12 : 6);
     if (i % 3 === 0) wild.push({ x, z });
   }
+  // Outcrops shaped by the land (rocks.ts): sandstone formations and hoodoos in the deserts, crags
+  // and shards of blue ice in the snow, giant crystals in the Sky Isles.
+  {
+    const kind = OUTCROPS[spec.id];
+    for (let i = 0, placed = 0; kind && i < kind.n * 8 && placed < kind.n; i++) {
+      const a = rng.range(0, Math.PI * 2), r = rng.range(CITY_RADIUS + 25, half - 25);
+      const x = Math.cos(a) * r, z = Math.sin(a) * r, s = rng.range(2, 6) * kind.size;
+      if (onRoad(x, z, s + 4) || nearPlot(x, z, s + 3) || onTowpath(x, z, s + 2)) continue;
+      if (cavesHere.some((cv) => Math.hypot(x - cv.x, z - cv.z) < cv.r + s + 6)) continue;
+      if (waterEdge(c.x + x, c.z + z).d < s + 8) continue;
+      const y = H(x, z), seed = Math.floor(rng.next() * 997);
+      if (y < WATER_Y + 0.5) continue;
+      g.frame(x, y, z, rng.range(0, Math.PI * 2), 1, () => glow.frame(x, y, z, 0, 1, () => outcrop(ctx, kind.style, s, seed)));
+      colliders.push({ x: c.x + x, z: c.z + z, r: Math.min(2, s * 0.6), h: y + s * 1.5 });
+      placed++;
+    }
+  }
   // Meadow: whole fields of flowers.
   if (spec.id === 'meadow') {
     for (let i = 0; i < 160; i++) {
@@ -379,9 +399,12 @@ export function buildRegion(spec: RegionSpec, solid: THREE.Material, glowMat: TH
     }
   }
   // Egypt: a reed bank along the river channel.
-  if (spec.id === 'egypt') for (let i = 0; i < 60; i++) {
-    const z = rng.range(-half, half);
-    cone(g, 0.4, 2, '#6a9a4a', -140 + rng.pick([-13, 13]), H(-140, z), z, 4);
+  // Egypt: reeds and papyrus along the Nile, between its quay walls and the towpaths.
+  if (spec.id === 'egypt') for (let i = 0; i < 90; i++) {
+    const z = rng.range(-330, 430), x = nileX(z) + rng.pick([-1, 1]) * (NILE_W / 2 + rng.range(2.2, 5));
+    if (bridgesOf(spec.id).some((b) => Math.hypot(c.x + x - b.x, c.z + z - b.z) < b.length / 2 + 6)) continue;
+    cone(g, 0.3, rng.range(1.4, 2.4), rng.chance(0.5) ? '#6a9a4a' : '#7aa85a', x, H(x, z), z, 4);
+    if (rng.chance(0.3)) sphere(g, 0.35, '#8ab86a', x, H(x, z) + 2.2, z, 5, 0.4);
   }
   for (let i = 0; i < 30; i++) {
     const a = rng.range(0, Math.PI * 2), r = rng.range(CITY_RADIUS + 20, half - 30);
