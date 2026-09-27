@@ -565,6 +565,7 @@ export class UI {
   private housePanel(body: HTMLElement): void {
     const g = this.g, d = g.house.door;
     if (!d) return;
+    if (d.kind === 'home') return this.homePanel(body, d.id.slice(5));
     const done = g.houseGathered(d);
     body.append(
       h('div', { class: 'acts' },
@@ -919,6 +920,30 @@ export class UI {
       body.append(list, h('small', { class: 'dim' }, 'Removing refunds half.'));
     }
     body.append(h('div', { class: 'acts' }, btn('Done', () => this.closePanel(), 'primary')));
+  }
+
+  /** Your own home: furnish it slot by slot with things you have made, as in the van. */
+  private homePanel(body: HTMLElement, plotId: string): void {
+    const g = this.g, st = g.st, home = g.homeDecor(plotId);
+    const slots = Object.keys(VAN_OPTIONS) as VanSlot[];
+    const slot = this.vanSlot;
+    body.append(h('div', { class: 'chips' }, ...slots.map((s) =>
+      btn(SLOT_NAMES[s], () => { this.vanSlot = s; this.render(); }, `small ${s === slot ? 'on' : 'ghost'}`))));
+    const shelf = h('div', { class: 'shelf van-shelf', role: 'list' });
+    for (const o of VAN_OPTIONS[slot]) {
+      const on = home[slot] === o.id;
+      const cost = Object.entries(o.cost);
+      const afford = cost.every(([k, n]) => count(st, k) >= n);
+      const card = h('button', { class: `outfit ${on ? 'on' : ''} ${!on && !afford ? 'dim' : ''}`, type: 'button', role: 'listitem' },
+        h('b', {}, o.name),
+        h('small', {}, on ? 'In your home' : cost.length ? cost.map(([k, n]) => `${n}× ${ITEMS[k].icon} ${ITEMS[k].name}`).join(' · ') : 'Free'));
+      card.addEventListener('click', () => { const e = g.setHomeSlot(plotId, slot, o.id); if (e) g.toast(e); this.render(); });
+      shelf.append(card);
+    }
+    body.append(shelf, h('div', { class: 'acts' },
+      btn('🌅 Rest until morning', () => { g.setTimeOfDay('dawn'); this.render(); }, 'ghost small'),
+      btn('🌙 Stay until night', () => { g.setTimeOfDay('night'); this.render(); }, 'ghost small'),
+      btn('🚪 Step outside', () => g.exitHouse(), 'ghost small')));
   }
 
   private vanPanel(body: HTMLElement): void {

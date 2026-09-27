@@ -40,12 +40,12 @@ import { RegionFX } from './world/RegionFX';
 import { TownDressing } from './world/TownDressing';
 import { SkyLanterns } from './world/SkyLanterns';
 import type { Door, ResourceNode } from './world/RegionBuilder';
-import { HouseInterior, ROOM_NAME, roomTitle } from './housing/HouseInterior';
+import { HouseInterior, doorLabel, roomTitle } from './housing/HouseInterior';
 import { REGION_BY_ID, regionAt, regionCenter, type RegionId, type RegionSpec } from './world/regions';
 import { Sky } from './world/Sky';
 import { SkyFX } from './world/SkyFX';
 import { Weather } from './world/Weather';
-import { surfaceAt } from './world/terrain';
+import { surfaceAt, terrainHeight } from './world/terrain';
 import { World } from './world/World';
 import { FOLIAGE_UNIFORMS, updateWind } from './world/wind';
 
@@ -489,9 +489,9 @@ export class Game {
     const ride = onFoot ? this.celebration.label(p) : null;
     if (ride) cands.push([0.5, { kind: 'chariot', label: ride }]);
     // Front doors: every building in town can be entered.
-    if (onFoot) for (const r of this.world.loadedRegions()) for (const d of r.doors) {
+    if (onFoot) for (const d of [...this.world.loadedRegions().flatMap((r) => r.doors), ...this.world.landmarkDoors, ...this.homeDoors()]) {
       const dd = Math.hypot(d.x - p.x, d.z - p.z);
-      if (dd < 2.6 && Math.abs(d.y - p.y) < 2.5) cands.push([dd + 0.3, { kind: 'door', door: d, label: `🚪 Step inside ${d.kind === 'shop' ? 'the shop' : ROOM_NAME[d.land as RegionId]}` }]);
+      if (dd < 2.6 && Math.abs(d.y - p.y) < 2.5) cands.push([dd + 0.3, { kind: 'door', door: d, label: `🚪 ${doorLabel(d)}` }]);
     }
     // Anyone in town: stop and talk; some need a hand today.
     const folk = onFoot ? this.townsfolk.nearest(p, 2.6) : null;
@@ -770,8 +770,42 @@ export class Game {
   enterHouse(d: Door): void {
     this.inHouse = true;
     this.target = null;
-    this.house.enter(d, this.sky.night, this.houseGathered(d));
+    this.house.enter(d, this.sky.night, this.houseGathered(d), d.kind === 'home' ? this.homeDecor(d.id.slice(5)) : undefined);
     this.ui.openHouse(d);
+  }
+
+  /** The front doors of the homes you own (a home stands on the plot once you buy it). */
+  homeDoors(): Door[] {
+    const out: Door[] = [];
+    for (const [plotId, plot] of Object.entries(this.st.plots)) {
+      const site = PLOT_BY_ID[plotId];
+      if (!site) continue;
+      for (const d of plot.decor) {
+        if (!d.kind.startsWith('house-')) continue;
+        const reach = 5.4, x = site.x + d.x + Math.sin(d.rot) * reach, z = site.z + d.z + Math.cos(d.rot) * reach;
+        out.push({ id: `home:${plotId}`, land: site.region, x, z, y: terrainHeight(x, z), facing: d.rot, kind: 'home', r: 5 });
+        break;
+      }
+    }
+    return out;
+  }
+
+  /** How a home you own is furnished (plain until you decorate it). */
+  homeDecor(plotId: string): Record<VanSlot, string> {
+    return (this.st.homes[plotId] ??= { rug: 'plain', curtains: 'plain', quilt: 'plain', lights: 'none', plant: 'none', art: 'none', lamp: 'none', cushions: 'plain' });
+  }
+
+  /** Furnish a home you own with something you have made (the item is used up). */
+  setHomeSlot(plotId: string, slot: VanSlot, optionId: string): string | null {
+    const opt = VAN_OPTIONS[slot].find((o) => o.id === optionId);
+    if (!opt) return 'Unknown.';
+    const home = this.homeDecor(plotId);
+    if (home[slot] === optionId) return null;
+    if (!removeItems(this.st, opt.cost)) return `Needs ${Object.entries(opt.cost).map(([k, n]) => `${n}× ${ITEMS[k].name}`).join(', ')}.`;
+    home[slot] = optionId;
+    const d = this.house.door;
+    if (d) this.house.enter(d, this.sky.night, true, home);
+    return null;
   }
 
   exitHouse(): void {

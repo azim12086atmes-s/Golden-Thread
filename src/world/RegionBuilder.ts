@@ -173,7 +173,10 @@ export function buildRegion(spec: RegionSpec, solid: THREE.Material, glowMat: TH
   const cells: Array<[number, number]> = [];
   const step = spec.id === 'newyork' ? 34 : spec.id === 'london' ? 26 : 21;
   for (let x = -CITY_RADIUS; x <= CITY_RADIUS; x += step) for (let z = -CITY_RADIUS; z <= CITY_RADIUS; z += step) cells.push([x, z]);
-  cells.sort(() => rng.next() - 0.5);
+  // Fill from the plaza outwards (with a little jitter), so every town has a close-built heart
+  // and thins out towards the fields rather than scattering thinly over the whole disc.
+  const order = new Map(cells.map((c) => [c, Math.hypot(c[0], c[1]) + rng.range(0, 70)]));
+  cells.sort((a, b) => order.get(a)! - order.get(b)!);
   for (const [cx, cz] of cells) {
     if (placed >= spec.houses) break;
     const x = cx + rng.range(-3, 3), z = cz + rng.range(-3, 3);
@@ -194,7 +197,7 @@ export function buildRegion(spec: RegionSpec, solid: THREE.Material, glowMat: TH
     colliders.push({ x: c.x + x, z: c.z + z, r: fp.r * 0.85, h: y + fp.h });
     buildings.push({ x, z, r: fp.r });
     // The front door: on the street face, where the building faces the avenue.
-    if (!isSky && spec.id !== 'desert' && spec.id !== 'aurora') {
+    {
       const reach = fp.r * 0.95 + 0.6;
       doors.push({ id: `${spec.id}:${placed}`, land: spec.id, x: c.x + x + Math.sin(ry) * reach, z: c.z + z + Math.cos(ry) * reach, y, facing: ry, kind, r: fp.r });
     }

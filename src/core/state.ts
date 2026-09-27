@@ -64,6 +64,8 @@ export interface GameState {
   animals: Record<string, AnimalState>;
   plots: Record<string, { decor: PlacedDecor[] }>;
   van: Record<VanSlot, string>;
+  /** How each home you own is furnished inside (by plot id), slot by slot like the van. */
+  homes: Record<string, Record<VanSlot, string>>;
   vehicles: string[];
   discovered: string[];
   lanterns: string[];
@@ -101,6 +103,7 @@ export function newGame(): GameState {
     animals: {},
     plots: {},
     van: { rug: 'plain', curtains: 'plain', quilt: 'plain', lights: 'none', plant: 'none', art: 'none', lamp: 'none', cushions: 'plain' },
+    homes: {},
     vehicles: ['walk', 'fly', 'van'],
     discovered: ['meadow'],
     lanterns: [],

@@ -4,7 +4,7 @@ import { buildLandmark } from './architecture';
 import { GeoBuilder } from './kit';
 import { blobMaterial, leafCardMesh } from './foliage';
 import { surfacesByColour } from './surfaces';
-import { buildRegion, type Collider, type RegionInstance, type ResourceNode } from './RegionBuilder';
+import { buildRegion, type Collider, type Door, type RegionInstance, type ResourceNode } from './RegionBuilder';
 import { REGIONS, REGION_SIZE, regionCenter, type RegionSpec } from './regions';
 import { CHUNK, WATER_Y, addPlatform, buildTerrainChunk, terrainHeight } from './terrain';
 import { GRASS_UNIFORMS, MeadowField, patternGround } from './Meadow';
@@ -33,6 +33,8 @@ export class World {
   private regions = new Map<string, RegionInstance>();
   private landmarkColliders: Collider[] = [];
   readonly landmarkPos = new Map<string, THREE.Vector3>();
+  /** Each land's landmark can be entered too: its door, on the side facing the southern avenue. */
+  readonly landmarkDoors: Door[] = [];
   private water: THREE.Mesh;
   private pending: RegionSpec[] = [];
   onRegionLoaded?: (r: RegionInstance) => void;
@@ -66,6 +68,7 @@ export class World {
       for (const col of out.colliders) this.landmarkColliders.push({ x: c.x + col.x, z: c.z + col.z, r: col.r, h: col.h });
       for (const p of out.platforms) addPlatform({ x: c.x + p.x, z: c.z + p.z, r: p.r, y: p.y });
       this.landmarkPos.set(r.id, new THREE.Vector3(c.x, 0, c.z));
+      this.landmarkDoors.push(landmarkDoor(r.id, c, out.colliders));
     }
   }
 
@@ -199,4 +202,14 @@ export class World {
 function dist(f: THREE.Vector3, r: RegionSpec): number {
   const c = regionCenter(r);
   return Math.hypot(f.x - c.x, f.z - c.z);
+}
+
+/**
+ * The landmark's door: walking out from its centre towards the southern avenue, the first spot
+ * clear of every part of it.
+ */
+export function landmarkDoor(land: string, c: { x: number; z: number }, colliders: Array<{ x: number; z: number; r: number }>): Door {
+  let z = 0;
+  while (z < 80 && colliders.some((col) => Math.hypot(col.x, z - col.z) < col.r + 0.9)) z += 0.25;
+  return { id: `${land}:landmark`, land, x: c.x, z: c.z + z, y: terrainHeight(c.x, c.z + z), facing: 0, kind: 'landmark', r: z };
 }

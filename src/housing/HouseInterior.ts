@@ -8,6 +8,8 @@ import { GeoBuilder, M, archPanel, box, cone, cyl, sphere, tree } from '../world
 import { LOCALES } from '../world/locale';
 import { REGION_BY_ID, type RegionId } from '../world/regions';
 import type { Door } from '../world/RegionBuilder';
+import type { VanSlot } from '../core/state';
+import { VAN_OPTIONS } from './VanInterior';
 
 /**
  * Inside a house. Every building in town can be entered by its front door; the room is built
@@ -42,10 +44,28 @@ export const ROOM_SEATS: Array<[number, number, number]> = [[-1.7, 0, 0.9], [1.7
 /** The thing to gather sits here. */
 export const GATHER_SPOT: [number, number, number] = [2.8, 0, -2.7];
 
+/** Each land's landmark, by name, for its door. */
+export const LANDMARK_NAME: Record<RegionId, string> = {
+  meadow: 'the Great Tree', japan: 'the pagoda', korea: 'the palace hall', china: 'the temple of the terraces', norway: 'the stave church',
+  switzerland: 'the clock tower', london: 'the hall of the great clock', newyork: 'the tower of a thousand windows', renaissance: 'the cathedral',
+  vintage: 'the carousel pavilion', islamic: 'the house of light', middleeast: 'the wind-tower fort', desert: 'the great tent', egypt: 'the temple by the Nile',
+  indianorth: 'the palace of winds', indiasouth: 'the temple tower', mughal: 'the marble garden tomb', indonesia: 'the temple terraces', aurora: 'the ice hall',
+  skyisles: 'the temple of the Great Lantern',
+};
+
 export function roomTitle(door: Door): string {
   const land = door.land as RegionId, place = REGION_BY_ID[land].name;
+  if (door.kind === 'landmark') return `Inside ${LANDMARK_NAME[land]} in ${place}`;
+  if (door.kind === 'home') return `Your home in ${place}`;
   const kind = door.kind === 'shop' ? 'a shop' : door.kind === 'tower' ? 'a tower house' : door.kind === 'courtyard' ? 'a courtyard house' : ROOM_NAME[land];
   return `Inside ${kind} in ${place}`;
+}
+
+/** What the prompt at a door says. */
+export function doorLabel(door: Door): string {
+  if (door.kind === 'home') return 'Go home';
+  if (door.kind === 'landmark') return `Step inside ${LANDMARK_NAME[door.land as RegionId]}`;
+  return `Step inside ${door.kind === 'shop' ? 'the shop' : ROOM_NAME[door.land as RegionId]}`;
 }
 
 export class HouseInterior {
@@ -80,7 +100,7 @@ export class HouseInterior {
   }
 
   /** Build the room behind this door. `night` sets what the windows show. */
-  enter(door: Door, night: number, gathered: boolean): void {
+  enter(door: Door, night: number, gathered: boolean, home?: Record<VanSlot, string>): void {
     this.door = door;
     const land = door.land as RegionId, spec = REGION_BY_ID[land], st = LAND_STYLE[land], fam = FAMILY[land];
     const rng = new Rng(`room:${door.id}`);
@@ -151,12 +171,14 @@ export class HouseInterior {
     } else if (door.kind === 'tower') {
       for (let i = 0; i < 12; i++) box(g, 1.1, 0.14, 0.4, '#a8703f', -W + 0.8, i * 0.3, B + 0.4 + i * 0.28);
     }
+    // Your own home: furnished with what you have made, slot by slot.
+    if (home) furnishHome(g, glow, home, B, W, H);
     // Something to gather: the land's own material, in a basket, marked with a glowing mote.
     const [gx, , gz] = GATHER_SPOT;
     cyl(g, 0.34, 0.26, 0.36, '#b08050', gx, 0, gz, 10);
     for (let i = 0; i < 5; i++) sphere(g, 0.1, ['#e8b84a', '#7fb35a', '#c8483a', '#fff0d0', '#8a5a36'][(i + land.length) % 5], gx - 0.14 + (i % 3) * 0.14, 0.4, gz - 0.07 + Math.floor(i / 3) * 0.14, 5);
     this.mote.position.set(gx, 1.2, gz);
-    this.mote.visible = !gathered;
+    this.mote.visible = !gathered && !home;
 
     const solid = g.build(new THREE.MeshStandardMaterial({ vertexColors: true, flatShading: true, roughness: 0.85 }));
     const lit = glow.build(new THREE.MeshBasicMaterial({ vertexColors: true, toneMapped: false }));
@@ -177,6 +199,8 @@ export class HouseInterior {
     this.boy.root.position.set(ROOM_SEATS[1][0], fam === 'parlour' || fam === 'hearth' ? hipY(HERO_SCALE.boy) : 0.25 - DIMS.hip * HERO_SCALE.boy, ROOM_SEATS[1][2]);
     this.boy.root.rotation.y = -Math.PI / 2 + 0.35;
     // The host, in their land's clothes, by the back wall.
+    // A home of your own has no host; everywhere else someone welcomes you in.
+    if (home) { this.host = null; this.camera.position.set(0, 2.4, F + 1.2); this.camera.lookAt(0, 0.9, -1.2); return; }
     const who = rng.chance(0.5) ? 'girl' : 'boy';
     const pool = wardrobeFor(land, who);
     this.host = new CharacterModel(pool[rng.int(0, pool.length - 1)], ['#f1c9a5', '#e0ac85', '#c68b62', '#a8704a', '#8a5a3a'][rng.int(0, 4)], who === 'girl' ? 0.95 : 1.02);
@@ -365,3 +389,33 @@ const FURNISH: Record<Family, Furnish> = {
     cyl(g, 0.3, 0.24, 0.45, '#b5654a', 3.6, 0, 1.0, 10);
   },
 };
+
+/**
+ * The things you have made, set about your own room: a rug in the middle, curtains at the
+ * windows, a quilt on the chest by the back wall, fairy lights along the cornice, pots of plants
+ * in the front corners, a picture on the back wall, a lamp and cushions by each seat.
+ */
+function furnishHome(g: GeoBuilder, glow: GeoBuilder, home: Record<VanSlot, string>, B: number, W: number, H: number): void {
+  const opt = (s: VanSlot) => VAN_OPTIONS[s].find((o) => o.id === home[s]) ?? VAN_OPTIONS[s][0];
+  const rug = opt('rug').colors;
+  box(g, 3.4, 0.02, 2.4, rug[0], 0, 0.05, 0.4);
+  if (rug.length > 1) { box(g, 3.0, 0.025, 2.0, rug[1], 0, 0.05, 0.4); box(g, 1.2, 0.03, 0.8, rug[2] ?? rug[0], 0, 0.05, 0.4); }
+  const cur = opt('curtains').colors[0];
+  for (const x of [-W + 0.14, W - 0.14]) for (const z of [-1.2, 1.8]) for (const dz of [-0.8, 0.8]) box(g, 0.06, 1.8, 0.3, cur, x, 0.9, z + dz);
+  const quilt = opt('quilt').colors;
+  box(g, 1.6, 0.6, 0.7, '#8a5a36', -2.6, 0, B + 0.5);
+  quilt.forEach((c, i) => box(g, 1.64 / quilt.length, 0.08, 0.74, c, -2.6 - 0.8 + (i + 0.5) * (1.64 / quilt.length), 0.6, B + 0.5));
+  const lights = opt('lights').colors;
+  if (lights.length) for (let i = 0; i < 24; i++) sphere(glow, 0.05, lights[i % lights.length], -W + 0.3 + (i / 23) * (W * 2 - 0.6), H - 0.55 - Math.sin((i / 23) * Math.PI * 4) ** 2 * 0.15, B + 0.15, 5);
+  const plant = opt('plant').colors;
+  if (plant.length) for (const x of [-W + 0.6, W - 0.6]) {
+    cyl(g, 0.26, 0.2, 0.45, '#b5552e', x, 0, 3.2, 8);
+    for (let k = 0; k < 5; k++) sphere(g, 0.2, k % 2 ? plant[0] : '#4f9a44', x + Math.cos(k * 1.3) * 0.12, 0.6 + (k % 3) * 0.12, 3.2 + Math.sin(k * 1.3) * 0.12, 5);
+  }
+  const art = opt('art').colors;
+  if (art.length) { box(g, 1.6, 1.1, 0.06, art[0], 1.2, 1.7, B + 0.1); box(g, 1.3, 0.8, 0.07, art[1] ?? '#fff4e0', 1.2, 1.85, B + 0.12); }
+  const lamp = opt('lamp').colors;
+  if (lamp.length) { cyl(g, 0.05, 0.12, 1.2, '#3a2a22', 3.4, 0, 0.9, 6); sphere(glow, 0.2, lamp[0], 3.4, 1.35, 0.9, 8); }
+  const cush = opt('cushions').colors;
+  for (const [x, i] of [[-1.7, 0], [1.7, 1]] as const) box(g, 0.6, 0.18, 0.6, cush[i % cush.length], x, 0.47, 1.35);
+}
