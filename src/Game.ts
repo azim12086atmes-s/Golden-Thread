@@ -50,6 +50,7 @@ import { FIELD_SITES, FIELD_SIZE, fieldGrowth, tickFields } from './economy/fiel
 import { couriersIn, marketPrice, sellHere, tickSupply } from './economy/supply';
 import { tickBusinesses } from './economy/business';
 import { tickInventions } from './economy/inventions';
+import { befriend, befriendMet } from './social/friends';
 import { tickWeavers } from './economy/crews';
 import { CAVE_LANDS, CAVE_NAME, caveMouth, type Cave } from './world/caves';
 import { SITE_BY_ID, instituteAt, landScience, siteAt, standingStage, tickInstitutes } from './institutions/institutions';
@@ -180,6 +181,7 @@ export class Game {
       this.st.outfits = { girl: 'g-kurti-jeans', boy: 'b-kurta-jeans' };
       this.st.flags.push('kurti-default-2');
     }
+    befriendMet(this.st);
     this.renderer = new THREE.WebGLRenderer({ antialias: true, powerPreference: 'high-performance' });
     this.renderer.setPixelRatio(Math.min(devicePixelRatio, 1.75));
     this.renderer.shadowMap.enabled = true;
@@ -626,6 +628,8 @@ export class Game {
       case 'harbour': return this.ui.openHarbour(t.land);
       case 'need': {
         if (meet(this.st, t.person.id)) this.toast(`🤲 ${t.person.name} — ${NEED_LABEL[t.person.kind].name.toLowerCase()}: “${t.person.hope}” They are in your people finder now.`, 'story');
+        // Meeting them makes a friend: they write to you, and a marker stays over them in town.
+        if (befriend(this.st, t.person.id)) { this.bus.emit('npc:befriended', { npcId: t.person.id }); this.toast(`💛 ${t.person.name} is now your friend`, 'reward'); }
         return this.ui.openCare();
       }
       case 'cave': { this.toast(this.exploreCave(t.cave), 'reward'); const d = this.cavernDoor(t.cave); if (d) this.enterHouse(d); return; }

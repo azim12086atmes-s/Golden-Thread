@@ -1,3 +1,4 @@
+import { PERSON_BY_ID } from '../charity/charity';
 import type { EventBus } from '../core/events';
 import type { GameState } from '../core/state';
 import { addItem, count, removeItems } from '../economy/economy';
@@ -182,7 +183,7 @@ export function addHearts(st: GameState, bus: EventBus, npcId: string, n: number
     f.befriended = true;
     f.lastMessageAt = st.minutes;
     bus.emit('npc:befriended', { npcId });
-    const p = PEOPLE_BY_ID[npcId];
+    const p = PEOPLE_BY_ID[npcId] ?? PERSON_BY_ID[npcId];
     if (p) bus.emit('toast', { text: `💛 ${p.name} is now your friend`, kind: 'reward' });
   }
 }

@@ -2,7 +2,7 @@ import type { EventBus } from '../core/events';
 import type { GameState, Message } from '../core/state';
 import { count, removeItems } from '../economy/economy';
 import { ITEMS } from '../economy/items';
-import { PEOPLE_BY_ID } from '../npc/people';
+import { friendDef, lettersOf } from './friends';
 import { addHearts } from '../quests/QuestSystem';
 import { REGION_BY_ID } from '../world/regions';
 
@@ -78,12 +78,12 @@ export class Messages {
   }
 
   private compose(npcId: string, r: number): void {
-    const p = PEOPLE_BY_ID[npcId];
+    const p = friendDef(npcId);
     if (!p) return;
     const n = this.st.names;
     const fill = (s: string) => s.replace('{g}', n.girl).replace('{b}', n.boy);
     const openRequest = this.thread(npcId).some((m) => m.request && !m.request.done);
-    if (r < 0.28 && !openRequest) {
+    if (r < 0.28 && !openRequest && !p.inNeed) {
       const wanted = REGION_BY_ID[p.region].wanted;
       const item = wanted[Math.floor(r * 100) % wanted.length];
       const qty = 1 + (Math.floor(r * 1000) % 2);
@@ -92,7 +92,8 @@ export class Messages {
     } else if (r < 0.45) {
       this.push({ npcId, from: 'them', at: this.st.minutes, text: fill(ASK[Math.floor(r * 97) % ASK.length]) });
     } else {
-      this.push({ npcId, from: 'them', at: this.st.minutes, text: fill(p.letters[Math.floor(r * 131) % p.letters.length]) });
+      const letters = lettersOf(this.st, npcId);
+      this.push({ npcId, from: 'them', at: this.st.minutes, text: fill(letters[Math.floor(r * 131) % letters.length]) });
     }
   }
 
@@ -110,7 +111,7 @@ export class Messages {
   gift(npcId: string, item: string): boolean {
     if (!removeItems(this.st, { [item]: 1 })) return false;
     this.push({ npcId, from: 'us', at: this.st.minutes, text: `Sent a gift: ${ITEMS[item].icon} ${ITEMS[item].name}`, read: true });
-    const p = PEOPLE_BY_ID[npcId];
+    const p = friendDef(npcId);
     const loved = p && REGION_BY_ID[p.region].wanted.includes(item);
     this.push({ npcId, from: 'them', at: this.st.minutes + 20, text: THANKS[Math.floor(hash(this.st.minutes) * THANKS.length)] + (loved ? ' It is exactly what I needed!' : '') });
     addHearts(this.st, this.bus, npcId, loved ? 2 : 1);

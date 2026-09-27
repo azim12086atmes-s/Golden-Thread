@@ -7,6 +7,8 @@ import * as THREE from 'three';
  * right beside it, and bobs gently. The badge is a picture drawn on a canvas.
  */
 const texCache = new Map<string, THREE.Texture>();
+/** On-screen size of a marker (a fraction of the view's height). */
+const SIZE = 0.05;
 
 function badge(icon: string, ring: string): THREE.Texture | null {
   if (typeof document === 'undefined') return null;
@@ -31,23 +33,35 @@ function badge(icon: string, ring: string): THREE.Texture | null {
   return t;
 }
 
+/** Change a marker's icon or ring (when what it marks changes). */
+export function setMarker(s: THREE.Sprite, icon: string, ring: string): void {
+  const key = `${icon}|${ring}`;
+  if (s.userData.look === key) return;
+  s.userData.look = key;
+  const m = s.material as THREE.SpriteMaterial, map = badge(icon, ring);
+  m.map = map;
+  m.color.set(map ? '#ffffff' : ring);
+  m.needsUpdate = true;
+}
+
 /** A marker sprite with an icon on a ring of colour. */
 export function markerSprite(icon: string, ring: string): THREE.Sprite {
   const map = badge(icon, ring);
   const m = new THREE.SpriteMaterial({ map, color: map ? '#ffffff' : ring, depthTest: false, depthWrite: false, sizeAttenuation: false, transparent: true });
   const s = new THREE.Sprite(m);
   s.center.set(0.5, 0);
-  s.scale.set(0.036, 0.045, 1);
+  s.scale.set(SIZE, SIZE * 1.25, 1);
+  s.userData.look = `${icon}|${ring}`;
   s.renderOrder = 10;
   s.userData.part = 'accessory';
   return s;
 }
 
 /** Hide a marker close up (it is plain to see then) and far beyond the town; pulse it if `call`. */
-export function tendMarker(s: THREE.Sprite, from: THREE.Vector3, t: number, call = false, near = 14, far = 700): void {
+export function tendMarker(s: THREE.Sprite, from: THREE.Vector3, t: number, call = false, near = 7, far = 800): void {
   const d = s.position.distanceTo(from);
   s.visible = d > near && d < far;
-  const k = call ? 1 + Math.sin(t * 4) * 0.12 : 1;
-  s.scale.set(0.036 * k, 0.045 * k, 1);
-  (s.material as THREE.SpriteMaterial).opacity = Math.min(1, (d - near) / 10);
+  const k = call ? 1 + Math.sin(t * 4) * 0.14 : 1;
+  s.scale.set(SIZE * k, SIZE * 1.25 * k, 1);
+  (s.material as THREE.SpriteMaterial).opacity = Math.min(1, (d - near) / 6);
 }

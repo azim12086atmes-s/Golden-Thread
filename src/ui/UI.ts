@@ -23,6 +23,7 @@ import { CROPS, DECOR, DECOR_BY_ID, PLOT_BY_ID, SEED_SHOP, seedPrice } from '../
 import { SLOT_NAMES, VAN_OPTIONS } from '../housing/VanInterior';
 import type { Npc } from '../npc/Npcs';
 import { PEOPLE_BY_ID } from '../npc/people';
+import { friendDef } from '../social/friends';
 import { wantedCrafts } from '../guide/objectives';
 import { QUESTS } from '../quests/quests';
 import { REPLY_OPTIONS } from '../social/Messages';
@@ -321,7 +322,7 @@ export class UI {
   }
 
   private notify(npcId: string, text: string): void {
-    const p = PEOPLE_BY_ID[npcId];
+    const p = friendDef(npcId);
     if (!p) return;
     const el = h('div', { class: 'toast msg' },
       h('div', { class: 'from' }, h('span', { class: 'av' }, p.name[0]), h('b', {}, p.name), h('small', {}, REGION_BY_ID[p.region].name)),
@@ -1363,14 +1364,14 @@ export class UI {
     if (!this.msgFriend || !friends.includes(this.msgFriend)) this.msgFriend = friends[0];
     const list = h('div', { class: 'friends' });
     for (const id of friends) {
-      const p = PEOPLE_BY_ID[id];
+      const p = friendDef(id)!;
       const unread = m.thread(id).filter((x) => x.from === 'them' && !x.read).length;
       const b = btn('', () => { this.msgFriend = id; this.render(); }, `friend ${id === this.msgFriend ? 'on' : ''}`);
       b.append(h('span', { class: 'av' }, p.name[0]), h('span', {}, p.name), unread ? h('span', { class: 'badge' }, String(unread)) : '');
       list.append(b);
     }
     const id = this.msgFriend;
-    const p = PEOPLE_BY_ID[id];
+    const p = friendDef(id)!;
     m.markRead(id);
     const thread = h('div', { class: 'thread' });
     for (const x of m.thread(id).slice(-30)) {

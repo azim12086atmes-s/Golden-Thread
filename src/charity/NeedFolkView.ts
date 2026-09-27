@@ -4,8 +4,11 @@ import type { GameState } from '../core/state';
 import { wardrobeFor } from '../npc/Townsfolk';
 import { surfaceAt } from '../world/terrain';
 import type { World } from '../world/World';
-import { markerSprite, tendMarker } from '../world/markers';
-import { NEED_LABEL, PEOPLE_IN_NEED, hasMet, needSpot, type Person } from './charity';
+import { markerSprite, setMarker, tendMarker } from '../world/markers';
+import { NEED_LABEL, PEOPLE_IN_NEED, hasMet, needSpot, sponsorOf, type Person } from './charity';
+
+/** Marker rings: not yet met (pink, pulsing), your friend (gold), in your care (green). */
+const RING = { unmet: '#ff6fa8', friend: '#f0b43a', cared: '#3fbf7f' } as const;
 
 const SKINS = ['#f1c9a5', '#e0ac85', '#c68b62', '#a8704a', '#8a5a3a'];
 
@@ -13,8 +16,9 @@ const SKINS = ['#f1c9a5', '#e0ac85', '#c68b62', '#a8704a', '#8a5a3a'];
  * The people in need, standing in their towns (charity.ts `needSpot`) for the lands that are
  * loaded. Someone you have not met yet has a soft glow above them, so they can be found in the
  * crowd; once you have talked with them the glow goes and they are in your people finder. Above
- * each one floats a marker with what they need (world/markers.ts), seen from far across the town —
- * pulsing until you have met them.
+ * each one floats a marker (world/markers.ts), seen from far across the town: pink and pulsing
+ * with what they need until you meet them, gold once they are your friend, green with a heart while
+ * they are in your care.
  */
 export class NeedFolkView {
   private bodies = new Map<string, { p: Person; model: CharacterModel; mote: THREE.Mesh; marker: THREE.Sprite; ph: number }>();
@@ -38,7 +42,9 @@ export class NeedFolkView {
       b.mote.position.y = b.model.root.position.y + (b.p.kind === 'orphan' ? 1.7 : 2.4) + Math.sin(t * 2 + b.ph) * 0.1;
       b.mote.rotation.y += dt * 1.5;
       b.marker.position.set(b.model.root.position.x, b.mote.position.y + 1.2, b.model.root.position.z);
-      if (from) tendMarker(b.marker, from, t, b.mote.visible);
+      const met = hasMet(this.st, b.p.id), cared = !!sponsorOf(this.st, b.p.id);
+      setMarker(b.marker, cared ? '💛' : NEED_LABEL[b.p.kind].icon, cared ? RING.cared : met ? RING.friend : RING.unmet);
+      if (from) tendMarker(b.marker, from, t, !met);
     }
   }
 
@@ -52,7 +58,7 @@ export class NeedFolkView {
     model.root.rotation.y = this.faceRoad(at.x, at.z);
     const mote = new THREE.Mesh(this.moteGeo, this.moteMat);
     mote.position.set(at.x, y + 2.4, at.z);
-    const marker = markerSprite(NEED_LABEL[p.kind].icon, '#ff6fa8');
+    const marker = markerSprite(NEED_LABEL[p.kind].icon, RING.unmet);
     marker.position.set(at.x, y + 3.6, at.z);
     this.scene.add(model.root, mote, marker);
     this.bodies.set(p.id, { p, model, mote, marker, ph: p.name.length });
