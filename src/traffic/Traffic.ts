@@ -123,9 +123,12 @@ export function landRoutes(land: RegionId): { road: Route[]; water: Array<{ rout
   return { road, water };
 }
 
+/** A courier on the road in this land (economy/supply.ts `couriersIn`): their vehicle, and which side of town their field is. */
+export interface CourierRide { vehicle: string; side: 1 | -1 }
+
 export class Traffic {
   readonly group = new THREE.Group();
-  private land: RegionId | null = null;
+  private sig = '';
   private drawn: Drawn[] = [];
   private solidMat = new THREE.MeshStandardMaterial({ vertexColors: true, roughness: 0.55, metalness: 0.12, side: THREE.DoubleSide, envMapIntensity: 0.35 });
   private glowMat = new THREE.MeshBasicMaterial({ vertexColors: true, toneMapped: false, transparent: true, blending: THREE.AdditiveBlending, depthWrite: false });
@@ -146,9 +149,10 @@ export class Traffic {
   }
 
   /** Put this land's traffic on its roads, waters and skies. */
-  setLand(land: RegionId): void {
-    if (this.land === land) return;
-    this.land = land;
+  setLand(land: RegionId, couriers: CourierRide[] = []): void {
+    const sig = `${land}|${couriers.map((c) => `${c.vehicle}${c.side}`).join(',')}`;
+    if (this.sig === sig) return;
+    this.sig = sig;
     this.clear();
     const roster = LAND_TRAFFIC[land], routes = landRoutes(land), c = regionCenter(REGION_BY_ID[land]);
     let seed = 1;
@@ -176,6 +180,18 @@ export class Traffic {
       const k = placed.get(route) ?? 0;
       placed.set(route, k + 1);
       push(id, { route, u: (route.len * k) / (perRoute.get(route) ?? 1) + rnd() * 6, speed: 0, alt: 0 });
+    }
+    // Your couriers, on the outer avenue between their field and the town (east avenue for the
+    // east field, west for the west; in the sky for sky-borne couriers).
+    for (const [i, cr] of couriers.entries()) {
+      const d = design(cr.vehicle);
+      if (d.realm === 'road' && routes.road.length) {
+        const route = routes.road[cr.side > 0 ? 5 : 7];
+        push(cr.vehicle, { route, u: route.len * (0.25 + 0.37 * i) % route.len, speed: 0, alt: 0 });
+      } else if (d.realm === 'sky') {
+        const route = circleRoute(c.x, c.z, 120 + i * 25, 1, 'sky');
+        push(cr.vehicle, { route, u: rnd() * route.len, speed: d.speed, alt: ground + 30 + i * 6 });
+      }
     }
     // Water: big boats on the lakes, small craft anywhere there is room.
     for (const [id, n] of roster.water) {
@@ -217,8 +233,8 @@ export class Traffic {
     }
   }
 
-  update(dt: number, t: number, land: RegionId, travellers: THREE.Vector3, night: number): void {
-    this.setLand(land);
+  update(dt: number, t: number, land: RegionId, travellers: THREE.Vector3, night: number, couriers: CourierRide[] = []): void {
+    this.setLand(land, couriers);
     this.glowMat.color.setScalar(0.06 + night * 1.5);
     for (const dr of this.drawn) {
       const d = dr.design;

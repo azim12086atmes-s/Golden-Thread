@@ -3,6 +3,10 @@ import { INSTITUTE_BY_KIND, institutesOf, type InstituteKind } from '../institut
 import { SERVE_PER_DAY, pantryOf, servesWith, stockPantry, COURSE_FEE, DAILY_INCOME, EXPERTS, EXPERT_BY_ID, SITE_BY_ID, assignStaff, buildStage, candidates, employ, freelanceFee, hireOf, instituteAt, intern, isBuilding, kindFood, landScience, learnerLevel, standingStage, takeCourse, teachClass, teachLearner, wage, type Staff } from '../institutions/institutions';
 import { DAY_COINS, FLOOR_COST, MAX_FLOORS, NEED_LABEL, PEOPLE_IN_NEED, PERSON_BY_ID, buildFloor, daysLeft, floorBuilding, floorsOf, giftsFor, give, homeCapacity, ownedHomes, residentsOf, sponsorOf, takeHome, type Person } from '../charity/charity';
 import * as THREE from 'three';
+import { FIELD_BY_ID, FIELD_ROWS, barnCount, buyField, fieldGrowTime, fieldGrowth, fieldYield, harvestField, plantField, setHand, takeFromBarn, waterField, type Hand } from '../economy/fields';
+import { addRoute, bestMarkets, destLabel, marketDest, pantryDest, removeRoute, shipmentOf, tripMinutes } from '../economy/supply';
+import { workersOf } from '../economy/workers';
+import { buySeed } from '../housing/housing';
 import type { Animal } from '../animals/Animals';
 import { SPECIES } from '../animals/AnimalModel';
 import { OUTFITS, outfitsFor } from '../characters/outfits';
@@ -27,7 +31,7 @@ import { VEHICLES, type VehicleId } from '../vehicles/vehicles';
 import { GRID_COLS, GRID_ROWS, REGIONS, REGION_BY_ID, regionCenter, type RegionId, type RegionSpec } from '../world/regions';
 import type { Game } from '../Game';
 
-type Panel = 'institute' | 'care' | 'wardrobe' | 'bag' | 'journal' | 'map' | 'messages' | 'vehicles' | 'dialogue' | 'animal' | 'build' | 'van' | 'house' | 'farm' | 'market' | 'help' | 'homes' | 'property' | null;
+type Panel = 'field' | 'institute' | 'care' | 'wardrobe' | 'bag' | 'journal' | 'map' | 'messages' | 'vehicles' | 'dialogue' | 'animal' | 'build' | 'van' | 'house' | 'farm' | 'market' | 'help' | 'homes' | 'property' | null;
 
 const h = (tag: string, attrs: Record<string, string> = {}, ...kids: Array<Node | string | null | false>) => {
   const el = document.createElement(tag);
@@ -583,7 +587,7 @@ export class UI {
 
   render(): void {
     const body = h('div', { class: 'body' });
-    const titles: Record<string, string> = { wardrobe: 'Dressing room', bag: 'Bag & Crafts', journal: 'Journal', map: 'The World', messages: 'Messages', vehicles: 'Ways to Travel', dialogue: '', animal: '', build: 'Build', van: 'Inside Safar', house: this.g.houseTitle(), farm: 'Farm bed', market: 'Market stall', help: 'How to play', care: 'Care & sponsorship', institute: this.instituteTitle(), homes: 'Homes & Land', property: 'Land for sale' };
+    const titles: Record<string, string> = { wardrobe: 'Dressing room', bag: 'Bag & Crafts', journal: 'Journal', map: 'The World', messages: 'Messages', vehicles: 'Ways to Travel', dialogue: '', animal: '', build: 'Build', van: 'Inside Safar', house: this.g.houseTitle(), farm: 'Farm bed', market: 'Market stall', help: 'How to play', care: 'Care & sponsorship', institute: this.instituteTitle(), field: this.fieldTitle(), homes: 'Homes & Land', property: 'Land for sale' };
     const head = this.panel === 'van'
       ? h('header', {}, h('h2', {}, titles.van),
         h('span', { class: 'head-acts' },
@@ -608,6 +612,7 @@ export class UI {
       case 'homes': this.homes(body); break;
       case 'care': this.carePanel(body); break;
       case 'institute': this.institutePanel(body); break;
+      case 'field': this.fieldPanel(body); break;
       case 'property': this.property(body); break;
       default: return this.closePanel();
     }
@@ -749,6 +754,95 @@ export class UI {
         floors >= MAX_FLOORS ? h('small', { class: 'dim' }, 'All the floors it can take.') : h('div', { class: 'acts' },
           btn(`Build a floor · ${FLOOR_COST.coins.coins}🪙 + ${FLOOR_COST.coins.items.wood} wood`, () => act(() => buildFloor(st, hid, 'coins'), 'The builders begin — the floor will be ready in a day.'), 'small primary', !!building),
           btn(`Pay in kind · ${FLOOR_COST.kind.items.wood} wood + ${FLOOR_COST.kind.food} food for the builders`, () => act(() => buildFloor(st, hid, 'kind'), 'The builders begin, fed from your stores — ready in a day.'), 'small ghost', !!building))));
+    }
+  }
+
+  // ───── farmland and the supply chain ─────
+  private fieldId = '';
+
+  openField(id: string): void {
+    this.fieldId = id;
+    this.open('field');
+  }
+
+  private fieldTitle(): string {
+    const f = FIELD_BY_ID[this.fieldId];
+    return f ? `${this.g.st.fields[f.id] ? 'Your field' : 'Farmland'} in ${REGION_BY_ID[f.land].name}` : 'Farmland';
+  }
+
+  /**
+   * A field: buy it, sow the land's own crops (eight rows), water and harvest into the barn, or
+   * employ the land's farmhand (or someone you sponsor who knows gardening) to keep it producing;
+   * then employ couriers to carry the barn's store to the best markets or your soup kitchens.
+   */
+  private fieldPanel(body: HTMLElement): void {
+    const g = this.g, st = g.st, site = FIELD_BY_ID[this.fieldId];
+    if (!site) return;
+    const land = site.land, landName = REGION_BY_ID[land].name;
+    const act = (fn: () => string | null, ok: string) => { const e = fn(); g.toast(e ?? ok, e ? 'info' : 'reward'); g.fieldsView.update(); this.render(); };
+    const f = st.fields[site.id];
+    if (!f) {
+      body.append(h('p', { class: 'dim' }, `Forty metres square of good land at the edge of ${landName}: eight long rows, and a barn. It grows what ${landName} grows — ${SEED_SHOP[land].map((id) => ITEMS[id]?.name ?? id).join(', ')}. Farm it yourselves, or employ a farmhand and couriers so it feeds the markets and your kitchens while you travel.`),
+        h('div', { class: 'acts' }, btn(`🌾 Buy this field · ${site.price}🪙`, () => act(() => buyField(st, site.id), `The field in ${landName} is yours.`), 'primary', st.coins < site.price)));
+      return;
+    }
+    // The crop.
+    const lvl = level(st, 'gardening');
+    body.append(h('h3', {}, 'The crop'));
+    if (!f.crop) {
+      body.append(h('p', { class: 'dim' }, `Sow all eight rows with one crop (${FIELD_ROWS} seeds). Your Gardening: level ${lvl} — a harvest yields a tenth more for every level.`),
+        h('div', { class: 'acts' }, ...SEED_SHOP[land].filter((id) => CROPS[id]).map((id) => {
+          const have = count(st, id), cd = CROPS[id];
+          return have >= FIELD_ROWS
+            ? btn(`🌱 Sow ${ITEMS[cd.out]?.name ?? cd.out} · ${have} seeds · yields ~${fieldYield(id, lvl)}`, () => act(() => plantField(st, site.id, id), 'Eight rows sown.'), 'small')
+            : btn(`🛒 Buy ${FIELD_ROWS - have}× ${ITEMS[id]?.name ?? id} · ${seedPrice(id) * (FIELD_ROWS - have)}🪙`, () => act(() => { for (let k = have; k < FIELD_ROWS; k++) if (buySeed(st, land, id) !== 'ok') return 'Not enough coins.'; return null; }, 'Seeds bought.'), 'small ghost', st.coins < seedPrice(id) * (FIELD_ROWS - have));
+        })));
+    } else {
+      const gr = fieldGrowth(st, site.id), cd = CROPS[f.crop.seed], name = ITEMS[cd.out]?.name ?? cd.out;
+      const left = Math.max(0, Math.ceil((f.crop.plantedAt + fieldGrowTime(f.crop.seed) - st.minutes) / 60));
+      body.append(h('div', { class: 'quest' }, h('b', {}, `${name} · ${Math.round(gr * 100)}% grown`), h('small', {}, gr >= 1 ? 'Ripe — bring it in.' : `About ${left} hours to go${f.crop.watered ? ' · watered' : ''}.`)),
+        h('div', { class: 'acts' },
+          btn('💧 Water the rows', () => act(() => waterField(st, site.id), 'The rows drink deep — the harvest comes sooner.'), 'ghost', !!f.crop.watered || gr >= 1),
+          btn(`🧺 Harvest · ~${fieldYield(f.crop.seed, lvl)}× ${name}`, () => { const r = harvestField(st, site.id); g.toast('error' in r ? r.error : `${r.n}× ${ITEMS[r.item]?.name} into the barn.`, 'error' in r ? 'info' : 'reward'); g.fieldsView.update(); this.render(); }, 'primary', gr < 1)));
+    }
+    // Who tends it.
+    body.append(h('h3', {}, 'Who tends it'));
+    const [hand] = workersOf(land, 'farmhand');
+    const tending = f.hand ? (f.hand.who === 'hire' ? hand.name : PERSON_BY_ID[f.hand.id]?.name) : null;
+    body.append(h('p', { class: 'dim' }, tending ? `${tending} tends the field: waters it, brings in each harvest, saves seed and sows again.` : 'No one yet — the crop waits for you. A farmhand keeps it producing while you travel.'));
+    const hired = hireOf(st, hand.id), paid = !!hired && st.minutes < hired.paidUntil;
+    const setH = (x: Hand) => act(() => setHand(st, site.id, x), 'They will tend it from today.');
+    const learners = st.sponsored.filter((s) => PERSON_BY_ID[s.id]?.land === land && learnerLevel(st, s.id, 'gardening') >= 1);
+    body.append(h('div', { class: 'acts' },
+      btn(`🧑‍🌾 Employ ${hand.name} · 5 days · ${wage(hand) * 5}🪙${paid ? ` (paid ${Math.ceil((hired!.paidUntil - st.minutes) / 1440)} days)` : ''}`, () => act(() => employ(st, hand.id, 5), `${hand.name} is employed.`), 'small', st.coins < wage(hand) * 5),
+      btn('🍲 …or 5 days for 5 food', () => act(() => employ(st, hand.id, 5, 'kind'), `${hand.name} is employed.`), 'small ghost'),
+      paid && f.hand?.id !== hand.id ? btn(`🌾 Ask ${hand.name} to tend it`, () => setH({ who: 'hire', id: hand.id }), 'small primary') : null,
+      ...learners.filter((s) => f.hand?.id !== s.id).map((s) => btn(`🤲 ${PERSON_BY_ID[s.id].name} (gardening ${learnerLevel(st, s.id, 'gardening')})`, () => setH({ who: 'learner', id: s.id }), 'small ghost')),
+      f.hand ? btn('Tend it yourselves', () => act(() => setHand(st, site.id, null), 'The field is yours to tend.'), 'small ghost') : null));
+    // The barn.
+    body.append(h('h3', {}, `The barn · ${barnCount(st, site.id)} stored`));
+    const store = Object.entries(f.store);
+    if (!store.length) body.append(h('p', { class: 'dim' }, 'Empty. Harvests are stored here until you or a courier take them.'));
+    for (const [id, n] of store) {
+      const best = bestMarkets(st, id).slice(0, 3).map((m) => `${REGION_BY_ID[m.land].name} ${m.price}🪙`).join(' · ');
+      body.append(h('div', { class: 'quest' }, h('b', {}, `${ITEMS[id]?.icon ?? ''} ${n}× ${ITEMS[id]?.name ?? id}`), h('small', {}, `Best markets today: ${best}`)),
+        h('div', { class: 'acts' }, btn('Take 5', () => { takeFromBarn(st, site.id, id, 5); this.render(); }, 'small ghost'), btn('Take all', () => { takeFromBarn(st, site.id, id, n); this.render(); }, 'small ghost')));
+    }
+    // Couriers.
+    body.append(h('h3', {}, 'Couriers'));
+    body.append(h('p', { class: 'dim' }, 'A courier collects from this barn, carries a load to a market or your soup kitchen or clinic, and comes back for the next. Markets fill up — spread your goods, and carry them far from where they grow.'));
+    const pantries = st.institutes.filter((i) => i.kind === 'kitchen' || i.kind === 'clinic');
+    const main = store[0]?.[0];
+    const dests = [...(main ? bestMarkets(st, main).slice(0, 4).map((m) => marketDest(m.land)) : [marketDest(land)]), ...pantries.map((i) => pantryDest(i.site))];
+    const couriers = [...new Set([...workersOf(land, 'courier'), ...st.hires.map((x) => x.id).filter((id) => id.startsWith('courier-')).map((id) => workersOf(id.slice(8) as RegionId, 'courier')[0]).filter(Boolean)])];
+    for (const w of couriers) {
+      const hw = hireOf(st, w.id), on = !!hw && st.minutes < hw.paidUntil, route = st.routes.find((r) => r.courier === w.id), ship = shipmentOf(st, w.id);
+      const note = ship ? `On the road to ${destLabel(st, ship.to)} — arrives in about ${Math.max(1, Math.ceil((ship.arrive - st.minutes) / 60))} h.` : route ? `Carries from ${route.from === site.id ? 'this barn' : 'another barn'} to ${destLabel(st, route.to)}.` : on ? 'Employed — give them a route.' : 'Not employed.';
+      body.append(h('div', { class: 'quest' }, h('b', {}, `🚚 ${w.name} of ${REGION_BY_ID[w.land].name} · ${w.vehicle} · carries ${w.capacity}`), h('small', {}, note)),
+        h('div', { class: 'acts' },
+          btn(`Employ · 5 days · ${wage(w) * 5}🪙`, () => act(() => employ(st, w.id, 5), `${w.name} is employed.`), 'small ghost', st.coins < wage(w) * 5),
+          ...(on ? dests.map((to) => btn(`→ ${destLabel(st, to).replace(/^the market in /, '🛒 ')} · ${Math.round(tripMinutes(w, land, (to.startsWith('market:') ? to.slice(7) : SITE_BY_ID[to.slice(7)].land) as RegionId) / 60)} h`, () => act(() => addRoute(st, w.id, site.id, to), `${w.name} will carry from this barn to ${destLabel(st, to)}.`), `small ${route?.to === to && route.from === site.id ? 'on' : 'ghost'}`)) : []),
+          route ? btn('Stop the route', () => { removeRoute(st, w.id); this.render(); }, 'small ghost') : null));
     }
   }
 

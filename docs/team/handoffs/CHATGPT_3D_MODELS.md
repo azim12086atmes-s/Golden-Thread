@@ -540,6 +540,43 @@ faces, no eyes on anything.
 
 ---
 
+## 21. Farmland and barns (NEW — contract `src/world/models/fields.ts`)
+
+The game now has agriculture land: two 40 × 40 m fields per land (not the Sky Isles), at local (±205, +62) from the
+land's centre, beside the east and west avenues (`FIELD_SITES` in `src/world/plots.ts`). The rules
+(`src/economy/fields.ts`) sow eight rows of one crop, grow it, and store harvests in the field's barn; the view
+(`src/economy/FieldsView.ts`) calls `buildField(c, size, look, ground)` and redraws it at each quarter of growth.
+
+**Replace the body of `buildField`; keep its signature and `BARN`.**
+
+- `look.owned = false`: open farmland for sale: wild grass or fallow ground, corner stakes, a signpost.
+- `look.owned = true`: the field tilled in the land's own farming style, eight rows along x between z ≈ −11 and +17,
+  and the barn at `BARN` (local −13, −16, facing +z).
+  - **Paddy fields:** terraced paddies with bunds and water in Nusa Rinjani and Kaveri Coast; flooded paddies in Jade
+    Terraces, Sakura Hollow and Hanok Village.
+  - **Temperate fields:** hedged strips in Old London and Maple Row; dry-stone walls in Alpenrose and Fjordhavn.
+  - **Desert and river fields:** irrigation channels, date palms and a shaduf in Nile Crossing, the Tents of Rimal and
+    Souq al-Qamar; a chahar-bagh water rill in Bagh-e-Noor and Madinat an-Nur.
+  - **Other lands:** mustard-yellow and marigold borders in Gulabi Nagar; greenhouses under the snow in Aurora Huts; a
+    rooftop-farm look for New Yonder (solar panels on the barn); flower meadows in the Meadow.
+- **Crops by `look.crop.shape`** (`stalk`, `bush`, `vine`, `flower`), using its `leaf` and `ripe` colours, sized by
+  `look.growth` 0..1: seedlings, then leafy, then bearing. Rice stands in water; wheat turns gold; sunflowers face
+  the sun; pumpkins lie on the ground; tea is clipped hedges; cotton shows white bolls.
+- **The barn in the land's style:**
+  - a lumbung rice barn (Indonesia) or a stilted granary (India);
+  - a timber hay barn (Norway, Switzerland, Maple Row);
+  - a mud-brick store with a dovecote (Egypt, the desert lands) or a tent store (Tents of Rimal);
+  - a red-painted barn (Old London, Meadow);
+  - an ice-block store (Aurora).
+  - Add a lamp by the door in `c.glow`.
+- **Grounding:** `ground(x, z)` gives the terrain height at a local point; sit every row and post on it (fields can
+  slope up to ~5 m).
+- **Budget:** ≤ 25 k triangles a field; no people, no scarecrows (no human figures with faces).
+- **Also wanted:** farm workers at work are welcome later as figures from `CharacterModel` (no faces), but not in
+  this builder.
+
+---
+
 ## Contract requests
 
 (ChatGPT: write here any change you need to a contract or to a Claude-owned file, with the reason. Claude answers here.)

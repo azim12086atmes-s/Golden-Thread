@@ -1,4 +1,5 @@
 import { DAY_MINUTES, type GameState } from '../core/state';
+import { WORKER_BY_ID, type Worker } from '../economy/workers';
 import { addItem, count, level, removeItems } from '../economy/economy';
 import { ITEMS, LEVEL_XP, SKILLS, skillLevel, type SkillId } from '../economy/items';
 import { PERSON_BY_ID, homeCapacity, occupantsOf, ownsHome, sponsorOf } from '../charity/charity';
@@ -48,7 +49,9 @@ export const EXPERTS: Expert[] = REGIONS.flatMap((r, ri) => {
 export const EXPERT_BY_ID: Record<string, Expert> = Object.fromEntries(EXPERTS.map((e) => [e.id, e]));
 
 /** An employee's daily wage, and a freelancer's fee for one build. */
-export const wage = (e: Expert): number => 8 + e.level * 3;
+export const wage = (e: { level: number }): number => 8 + e.level * 3;
+/** Anyone who can be employed: an expert, or an everyday worker (farmhand, courier — economy/workers.ts). */
+export const payeeOf = (id: string): Expert | Worker | undefined => EXPERT_BY_ID[id] ?? WORKER_BY_ID[id];
 export const freelanceFee = (e: Expert, stage: number): number => 20 * e.level + stage * 25;
 
 export type Staff = { who: 'you' } | { who: 'learner'; id: string } | { who: 'hire'; id: string } | { who: 'freelance'; id: string };
@@ -68,13 +71,15 @@ function addXp(st: GameState, skill: SkillId, xp: number): void {
 }
 
 export const hireOf = (st: GameState, expertId: string) => st.hires.find((h) => h.id === expertId);
+/** Whether someone's wages (or keep) are paid up to now. */
+export const isEmployed = (st: GameState, id: string): boolean => { const h = hireOf(st, id); return !!h && st.minutes < h.paidUntil; };
 
 /** Is this staff member able (and still engaged) to run work needing `skill` at `lvl`? */
 export function staffLevel(st: GameState, staff: Staff | undefined, skill: SkillId): number {
   if (!staff) return 0;
   if (staff.who === 'you') return level(st, skill);
   if (staff.who === 'learner') return sponsorOf(st, staff.id) ? learnerLevel(st, staff.id, skill) : 0;
-  const e = EXPERT_BY_ID[staff.id];
+  const e = payeeOf(staff.id);
   if (!e || e.skill !== skill) return 0;
   if (staff.who === 'hire') { const h = hireOf(st, e.id); return h && st.minutes < h.paidUntil ? e.level : 0; }
   return e.level;
@@ -102,7 +107,7 @@ export function candidates(st: GameState, land: RegionId, skill: SkillId): Array
  * with a home — they live in a home you own (it needs room; build floors for more), which is their pay.
  */
 export function employ(st: GameState, expertId: string, days: number, how: 'coins' | 'kind' | 'home' = 'coins', plotId?: string): string | null {
-  const e = EXPERT_BY_ID[expertId];
+  const e = payeeOf(expertId);
   if (!e) return 'No one by that name.';
   let h = hireOf(st, e.id);
   if (how === 'home') {
@@ -122,8 +127,10 @@ export function employ(st: GameState, expertId: string, days: number, how: 'coin
 
 /** What a kitchen cooks from (any food or crop) and a clinic treats with (herbal medicines). */
 export const CLINIC_SUPPLIES = ['balm', 'herbs', 'attar', 'ginseng', 'saffron', 'jasmine'];
+/** Staples a soup kitchen cooks with besides food and crops (grains, milk, dates, oils, spices). */
+export const KITCHEN_STAPLES = ['rice', 'milk', 'dates', 'coconut', 'olive', 'spice', 'saffron', 'tea'];
 export function servesWith(kind: InstituteKind, itemId: string): boolean {
-  if (kind === 'kitchen') return ITEMS[itemId]?.kind === 'food' || ITEMS[itemId]?.kind === 'crop';
+  if (kind === 'kitchen') return ITEMS[itemId]?.kind === 'food' || ITEMS[itemId]?.kind === 'crop' || KITCHEN_STAPLES.includes(itemId);
   if (kind === 'clinic') return CLINIC_SUPPLIES.includes(itemId);
   return false;
 }

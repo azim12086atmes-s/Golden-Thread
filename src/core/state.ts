@@ -81,6 +81,14 @@ export interface GameState {
   pantry: Record<string, Record<string, number>>;
   /** Meals your kitchens have served and people your clinics have treated. */
   served: { meals: number; treated: number };
+  /** Farmland you own (economy/fields.ts): the crop in the ground, the barn's store, and who tends it. */
+  fields: Record<string, { crop?: { seed: string; plantedAt: number; watered?: boolean }; store: Record<string, number>; hand?: { who: 'learner'; id: string } | { who: 'hire'; id: string }; at: number }>;
+  /** Standing deliveries (economy/supply.ts): a courier carries from a field's barn to a market or a pantry. */
+  routes: Array<{ id: string; courier: string; from: string; to: string }>;
+  /** Loads on the road and when they arrive. */
+  shipments: Array<{ route: string; courier: string; from: string; to: string; items: Record<string, number>; left: number; arrive: number }>;
+  /** How much of each good your couriers sold into each land lately (land → item → units, when) — markets fill up. */
+  glut: Record<string, Record<string, { n: number; at: number }>>;
   /** Who you taught today (person:skill → day), one lesson a day each. */
   taught: Record<string, number>;
   /** The thesis you are writing under a professor (institutions/research.ts). */
@@ -133,6 +141,10 @@ export function newGame(): GameState {
     hires: [],
     pantry: {},
     served: { meals: 0, treated: 0 },
+    fields: {},
+    routes: [],
+    shipments: [],
+    glut: {},
     taught: {},
     thesis: null,
     degrees: [],

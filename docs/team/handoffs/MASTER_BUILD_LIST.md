@@ -22,7 +22,7 @@ sections C1–C7) and `3D_BUILDS_HANDOFF.md` (3D work, sections 2a and 3.x). Tic
 
 ## C. Work, skills and learning (C3, C4)
 - [x] Employ experts (daily wage in coins or food) or pay them freelance for one build; teach someone you sponsor; courses, interning, teaching; skills grow by doing
-- [ ] Hire people as employees or freelancers: teachers, chefs, builders, tent-layers, weavers, doctors, researchers, couriers
+- [ ] Hire people as employees or freelancers: teachers, chefs, builders, tent-layers, weavers, doctors, researchers (farmhands and couriers done — `economy/workers.ts`)
 - [ ] Pay in coins or in kind (housing, food, necessities, training)
 - [ ] Skills grow only by doing them; services need a skill level and pay more at higher levels; new skills (teaching, medicine, research, building, software, hardware, logistics)
 - [ ] Teaching as a service; interning; doing a course (fee in coins or goods, certificate)
@@ -31,9 +31,10 @@ sections C1–C7) and `3D_BUILDS_HANDOFF.md` (3D work, sections 2a and 3.x). Tic
 
 ## D. Economy of services, agriculture and supply (C5)
 - [ ] Services economy: health care, tech, logistics, supply, agriculture, research, manufacturing, inventions
-- [ ] Agriculture land (bigger than farm beds), farm workers, grow and sell
-- [ ] Supply chain logic: producers → couriers → markets and institutions; stock and prices per land
-- [ ] Hired delivery workers carrying goods on the traffic vehicles
+- [x] Agriculture land: two 40 m fields per land, eight rows of the land's own crops, barn, farmhands who water, harvest and re-sow (`economy/fields.ts`, panel on the field)
+- [x] Supply chain: couriers carry from your barns to any land's market (prices fall as a market fills, recover a fifth a day) or to your soup kitchens and clinics (`economy/supply.ts`)
+- [x] Hired couriers ride their land's traffic vehicle on the avenue while a load is on the road (`Traffic` `couriers`)
+- [ ] 3D: fields and barns in each land's farming style (`CHATGPT_3D_MODELS.md` §21; contract `world/models/fields.ts`)
 
 ## E. Monuments (3D; section 3.1 — 19 of 20 still early builds)
 - [x] Meadow — Great Tree

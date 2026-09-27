@@ -38,6 +38,9 @@ import { VEHICLES, setVehicleEnvironment, type VehicleId } from './vehicles/vehi
 import { Traffic } from './traffic/Traffic';
 import { PERSON_BY_ID, floorBuilding, floorsOf, residentsOf, tickCharity } from './charity/charity';
 import { InstitutesView } from './institutions/InstitutesView';
+import { FieldsView } from './economy/FieldsView';
+import { FIELD_SITES, FIELD_SIZE, fieldGrowth, tickFields } from './economy/fields';
+import { couriersIn, tickSupply } from './economy/supply';
 import { CAVE_LANDS, caveMouth, type Cave } from './world/caves';
 import { instituteAt, landScience, siteAt, tickInstitutes } from './institutions/institutions';
 import { INSTITUTE_BY_KIND } from './institutions/catalogue';
@@ -74,7 +77,8 @@ export type Interactable =
   | { kind: 'stray'; pet: PetDef; label: string }
   | { kind: 'bed'; plotId: string; decorId: string; label: string }
   | { kind: 'institute'; site: string; label: string }
-  | { kind: 'cave'; cave: Cave; label: string };
+  | { kind: 'cave'; cave: Cave; label: string }
+  | { kind: 'field'; field: string; label: string };
 
 /** A scripted scene that takes the camera (and optionally renders its own scene). */
 export interface Cutscene {
@@ -115,6 +119,7 @@ export class Game {
   readonly housingView: HousingView;
   /** Institute sites: the town's own institute and the ones you found (institutions/). */
   readonly institutesView: InstitutesView;
+  readonly fieldsView: FieldsView;
   readonly trav: Travellers;
   readonly npcs: Npcs;
   readonly townsfolk: Townsfolk;
@@ -195,6 +200,7 @@ export class Game {
     this.animals = new Animals(this.scene, this.st);
     this.housingView = new HousingView(this.scene, this.st, this.world);
     this.institutesView = new InstitutesView(this.scene, this.st, this.world);
+    this.fieldsView = new FieldsView(this.scene, this.st, this.world);
     this.trav = new Travellers(this.scene, this.world, this.st, OUTFITS[this.st.outfits.girl], OUTFITS[this.st.outfits.boy]);
     this.van = new VanInterior(this.st, OUTFITS[this.st.outfits.girl], OUTFITS[this.st.outfits.boy]);
     this.house = new HouseInterior(OUTFITS[this.st.outfits.girl], OUTFITS[this.st.outfits.boy]);
@@ -359,13 +365,17 @@ export class Game {
     this.skyFx.partyAt.copy(this.celebration.festivities.centre);
     this.camera.getWorldDirection(this.skyFx.lookDir);
     this.skyFx.update(dt, this.t, this.trav.gPos, this.region.id, this.sky.night, this.sky.sunDirection);
-    this.traffic.update(dt, this.t, this.region.id, this.trav.gPos, this.sky.night);
+    this.traffic.update(dt, this.t, this.region.id, this.trav.gPos, this.sky.night, couriersIn(this.st, this.region.id));
     // The people in your care: news when someone thrives or their paid days run out.
     if ((this.charityClock -= dt) <= 0) {
       this.charityClock = 2;
       for (const n of tickCharity(this.st)) this.toast(`🤲 ${n.text}`, 'story');
       for (const n of tickInstitutes(this.st)) this.toast(`🏛️ ${n.text}`, 'reward');
       this.institutesView.update();
+      // Fields tended by farmhands, and couriers carrying their harvest to market.
+      for (const n of tickFields(this.st)) this.toast(`🌾 ${n.text}`, 'reward');
+      for (const n of tickSupply(this.st)) this.toast(`🚚 ${n.text}`, 'reward');
+      this.fieldsView.update();
       // Homes change shape as floors start and finish.
       const sig = Object.keys(this.st.homeFloors).map((id) => `${id}:${floorsOf(this.st, id)}:${floorBuilding(this.st, id) !== null}`).join('|');
       if (sig !== this.floorsSig) { this.floorsSig = sig; this.housingDirty = true; }
@@ -530,6 +540,15 @@ export class Game {
         cands.push([2.2, { kind: 'institute', site: site.id, label: `🏛️ ${site.established ? 'Visit' : inst ? 'Visit' : 'Here:'} ${name}` }]);
       }
     }
+    // Farmland: buy a field, farm it, hire hands and couriers.
+    if (onFoot) {
+      const fs = FIELD_SITES.find((f) => Math.abs(p.x - f.x) < FIELD_SIZE / 2 + 1 && Math.abs(p.z - f.z) < FIELD_SIZE / 2 + 1);
+      if (fs) {
+        const f = this.st.fields[fs.id];
+        const label = !f ? '🌾 Farmland for sale' : !f.crop ? '🌾 Your field — sow it' : fieldGrowth(this.st, fs.id) >= 1 ? '🌾 Your field — ready to harvest' : '🌾 Your field';
+        cands.push([2.4, { kind: 'field', field: fs.id, label }]);
+      }
+    }
     // Front doors: every building in town can be entered.
     if (onFoot) for (const d of [...this.world.loadedRegions().flatMap((r) => r.doors), ...this.world.landmarkDoors, ...this.homeDoors()]) {
       const dd = Math.hypot(d.x - p.x, d.z - p.z);
@@ -564,6 +583,7 @@ export class Game {
       case 'folk': return this.talkFolk(t.walker);
       case 'door': return this.enterHouse(t.door);
       case 'institute': return this.ui.openInstitute(t.site);
+      case 'field': return this.ui.openField(t.field);
       case 'cave': return this.toast(this.exploreCave(t.cave), 'reward');
       case 'stray': return this.toast(this.caravan.adopt(t.pet), 'story');
       case 'market': this.townsfolk.turnTo(t.walker, this.trav.gPos); return this.ui.openMarket(t.walker.land);

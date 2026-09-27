@@ -1,6 +1,6 @@
 import * as THREE from 'three';
 import { Rng } from '../core/rng';
-import { PLOTS, PLOT_SIZE } from './plots';
+import { FIELD_SITES, FIELD_SIZE, PLOTS, PLOT_SIZE } from './plots';
 import { LAND_STYLE, VARIANT_SHARE, buildVariant } from './buildings';
 import { houseDecor } from './houseDecor';
 import { lotusSpots } from './Water';
@@ -135,7 +135,10 @@ export function buildRegion(spec: RegionSpec, solid: THREE.Material, glowMat: TH
     spec.id === 'meadow' && Math.hypot(c.x + x - CASTLE_SITE.x, c.z + z - CASTLE_SITE.z) < CASTLE_SITE.r + 8 + pad;
   // Institute sites (institutions/sites.ts) are kept clear like plots.
   const sitesHere = INSTITUTE_SITES.filter((s) => s.land === spec.id).map((s) => ({ x: s.x - c.x, z: s.z - c.z }));
+  // Farmland (world/plots.ts FIELD_SITES) too.
+  const fieldsHere = FIELD_SITES.filter((f) => f.land === spec.id).map((f) => ({ x: f.x - c.x, z: f.z - c.z }));
   const nearPlot = (x: number, z: number, pad: number) => inCastle(x, z, pad) ||
+    fieldsHere.some((p) => Math.abs(x - p.x) < FIELD_SIZE / 2 + pad && Math.abs(z - p.z) < FIELD_SIZE / 2 + pad) ||
     plotsHere.some((p) => Math.abs(x - p.x) < PLOT_SIZE / 2 + pad && Math.abs(z - p.z) < PLOT_SIZE / 2 + pad) ||
     sitesHere.some((p) => Math.abs(x - p.x) < SITE_SIZE / 2 + pad && Math.abs(z - p.z) < SITE_SIZE / 2 + pad);
   const isSky = spec.id === 'skyisles';
