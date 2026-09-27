@@ -247,7 +247,7 @@ const VERT = /* glsl */ `
 `;
 const FRAG = /* glsl */ `
   uniform sampler2D uMap;
-  uniform float uTime, uHasMap;
+  uniform float uTime, uHasMap, uPass;
   varying vec2 vUv;
   varying float vShade;
   vec3 hsl(float h, float s, float l) {
@@ -258,6 +258,8 @@ const FRAG = /* glsl */ `
   void main() {
     vec4 c = uHasMap > 0.5 ? texture2D(uMap, vUv) : vec4(1.0, 1.0, 1.0, 0.6);
     if (c.a < 0.05) discard;
+    // Two passes: the leading (solid, it hides what is behind it), then the glass.
+    if ((uPass < 0.5) != (c.a >= 0.9)) discard;
     vec3 col;
     float a;
     if (c.a < 0.9) {
@@ -288,6 +290,7 @@ const GLITTER = 150;
 export class Wings {
   readonly group = new THREE.Group();
   private mats: THREE.ShaderMaterial[] = [];
+  private glass: THREE.Mesh[] = [];
   private glitter: THREE.Points;
   /** Each grain: where on a wing it started (out, up, side), its age and how long it lives. */
   private grains: Array<{ x: number; y: number; side: number; age: number; life: number; vy: number; vo: number }> = [];
@@ -297,20 +300,35 @@ export class Wings {
     const map = wingTexture();
     const geo = new THREE.PlaneGeometry(WING_W, WING_H, 24, 40);
     geo.translate(WING_W / 2, WING_H / 2, 0);
+    const _c = new THREE.Vector3();
     for (const side of [1, -1]) {
-      const m = new THREE.ShaderMaterial({
-        vertexShader: VERT, fragmentShader: FRAG, side: THREE.DoubleSide, transparent: true, depthWrite: false,
-        uniforms: {
-          uMap: { value: map }, uHasMap: { value: map ? 1 : 0 }, uTime: { value: 0 },
-          uBack: { value: MIN_BACK }, uCurl: { value: 0 }, uSide: { value: side }, uLift: { value: 0 },
-        },
-      });
-      const w = new THREE.Mesh(geo, m);
-      w.userData.part = 'wing';
-      w.frustumCulled = false;
-      w.renderOrder = 2;
-      this.mats.push(m);
-      this.group.add(w);
+      for (const pass of [0, 1]) {
+        const m = new THREE.ShaderMaterial({
+          vertexShader: VERT, fragmentShader: FRAG, side: THREE.DoubleSide,
+          // The leading is solid and writes depth; the glass is see-through and does not.
+          transparent: pass === 1, depthWrite: pass === 0,
+          uniforms: {
+            uMap: { value: map }, uHasMap: { value: map ? 1 : 0 }, uTime: { value: 0 }, uPass: { value: pass },
+            uBack: { value: MIN_BACK }, uCurl: { value: 0 }, uSide: { value: side }, uLift: { value: 0 },
+          },
+        });
+        const w = new THREE.Mesh(geo, m);
+        w.userData.part = 'wing';
+        w.frustumCulled = false;
+        if (pass === 1) {
+          // The glass of the farther wing is drawn first, so the nearer wing's glass lies over it.
+          w.onBeforeRender = (_r, _s, camera) => {
+            const half = WING_W * 0.5;
+            _c.set(side * half * Math.cos(this.back), WING_H * 0.55, -half * Math.sin(this.back));
+            this.group.localToWorld(_c);
+            // Farther → smaller order → drawn first (takes effect from the next frame).
+            w.renderOrder = 3 - Math.min(0.9, _c.distanceTo(camera.position) / 1000);
+          };
+          this.glass.push(w);
+        }
+        this.mats.push(m);
+        this.group.add(w);
+      }
     }
     // Glitter: pink, gold and white sparks shed from the glass, drifting down and away.
     const pos = new Float32Array(GLITTER * 3), col = new Float32Array(GLITTER * 3);
