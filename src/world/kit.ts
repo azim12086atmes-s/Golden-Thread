@@ -1,5 +1,6 @@
 import * as THREE from 'three';
 import { mergeGeometries } from 'three/addons/utils/BufferGeometryUtils.js';
+import { HABITS, growTree } from './trees';
 
 /**
  * GeoBuilder collects coloured primitives in a local frame stack and merges them into ONE mesh.
@@ -13,6 +14,38 @@ export class GeoBuilder {
 
   /** While true, parts added are foliage (except wood: cylinders), drawn as leaves by the shader. */
   leafy = false;
+  /**
+   * Leaf cards (pictures of leafy sprigs) laid over tree crowns, when this builder collects them
+   * (set to [] to opt in; see foliage.ts). Flat: CARD_STRIDE numbers per card.
+   */
+  cards: number[] | null = null;
+
+  /**
+   * One leaf card at (x, y, z) in the current frame, facing outwards along (nx, ny, nz), `size`
+   * across, rolled by `roll` and tilted by `tilt`; `kind` picks the picture (0 broad leaves,
+   * 1 small leaves, 2 needles, 3 blossom); `sway` is how freely it moves in the wind.
+   */
+  card(x: number, y: number, z: number, nx: number, ny: number, nz: number, size: number, color: THREE.ColorRepresentation, kind: number, sway: number, roll: number, tilt: number): void {
+    if (!this.cards) return;
+    const p = new THREE.Vector3(x, y, z).applyMatrix4(this.top);
+    const n = new THREE.Vector3(nx, ny, nz).transformDirection(this.top);
+    const sc = new THREE.Vector3().setFromMatrixScale(this.top).x;
+    this.tmpColor.set(color);
+    this.cards.push(p.x, p.y, p.z, n.x, n.y, n.z, size * sc, this.tmpColor.r, this.tmpColor.g, this.tmpColor.b, kind, sway, roll, tilt);
+  }
+
+  /** Build only the leafy parts (tree crowns) into their own mesh, leaving the rest for `build`. */
+  buildLeaves(material: THREE.Material): THREE.Mesh | null {
+    const leaves: THREE.BufferGeometry[] = [], rest: THREE.BufferGeometry[] = [];
+    for (const p of this.parts) ((p.getAttribute('leaf') as THREE.BufferAttribute).getX(0) > 0.5 ? leaves : rest).push(p);
+    this.parts = rest;
+    if (!leaves.length) return null;
+    const merged = mergeGeometries(leaves, false);
+    for (const p of leaves) p.dispose();
+    if (!merged) return null;
+    merged.computeBoundingSphere();
+    return new THREE.Mesh(merged, material);
+  }
 
   get size(): number {
     return this.parts.length;
@@ -33,7 +66,7 @@ export class GeoBuilder {
     }
   }
 
-  private get top(): THREE.Matrix4 {
+  get top(): THREE.Matrix4 {
     return this.stack[this.stack.length - 1];
   }
 
@@ -236,9 +269,15 @@ export function tree(g: GeoBuilder, kind: Flora, x: number, y: number, z: number
   const m = g.mark();
   // Crowns, fronds and blossoms are leaves (crystals and cloud-puffs are not); trunks are wood.
   g.leafy = kind !== 'crystal' && kind !== 'cloud';
-  try { treeParts(g, kind, x, y, z, s, rng); } finally { g.leafy = false; }
+  const habit = HABITS[kind];
+  try {
+    // Species with a habit are grown branch by branch (trees.ts); the rest keep their shapes.
+    if (habit) growTree(g, habit, x, y, z, s, rng);
+    else treeParts(g, kind, x, y, z, s, rng);
+  } finally { g.leafy = false; }
   // Crowns move in the wind; trunks stand firm. Palms and bamboo bend the most.
-  g.sway(m, y, (kind === 'palm' || kind === 'coconut' || kind === 'bamboo' ? 6 : 4.5) * s, kind === 'crystal' ? 0 : kind === 'bamboo' || kind === 'willow' ? 1.3 : 1);
+  const tall = habit ? habit.h : kind === 'palm' || kind === 'coconut' || kind === 'bamboo' ? 6 : 4.5;
+  g.sway(m, y, tall * s, kind === 'crystal' ? 0 : kind === 'bamboo' || kind === 'willow' ? 1.3 : 1);
 }
 
 function treeParts(g: GeoBuilder, kind: Flora, x: number, y: number, z: number, s: number, rng: () => number): void {

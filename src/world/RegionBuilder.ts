@@ -8,6 +8,8 @@ import { buildHouse, lampPost, streetProp, type Ctx } from './architecture';
 import { GeoBuilder, box, cone, cyl, flowers, rock, sphere, tree } from './kit';
 import { CITY_RADIUS, REGION_SIZE, regionCenter, type RegionSpec } from './regions';
 import { CASTLE_SITE, WATER_Y, terrainHeight } from './terrain';
+import { HABITS, speciesHeight } from './trees';
+import { blobMaterial, leafCardMesh } from './foliage';
 
 export interface Collider { x: number; z: number; r: number; h: number }
 
@@ -107,6 +109,8 @@ export function buildRegion(spec: RegionSpec, solid: THREE.Material, glowMat: TH
   const c = regionCenter(spec);
   const rng = new Rng(`region:${spec.id}`);
   const g = new GeoBuilder(), glow = new GeoBuilder();
+  // Collect leaf cards for the tree crowns (one instanced draw for the land).
+  g.cards = [];
   const ctx: Ctx = { g, glow, rng, s: spec };
   const colliders: Collider[] = [];
   const spots: Array<{ x: number; z: number }> = [];
@@ -228,9 +232,11 @@ export function buildRegion(spec: RegionSpec, solid: THREE.Material, glowMat: TH
     const y = H(x, z);
     if (y < WATER_Y + 0.3) continue;
     const kind = rng.pick(spec.flora);
-    const s = rng.range(0.8, 1.6) * TREE_SCALE;
+    // Sizes vary; out in the country about one tree in twelve is a giant, as tall as a building.
+    const giant = d > CITY_RADIUS + 30 && !isSky && HABITS[kind] && rng.chance(0.08);
+    const s = giant ? rng.range(18, 26) / speciesHeight(kind) : rng.range(0.7, 1.6) * TREE_SCALE;
     tree(g, kind, x, y, z, s, () => rng.next());
-    if (kind !== 'bamboo' && kind !== 'crystal') colliders.push({ x: c.x + x, z: c.z + z, r: 0.35 * s, h: y + 4 * s });
+    if (kind !== 'bamboo' && kind !== 'crystal') colliders.push({ x: c.x + x, z: c.z + z, r: (HABITS[kind]?.r ?? 0.25) * s * 1.1, h: y + 4 * s });
   }
   for (let i = 0; i < 120; i++) {
     const x = rng.range(-half, half), z = rng.range(-half, half);
@@ -283,6 +289,11 @@ export function buildRegion(spec: RegionSpec, solid: THREE.Material, glowMat: TH
 
   const group = new THREE.Group();
   group.position.set(c.x, 0, c.z);
+  // Tree crowns: translucent leafy blobs and the leaf cards that cover them.
+  const leafMesh = g.buildLeaves(blobMaterial());
+  const cardMesh = leafCardMesh(g.cards);
+  if (leafMesh) { leafMesh.castShadow = true; group.add(leafMesh); }
+  if (cardMesh) group.add(cardMesh);
   const solidMesh = g.build(solid);
   const glowMesh = glow.build(glowMat);
   if (solidMesh) {

@@ -65,9 +65,9 @@ function tuftTexture(): THREE.Texture | null {
     const lean = (root - S / 2) * (0.9 + r()) + (r() - 0.5) * S * 0.25;
     const w = 3 + r() * 5, dry = r() < 0.07;
     const tipX = root + lean, tipY = S - h, midX = root + lean * 0.3, midY = S - h * 0.55;
-    const light = 0.55 + depth * 0.45;
+    const light = 0.76 + depth * 0.24;
     const tone = (k: number, side: number) => {
-      const v = Math.round(255 * Math.min(1, (0.42 + k * 0.62) * light * side));
+      const v = Math.round(255 * Math.min(1, (0.62 + k * 0.42) * light * side));
       return dry ? `rgb(${v},${Math.round(v * 0.93)},${Math.round(v * 0.7)})` : `rgb(${Math.round(v * 0.96)},${v},${Math.round(v * 0.9)})`;
     };
     for (const side of [-1, 1]) {
@@ -198,7 +198,7 @@ function swayingMaterial(kind: 'grass' | 'flower'): THREE.MeshLambertMaterial {
         vTip = tip;
         // Fade out towards the edge of the field so it never shows a border.
         vec3 rootW = (modelMatrix * instanceMatrix * vec4(0.0, 0.0, 0.0, 1.0)).xyz;
-        transformed *= 1.0 - smoothstep(uFieldR * 0.7, uFieldR, length(rootW.xz - uFocus.xz));
+        transformed *= 1.0 - smoothstep(uFieldR * 0.45, uFieldR, length(rootW.xz - uFocus.xz));
         vec4 wpG = modelMatrix * instanceMatrix * vec4(transformed, 1.0);
         float bend = ${kind === 'grass' ? 'tip * tip * 0.55' : 'min(tip, 1.0) * 0.35'};
         wpG.xz += windOffset(wpG.xyz, bend);
@@ -322,7 +322,7 @@ export class MeadowField {
   constructor() {
     this.grass = new Field(GEO.tuft, MATS.grass, FIELD_CELL, FIELD_CELLS, (im, k, i, j) => {
       // Evenly spaced: one tuft near the middle of every cell, nudged only a little.
-      const x = (i + 0.38 + cellHash(i, j, 1) * 0.24) * FIELD_CELL, z = (j + 0.38 + cellHash(i, j, 2) * 0.24) * FIELD_CELL;
+      const x = (i + 0.2 + cellHash(i, j, 1) * 0.6) * FIELD_CELL, z = (j + 0.2 + cellHash(i, j, 2) * 0.6) * FIELD_CELL;
       if (!this.grows(x, z, i, j)) { im.setMatrixAt(k, this.zero); return false; }
       this.q.setFromAxisAngle(this.up, cellHash(i, j, 4) * Math.PI * 2);
       const sc = 0.6 + cellHash(i, j, 8) * 0.2;
@@ -331,7 +331,7 @@ export class MeadowField {
       // Every tuft its own green: patches drift between yellow-green, fresh green, blue-green and
       // olive, with lighter and darker tufts mixed through them.
       const patch = Math.sin(x * 0.11 + Math.sin(z * 0.07) * 2) * Math.sin(z * 0.09 - x * 0.03);
-      this.c.offsetHSL(patch * 0.06 + (cellHash(i, j, 10) - 0.5) * 0.1, 0.22 + cellHash(i, j, 12) * 0.12, 0.03 + (cellHash(i, j, 11) - 0.5) * 0.16);
+      this.c.offsetHSL(patch * 0.06 + (cellHash(i, j, 10) - 0.5) * 0.1, 0.18 + cellHash(i, j, 12) * 0.12, 0.1 + (cellHash(i, j, 11) - 0.5) * 0.14);
       im.setColorAt(k, this.c);
       return true;
     });

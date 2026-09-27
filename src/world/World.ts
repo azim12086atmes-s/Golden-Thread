@@ -2,6 +2,7 @@ import * as THREE from 'three';
 import { Rng } from '../core/rng';
 import { buildLandmark } from './architecture';
 import { GeoBuilder } from './kit';
+import { blobMaterial, leafCardMesh } from './foliage';
 import { buildRegion, type Collider, type RegionInstance, type ResourceNode } from './RegionBuilder';
 import { REGIONS, REGION_SIZE, regionCenter, type RegionSpec } from './regions';
 import { CHUNK, WATER_Y, addPlatform, buildTerrainChunk, terrainHeight } from './terrain';
@@ -49,9 +50,13 @@ export class World {
     for (const r of REGIONS) {
       const c = regionCenter(r);
       const g = new GeoBuilder(), glow = new GeoBuilder();
+      g.cards = [];
       const out = buildLandmark({ g, glow, rng: new Rng(`landmark:${r.id}`), s: r });
       const grp = new THREE.Group();
       grp.position.set(c.x, 0, c.z);
+      const leaves = g.buildLeaves(blobMaterial()), cards = leafCardMesh(g.cards);
+      if (leaves) grp.add(leaves);
+      if (cards) grp.add(cards);
       const m = g.build(this.solid), gm = glow.build(this.glow);
       if (m) { m.castShadow = true; m.receiveShadow = true; grp.add(m); }
       if (gm) grp.add(gm);

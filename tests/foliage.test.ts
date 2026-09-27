@@ -2,6 +2,8 @@ import { describe, expect, it } from 'vitest';
 import * as THREE from 'three';
 import { GeoBuilder, tree } from '../src/world/kit';
 import { rainbowGeometry } from '../src/world/Sky';
+import { CARD_STRIDE } from '../src/world/foliage';
+import { speciesHeight } from '../src/world/trees';
 
 const leafShare = (kind: Parameters<typeof tree>[1]) => {
   const g = new GeoBuilder();
@@ -46,5 +48,43 @@ describe('rainbows of light', () => {
     }
     expect(minX).toBeCloseTo(0, 3); expect(maxX).toBeCloseTo(1, 3);
     expect(minY).toBeCloseTo(0, 3); expect(maxY).toBeCloseTo(1, 3);
+  });
+});
+
+describe('trees that branch and grow', () => {
+  const grow = (kind: Parameters<typeof tree>[1], s = 1) => {
+    const g = new GeoBuilder();
+    g.cards = [];
+    let seed = 7;
+    tree(g, kind, 0, 0, 0, s, () => ((seed = (seed * 16807) % 2147483647) / 2147483647));
+    const cards = g.cards.length / CARD_STRIDE;
+    const leaves = g.buildLeaves(new THREE.MeshBasicMaterial());
+    const wood = g.build(new THREE.MeshBasicMaterial())!;
+    wood.geometry.computeBoundingBox();
+    leaves!.geometry.computeBoundingBox();
+    return { cards, wood: wood.geometry, top: leaves!.geometry.boundingBox!.max.y, spread: leaves!.geometry.boundingBox!.max.x - leaves!.geometry.boundingBox!.min.x };
+  };
+
+  it('a branching oak: many limbs of wood, crowned with leaf cards', () => {
+    const oak = grow('oak');
+    // Trunk, limbs, branches and twigs: far more wood than a single trunk.
+    expect(oak.wood.getAttribute('position').count / 3).toBeGreaterThan(150);
+    expect(oak.cards).toBeGreaterThan(60);
+  });
+
+  it('an oak spreads wider than a birch; a giant is as tall as a building', () => {
+    expect(grow('oak').spread).toBeGreaterThan(grow('birch').spread);
+    const giant = grow('plane', 22 / speciesHeight('plane'));
+    expect(giant.top).toBeGreaterThan(16);
+  });
+
+  it('every leaf card has a unit facing direction', () => {
+    const g = new GeoBuilder();
+    g.cards = [];
+    tree(g, 'maple', 0, 0, 0, 1, () => 0.4);
+    for (let o = 0; o < g.cards.length; o += CARD_STRIDE) {
+      const n = Math.hypot(g.cards[o + 3], g.cards[o + 4], g.cards[o + 5]);
+      expect(n).toBeCloseTo(1, 3);
+    }
   });
 });
