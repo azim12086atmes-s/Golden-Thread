@@ -71,3 +71,11 @@ the bigger Safar van (4 children + 4 pets), the flying carpet in every flight mo
 building types and patterned paths, enterable houses with land-styled rooms, bigger colourful trees, lakes/ponds/rivers
 with fairytale water and foam, dense meadows with wind, jointed anatomy for every animal, and a full farming loop with
 seed markets and cooking. Next: instanced party guests, walk-around interiors, children going home, bridges.
+
+## Cloud session — 2026-09-27
+
+See `docs/team/handoffs/CLAUDE_CLOUD_CURRENT_WORK.md` ("Handoff — session 2026-09-27"). Built: camera look-up, the Great
+Tree, whiter day skies (Meadow stays pink), every building and landmark enterable, your own home furnishable, fuller towns,
+living traffic on every land's roads, waters and skies (`src/traffic/`), traditional houses for the 13 remaining lands
+(`world/traditions.ts`), floating designer crowns for the travellers. Next: visual polish of traffic and traditional houses,
+services economy and jobs, the travellers' own vehicles rebuilt with the traffic kit.

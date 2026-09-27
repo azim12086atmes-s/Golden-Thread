@@ -354,6 +354,7 @@ export class CharacterModel {
 
     this.buildOuter(b);
     this.buildHead(b);
+    this.buildCrown();
     const shine = o.detail?.glow;
     if (shine) b.traverse((x) => {
       const mm = x as THREE.Mesh;
@@ -640,6 +641,57 @@ export class CharacterModel {
     }
   }
 
+  /**
+   * The two travellers each wear a designer crown that floats above the head (never touching
+   * it or the headwear) and turns slowly: hers a fine gold tiara of pearls round a rose gem, his a
+   * bolder gold crown of points set with sapphires under a star.
+   */
+  crown: THREE.Group | null = null;
+  private buildCrown(): void {
+    if (!this.identity) return;
+    const r = DIMS.headR, tall = ['gat', 'wide-hat', 'hijab-hat', 'turban', 'songkok'].includes(this.outfit.head.style);
+    const g = new THREE.Group();
+    g.position.y = r * (tall ? 2.35 : 1.6);
+    const gold = '#e8b84a', girl = this.identity === 'girl';
+    const R = r * (girl ? 0.6 : 0.66), H = r * (girl ? 0.2 : 0.3);
+    g.add(mesh(new THREE.CylinderGeometry(R, R * 0.96, H, 24, 1, true), gold, 'headwear'));
+    g.add(mesh(new THREE.TorusGeometry(R, r * 0.03, 5, 24).rotateX(Math.PI / 2), gold, 'headwear'));
+    const n = girl ? 9 : 6;
+    for (let i = 0; i < n; i++) {
+      const a = (i / n) * Math.PI * 2, x = Math.sin(a) * R, z = Math.cos(a) * R;
+      const tipH = girl ? r * (0.2 + (i % 2 ? 0 : 0.14) + (i === 0 ? 0.12 : 0)) : r * 0.42;
+      const spike = mesh(new THREE.ConeGeometry(r * (girl ? 0.05 : 0.09), tipH, 4), gold, 'headwear');
+      spike.position.set(x, H / 2 + tipH / 2, z);
+      g.add(spike);
+      const bead = mesh(new THREE.SphereGeometry(r * (girl ? 0.05 : 0.07), 8, 6), girl ? '#fff4f0' : '#3a7aff', 'headwear', !girl);
+      bead.position.set(x, H / 2 + tipH + r * 0.03, z);
+      g.add(bead);
+      if (!girl) {
+        const gem = mesh(new THREE.OctahedronGeometry(r * 0.07), i % 2 ? '#3a7aff' : '#e8342a', 'headwear', true);
+        gem.position.set(x * 1.02, 0, z * 1.02);
+        g.add(gem);
+      }
+    }
+    // The centrepiece at the front: a rose gem for her, and a star crowning his arches.
+    const front = mesh(new THREE.OctahedronGeometry(r * (girl ? 0.11 : 0.09)).scale(1, 1.3, 0.6), girl ? '#ff6fa8' : '#3a7aff', 'headwear', true);
+    front.position.set(0, girl ? H / 2 + r * 0.16 : 0, R * 1.03);
+    g.add(front);
+    if (!girl) {
+      for (const ry of [0, Math.PI / 2]) {
+        const arch = mesh(new THREE.TorusGeometry(R * 0.95, r * 0.035, 5, 16, Math.PI), gold, 'headwear');
+        arch.rotation.y = ry;
+        arch.scale.y = 0.7;
+        arch.position.y = H / 2;
+        g.add(arch);
+      }
+      const star = mesh(new THREE.OctahedronGeometry(r * 0.12), '#fff0b0', 'headwear', true);
+      star.position.y = H / 2 + R * 0.7 + r * 0.14;
+      g.add(star);
+    }
+    this.crown = g;
+    this.head.add(g);
+  }
+
   /** GT-CHAR-001: identity belongs to the floating head, independent of wardrobe. */
   private buildIdentity(): void {
     if (!this.identity) return;
@@ -716,6 +768,10 @@ export class CharacterModel {
     // The floating head bobs gently on its own — never touching the body.
     this.head.position.y = (DIMS.neck + HEAD_GAP + DIMS.headR) + Math.sin(s.t * 2.2) * 0.012 + (moving ? Math.abs(Math.cos(this.phase)) * 0.015 : 0);
     this.body.position.y = moving ? Math.abs(Math.sin(this.phase)) * 0.03 : 0;
+    if (this.crown) {
+      this.crown.rotation.y = s.t * 0.5;
+      this.crown.position.y = DIMS.headR * (['gat', 'wide-hat', 'hijab-hat', 'turban', 'songkok'].includes(this.outfit.head.style) ? 2.35 : 1.6) + Math.sin(s.t * 1.6) * 0.012;
+    }
     if (this.cape) {
       // The cape flies: it lifts and streams back with speed and in the air, and ripples always.
       // The cape hangs at her back (-z); a positive tilt swings its hem backwards, away from the

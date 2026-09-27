@@ -7,6 +7,75 @@ Read `AGENTS.md`, `docs/GAME_DESIGN.md`, `docs/ROADMAP.md`, `docs/REQUIREMENTS_E
 unchanged and tested: the two never touch or share a seat/mount; no eyes and floating heads on every person and
 animal; modest clothing via `modestify()`.
 
+## Handoff — session 2026-09-27 (cloud). START HERE.
+
+**Branch** `claudes-current-work` (push here; no PRs, no merges to other branches unless the owner asks).
+**Live build** https://azim12086atmes-s.github.io/Golden-Thread/ — every earlier build under `/versions/`.
+Publish with `bash scripts/deploy-pages.sh` (builds, tests, copies to gh-pages root and `versions/<sha>/`, never force-pushes).
+**Checks** `npx vitest run` (409 tests) and `npx tsc --noEmit` must pass before every push. Verify visuals with
+`scripts/probe/` (Playwright + software GL; see its README — slow, ~1 min per screenshot).
+**Commits** end with the Co-Authored-By / Claude-Session lines used throughout the log; no model names in commits.
+
+### Owner's standing preferences (learned the hard way — keep them)
+
+- Skies: per-land hues matter. Day haze is white tinted blue over green lands, warm yellow-white over sand lands; the
+  **Meadow keeps its pink** (`locale.ts` meadow haze `#ffe8f0`). Night grade is the original formula plus a 15 % land tint
+  (`RegionFX.ts`) — do not strengthen it. Stars/Milky Way/nebula stay faintly visible by day (dim, not bright).
+- Grass/flowers are **image tufts** (not painted strokes, not 3D blades), dense and touching, varied colours, to the horizon
+  (`Meadow.ts` rings). Flowers are images that glow a little.
+- Trees: anatomically branching (`trees.ts` habits), crowns are smooth slightly translucent blobs covered in leaf-image cards;
+  giants as tall as buildings. Not geometric blobs alone, not cut-out 3D leaves.
+- Buildings: real architecture, not blobs — balconies, cornices, shutters, varied massing, procedural surface textures.
+- The thread is thin and golden. Heads float; no eyes/nose/mouth; the two never touch (tests enforce all of this).
+- The owner sends many short requests mid-task; queue them, finish the current one, report plainly.
+
+### Shipped this session (all pushed unless noted)
+
+| Area | Where |
+|---|---|
+| Camera can tilt up to see the sky (stops at the ground and aims up) | `player/Travellers.ts` |
+| Meadow Great Tree rebuilt: 30 m branching oak, roots, door, window, swing, fairy lanterns | `world/architecture.ts` (`landmarks.meadow`, `GREAT_TREE`) |
+| Dimmer day stars; faint day Milky Way + nebula in every land; whiter day hazes (Meadow pink kept) | `Sky.ts`, `SkyFX.ts`, `locale.ts` |
+| Van menu: compact, ▾ Hide / ▴ Show, ✕ leaves the van; closed panels no longer peek | `ui/UI.ts`, `ui/styles.css` |
+| Every building enterable: tents, igloos, huts, cloud houses; every landmark (south door); your own home ("Go home") with an interior you furnish slot by slot (van options) | `RegionBuilder.ts`, `World.ts` (`landmarkDoor`), `Game.ts` (`homeDoors`, `setHomeSlot`), `housing/HouseInterior.ts` (`furnishHome`, `LANDMARK_NAME`), `state.homes` |
+| Fuller towns: houses fill from the plaza outwards; counts raised (Fjordhavn 130, desert 100, Aurora 90…) | `RegionBuilder.ts`, `regions.ts` |
+| **Living traffic** (task in progress, see below): ~85 designs — double-deckers, black cabs, solar trams/cabs, hover cars/bus, modern sedans/SUVs/hatchbacks/pickups, EVs, tuk-tuks, auto-rickshaws, bullock/buffalo/donkey carts, carriages, tonga, pumpkin coach, vardo, reindeer & dog sleds, elephant with howdah, camel caravans; gondolas, narrowboats, punts, ferries, yachts, longship, fishing boats, paddle steamer, junk, dragon boat, sampan, yakatabune, turtle ship, jukung, phinisi, dhow, abra, felucca, reed boat, kettuvallam, snake boat, shikara, rafts, tall ship, swans, ducks; airships, zeppelin, solar blimp, air taxis, drones, biplanes, light plane, airliners, sky-jet, ornithopter, seaplane, sky ships, crystal skiffs, flying carpets, sun-barque, Pushpaka vimana, festival dragon, janggan kite, pegasi, winged unicorns, little dragons, sky whales, sky koi, cranes, eagles, owls, falcons, roc, phoenix, garuda, pigeons, birds of light | `src/traffic/` — `shaper.ts` (modelling kit), `creatures.ts` (quadruped/bird/whale/koi/dragon builders; heads float), `designs.ts` (catalogue), `roster.ts` (what each land has), `Traffic.ts` (routes, instancing, yielding), `tests/traffic.test.ts` |
+| Traditional houses for the 13 remaining lands (machiya, minka, hanok, choga, Chinese hall, shophouse, riad, Gulf house + barjeel, Nubian vaults, Bedouin tent, round tent, haveli + jharokhas, Kerala home, Mughal pishtaq pavilion, bale, tongkonan, lavvu, snow igloo, glass igloo, goahti, log cabin, glass cabin, sky spire, sky pavilion) | `world/traditions.ts`, wired in `architecture.ts` `buildHouse` |
+| Floating designer crowns for both travellers (hers a pearl tiara with a rose gem, his a gold crown with sapphires and a star), slowly turning above the head, never touching it | `characters/CharacterModel.ts` `buildCrown` |
+| Browser probe tooling in the repo | `scripts/probe/` |
+
+### Traffic — how it works
+
+- Road routes: each avenue is two out-and-back loops (plaza→ring road, ring road→town edge) that turn before the junction so
+  nothing meets; the ring road has a lane each way. Left-hand traffic in London, Japan, Indonesia and India (`LEFT`).
+  Vehicles keep their distance and brake for the travellers (look-ahead includes braking distance).
+- Water routes: circles on lakes/ponds, out-and-back along rivers; big boats only where there is room.
+- Sky: circles round the town at each design's altitude/radius; bank into turns; wings flap, rotors spin, legs trot.
+- Only the land you are in is populated (`Traffic.setLand`); each design is a few `InstancedMesh`es (one per piece, plus glow).
+- Screenshot-verified: London double-decker (close up), Firenzia gondola, New Yonder drone. **Not yet verified by eye:** most
+  other designs (tests prove they build, keep the anatomy rules, and move).
+
+### Next, in order (owner's queue)
+
+1. **Verify & polish traffic visually** in several lands (probe each realm; fix any design that reads badly — scale, colours,
+   orientation). Consider road-vehicle shadows cost and a distance cull if frame time suffers on phones.
+2. **Traditional houses** (`traditions.ts`) — screenshot every land, fix proportions; the old per-land builders in
+   `architecture.ts` (`houses.japan` … `houses.skyisles`) are now fallbacks only and can be deleted once happy.
+3. **Sky artifacts per land** (task 15): partly covered by traffic (festival dragon, sky koi, sun-barque, vimana, janggan).
+   Remaining: nature matched to terrain.
+4. **Economy of services** (health care, tech, logistics, supply, agriculture, research, manufacturing, inventions) and
+   **service jobs** (employee, freelance software, hardware) — design in `docs/REQUIREMENTS_EXPANSION.md`; nothing built yet.
+5. Vehicles the travellers own (`vehicles/vehicles.ts`) could be rebuilt with the `traffic/shaper.ts` kit (VW Type-2 style van
+   with split windscreen, V-front, two-tone paint — see `docs/ARCHITECTURE_RESEARCH.md`).
+6. Redeploy after each milestone (`scripts/deploy-pages.sh`).
+
+### Known limits
+
+- Software-GL screenshots only; no real-GPU frame rate measured. Traffic adds roughly 60–90 draw calls in the current land.
+- Interiors are dioramas (not walk-around). Landmark interiors reuse the house room with the landmark's name.
+- A crescent-with-ring the owner remembered is Bagh-e-Noor's moon halo (`skies.ts` mughal `moonHalo`); crescents are in
+  Madinat an-Nur and Souq al-Qamar. Unchanged.
+
 ## Session 2026-09-26 (cloud) — what shipped (all on this branch, 380 tests, typecheck + build pass)
 
 | Area | Where | State |

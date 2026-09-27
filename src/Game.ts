@@ -35,6 +35,7 @@ import { QuestSystem } from './quests/QuestSystem';
 import { Messages } from './social/Messages';
 import { UI } from './ui/UI';
 import { VEHICLES, setVehicleEnvironment, type VehicleId } from './vehicles/vehicles';
+import { Traffic } from './traffic/Traffic';
 import { Ambience } from './world/Ambience';
 import { RegionFX } from './world/RegionFX';
 import { TownDressing } from './world/TownDressing';
@@ -97,6 +98,8 @@ export class Game {
   readonly skyFx = new SkyFX();
   /** Each land's weather: dust, snow, mist, haze or pollen on the wind. */
   readonly weather = new Weather();
+  /** Each land's traffic: its roads, waters and skies alive with vehicles, boats, craft and creatures. */
+  readonly traffic = new Traffic();
   readonly quests: QuestSystem;
   readonly msgs: Messages;
   readonly housing: Housing;
@@ -156,12 +159,14 @@ export class Game {
     // A small studio light for vehicle paint and metal to reflect (the world itself is not lit by it).
     {
       const pm = new THREE.PMREMGenerator(this.renderer);
-      setVehicleEnvironment(pm.fromScene(new RoomEnvironment(), 0.04).texture);
+      const env = pm.fromScene(new RoomEnvironment(), 0.04).texture;
+      setVehicleEnvironment(env);
+      this.traffic.setEnvironment(env);
       pm.dispose();
     }
     this.scene.fog = this.sky.fog;
     this.scene.add(...this.auras);
-    this.scene.add(this.world.group, this.sky.group, this.sky.sunLight, this.sky.sunLight.target, this.sky.hemi, this.ambience.points, this.regionFx.points, this.skyLanterns.mesh, this.skyFx.group, this.weather.group);
+    this.scene.add(this.world.group, this.sky.group, this.sky.sunLight, this.sky.sunLight.target, this.sky.hemi, this.ambience.points, this.regionFx.points, this.skyLanterns.mesh, this.skyFx.group, this.weather.group, this.traffic.group);
 
     this.composer = new EffectComposer(this.renderer);
     this.composer.addPass(new RenderPass(this.scene, this.camera));
@@ -342,6 +347,7 @@ export class Game {
     this.skyFx.partyAt.copy(this.celebration.festivities.centre);
     this.camera.getWorldDirection(this.skyFx.lookDir);
     this.skyFx.update(dt, this.t, this.trav.gPos, this.region.id, this.sky.night, this.sky.sunDirection);
+    this.traffic.update(dt, this.t, this.region.id, this.trav.gPos, this.sky.night);
     this.sky.moonHidden = this.skyFx.hideMoon;
     this.npcs.update(dt, this.t, this.trav.gPos);
     this.townsfolk.update(dt, this.t, this.trav.gPos);

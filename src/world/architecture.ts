@@ -5,6 +5,7 @@ import {
 } from './kit';
 import { houseDecor } from './houseDecor';
 import { FACADES, compose } from './facade';
+import { buildTradition } from './traditions';
 import { type Habit, HABITS, growTree } from './trees';
 
 /** The Meadow's Great Tree: an ancient oak three times any other, forking again and again. */
@@ -565,7 +566,8 @@ function wizardTower(c: Ctx): Footprint {
 }
 
 export function buildHouse(c: Ctx): Footprint {
-  const fp = houses[c.s.id](c);
+  // Lands with a traditional kit build from it (traditions.ts); the rest from their own builders.
+  const fp = buildTradition(c) ?? houses[c.s.id](c);
   if (c.s.id !== 'desert' && c.s.id !== 'skyisles' && c.s.id !== 'aurora') houseDetails(c, fp);
   houseDecor(c, fp);
   return fp;

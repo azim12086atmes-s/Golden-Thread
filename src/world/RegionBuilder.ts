@@ -4,6 +4,7 @@ import { PLOTS, PLOT_SIZE } from './plots';
 import { LAND_STYLE, VARIANT_SHARE, buildVariant } from './buildings';
 import { houseDecor } from './houseDecor';
 import { lotusSpots } from './Water';
+import { TRADITIONS } from './traditions';
 import { buildHouse, lampPost, streetProp, type Ctx } from './architecture';
 import { GeoBuilder, box, cone, cyl, flowers, rock, sphere, tree } from './kit';
 import { CITY_RADIUS, REGION_SIZE, regionCenter, type RegionSpec } from './regions';
@@ -190,7 +191,7 @@ export function buildRegion(spec: RegionSpec, solid: THREE.Material, glowMat: TH
     let fp = { r: 4, h: 6 };
     const hs = houseScale(spec.id);
     // Lands built from real traditions (facade kit, New Yonder, the Meadow) build only their own kinds; others mix in generic variants.
-    const variant = LAND_STYLE[spec.id].kinds.length > 0 && spec.id !== 'desert' && spec.id !== 'aurora' && spec.id !== 'skyisles' && !['newyork', 'meadow', 'london', 'renaissance', 'vintage', 'norway', 'switzerland'].includes(spec.id) && rng.chance(VARIANT_SHARE);
+    const variant = LAND_STYLE[spec.id].kinds.length > 0 && spec.id !== 'desert' && spec.id !== 'aurora' && spec.id !== 'skyisles' && !['newyork', 'meadow', 'london', 'renaissance', 'vintage', 'norway', 'switzerland', ...Object.keys(TRADITIONS)].includes(spec.id) && rng.chance(VARIANT_SHARE);
     g.frame(x, y, z, ry, hs, () => glow.frame(x, y, z, ry, hs, () => { fp = variant ? buildVariant(ctx) : buildHouse(ctx); if (variant) houseDecor(ctx, fp); }));
     const kind = (fp as { kind?: string }).kind ?? 'house';
     fp = { r: fp.r * hs, h: fp.h * hs };
