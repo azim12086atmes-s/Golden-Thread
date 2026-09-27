@@ -757,38 +757,19 @@ export interface LandmarkOut {
 type LandmarkFn = (c: Ctx, out: LandmarkOut) => void;
 
 function pagoda(c: Ctx, tiers: number, base: number, roofCol: string, bodyCol: string): number {
-  const stone = '#a9a39a', timber = '#4a2923', vermilion = '#ad3027', bronze = '#bd9a50';
-  box(c.g, base + 4, 0.9, base + 4, stone);
-  // Broad stone steps keep the south (+z) entrance readable.
-  for (let i = 0; i < 3; i++) box(c.g, 3.4 + i * 0.5, 0.3 * (3 - i), 1.1, stone, 0, 0, base / 2 + 1 + i * 0.95);
-  let y = 0.9;
+  let y = 0;
+  box(c.g, base + 3, 1, base + 3, '#9a948a');
+  y = 1;
   for (let i = 0; i < tiers; i++) {
-    const s = base * (1 - i * 0.11), floorH = 4.6;
-    box(c.g, s, floorH, s, bodyCol, 0, y, 0);
-    // Visible posts, lintels and bracket blocks support each deep swept roof.
-    for (const side of [-1, 1]) for (const x of [-s * 0.38, 0, s * 0.38]) {
-      box(c.g, 0.22, floorH - 0.25, 0.25, vermilion, x, y, side * s / 2);
-      box(c.g, 0.85, 0.24, 0.7, timber, x, y + floorH - 0.65, side * (s / 2 + 0.3));
-      box(c.g, 0.55, 0.24, 1.05, bronze, x, y + floorH - 0.36, side * (s / 2 + 0.48));
-    }
-    for (const side of [-1, 1]) for (const z of [-s * 0.38, s * 0.38]) {
-      box(c.g, 0.25, floorH - 0.25, 0.22, vermilion, side * s / 2, y, z);
-      box(c.g, 0.7, 0.24, 0.85, timber, side * (s / 2 + 0.3), y + floorH - 0.65, z);
-    }
-    for (const side of [-1, 1]) {
-      box(c.g, s + 0.7, 0.16, 0.16, timber, 0, y + 3.03, side * (s / 2 + 0.35));
-      for (let k = -2; k <= 2; k++) box(c.g, 0.1, 0.65, 0.1, timber, k * s * 0.18, y + 3.03, side * (s / 2 + 0.35));
-      box(c.glow, s * 0.32, 0.85, 0.07, c.s.glow, 0, y + 1.55, side * (s / 2 + 0.04));
-    }
-    sweptRoof(c.g, s + 4.2, s + 4.2, 1.65, roofCol, 0, y + floorH - 0.2, 0, 0, 0.52);
-    box(c.g, s + 3.6, 0.14, s + 3.6, '#26242b', 0, y + floorH - 0.16, 0);
-    y += floorH + 0.72;
+    const s = base * (1 - i * 0.12);
+    box(c.g, s, 3.4, s, bodyCol, 0, y, 0);
+    box(c.glow, s * 0.4, 1.6, s + 0.1, c.s.glow, 0, y + 0.8, 0);
+    sweptRoof(c.g, s * 1.7, s * 1.7, 1.8, roofCol, 0, y + 3.2, 0, 0, 0.4);
+    y += 4.4;
   }
-  // Bronze sorin with the traditional nine rings above the fifth roof.
-  cyl(c.g, 0.13, 0.17, 5.8, bronze, 0, y - 0.2, 0, 8);
-  for (let i = 0; i < 9; i++) cyl(c.g, 0.45 - i * 0.025, 0.45 - i * 0.025, 0.12, bronze, 0, y + 0.35 + i * 0.47, 0, 10);
-  sphere(c.g, 0.28, bronze, 0, y + 5.65, 0, 8);
-  return y + 5.95;
+  cyl(c.g, 0.2, 0.25, 7, '#c9a86a', 0, y - 0.6, 0, 6);
+  for (let i = 0; i < 5; i++) cyl(c.g, 0.55, 0.55, 0.15, '#c9a86a', 0, y + i * 1.1, 0, 8);
+  return y + 6;
 }
 
 const landmarks: Record<RegionId, LandmarkFn> = {
@@ -841,268 +822,117 @@ const landmarks: Record<RegionId, LandmarkFn> = {
   },
 
   japan(c, o) {
-    o.height = pagoda(c, 5, 8, '#363a44', '#855036');
-    // Entrance frame and timber door sit beneath the first roof.
-    box(c.g, 2.5, 3.2, 0.16, '#3d2623', 0, 0.9, 4.08);
-    box(c.g, 0.13, 3.3, 0.2, '#bd9a50', -1.3, 0.9, 4.16);
-    box(c.g, 0.13, 3.3, 0.2, '#bd9a50', 1.3, 0.9, 4.16);
-    box(c.g, 2.8, 0.2, 0.2, '#bd9a50', 0, 4.1, 4.16);
-    // Torii on the approach: its open centre preserves the path to the door.
-    for (const x of [-4.2, 4.2]) {
-      cyl(c.g, 0.33, 0.42, 7.4, '#b53228', x, 0, 25, 10);
-      cyl(c.g, 0.5, 0.5, 0.35, '#77716c', x, 0, 25, 10);
-      o.colliders.push({ x, z: 25, r: 0.5, h: 7.4 });
-    }
-    box(c.g, 10.4, 0.44, 0.55, '#b53228', 0, 5.8, 25);
-    box(c.g, 12, 0.5, 0.7, '#282932', 0, 7.1, 25);
-    for (const x of [-3.2, 3.2]) box(c.g, 0.17, 0.95, 0.2, '#b53228', x, 6.1, 25);
-    // Stone toro lanterns flank the approach with small night light panels.
-    for (const z of [10, 18, 30]) for (const x of [-7.5, 7.5]) {
-      cyl(c.g, 0.55, 0.75, 0.45, '#99948b', x, 0, z, 8);
-      cyl(c.g, 0.2, 0.25, 1.55, '#aaa49a', x, 0.45, z, 8);
-      box(c.g, 1.2, 0.22, 1.2, '#99948b', x, 2, z);
-      box(c.g, 0.9, 0.76, 0.9, '#77736d', x, 2.2, z);
-      for (const face of [-1, 1]) box(c.glow, 0.48, 0.42, 0.05, '#f5cb7a', x, 2.36, z + face * 0.47);
-      hip(c.g, 1.65, 1.65, 0.55, '#68666b', x, 3, z);
-      o.colliders.push({ x, z, r: 0.8, h: 3.6 });
-    }
-    o.colliders.push({ x: 0, z: 0, r: 8.6, h: o.height });
-    o.platforms.push({ x: 0, z: 7.4, r: 1.5, y: 0.3 });
+    o.height = pagoda(c, 5, 8, '#3a3a4a', '#8a3a2a');
+    c.g.frame(0, 0, 26, 0, 1, () => {
+      for (const x of [-4, 4]) cyl(c.g, 0.45, 0.55, 8, '#d42a2a', x, 0, 0, 10);
+      box(c.g, 11, 0.7, 0.8, '#d42a2a', 0, 6.4, 0);
+      box(c.g, 13, 0.7, 1.1, '#2a2a2a', 0, 7.8, 0);
+    });
+    o.colliders.push({ x: 0, z: 0, r: 7, h: o.height }, { x: -4, z: 26, r: 0.8, h: 8 }, { x: 4, z: 26, r: 0.8, h: 8 });
   },
 
   korea(c, o) {
-    const granite = '#aba9a3', red = '#ae342c', green = '#315d50', blue = '#326376', gold = '#d5b26c';
-    // Geunjeongjeon rises on a two-level granite terrace, with an open central stair.
-    box(c.g, 36, 1.15, 25, granite, 0, 0, 0);
-    box(c.g, 32, 1.15, 22, '#c3bfb5', 0, 1.15, 0);
-    for (let i = 0; i < 6; i++) box(c.g, 5.6, 0.36, 2.1, granite, 0, i * 0.36, 13.7 + i * 1.3);
-    box(c.g, 1.15, 2.25, 7.4, '#c6c0b2', 0, 0, 16.6);
-    for (const z of [-11, 11]) for (let x = -15; x <= 15; x += 3) {
-      if (z > 0 && Math.abs(x) < 4) continue;
-      box(c.g, 0.45, 1.1, 0.45, granite, x, 2.3, z);
-      box(c.g, 3.1, 0.17, 0.23, granite, x + 1.5, 3.05, z);
-    }
-    // Five bays across the front and three down each side, with painted beams.
-    box(c.g, 29, 0.6, 18, '#715344', 0, 2.3, -0.5);
-    for (const z of [-8, 0, 7]) for (const x of [-13, -6.5, 0, 6.5, 13]) {
-      cyl(c.g, 0.38, 0.42, 8, red, x, 2.9, z, 10);
-      cyl(c.g, 0.52, 0.52, 0.22, granite, x, 2.9, z, 10);
-      box(c.g, 1.4, 0.32, 1.1, green, x, 10.3, z);
-      box(c.g, 1.1, 0.2, 1.5, blue, x, 10.55, z);
-      box(c.g, 0.9, 0.15, 1.8, gold, x, 10.75, z);
-    }
-    box(c.g, 28, 0.46, 17, green, 0, 10.9, -0.5);
-    for (const z of [-7.9, 7.1]) for (let x = -12; x <= 12; x += 3) {
-      box(c.g, 0.23, 5.8, 0.25, red, x, 4.6, z);
-      if (Math.abs(x) > 2 || z < 0) box(c.glow, 1.5, 2.5, 0.06, c.s.glow, x + 1.3, 6.1, z + (z > 0 ? 0.11 : -0.11));
-    }
-    sweptRoof(c.g, 39, 27, 3.4, '#333c42', 0, 11.4, -0.5, 0, 0.55);
-    box(c.g, 19, 4.2, 11, red, 0, 14.8, -0.5);
-    for (const x of [-8, 0, 8]) {
-      box(c.g, 0.3, 3.6, 0.4, green, x, 15, 5.1);
-      box(c.g, 2.2, 0.25, 1, blue, x, 17.9, 5.3);
-    }
-    sweptRoof(c.g, 27, 18, 3.4, '#313b43', 0, 19, -0.5, 0, 0.58);
-    // Court wall and gate are split so the +z approach remains open.
-    for (const x of [-24, 24]) box(c.g, 0.9, 4.2, 45, granite, x, 0, 12);
-    for (const x of [-14, 14]) box(c.g, 20, 4.2, 0.9, granite, x, 0, 34);
-    for (const x of [-4.5, 4.5]) cyl(c.g, 0.35, 0.4, 5.6, red, x, 0, 34, 8);
-    sweptRoof(c.g, 13, 6, 2, '#313b43', 0, 5.6, 34, 0, 0.55);
-    for (const x of [-16, 16]) for (const z of [8, 21]) {
-      cyl(c.g, 0.35, 0.44, 1.6, granite, x, 2.3, z, 8);
-      box(c.glow, 0.48, 0.65, 0.48, '#f0d79b', x, 3.95, z);
-      hip(c.g, 1.1, 1.1, 0.6, '#45494b', x, 4.6, z);
-      o.colliders.push({ x, z, r: 0.7, h: 5.2 });
-    }
-    o.colliders.push({ x: -10, z: -1, r: 8.8, h: 24 }, { x: 10, z: -1, r: 8.8, h: 24 });
-    o.platforms.push({ x: 0, z: 0, r: 11, y: 2.3 });
-    o.height = 24;
+    box(c.g, 34, 7, 12, '#b8b0a4');
+    for (const x of [-10, 0, 10]) archPanel(c.g, 4.6, 5.4, '#3a2a22', x, 0, 6.01);
+    box(c.g, 30, 5, 9, '#c23b2a', 0, 7, 0);
+    for (let i = 0; i < 9; i++) box(c.glow, 2, 2.6, 0.1, c.s.glow, -13 + i * 3.25, 8, 4.52);
+    sweptRoof(c.g, 44, 16, 4, '#3a3f4a', 0, 12, 0, 0, 0.5);
+    box(c.g, 18, 3, 6, '#c23b2a', 0, 15.5, 0);
+    sweptRoof(c.g, 28, 11, 3.6, '#3a3f4a', 0, 18.5, 0, 0, 0.5);
+    o.colliders.push({ x: -12, z: 0, r: 6, h: 22 }, { x: 12, z: 0, r: 6, h: 22 });
+    o.height = 22;
   },
 
   china(c, o) {
-    const marble = '#eee9dc', red = '#ac292b', blue = '#28529b', gold = '#d7b044';
     let y = 0;
-    for (const r of [20, 17, 14]) {
-      cyl(c.g, r, r + 0.25, 1.25, marble, 0, y, 0, 24);
-      y += 1.25;
-      for (let i = 0; i < 24; i++) {
-        const a = i * Math.PI / 12, px = Math.cos(a) * (r - 0.25), pz = Math.sin(a) * (r - 0.25);
-        if (pz > r * 0.76 && Math.abs(px) < 3.2) continue;
-        cyl(c.g, 0.18, 0.2, 0.9, marble, px, y, pz, 6);
-        sphere(c.g, 0.23, marble, px, y + 0.95, pz, 6);
-      }
-    }
-    for (let i = 0; i < 6; i++) box(c.g, 5, 0.25, 1.7, marble, 0, i * 0.25, 21 + i * 1.15);
-    o.platforms.push({ x: 0, z: 0, r: 13, y });
-    // Circular prayer hall: red lacquer columns, dougong and three blue tile roofs.
-    cyl(c.g, 9.8, 10.3, 10.5, '#b93630', 0, y, 0, 20);
-    for (let i = 0; i < 16; i++) {
-      const a = i * Math.PI / 8, x = Math.cos(a) * 9.4, z = Math.sin(a) * 9.4;
-      cyl(c.g, 0.34, 0.37, 10.2, red, x, y, z, 8);
-      box(c.g, 1.5, 0.3, 1.5, '#2c726f', x, y + 9.2, z, a);
-      box(c.g, 1.2, 0.26, 2, gold, x, y + 9.55, z, a);
-      if (i % 2 === 0) sphere(c.glow, 0.3, '#e9bd64', x * 1.08, y + 8.1, z * 1.08, 6);
-    }
-    for (const h of [y + 2.2, y + 5.4]) cyl(c.g, 10.1, 10.1, 0.2, gold, 0, h, 0, 20);
-    y += 10.5;
     for (let i = 0; i < 3; i++) {
-      const r = 12 - i * 2.2;
-      cone(c.g, r, 5.2, blue, 0, y - 0.8, 0, 20);
-      cyl(c.g, r, r, 0.25, gold, 0, y - 0.3, 0, 20);
-      y += 6;
-      if (i < 2) {
-        cyl(c.g, r - 2.2, r - 2.2, 2.3, red, 0, y - 1, 0, 20);
-        for (let k = 0; k < 12; k++) {
-          const a = k * Math.PI / 6;
-          box(c.glow, 1.15, 1.3, 0.08, c.s.glow, Math.cos(a) * (r - 2), y - 0.25, Math.sin(a) * (r - 2), a);
-        }
-      }
+      cyl(c.g, 22 - i * 4, 23 - i * 4, 1.4, '#f4f0e6', 0, y, 0, 24);
+      y += 1.4;
     }
-    cyl(c.g, 0.22, 0.28, 3.2, gold, 0, y - 0.7, 0, 8);
-    sphere(c.g, 0.55, gold, 0, y + 2.1, 0, 8);
-    o.colliders.push({ x: 0, z: 0, r: 10.8, h: y + 3 });
+    o.platforms.push({ x: 0, z: 0, r: 14, y });
+    for (let i = 0; i < 3; i++) {
+      const r = 7 - i * 1.8;
+      cyl(c.g, r, r, 4, '#b3262a', 0, y, 0, 16);
+      box(c.glow, r * 2.02, 1.6, r * 0.8, c.s.glow, 0, y + 1.2, 0);
+      y += 4;
+      cone(c.g, r + 2.2, 3.4, '#2a4a9a', 0, y, 0, 16);
+      y += 2.2;
+    }
+    sphere(c.g, 1, '#e2b43a', 0, y + 1.4, 0, 8);
+    o.colliders.push({ x: 0, z: 0, r: 7.2, h: y + 3 });
     o.height = y + 3;
   },
 
   norway(c, o) {
-    const wood = '#342a25', tar = '#211d1b', trim = '#7b6248';
-    // Borgund's open ambulatory wraps a timber nave below nested shingle roofs.
-    box(c.g, 18, 0.65, 22, '#807a70');
-    box(c.g, 11, 7.5, 15, wood, 0, 0.65, -1);
-    for (const x of [-8, 8]) for (const z of [-10, -5, 0, 5, 10]) {
-      cyl(c.g, 0.28, 0.35, 4.1, trim, x, 0.65, z, 7);
-      box(c.g, 0.8, 0.34, 0.9, wood, x, 4.45, z);
-    }
-    for (const z of [-10, 10]) for (const x of [-8, -4, 0, 4, 8]) {
-      if (z > 0 && Math.abs(x) < 3) continue;
-      cyl(c.g, 0.28, 0.35, 4.1, trim, x, 0.65, z, 7);
-      box(c.glow, 0.4, 0.8, 0.08, '#eac77f', x, 2.2, z + (z > 0 ? 0.4 : -0.4));
-    }
-    archPanel(c.g, 2.6, 3.5, '#181513', 0, 0.65, 6.55, 0, 0.15, true);
-    let y = 4.8;
-    for (let i = 0; i < 5; i++) {
-      const w = 21 - i * 3.3, d = 25 - i * 3.9;
-      gable(c.g, w, d, 3.6 - i * 0.35, tar, 0, y, -1);
-      box(c.g, w * 0.52, 1.7, d * 0.53, wood, 0, y + 1.4, -1);
-      for (const x of [-w * 0.45, w * 0.45]) {
-        cone(c.g, 0.55, 1.5, tar, x, y + 1.2, 0, 5);
-        box(c.g, 0.12, 1.3, 0.12, trim, x, y + 2.1, 0);
+    const wood = '#3a2a22';
+    box(c.g, 14, 6, 10, wood);
+    let y = 6;
+    for (let i = 0; i < 4; i++) {
+      const s = 1 - i * 0.2;
+      gable(c.g, 16 * s, 12 * s, 5 * s, '#2a1f1a', 0, y, 0);
+      if (i < 3) box(c.g, 10 * s, 2.2, 8 * s, wood, 0, y + 3.5 * s, 0);
+      y += 4.2 * s;
+      for (const s2 of [-1, 1]) {
+        c.g.frame(s2 * 8 * s, y - 1.2, 0, 0, 1, () => cone(c.g, 0.4, 2.4, '#2a1f1a', 0, 0, 0, 5));
       }
-      y += 2.75;
     }
-    // Small bell cage and pointed cap at the ridge.
-    for (const x of [-1.2, 1.2]) for (const z of [-1.2, 1.2]) cyl(c.g, 0.17, 0.2, 2.1, wood, x, y, z, 6);
-    sphere(c.g, 0.65, '#b79755', 0, y + 0.7, 0, 8);
-    cone(c.g, 2.4, 3.5, tar, 0, y + 2.1, 0, 8);
-    o.colliders.push({ x: 0, z: -1, r: 10.5, h: y + 5.6 });
-    o.height = y + 5.6;
+    cone(c.g, 1.6, 8, '#2a1f1a', 0, y, 0, 6);
+    box(c.glow, 2, 3, 0.1, c.s.glow, 0, 0, 5.05);
+    o.colliders.push({ x: 0, z: 0, r: 8, h: y + 8 });
+    o.height = y + 8;
   },
 
   switzerland(c, o) {
-    const stone = '#d7c9a8', gold = '#cba855', roof = '#6c4031';
-    box(c.g, 10, 28, 10, stone);
-    archPanel(c.g, 4.6, 7.3, '#51483e', 0, 0, 5.1, 0, 0.2, true);
-    for (const h of [9, 16, 24, 28]) box(c.g, 10.5, 0.35, 10.5, '#b7a584', 0, h, 0);
-    // Zytglogge's astronomical dial and smaller dial face each street.
-    for (let side = 0; side < 4; side++) c.g.frame(0, 0, 0, side * Math.PI / 2, 1, () => c.glow.frame(0, 0, 0, side * Math.PI / 2, 1, () => {
-      c.g.add(cylinderDisc(3.05, 5.2), gold, M(0, 19.3, 0));
-      c.glow.add(cylinderDisc(2.4, 5.28), '#f4d892', M(0, 19.3, 0));
-      for (let i = 0; i < 12; i++) {
-        const a = i * Math.PI / 6;
-        sphere(c.g, 0.13, '#3e4e65', Math.sin(a) * 2.7, 19.3 + Math.cos(a) * 2.7, 5.39, 5);
-      }
-      box(c.g, 0.1, 1.8, 0.08, '#294d65', 0, 19.3, 5.48);
-      box(c.g, 1.4, 0.1, 0.08, '#294d65', 0, 19.3, 5.5);
-      c.g.add(cylinderDisc(1.0, 5.35), '#365f7c', M(0, 10.7, 0));
-      for (const x of [-2.7, 2.7]) {
-        box(c.g, 0.55, 1.3, 0.45, '#a76f47', x, 12.4, 5.28);
-        sphere(c.g, 0.18, gold, x, 13.7, 5.28, 6);
-      }
-    }));
-    box(c.g, 8, 0.5, 8, roof, 0, 28.3, 0);
-    for (const x of [-3.1, 3.1]) for (const z of [-3.1, 3.1]) cyl(c.g, 0.34, 0.38, 4.5, stone, x, 28.8, z, 7);
-    sphere(c.g, 1.25, '#8d7141', 0, 30.2, 0, 10);
-    hip(c.g, 10, 10, 8.5, roof, 0, 33.3, 0);
-    cyl(c.g, 0.15, 0.15, 2.5, gold, 0, 41.8, 0, 6);
-    o.colliders.push({ x: 0, z: 0, r: 6.2, h: 44.3 });
-    o.height = 44.3;
+    box(c.g, 9, 26, 9, '#e8dcc0');
+    archPanel(c.g, 5, 7, '#3a2a22', 0, 0, 4.51);
+    box(c.g, 9.4, 1, 9.4, '#c23b3b', 0, 12, 0);
+    for (let i = 0; i < 4; i++) {
+      c.glow.frame(0, 20, 0, (i * Math.PI) / 2, 1, () => {
+        c.glow.add(cylinderDisc(2.6, 4.5), '#fff4d0');
+      });
+    }
+    hip(c.g, 10.5, 10.5, 9, '#5a3a26', 0, 26, 0);
+    cyl(c.g, 0.2, 0.2, 3, '#e2b43a', 0, 35, 0, 5);
+    o.colliders.push({ x: 0, z: 0, r: 6.4, h: 38 });
+    o.height = 38;
   },
 
   london(c, o) {
-    const stone = '#d3c7aa', dark = '#35353c', gold = '#c8a35b';
-    // Westminster's long Gothic facade and river terrace.
-    box(c.g, 64, 15, 15, stone, 0, 0, -18);
-    for (let i = 0; i < 19; i++) {
-      const x = -30 + i * 3.3;
-      for (const h of [1.8, 8]) {
-        archPanel(c.glow, 1.45, 4.7, c.s.glow, x, h, -10.4, 0, 0.08, true);
-        box(c.g, 0.15, 4.5, 0.15, stone, x, h, -10.27);
-        box(c.g, 1.6, 0.18, 0.35, '#a99b7d', x, h, -10.18);
-      }
-      if (i % 2 === 0) cone(c.g, 0.42, 3.3, stone, x, 15, -10.3, 6);
+    box(c.g, 60, 14, 14, '#d9c9a0', 0, 0, 14);
+    for (let i = 0; i < 18; i++) win(c, -28 + i * 3.3, 3, 21.02, 1.2, 6, 0, true);
+    for (let i = 0; i < 12; i++) cone(c.g, 0.6, 3, '#d9c9a0', -27 + i * 5, 14, 21, 4);
+    box(c.g, 11, 60, 11, '#d9c9a0');
+    for (let y = 4; y < 54; y += 6) for (let i = 0; i < 4; i++) {
+      c.glow.frame(0, y, 0, (i * Math.PI) / 2, 1, () => box(c.glow, 1.4, 3.4, 0.1, c.s.glow, 0, 0, 5.52));
     }
-    box(c.g, 66, 0.7, 4, '#9d987f', 0, 0, -28.5);
-    for (let x = -32; x <= 32; x += 2) box(c.g, 0.28, 1.1, 0.28, stone, x, 0.7, -30);
-    box(c.g, 65, 0.2, 0.3, stone, 0, 1.8, -30);
-    box(c.g, 10, 54, 10, stone);
-    for (const h of [4, 14, 24, 34, 44]) box(c.g, 10.8, 0.65, 10.8, '#bdae8e', 0, h, 0);
-    for (let y = 5; y < 49; y += 5) for (let side = 0; side < 4; side++) c.glow.frame(0, y, 0, side * Math.PI / 2, 1, () => archPanel(c.glow, 1.5, 2.4, c.s.glow, 0, 0, 5.08, 0, 0.07, true));
-    box(c.g, 11.5, 10, 11.5, '#c5b897', 0, 52, 0);
-    for (let side = 0; side < 4; side++) c.g.frame(0, 0, 0, side * Math.PI / 2, 1, () => c.glow.frame(0, 0, 0, side * Math.PI / 2, 1, () => {
-      c.g.add(cylinderDisc(4.1, 5.8), gold, M(0, 55, 0));
-      c.glow.add(cylinderDisc(3.5, 5.95), '#fff2c7', M(0, 55, 0));
-      for (let i = 0; i < 12; i++) {
-        const a = i * Math.PI / 6;
-        sphere(c.g, 0.13, dark, Math.sin(a) * 3.1, 55 + Math.cos(a) * 3.1, 6.13, 5);
-      }
-      box(c.g, 0.13, 2.5, 0.1, dark, 0, 55, 6.2);
-    }));
-    for (const x of [-3.8, 3.8]) for (const z of [-3.8, 3.8]) cyl(c.g, 0.4, 0.45, 5, stone, x, 62, z, 8);
-    hip(c.g, 11.5, 11.5, 9, dark, 0, 67, 0);
-    cyl(c.g, 0.18, 0.18, 3, gold, 0, 76, 0, 6);
-    o.colliders.push({ x: 0, z: 0, r: 7, h: 79 }, { x: -23, z: -18, r: 13, h: 18 }, { x: 0, z: -18, r: 13, h: 18 }, { x: 23, z: -18, r: 13, h: 18 });
-    o.height = 79;
+    box(c.g, 12.5, 12, 12.5, '#c9b88a', 0, 58, 0);
+    for (let i = 0; i < 4; i++) {
+      c.glow.frame(0, 64, 0, (i * Math.PI) / 2, 1, () => c.glow.add(cylinderDisc(4.4, 6.25), '#fff8e0'));
+    }
+    hip(c.g, 12, 12, 16, '#3a3a44', 0, 70, 0);
+    cyl(c.g, 0.3, 0.3, 6, '#e2b43a', 0, 86, 0, 5);
+    o.colliders.push({ x: 0, z: 0, r: 8, h: 92 }, { x: -18, z: 14, r: 12, h: 14 }, { x: 18, z: 14, r: 12, h: 14 }, { x: 0, z: 14, r: 8, h: 14 });
+    o.height = 92;
   },
 
   newyork(c, o) {
-    const stone = '#bdb8ac', steel = '#c8d0d3', glass = '#506a79', solar = '#264b69';
-    let y = 0, w = 30;
+    const stone = '#c9c2b5';
+    let y = 0, w = 40;
     for (let i = 0; i < 5; i++) {
-      const h = [28, 23, 22, 18, 15][i];
-      box(c.g, w, h, w, i % 2 ? glass : stone, 0, y, 0);
-      for (let yy = y + 3; yy < y + h - 2; yy += 3.3) {
-        box(c.glow, w + 0.12, 0.65, w + 0.12, '#b8b393', 0, yy, 0);
-        for (const x of [-w / 3, 0, w / 3]) box(c.g, 0.3, 2.4, 0.2, steel, x, yy, w / 2 + 0.12);
-      }
+      const h = 50 - i * 8;
+      box(c.g, w, h, w, stone, 0, y, 0);
+      for (let yy = y + 3; yy < y + h - 1; yy += 3.4) box(c.glow, w + 0.1, 0.7, w + 0.1, NY_WINDOW, 0, yy, 0);
       y += h;
-      box(c.g, w + 1.3, 0.55, w + 1.3, steel, 0, y - 0.55, 0);
-      for (const x of [-w * 0.38, w * 0.38]) {
-        box(c.g, 2.6, 0.75, 0.9, '#587357', x, y, w / 2 - 1.1);
-        sphere(c.g, 0.8, '#658c60', x, y + 1.25, w / 2 - 1.1, 7);
-      }
-      for (let x = -w / 2 + 2; x < w / 2 - 2; x += 3) box(c.g, 2.2, 0.08, 1.2, solar, x, y + 0.25, -w / 2 + 2);
-      w *= 0.77;
+      w *= 0.74;
     }
-    // Stainless sunburst crown and narrow illuminated arches.
     for (let i = 0; i < 5; i++) {
-      const r = Math.max(1.4, w * 0.9 - i * 0.7);
-      cyl(c.g, r, r + 0.25, 1.4, steel, 0, y + i * 1.5, 0, 12);
-      for (let k = 0; k < 12; k++) {
-        const a = k * Math.PI / 6;
-        box(c.glow, 0.25, 1.1, 0.12, '#d9e6ee', Math.sin(a) * r, y + i * 1.5 + 0.2, Math.cos(a) * r, a);
-      }
+      const r = w * 0.9 - i * 1.2;
+      cyl(c.glow, r * 0.95, r, 3, '#fff0b0', 0, y + i * 3.2, 0, 8);
+      cyl(c.g, r, r * 0.95, 0.4, '#d9d9e0', 0, y + i * 3.2 + 3, 0, 8);
     }
-    y += 8;
-    cone(c.g, 1.8, 12, steel, 0, y, 0, 10);
-    cyl(c.g, 0.1, 0.12, 4, '#d7be7e', 0, y + 12, 0, 6);
-    // Plaza-facing display panels are dark by day, edged in soft neon.
-    for (const x of [-9, 9]) {
-      box(c.g, 8, 5, 0.15, '#2a4052', x, 5, 15.15);
-      box(c.glow, 8.2, 0.2, 0.2, '#65d7cf', x, 10.1, 15.25);
-      for (let i = 0; i < 6; i++) box(c.glow, 0.75, 0.5, 0.08, i % 2 ? '#79a6b4' : '#8cc9a7', x - 3.3 + i * 1.2, 7, 15.28);
-    }
-    o.colliders.push({ x: 0, z: 0, r: 20, h: y + 16 });
-    o.height = y + 16;
+    cone(c.g, 2.4, 40, '#e0e0ea', 0, y + 16, 0, 8);
+    o.colliders.push({ x: 0, z: 0, r: 25, h: y + 56 });
+    o.height = y + 56;
   },
 
   renaissance(c, o) {
@@ -1130,70 +960,38 @@ const landmarks: Record<RegionId, LandmarkFn> = {
       for (let i = 0; i < 4; i++) c.glow.frame(26, 60, 30, (i * Math.PI) / 2, 1, () => archPanel(c.glow, 2, 5, c.s.glow, 0, 0, 4.05));
       hip(c.g, 8.4, 8.4, 5, red, 0, 70, 0);
     });
-    // Florence's polychrome marble façade, rose window, and bronze doors.
-    for (const x of [-7.5, 0, 7.5]) {
-      archPanel(c.g, x === 0 ? 5 : 3.6, 8, '#496555', x, 0, 48.08, 0, 0.12, true);
-      archPanel(c.g, x === 0 ? 4.1 : 2.8, 7.1, '#9c573f', x, 0.5, 48.2, 0, 0.1, true);
-      box(c.g, 0.45, 18, 0.2, '#496555', x - 3.1, 0, 48.22);
-    }
-    for (const y of [7, 13, 19]) box(c.g, 20.5, 0.45, 0.25, '#496555', 0, y, 48.3);
-    cyl(c.g, 3.1, 3.1, 0.2, '#fbf3e0', 0, 15, 48.35, 16);
-    for (let i = 0; i < 12; i++) {
-      const a = i * Math.PI / 6;
-      sphere(c.g, 0.24, '#496555', Math.cos(a) * 2.5, 15 + Math.sin(a) * 2.5, 48.6, 5);
-    }
-    // Alternating stone ribs around the octagonal drum and dome.
-    for (let i = 0; i < 8; i++) {
-      const a = i * Math.PI / 4;
-      box(c.g, 0.8, 9.5, 0.8, i % 2 ? '#fbf3e0' : '#496555', Math.sin(a) * 11.5, 16, -16 + Math.cos(a) * 11.5, a);
-      sphere(c.g, 0.35, '#fbf3e0', Math.sin(a) * 8.2, 34, -16 + Math.cos(a) * 8.2, 6);
-    }
-    for (const y of [15, 30, 45, 60]) for (const side of [-1, 1]) archPanel(c.g, 1.8, 3.8, '#496555', 26 + side * 4.1, y, 34.1, 0, 0.08, true);
     o.colliders.push({ x: 0, z: 18, r: 14, h: 29 }, { x: 0, z: 40, r: 11, h: 29 }, { x: 0, z: -16, r: 14.5, h: 50 }, { x: 26, z: 30, r: 5.6, h: 75 });
     o.height = 75;
   },
 
   vintage(c, o) {
-    const cream = '#f4edda', rose = '#d86c78', blue = '#6e9db1', gold = '#caa958';
-    cyl(c.g, 10.5, 10.5, 0.8, cream, 0, 0, 0, 20);
+    // Carousel.
+    cyl(c.g, 10, 10.4, 1, '#f4f1de', 0, 0, 0, 20);
+    cyl(c.g, 1.2, 1.2, 8, '#e2b43a', 0, 1, 0, 12);
     for (let i = 0; i < 12; i++) {
-      const a = i * Math.PI / 6, x = Math.cos(a) * 7.7, z = Math.sin(a) * 7.7;
-      cyl(c.g, 0.11, 0.11, 6.2, gold, x, 0.8, z, 6);
-      // Faceless carousel horse silhouette, with its head floating clear.
-      sphere(c.g, 0.83, i % 3 ? cream : '#c9ab8a', x, 1.95, z, 8, 0.7);
-      box(c.g, 0.17, 1.0, 0.17, gold, x, 0.8, z);
-      sphere(c.g, 0.34, i % 3 ? cream : '#c9ab8a', x + 1.15, 3.0, z, 7);
-      box(c.g, 0.28, 0.48, 0.28, rose, x, 2.8, z);
+      const a = (i / 12) * Math.PI * 2;
+      cyl(c.g, 0.1, 0.1, 6, '#e2b43a', Math.cos(a) * 7, 1, Math.sin(a) * 7, 5);
+      sphere(c.g, 0.7, i % 3 === 0 ? '#ffffff' : i % 3 === 1 ? '#ffc4dc' : '#bfe3d9', Math.cos(a) * 7, 3, Math.sin(a) * 7, 6, 0.7);
     }
-    cyl(c.g, 1.3, 1.3, 7.5, gold, 0, 0.8, 0, 12);
-    cyl(c.g, 11, 11, 0.45, gold, 0, 7, 0, 20);
+    cyl(c.g, 10.6, 10.6, 1, '#e07a5f', 0, 7, 0, 20);
     for (let i = 0; i < 20; i++) {
-      const a = i * Math.PI / 10;
-      sphere(c.glow, 0.16, '#ffe7a5', Math.cos(a) * 11, 7.3, Math.sin(a) * 11, 5);
+      const a = (i / 20) * Math.PI * 2;
+      sphere(c.glow, 0.2, '#fff0b3', Math.cos(a) * 10.7, 7.5, Math.sin(a) * 10.7, 4);
     }
-    cone(c.g, 11.2, 5, rose, 0, 7.45, 0, 20);
-    for (let i = 0; i < 10; i++) {
-      const a = i * Math.PI / 5;
-      box(c.g, 0.45, 3.2, 0.05, cream, Math.cos(a) * 5.8, 8.2, Math.sin(a) * 5.8, a);
-    }
-    sphere(c.g, 0.72, gold, 0, 12.6, 0, 8);
-    c.g.frame(-26, 0, -14, 0, 1, () => {
-      cyl(c.g, 6.2, 6.2, 1, cream, 0, 0, 0, 10);
+    cone(c.g, 11, 5, '#e07a5f', 0, 8, 0, 20);
+    cone(c.g, 11.05, 1.6, '#ffffff', 0, 8, 0, 20);
+    sphere(c.g, 0.8, '#e2b43a', 0, 13.3, 0, 8);
+    // Bandstand.
+    c.g.frame(30, 0, -18, 0, 1, () => {
+      cyl(c.g, 6, 6.2, 1.2, '#ffffff', 0, 0, 0, 8);
       for (let i = 0; i < 8; i++) {
-        const a = i * Math.PI / 4;
-        cyl(c.g, 0.22, 0.22, 4.4, cream, Math.cos(a) * 5.5, 1, Math.sin(a) * 5.5, 7);
+        const a = (i / 8) * Math.PI * 2;
+        cyl(c.g, 0.18, 0.18, 4, '#ffffff', Math.cos(a) * 5.4, 1.2, Math.sin(a) * 5.4, 6);
       }
-      cone(c.g, 7, 3.2, blue, 0, 5.4, 0, 10);
+      cone(c.g, 6.8, 3, '#5a8ab5', 0, 5.2, 0, 8);
     });
-    // Victorian pleasure pier pavilion beyond the bandstand.
-    c.g.frame(28, 0, -17, 0, 1, () => {
-      box(c.g, 12, 0.6, 10, '#8b6a50');
-      for (const x of [-5, 5]) for (const z of [-4, 4]) cyl(c.g, 0.2, 0.25, 5, cream, x, 0.6, z, 6);
-      gable(c.g, 14, 12, 4, blue, 0, 5.6, 0);
-      for (const x of [-4, 0, 4]) box(c.glow, 1.3, 2.1, 0.08, '#f6d9a3', x, 2.4, 5.1);
-    });
-    o.colliders.push({ x: 0, z: 0, r: 10.8, h: 13 }, { x: -26, z: -14, r: 6.2, h: 9 }, { x: 28, z: -17, r: 8, h: 10 });
-    o.height = 13;
+    o.colliders.push({ x: 0, z: 0, r: 10.5, h: 14 }, { x: 30, z: -18, r: 6.2, h: 8 });
+    o.height = 14;
   },
 
   islamic(c, o) {
@@ -1229,21 +1027,6 @@ const landmarks: Record<RegionId, LandmarkFn> = {
       cyl(c.g, 0.1, 0.1, 2, gold, x, 51, z, 4);
       o.colliders.push({ x, z, r: 2.4, h: 53 });
     }
-    // Court of Lions: slender columns, arcades, carved capitals, and a central fountain.
-    for (const z of [8, 24, 32]) for (let i = -5; i <= 5; i++) {
-      const x = i * 5.2;
-      cyl(c.g, 0.35, 0.4, 5.6, white, x, 0, z, 8);
-      box(c.g, 1.1, 0.65, 1.1, gold, x, 5.6, z);
-      if (i < 5) archPanel(c.g, 4.3, 3.5, '#e9d7b9', x + 2.6, 5.5, z, 0, 0.12, true);
-    }
-    cyl(c.g, 3.5, 3.8, 0.8, white, 0, 0, 15, 12);
-    for (let i = 0; i < 12; i++) {
-      const a = i * Math.PI / 6;
-      cyl(c.g, 0.4, 0.5, 1.5, white, Math.cos(a) * 2.6, 0.8, 15 + Math.sin(a) * 2.6, 6);
-    }
-    cyl(c.glow, 0.3, 0.5, 1.8, '#a8e9ff', 0, 1, 15, 8);
-    for (const z of [3, 35]) for (let x = -28; x <= 28; x += 7) box(c.g, 3.2, 0.18, 0.18, blue, x, 6.8, z);
-    for (let i = 0; i < 12; i++) sphere(c.g, 0.22, gold, -30 + i * 5.4, 6.7, 35.25, 5);
     o.colliders.push({ x: -14, z: -12, r: 13, h: 15 }, { x: 14, z: -12, r: 13, h: 15 }, { x: 0, z: -12, r: 12, h: 42 });
     o.height = 53;
   },
@@ -1276,23 +1059,6 @@ const landmarks: Record<RegionId, LandmarkFn> = {
       o.colliders.push({ x, z, r: 2.8, h: 22 });
     }
     for (let i = 0; i < 16; i++) lanternHanging(c, -20 + (i % 8) * 5.6, 8 - Math.floor(i / 8) * 2, i < 8 ? 22 : -22);
-    // Coral-stone gate, recessed entrance, and a covered souq beyond the courtyard.
-    for (const x of [-5, 5]) {
-      box(c.g, 3, 12, 3.5, mud, x, 0, 26);
-      box(c.g, 0.5, 9, 0.2, '#f0dbc0', x > 0 ? x - 1.5 : x + 1.5, 0, 27.9);
-    }
-    archPanel(c.g, 6, 9, '#4a3426', 0, 0, 27.6, 0, 0.2, true);
-    for (const x of [-18, -9, 0, 9, 18]) {
-      box(c.g, 7, 7, 12, '#c8aa7c', x, 0, -9);
-      archPanel(c.g, 4.6, 5.5, '#654631', x, 0.3, -2.9, 0, 0.16, true);
-      box(c.g, 7.5, 0.5, 14, '#815e42', x, 7, -9);
-      for (const dz of [-14, -9, -4]) box(c.g, 0.6, 0.6, 13, '#a67a50', x + dz / 3, 7.5, -9);
-    }
-    for (const x of [-20, 20]) for (const z of [-17, 2, 17]) {
-      archPanel(c.g, 3.4, 5, '#654631', x, 1, z, x < 0 ? Math.PI / 2 : -Math.PI / 2, 0.1, true);
-      box(c.g, 2.4, 0.3, 2.4, '#b48a58', x, 5.5, z);
-    }
-    o.colliders.push({ x: -5, z: 26, r: 2.5, h: 12 }, { x: 5, z: 26, r: 2.5, h: 12 });
     o.height = 22;
   },
 
@@ -1312,22 +1078,6 @@ const landmarks: Record<RegionId, LandmarkFn> = {
       const a = (i / 10) * Math.PI * 2;
       cone(c.glow, 0.6, 1.3, '#ff8a2a', Math.cos(a) * 32, 0, Math.sin(a) * 32, 5);
     }
-    // A majlis laid out with woven rugs, cushions, low tables, and a well.
-    for (const z of [-43, -36, -29]) {
-      box(c.g, 15, 0.08, 4.6, z % 2 ? '#a45a3e' : '#d7a657', 0, 0.12, z);
-      for (const x of [-6.4, 6.4]) for (let j = 0; j < 3; j++) box(c.g, 1.6, 0.5, 1.2, j % 2 ? '#e0bc80' : '#9f4c38', x, 0.25, z - 1.2 + j * 1.2);
-    }
-    for (const z of [-39, -32]) {
-      cyl(c.g, 1.5, 1.5, 0.45, '#806244', 0, 0.35, z, 10);
-      cyl(c.g, 0.15, 0.15, 1.6, '#d4af62', 0, 0.8, z, 6);
-      sphere(c.glow, 0.35, '#ffcf78', 0, 2.5, z, 6);
-    }
-    for (const x of [-10, 10]) cyl(c.g, 0.24, 0.3, 9, '#624937', x, 0, -40, 8);
-    cyl(c.g, 2.1, 2.1, 1.3, '#cdb58a', 30, 0, -27, 12);
-    cyl(c.g, 1.45, 1.45, 0.15, '#3988a0', 30, 1.3, -27, 12);
-    for (const x of [27.9, 32.1]) cyl(c.g, 0.16, 0.16, 3.5, '#644932', x, 1.3, -27, 6);
-    box(c.g, 5, 0.3, 0.3, '#644932', 30, 4.7, -27);
-    o.colliders.push({ x: 30, z: -27, r: 2.3, h: 5 });
     o.colliders.push({ x: 0, z: -40, r: 9, h: 9 });
     o.height = 10;
   },
@@ -1349,59 +1099,27 @@ const landmarks: Record<RegionId, LandmarkFn> = {
       }
     }
     box(c.g, 24, 0.12, 700, '#3a9ac0', -140, 0.1, 0);
-    // Twin pylons and a raised lintel frame the open central approach.
-    for (const x of [-14, 14]) {
-      box(c.g, 18, 25, 12, stone, x, 0, 2);
-      box(c.g, 17, 1, 12.4, '#b88f58', x, 25, 2);
-      for (const y of [7, 14, 21]) box(c.g, 12, 0.32, 0.2, '#9d7652', x, y, 8.1);
-      o.colliders.push({ x, z: 2, r: 10, h: 26 });
-    }
-    box(c.g, 11, 4, 12, stone, 0, 21, 2);
-    for (const x of [-5, 5]) cone(c.g, 1.1, 18, '#d9b070', x, 0.5, 20, 4);
-    // Hypostyle hall: papyrus columns, painted capitals, and clerestory light.
-    for (const z of [-20, -10, 0]) for (const x of [-16, -8, 8, 16]) {
-      cyl(c.g, 1.1, 1.4, 11, stone, x, 0, z, 10);
-      cyl(c.g, 2.2, 1.2, 2, '#3e9b8c', x, 11, z, 10);
-      box(c.g, 4.2, 0.8, 4.2, '#cba66e', x, 13, z);
-      o.colliders.push({ x, z, r: 1.5, h: 14 });
-    }
-    for (const x of [-12, 12]) box(c.g, 10, 1.3, 36, stone, x, 14, -10);
-    box(c.g, 24, 1.3, 6, stone, 0, 14, -24);
-    for (const x of [-24, 24]) for (const z of [20, 38]) {
-      cyl(c.g, 0.55, 0.55, 2, '#9f7050', x, 0, z, 8);
-      cone(c.glow, 0.7, 1.5, '#ffac43', x, 2, z, 6);
-    }
     o.colliders.push({ x: 0, z: 26, r: 2, h: 27 });
     o.height = 40;
   },
 
   indianorth(c, o) {
-    const pink = '#e8917a', cream = '#ffe4c4', shadow = '#834a3b';
-    // Five terraced storeys of Hawa Mahal, each filled with small jharokha bays.
-    for (let floor = 0; floor < 5; floor++) {
-      const width = 62 - floor * 7, y = floor * 6.2, depth = 11 - floor * 0.7;
-      box(c.g, width, 6.2, depth, pink, 0, y, 0);
-      box(c.g, width + 0.5, 0.4, depth + 0.8, cream, 0, y + 5.8, 0);
-      const count = Math.floor(width / 4.2);
-      for (let i = 0; i < count; i++) {
-        const x = (i - (count - 1) / 2) * 4.2, front = depth / 2;
-        box(c.g, 3.2, 0.65, 1.2, cream, x, y + 0.8, front + 0.55);
-        box(c.g, 3.2, 0.4, 1.3, cream, x, y + 4.6, front + 0.6);
-        archPanel(c.g, 2.5, 3.5, shadow, x, y + 1.35, front + 1.18, 0, 0.12, true);
-        archPanel(c.glow, 1.5, 2.3, c.s.glow, x, y + 1.65, front + 1.28, 0, 0.09, true);
-        dome(c.g, 1.65, pink, x, y + 5.1, front + 0.6, 8, 0.45);
-        box(c.g, 0.18, 2.4, 0.16, cream, x, y + 1.5, front + 1.35);
+    const pink = '#e8917a', white = '#ffffff';
+    const rows = 9;
+    for (let r = 0; r < rows; r++) {
+      const w = 60 - r * 5.2, y = r * 4.2;
+      box(c.g, w, 4.2, 10 - r * 0.6, pink, 0, y, 0);
+      const n = Math.floor(w / 3.4);
+      for (let i = 0; i < n; i++) {
+        const x = -w / 2 + 1.7 + i * 3.4;
+        box(c.g, 2.4, 3, 1.4, pink, x, y + 0.6, 5 - r * 0.3 + 0.6);
+        box(c.glow, 1.2, 1.6, 0.1, c.s.glow, x, y + 1.2, 5 - r * 0.3 + 1.32);
+        dome(c.g, 0.9, white, x, y + 3.6, 5 - r * 0.3 + 0.6, 6);
       }
-      for (const x of [-width / 2 + 1.2, width / 2 - 1.2]) box(c.g, 1.5, 1.3, 1.5, pink, x, y + 6.2, 0);
     }
-    for (const x of [-18, -9, 0, 9, 18]) chhatri(c, x, 31, -1, x === 0 ? 2.3 : 1.6, pink, cream);
-    for (const x of [-28, 28]) {
-      box(c.g, 4, 22, 10, pink, x, 0, -1);
-      chhatri(c, x, 22, -1, 2.1, pink, cream);
-    }
-    box(c.g, 66, 0.5, 14, '#c99275', 0, -0.5, 2);
-    o.colliders.push({ x: -20, z: 0, r: 10, h: 32 }, { x: 0, z: 0, r: 10, h: 38 }, { x: 20, z: 0, r: 10, h: 32 }, { x: -28, z: -1, r: 3.2, h: 28 }, { x: 28, z: -1, r: 3.2, h: 28 });
-    o.height = 39;
+    chhatri(c, 0, rows * 4.2, 0, 2, pink, white);
+    o.colliders.push({ x: -18, z: 0, r: 8, h: 20 }, { x: 0, z: 0, r: 8, h: 40 }, { x: 18, z: 0, r: 8, h: 20 }, { x: -26, z: 0, r: 5, h: 10 }, { x: 26, z: 0, r: 5, h: 10 });
+    o.height = 44;
   },
 
   indiasouth(c, o) {
@@ -1426,33 +1144,6 @@ const landmarks: Record<RegionId, LandmarkFn> = {
       box(c.g, 24, 0.6, 24, '#c9bfa8');
       box(c.g, 20, 0.2, 20, '#3a9ac0', 0, 0.5, 0);
     });
-    // Richly patterned gateway tiers and a stepped temple tank.
-    let trimY = 8, trimW = 24, trimD = 16;
-    for (let level = 0; level < tiers.length; level++) {
-      const n = Math.max(3, Math.round(trimW / 3));
-      for (let i = 0; i < n; i++) {
-        const x = (i - (n - 1) / 2) * trimW / n;
-        dome(c.g, 0.53, level % 2 ? '#e4cb94' : '#f1e2c3', x, trimY + 1.4, trimD / 2 + 0.35, 6, 0.7);
-        box(c.g, 0.65, 0.8, 0.55, '#f2d898', x, trimY + 0.3, trimD / 2 + 0.35);
-      }
-      box(c.g, trimW + 0.5, 0.35, trimD + 0.5, '#f0d797', 0, trimY + 2.9, 0);
-      trimY += 3.2; trimW *= 0.87; trimD *= 0.86;
-    }
-    for (let step = 0; step < 4; step++) {
-      const size = 32 - step * 2.5;
-      box(c.g, size, 0.35, size, '#d9c5a3', 0, -step * 0.35, 40);
-    }
-    for (const x of [-9, 9]) for (const z of [31, 49]) {
-      cyl(c.g, 0.4, 0.45, 4.5, '#d0b784', x, 0, z, 7);
-      sphere(c.glow, 0.45, '#ffd078', x, 4.7, z, 7);
-    }
-    // A pillared mandapa behind the gopuram.
-    c.g.frame(0, 0, -27, 0, 1, () => {
-      box(c.g, 22, 1, 18, '#d9d0b8');
-      for (const x of [-9, 9]) for (const z of [-7, 7]) cyl(c.g, 0.8, 0.9, 8, '#d0b784', x, 1, z, 8);
-      hip(c.g, 23, 19, 5, '#b85b3b', 0, 9, 0);
-    });
-    o.colliders.push({ x: 0, z: -27, r: 12, h: 14 });
     o.colliders.push({ x: 0, z: 0, r: 12, h: y + 4 });
     o.height = y + 6;
   },
@@ -1491,18 +1182,6 @@ const landmarks: Record<RegionId, LandmarkFn> = {
       archPanel(c.g, 8, 13, '#3a2a22', 0, 0, 5.1, 0, 0.1, true);
       for (const x of [-15, 15]) chhatri(c, x, 20, 0, 2, red, white);
     });
-    // Floral pietra dura and calligraphic bands decorate the main pishtaq.
-    for (const x of [-14, 14]) for (const y of [7, 12, 17]) {
-      sphere(c.g, 0.3, '#3f7d73', x, y, -12.12, 7);
-      sphere(c.g, 0.16, '#b5552e', x + 0.4, y + 0.4, -12.15, 6);
-    }
-    for (const y of [5, 18]) box(c.g, 31, 0.45, 0.28, red, 0, y, -12.1);
-    for (const x of [-23, 23]) for (const z of [16, 40, 64]) {
-      box(c.g, 5, 0.35, 5, '#e1d6bf', x, 0.05, z);
-      cyl(c.g, 0.5, 0.55, 2.4, white, x, 0.4, z, 8);
-      sphere(c.glow, 0.28, '#ffe8ac', x, 2.9, z, 6);
-    }
-    for (const z of [16, 44, 72]) cyl(c.glow, 0.16, 0.16, 0.9, '#a5e8f5', 0, 0.3, z, 8);
     o.colliders.push({ x: 0, z: -30, r: 18, h: 60 }, { x: -11, z: 96, r: 6, h: 20 }, { x: 11, z: 96, r: 6, h: 20 });
     o.height = 64;
   },
@@ -1536,32 +1215,6 @@ const landmarks: Record<RegionId, LandmarkFn> = {
       const dist = 36 - i * 2.6;
       o.platforms.push({ x: dx * dist, z: dz * dist, r: 2.6, y: i * 2.5 });
     }
-    // Relief bands on the square terraces and a small Balinese pura on the east side.
-    for (let level = 0; level < 5; level++) {
-      const side = 64 - level * 9, base = level * 4;
-      for (let i = 0; i < 8; i++) {
-        const x = -side / 2 + (i + 0.5) * side / 8;
-        box(c.g, side / 10, 1.1, 0.13, i % 2 ? '#b2a999' : '#6c675f', x, base + 1.5, side / 2 + 0.08);
-        box(c.g, side / 10, 1.1, 0.13, i % 2 ? '#b2a999' : '#6c675f', x, base + 1.5, -side / 2 - 0.08);
-      }
-    }
-    c.g.frame(48, 0, 0, 0, 1, () => {
-      box(c.g, 22, 0.8, 20, '#8a8478');
-      // Candi bentar split gate: two facing stone towers keep the centre open.
-      for (const x of [-6, 6]) {
-        box(c.g, 5, 9, 5, stone, x, 0.8, 8);
-        for (let level = 0; level < 4; level++) box(c.g, 5.8 - level * 0.5, 0.65, 5.8 - level * 0.5, '#aaa194', x, 8.8 + level * 2, 8);
-      }
-      for (const x of [-6, 6]) {
-        for (let level = 0; level < 5; level++) {
-          const roof = 8 - level * 1.1;
-          hip(c.g, roof, roof, 2, '#4c3830', x, 4 + level * 2.6, -5);
-        }
-        cyl(c.g, 0.55, 0.55, 4, stone, x, 0, -5, 8);
-      }
-      for (const x of [-10, 10]) for (const z of [-9, 9]) sphere(c.glow, 0.24, '#ffd286', x, 0.9, z, 6);
-    });
-    o.colliders.push({ x: 42, z: 8, r: 3.8, h: 17 }, { x: 54, z: 8, r: 3.8, h: 17 }, { x: 42, z: -5, r: 3.8, h: 19 }, { x: 54, z: -5, r: 3.8, h: 19 });
     o.height = y + 11;
   },
 
@@ -1582,61 +1235,17 @@ const landmarks: Record<RegionId, LandmarkFn> = {
       });
       o.colliders.push({ x: Math.cos(a) * 28, z: Math.sin(a) * 28, r: 3, h: 3 });
     }
-    // An ice-block ceremonial hall, arched entry, and warm lavvu shelters.
-    for (const x of [-14, 14]) {
-      box(c.g, 10, 8, 22, '#bdd7e6', x, 0, -6);
-      for (let y = 1.2; y < 8; y += 1.8) for (let z = -15; z < 4; z += 3.5) box(c.g, 0.18, 0.14, 3.2, '#f2fbff', x + (x < 0 ? -5.05 : 5.05), y, z);
-      for (const z of [-12, -4, 4]) archPanel(c.glow, 2.3, 3, c.s.glow, x, 2.2, z + 5.2, 0, 0.1, true);
-      o.colliders.push({ x, z: -6, r: 11, h: 9 });
-    }
-    archPanel(c.g, 5.5, 8, '#43596a', 0, 0, 9.6, 0, 0.18, true);
-    for (const x of [-5, 5]) cyl(c.g, 0.9, 1, 9, '#e9f7ff', x, 0, 10, 8);
-    dome(c.g, 6.5, '#e9f7ff', 0, 9, 10, 12, 0.65);
-    for (const [x, z] of [[-28, -20], [28, -20], [-28, 20], [28, 20]] as const) {
-      cone(c.g, 5, 8, '#c4a68c', x, 0, z, 10);
-      cyl(c.g, 0.13, 0.13, 2.5, '#8c715c', x, 8, z, 6);
-      sphere(c.glow, 0.8, '#ffc476', x, 1, z, 8);
-      o.colliders.push({ x, z, r: 5, h: 10 });
-    }
-    for (const x of [-20, 20]) for (const z of [-20, 0, 20]) {
-      cyl(c.g, 0.35, 0.5, 3.2, '#bbd7e7', x, 0, z, 7);
-      cone(c.g, 1.3, 2.2, '#e6f7ff', x, 3.2, z, 7);
-    }
     o.colliders.push({ x: 0, z: 0, r: 10, h: 19 });
     o.height = 19;
   },
 
   skyisles(c, o) {
-    const bridges: Array<{ x: number; y: number; z: number }> = [];
-
     // Floating islands rising in a spiral to the Temple of the Great Lantern.
     for (let i = 0; i < 16; i++) {
       const a = i * 0.9, r = 70 - i * 3.2;
       const x = Math.cos(a) * r, z = Math.sin(a) * r, y = 18 + i * 9;
       const size = i === 15 ? 26 : c.rng.range(9, 15);
       floatingIsland(c, x, y, z, size);
-      bridges.push({ x, y, z });
-      if (i > 0) {
-        const prev = bridges[i - 1]!, dx = x - prev.x, dz = z - prev.z;
-        const span = Math.hypot(dx, dz), angle = Math.atan2(-dx, -dz);
-        const segments = Math.max(4, Math.ceil(span / 5));
-        for (let j = 1; j < segments; j++) {
-          const t = j / segments, bx = prev.x + dx * t, bz = prev.z + dz * t;
-          const by = prev.y + (y - prev.y) * t;
-          c.g.frame(bx, by, bz, angle, 1, () => {
-            box(c.g, 3.2, 0.35, span / segments + 0.15, '#e1d7ff');
-            for (const side of [-1, 1]) box(c.g, 0.18, 1.2, span / segments + 0.15, '#a892d5', side * 1.5, 0.35, 0);
-          });
-          o.platforms.push({ x: bx, z: bz, r: 1.6, y: by + 0.35 });
-        }
-      }
-      if (i % 4 === 0) {
-        for (const side of [-1, 1]) {
-          const sx = x + side * size * 0.62;
-          cone(c.g, 0.75, 8, '#aa8fda', sx, y + 0.5, z, 7);
-          sphere(c.glow, 0.5, '#fff0b0', sx, y + 8.7, z, 7);
-        }
-      }
       o.platforms.push({ x, z, r: size - 0.8, y: y + 0.6 });
       if (i === 15) {
         c.g.frame(x, y + 0.6, z, 0, 1, () => c.glow.frame(x, y + 0.6, z, 0, 1, () => {
