@@ -15,8 +15,8 @@ import { M, archPanel, box, cone, cyl, dome, sphere } from './kit';
  * Medicine is marked with a green crescent (and the pharmacy with a green herb leaf), never a cross.
  */
 
-const STOREY = 3.3;
-interface K { c: Ctx; st: LandStyle; wall: string; wall2: string; trim: string; roof: string; dome: string }
+export const STOREY = 3.3;
+export interface K { c: Ctx; st: LandStyle; wall: string; wall2: string; trim: string; roof: string; dome: string }
 
 /** A dome in the land's roof colour, never near-black: dark slate turns to weathered lead-green copper. */
 function domeColour(roof: string): string {
@@ -26,13 +26,13 @@ function domeColour(roof: string): string {
   return roof;
 }
 
-function kit(c: Ctx): K {
+export function kit(c: Ctx): K {
   const walls = c.s.walls;
   return { c, st: LAND_STYLE[c.s.id], wall: walls[0], wall2: walls[1 % walls.length], trim: c.s.trims[0], roof: c.s.roofs[0], dome: domeColour(c.s.roofs[0]) };
 }
 
 /** Draw fn in both builders' frames at (x, y, z) turned by ry. */
-function at(k: K, x: number, y: number, z: number, ry: number, fn: () => void): void {
+export function at(k: K, x: number, y: number, z: number, ry: number, fn: () => void): void {
   k.c.g.frame(x, y, z, ry, 1, () => k.c.glow.frame(x, y, z, ry, 1, fn));
 }
 
@@ -41,7 +41,7 @@ function at(k: K, x: number, y: number, z: number, ry: number, fn: () => void): 
  * ry): walls, a plinth, a cornice and frieze, rows of windows on front, back and sides, a doorway
  * when asked, and the land's roof. Returns its full height.
  */
-function block(k: K, x: number, z: number, w: number, d: number, storeys: number, o: { ry?: number; door?: boolean; wall?: string; roof?: boolean } = {}): number {
+export function block(k: K, x: number, z: number, w: number, d: number, storeys: number, o: { ry?: number; door?: boolean; wall?: string; roof?: boolean } = {}): number {
   const h = storeys * STOREY, wall = o.wall ?? k.wall;
   let top = h;
   at(k, x, 0, z, o.ry ?? 0, () => {
@@ -74,7 +74,7 @@ function block(k: K, x: number, z: number, w: number, d: number, storeys: number
 }
 
 /** A green crescent on a round plaque — the sign of care for the sick. */
-function crescent(k: K, x: number, y: number, z: number, s: number, ry = 0): void {
+export function crescent(k: K, x: number, y: number, z: number, s: number, ry = 0): void {
   at(k, x, y, z, ry, () => {
     k.c.g.add(new THREE.CylinderGeometry(s, s, 0.08, 24).rotateX(Math.PI / 2), '#fbf7ee', M(0, 0, 0));
     k.c.glow.add(new THREE.TorusGeometry(s * 0.55, s * 0.16, 6, 20, Math.PI * 1.25), '#2fbf6a', M(0, 0, 0.06, 0, 1, 1, 1, 0, Math.PI * 0.62));
@@ -82,7 +82,7 @@ function crescent(k: K, x: number, y: number, z: number, s: number, ry = 0): voi
   });
 }
 /** A green herb leaf — the pharmacy's sign. */
-function herbLeaf(k: K, x: number, y: number, z: number, s: number): void {
+export function herbLeaf(k: K, x: number, y: number, z: number, s: number): void {
   at(k, x, y, z, 0, () => {
     k.c.g.add(new THREE.CylinderGeometry(s, s, 0.08, 20).rotateX(Math.PI / 2), '#fbf7ee', M(0, 0, 0));
     k.c.glow.add(new THREE.SphereGeometry(s * 0.6, 10, 6), '#3ac870', M(0, 0, 0.05, 0, 0.5, 1, 0.12, 0, 0.5));
@@ -90,7 +90,7 @@ function herbLeaf(k: K, x: number, y: number, z: number, s: number): void {
   });
 }
 /** A long table with benches either side. */
-function tableRow(k: K, x: number, z: number, len: number, ry = 0): void {
+export function tableRow(k: K, x: number, z: number, len: number, ry = 0): void {
   at(k, x, 0, z, ry, () => {
     const g = k.c.g;
     box(g, len, 0.08, 0.9, '#8a5a36', 0, 0.74, 0);
@@ -103,7 +103,7 @@ function tableRow(k: K, x: number, z: number, len: number, ry = 0): void {
   });
 }
 /** A cooking pot on a fire, steaming. */
-function pot(k: K, x: number, z: number, s = 1): void {
+export function pot(k: K, x: number, z: number, s = 1): void {
   const { g, glow } = k.c;
   for (let i = 0; i < 3; i++) { const a = (i / 3) * Math.PI * 2; cyl(g, 0.04, 0.04, 0.7 * s, '#3a3a3a', x + Math.cos(a) * 0.45 * s, 0, z + Math.sin(a) * 0.45 * s, 4); }
   cyl(glow, 0.3 * s, 0.4 * s, 0.25, '#ff8a3a', x, 0, z, 8);
@@ -111,7 +111,7 @@ function pot(k: K, x: number, z: number, s = 1): void {
   for (let i = 0; i < 4; i++) sphere(g, (0.2 + i * 0.08) * s, '#f4f4f4', x + Math.sin(i * 1.7) * 0.15, 1.3 * s + i * 0.35 * s, z, 6);
 }
 /** A striped awning over a front, at height y, reaching `out` metres forward. */
-function awning(k: K, w: number, y: number, z: number, out: number): void {
+export function awning(k: K, w: number, y: number, z: number, out: number): void {
   const [a, b] = k.st.frieze;
   const n = Math.max(3, Math.round(w / 0.7));
   for (let i = 0; i < n; i++) {
@@ -119,7 +119,7 @@ function awning(k: K, w: number, y: number, z: number, out: number): void {
   }
 }
 /** Shelves of books (coloured spines). */
-function shelves(k: K, x: number, z: number, w: number, h: number, ry = 0): void {
+export function shelves(k: K, x: number, z: number, w: number, h: number, ry = 0): void {
   at(k, x, 0, z, ry, () => {
     const g = k.c.g, cols = ['#8a2a3a', '#2f4a8a', '#3a7a4a', '#c8a040', '#6a3a7a', '#a8502a'];
     box(g, w, h, 0.45, '#6a4a30', 0, 0, 0);
@@ -129,7 +129,7 @@ function shelves(k: K, x: number, z: number, w: number, h: number, ry = 0): void
   });
 }
 /** A little bell cupola on a roof ridge. */
-function cupola(k: K, x: number, y: number, z: number): void {
+export function cupola(k: K, x: number, y: number, z: number): void {
   const { g, glow } = k.c;
   for (const [dx, dz] of [[-0.6, -0.6], [0.6, -0.6], [-0.6, 0.6], [0.6, 0.6]]) cyl(g, 0.07, 0.07, 1.4, '#fbf7ee', x + dx, y, z + dz, 5);
   box(g, 1.6, 0.2, 1.6, k.trim, x, y + 1.4, z);
@@ -138,14 +138,14 @@ function cupola(k: K, x: number, y: number, z: number): void {
   sphere(glow, 0.08, '#fff2c8', x, y + 2.8, z, 5);
 }
 /** A tent: an open canopy on four poles (a stall, a tent school). */
-function canopy(k: K, w: number, d: number, h: number, col: string): void {
+export function canopy(k: K, w: number, d: number, h: number, col: string): void {
   const g = k.c.g;
   for (const [x, z] of [[-w / 2, -d / 2], [w / 2, -d / 2], [-w / 2, d / 2], [w / 2, d / 2]]) cyl(g, 0.06, 0.07, h, '#6b4a2a', x, 0, z, 5);
   g.add(new THREE.ConeGeometry(Math.hypot(w, d) / 2 + 0.3, 1.2, 4).rotateY(Math.PI / 4).translate(0, 0.6, 0), col, M(0, h, 0, 0, w / Math.hypot(w, d) * 1.414, 1, d / Math.hypot(w, d) * 1.414));
   box(g, w + 0.2, 0.25, 0.04, k.st.frieze[0], 0, h - 0.25, d / 2);
 }
 /** A walled courtyard garden with a fountain. */
-function courtGarden(k: K, x: number, z: number, w: number, d: number): void {
+export function courtGarden(k: K, x: number, z: number, w: number, d: number): void {
   const g = k.c.g;
   box(g, w, 0.06, d, '#cfc4a8', x, 0.02, z);
   for (const [sx, sz] of [[-1, -1], [1, -1], [-1, 1], [1, 1]]) {

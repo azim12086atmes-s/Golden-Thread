@@ -83,7 +83,7 @@ or herb leaf for medicine, never a cross).
 | # | Request | Specification | Status |
 |---|---------|---------------|--------|
 | 7.1 | Found clinics, colleges, institutions | Three open institute sites per land; found a kitchen, clinic, school, library or the land's science; grow it in four stages; staff by skill, hire or a sponsored learner. | Done (logic) |
-| 7.2 | Functional 3D institute buildings | Real buildings per kind and stage, in the land's architecture, with interiors (kitchen hall, clinic wards with a green crescent, classrooms, library stacks). Claude builds them (the owner asked Claude to take over detailed architecture). | Open (next) |
+| 7.2 | Functional 3D institute buildings | Real buildings per kind and stage, in the land's architecture: the four care institutes (institutes3d.ts) and all 20 land sciences (sciences3d.ts), 96 buildings, each within its stage's radius (tested). Interiors per kind still to come. | Done (buildings); interiors Open |
 | 7.3 | Monuments and their interiors | After 7.2: each land's landmark gets a walk-in interior. | Open |
 
 ## 8. Game functions still to build (Claude's queue)
@@ -116,3 +116,23 @@ or herb leaf for medicine, never a cross).
   the fantasy trees (cloud, candy, crystal, glowtree).
 - **Budget**: each land stays a few draw calls (merged); triangles per land within the measured
   baseline (≈ 3–5 M per frame).
+
+## 10. Requests of 2026-09-27 (evening) — queued after the institutes and the game logic
+
+The owner's order: **institutional buildings first, then complete the game logic and its 3D assets**, then these.
+
+| # | Request | Specification | Status |
+|---|---------|---------------|--------|
+| 10.1 | Multi-coloured crystals in the Sky Isles | Each crystal cluster mixes several pastel hues (not one colour per cluster); facets catch different colours. | Open |
+| 10.2 | Materials on tree trunks | Bark surfaces by species: furrowed oak, papery birch, ringed palm, jointed bamboo, smooth baobab, silver moon bark. | Open |
+| 10.3 | Some trees look inverted | Find and fix species whose crowns or cones point the wrong way. | Open |
+| 10.4 | Canals, pathways and roads follow the terrain | Roads, towpaths and channels laid as strips draped on the ground, not flat boxes; no gaps or chunks where they meet the land. | Open |
+| 10.5 | Bridges larger and fancier, in each land's architecture | Spans high enough for boats to pass under, wide enough for vehicles over; stone, timber, moon, red-lacquer, suspension and marble designs; lit by the land's lanterns, lamps and posts. | Open |
+| 10.6 | Mountains and plateaus by geography | Desert plateaus in mud and ochre (mesas); arctic mountains and ice plateaus in blue-white; highland mountains and plateaus light grey and rocky. | Open |
+| 10.7 | Houses less monotonous | More structural types per land, more colour variety, and textures: grainy plaster, timber, bamboo, stone, brick, thatch. | Open |
+| 10.8 | Aurora snow texture | Beyond the ripples: crusted, powdery and windblown patches, footprints of snow, sparkle. | Open |
+| 10.9 | Caves textured and enterable | Rock, ice and crystal surfaces; walk in through the mouth into a cave interior. | Open |
+| 10.10 | Organic town layouts | Houses not on a grid: winding lanes, clusters and gardens. | Open |
+| 10.11 | Desert pebbles and small rocks | Scattered procedurally round the travellers, like the grass. | Open |
+| 10.12 | Roads overlapping and chunking with the land | See 10.4. | Open |
+| 10.13 | Butterfly wings and dress decoration | As §6.2: large, glowing, animated stained-glass wings on the starry dress with intricate curves, hearts, curved strokes and veins, drawn as images; richer patterns on all dresses. | Open |
