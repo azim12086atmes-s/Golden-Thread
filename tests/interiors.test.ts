@@ -30,3 +30,24 @@ describe('built interiors', () => {
     expect(Math.hypot(ok.seats[0][0] - ok.seats[1][0], ok.seats[0][2] - ok.seats[1][2])).toBeGreaterThanOrEqual(INTERIOR_SEAT_GAP);
   });
 });
+
+describe('the built interiors (caverns, institutes, the castle, landmark halls)', () => {
+  it('every one builds, and the two sit at least 2.2 m apart', async () => {
+    const { buildInterior } = await import('../src/world/models/interiors');
+    const { safeInterior } = await import('../src/housing/HouseInterior');
+    const { REGIONS } = await import('../src/world/regions');
+    const { INSTITUTES } = await import('../src/institutions/catalogue');
+    const specs = [
+      ...['sandstone', 'rock', 'ice', 'crystal'].map((ref) => ({ kind: 'cavern' as const, land: 'aurora' as const, ref, night: 0, seed: ref })),
+      { kind: 'castle' as const, land: 'meadow' as const, ref: 'hall', night: 1, seed: 'c' },
+      ...REGIONS.map((r) => ({ kind: 'landmark' as const, land: r.id, ref: r.id, night: 0.5, seed: r.id })),
+      ...INSTITUTES.flatMap((d) => [0, 3].map((stage) => ({ kind: 'institute' as const, land: d.land ?? 'meadow', ref: d.kind, stage, night: 0, seed: d.kind }))),
+    ];
+    for (const s of specs) {
+      const b = buildInterior(s);
+      expect(b, `${s.kind} ${s.ref}`).not.toBeNull();
+      expect(safeInterior(b), `${s.kind} ${s.ref} seats`).not.toBeNull();
+      expect(b!.group.children.length).toBeGreaterThan(0);
+    }
+  });
+});

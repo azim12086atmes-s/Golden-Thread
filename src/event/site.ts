@@ -1,3 +1,4 @@
+import { castleBase } from '../world/terrain';
 import type { GameState } from '../core/state';
 import type { Objective } from '../guide/objectives';
 import { PEOPLE, type NpcDef } from '../npc/people';
@@ -106,3 +107,9 @@ export function lines(st: GameState): Lines {
     ],
   };
 }
+
+/** The castle's great doors (front of the keep): step inside to its great hall (world/interiors3d.ts). */
+export const CASTLE_DOOR = {
+  id: 'castle:hall', land: 'meadow', kind: 'castle', r: 1, facing: 0, name: 'the celebration castle',
+  x: CASTLE.keep.x, z: CASTLE.keep.z + CASTLE.keep.d / 2 + 1.4, get y(): number { return castleBase(); },
+};

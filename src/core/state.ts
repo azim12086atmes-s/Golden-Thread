@@ -111,6 +111,10 @@ export interface GameState {
   tracked: string;
   /** Children and pets travelling with the caravan (ids from caravan.ts). */
   caravan: string[];
+  /** Certificates from institute courses: `${who}:${skill}` → the certified level (institutions/certificates.ts). */
+  certificates: Record<string, import('../institutions/certificates').Certificate>;
+  /** Children brought home to their destinations: child id → where and on which day. */
+  homecomings: Record<string, { land: string; day: number }>;
   /** Real seconds played, for the journal. */
   playSeconds: number;
   /** Today's conversations in town: who asked for a hand and whom you helped. */
@@ -164,6 +168,8 @@ export function newGame(): GameState {
     flags: [],
     tracked: '',
     caravan: ['child-rosie', 'child-teo', 'pet-sheepdog', 'pet-clover'],
+    homecomings: {},
+    certificates: {},
     playSeconds: 0,
     folk: { day: 0, asked: [], helped: [] },
   };

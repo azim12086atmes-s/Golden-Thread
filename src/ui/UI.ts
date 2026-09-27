@@ -33,6 +33,8 @@ import { WONDERS, foundWonder, wonderHint, wonderPos } from '../world/wonders';
 import { VEHICLES, type VehicleId } from '../vehicles/vehicles';
 import { GRID_COLS, GRID_ROWS, REGIONS, REGION_BY_ID, regionCenter, type RegionId, type RegionSpec } from '../world/regions';
 import { INSTITUTE_SITES } from '../institutions/sites';
+import { certificatesOf, rankCap } from '../institutions/certificates';
+import { courseCost, courseOffer, payWithCourse } from '../institutions/opportunities';
 import { CAVES, CAVE_NAME, caveMouth } from '../world/caves';
 import { FIELD_SITES } from '../world/plots';
 import type { Game } from '../Game';
@@ -760,6 +762,9 @@ export class UI {
         btn(`${s ? 'Give' : 'Sponsor'} a day · ${DAY_COINS}🪙`, () => act(() => give(st, p.id, { coins: DAY_COINS }), `${p.name} is cared for today.`), 'small primary', st.coins < DAY_COINS),
         btn(`A week · ${DAY_COINS * 7}🪙`, () => act(() => give(st, p.id, { coins: DAY_COINS * 7 }), `A week of care for ${p.name}.`), 'small ghost', st.coins < DAY_COINS * 7),
         ...giftsFor(st, p.id).slice(0, 3).map((gf) => btn(`${ITEMS[gf.item].icon} ${ITEMS[gf.item].name} · +${gf.days} day${gf.days === 1 ? '' : 's'}`, () => act(() => give(st, p.id, { item: gf.item }), `${p.name} thanks you for the ${ITEMS[gf.item].name.toLowerCase()}.`), 'small ghost')));
+      // Pay in opportunities: a place on a course at an institute here, instead of coins.
+      const site = s ? INSTITUTE_SITES.find((q) => q.land === land && courseCost(st, q.id) !== null) : undefined;
+      if (s && site) acts.append(btn(courseOffer(st, p.id, site.id), () => act(() => payWithCourse(st, p.id, site.id), `${p.name} starts a course.`), 'small ghost'));
       if (s) for (const hid of homes) if (s.home !== hid) {
         const room = residentsOf(st, hid).length < homeCapacity(st, hid);
         acts.append(btn(`🏡 Take home to ${REGION_BY_ID[PLOT_BY_ID[hid].region].name}${room ? '' : ' (full)'}`, () => act(() => takeHome(st, p.id, hid), `${p.name} moves into your home.`), 'small ghost', !room));
@@ -937,17 +942,24 @@ export class UI {
    */
   private workPanel(body: HTMLElement): void {
     const g = this.g, st = g.st, land = g.region.id, day = Math.floor(st.minutes / 1440);
-    const say = (r: { error: string } | { pay: number; promoted: string | null }, ok: string) => {
+    const say = (r: { error: string } | { pay: number; promoted: string | null; capped?: string | null }, ok: string) => {
       if ('error' in r) g.toast(r.error, 'info');
-      else { g.toast(`${ok} +${r.pay}🪙`, 'reward'); if (r.promoted) g.toast(`🎓 You are now ${r.promoted}.`, 'story'); g.bus.emit('coins:changed', { coins: st.coins }); }
+      else {
+        g.toast(`${ok} +${r.pay}🪙`, 'reward');
+        if (r.promoted) g.toast(`🎓 You are now ${r.promoted}.`, 'story');
+        if (r.capped) g.toast(r.capped, 'info');
+        g.bus.emit('coins:changed', { coins: st.coins });
+      }
       this.render();
     };
-    body.append(h('p', { class: 'dim' }, `Everyone starts as an apprentice. Skills grow only by doing: each shift and gig raises yours, and better-skilled work pays more (${RANKS.join(' → ')}).`));
+    body.append(h('p', { class: 'dim' }, `Everyone starts as an apprentice. Skills grow only by doing: each shift and gig raises yours, and better-skilled work pays more (${RANKS.join(' → ')}). Above Associate, employers ask for a certificate — earn one by taking a course at an institute.`));
+    const certs = certificatesOf(st, 'you');
+    if (certs.length) body.append(h('div', { class: 'chips wrap' }, ...certs.map((c) => h('span', { class: 'chip' }, `🎓 ${SKILLS[c.skill].name} · level ${c.level} · ${REGION_BY_ID[c.land].name}`))));
     const jobs = jobsIn(land);
     body.append(h('h3', {}, 'Employers here'));
     if (!jobs.length) body.append(h('p', { class: 'dim' }, 'No one is hiring here.'));
     for (const j of jobs) {
-      const lv = level(st, j.skill), done = workedToday(st, j.id);
+      const lv = Math.min(level(st, j.skill), rankCap(st, j.skill)), done = workedToday(st, j.id);
       body.append(h('div', { class: 'quest' }, h('b', {}, `${SKILLS[j.skill].icon} ${j.employer}`),
         h('small', {}, `${titleAt(j, lv)} · ${SKILLS[j.skill].name} level ${lv} · ${j.hours} h shift${st.work.worked[j.id] ? ` · ${st.work.worked[j.id]} shifts worked` : ''}`)),
       h('div', { class: 'acts' }, btn(done ? 'Shift done today' : `💼 Work a shift · +${shiftPay(lv)}🪙`, () => say(workShift(st, j.id), `A good day at ${j.employer}.`), 'small', done)));

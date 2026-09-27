@@ -1,5 +1,6 @@
 import type * as THREE from 'three';
 import type { RegionId } from '../regions';
+import { buildInterior3d } from '../interiors3d';
 
 /**
  * MODEL CONTRACT (3D side — docs/team/handoffs/CHATGPT_3D_MODELS.md §20): the inside of a building,
@@ -10,7 +11,7 @@ import type { RegionId } from '../regions';
  * seats), an optional spot for something to gather, and where the camera stands and looks.
  * Return null to fall back to the standard room (the game does, until a model exists).
  *
- * PLACEHOLDER: returns null for everything.
+ * Penthouses still return null (the standard room) until their model exists.
  */
 export type InteriorKind = 'landmark' | 'castle' | 'institute' | 'penthouse' | 'cavern';
 
@@ -41,6 +42,6 @@ export interface InteriorBuild {
 }
 
 export function buildInterior(spec: InteriorSpec): InteriorBuild | null {
-  void spec;
-  return null;
+  // Built by Claude (interiors3d.ts): caverns, institutes by kind, the castle's great hall, landmark halls.
+  return buildInterior3d(spec);
 }

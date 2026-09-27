@@ -1,3 +1,4 @@
+import { certify } from './certificates';
 import { DAY_MINUTES, type GameState } from '../core/state';
 import { WORKER_BY_ID, type Worker } from '../economy/workers';
 import { addItem, count, level, removeItems } from '../economy/economy';
@@ -61,7 +62,7 @@ export function learnerLevel(st: GameState, personId: string, skill: SkillId): n
   return skillLevel(st.learners[personId]?.[skill] ?? 0);
 }
 
-function addLearnerXp(st: GameState, personId: string, skill: SkillId, xp: number): void {
+export function addLearnerXp(st: GameState, personId: string, skill: SkillId, xp: number): void {
   const rec = (st.learners[personId] ??= {});
   rec[skill] = Math.min(LEVEL_XP[LEVEL_XP.length - 1], (rec[skill] ?? 0) + xp);
 }
@@ -329,6 +330,8 @@ export function takeCourse(st: GameState, siteId: string, who: 'you' | string, h
     if (!removeItems(st, { [mat]: 3 })) return `The course costs 3× ${ITEMS[mat].name}.`;
   }
   if (who === 'you') addXp(st, def.skill, 30); else addLearnerXp(st, who, def.skill, 35);
+  // A finished course earns its certificate at the level reached (certificates.ts).
+  certify(st, who, def.skill, who === 'you' ? level(st, def.skill) : learnerLevel(st, who, def.skill), site.land);
   st.minutes += LEARN_HOURS.course * 60;
   return null;
 }

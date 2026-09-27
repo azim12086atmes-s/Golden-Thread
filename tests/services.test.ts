@@ -41,6 +41,7 @@ describe('service jobs', () => {
     for (const r of REGIONS) for (const g of gigsFor(r.id, 3)) expect(g.pay, g.title).toBeGreaterThan(0);
     const hw = board.find((g) => g.skill === 'hardware')!;
     st.skills.hardware = LEVEL_XP[6];
+    st.certificates['you:hardware'] = { skill: 'hardware', level: 6, land: 'london', day: 1 };
     for (const k of Object.keys(hw.needs)) delete st.inventory[k];
     if (Object.keys(hw.needs).length) {
       expect(doGig(st, hw)).toMatchObject({ error: expect.stringContaining('You need') });

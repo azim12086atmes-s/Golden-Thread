@@ -142,3 +142,21 @@ describe('meeting the pets', () => {
     expect(st.inventory[c.likes]).toBe(1);
   });
 });
+
+describe('children go home at their destination', () => {
+  it('a child whose destination is reached leaves the caravan, the bunk freed, and is remembered', async () => {
+    const { arrivalsIn, bringHome } = await import('../src/caravan/caravan');
+    const { newGame } = await import('../src/core/state');
+    const st = newGame();
+    expect(arrivalsIn(st.caravan, 'meadow')).toEqual([]);
+    const kids = arrivalsIn(st.caravan, 'renaissance');
+    expect(kids.map((k) => k.id)).toEqual(['child-rosie']);
+    const line = bringHome(st, 'child-rosie', 'Firenzia');
+    expect(line).toContain('Rosie');
+    expect(st.caravan).not.toContain('child-rosie');
+    expect(st.homecomings['child-rosie'].land).toBe('renaissance');
+    // Pets and other children stay; a child who is not travelling cannot be brought home.
+    expect(st.caravan).toContain('child-teo');
+    expect(bringHome(st, 'child-rosie', 'Firenzia')).toBeNull();
+  });
+});

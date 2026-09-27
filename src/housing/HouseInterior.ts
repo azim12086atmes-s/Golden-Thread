@@ -100,6 +100,7 @@ export function roomTitle(door: Door): string {
 /** What the prompt at a door says. */
 export function doorLabel(door: Door): string {
   if (door.kind === 'home') return 'Go home';
+  if (door.kind === 'castle') return 'Step inside the castle';
   if (door.kind === 'landmark') return `Step inside ${LANDMARK_NAME[door.land as RegionId]}`;
   return `Step inside ${door.kind === 'shop' ? 'the shop' : ROOM_NAME[door.land as RegionId]}`;
 }

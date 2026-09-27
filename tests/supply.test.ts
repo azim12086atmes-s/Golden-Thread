@@ -3,7 +3,7 @@ import { DAY_MINUTES, newGame } from '../src/core/state';
 import { deserialize, serialize } from '../src/core/save';
 import { CROPS, SEED_SHOP } from '../src/housing/housing';
 import { FIELD_ROWS, FIELD_SITES, FIELD_SIZE, buyField, fieldGrowTime, fieldYield, harvestField, plantField, setHand, takeFromBarn, tickFields, waterField } from '../src/economy/fields';
-import { addRoute, glutOf, marketDest, marketPrice, pantryDest, tickSupply, tripMinutes } from '../src/economy/supply';
+import { addRoute, glutOf, marketDest, marketPrice, pantryDest, sellHere, tickSupply, tripMinutes } from '../src/economy/supply';
 import { WORKERS, WORKER_BY_ID, workersOf } from '../src/economy/workers';
 import { INSTITUTE_SITES, SITE_SIZE, employ } from '../src/institutions/institutions';
 import { PLOTS, PLOT_SIZE } from '../src/world/plots';
@@ -156,5 +156,23 @@ describe('the supply chain', () => {
     expect(loaded.routes).toEqual([]);
     expect(loaded.shipments).toEqual([]);
     expect(loaded.glut).toEqual({});
+  });
+});
+
+describe('your own sales fill a market too', () => {
+  it('each sale pays a little less, and the market recovers day by day', () => {
+    const st = newGame();
+    st.inventory.silk = 30;
+    const first = marketPrice(st, 'silk', 'london');
+    let got = 0;
+    for (let i = 0; i < 20; i++) got += sellHere(st, 'silk', 'london');
+    expect(got).toBeGreaterThan(0);
+    expect(marketPrice(st, 'silk', 'london')).toBeLessThan(first);
+    expect(glutOf(st, 'london', 'silk')).toBeGreaterThan(19);
+    st.minutes += DAY_MINUTES * 10;
+    expect(marketPrice(st, 'silk', 'london')).toBeGreaterThan(first * 0.8);
+    // Nothing to sell, nothing sold.
+    st.inventory.silk = 0;
+    expect(sellHere(st, 'silk', 'london')).toBe(0);
   });
 });

@@ -1,4 +1,5 @@
 import * as THREE from 'three';
+import { CASTLE_DOOR } from './event/site';
 import { EffectComposer } from 'three/addons/postprocessing/EffectComposer.js';
 import { OutputPass } from 'three/addons/postprocessing/OutputPass.js';
 import { RoomEnvironment } from 'three/addons/environments/RoomEnvironment.js';
@@ -18,7 +19,7 @@ import { Input } from './core/Input';
 import { loadGame, saveGame, clearSave } from './core/save';
 import { SKY_PAUSED, TIME_LABEL, jumpTo, type TimeOfDay } from './core/time';
 import { DAY_MINUTES, hourOf, newGame, type GameState, type VanSlot } from './core/state';
-import { addItem, craft, removeItems, sell, sellPrice, teach, type CraftResult } from './economy/economy';
+import { addItem, craft, removeItems, teach, type CraftResult } from './economy/economy';
 import { ITEMS, SKILLS } from './economy/items';
 import { CROPS, Housing, PLOTS, PLOT_BY_ID, PLOT_SIZE, buySeed, seedPrice, type PlotSite } from './housing/housing';
 import { HousingView } from './housing/HousingView';
@@ -46,7 +47,7 @@ import { HarboursView } from './economy/HarboursView';
 import { harbours } from './world/harbours';
 import { BridgesView } from './world/BridgesView';
 import { FIELD_SITES, FIELD_SIZE, fieldGrowth, tickFields } from './economy/fields';
-import { couriersIn, tickSupply } from './economy/supply';
+import { couriersIn, marketPrice, sellHere, tickSupply } from './economy/supply';
 import { tickWeavers } from './economy/crews';
 import { CAVE_LANDS, CAVE_NAME, caveMouth, type Cave } from './world/caves';
 import { SITE_BY_ID, instituteAt, landScience, siteAt, standingStage, tickInstitutes } from './institutions/institutions';
@@ -584,7 +585,7 @@ export class Game {
       }
     }
     // Front doors: every building in town can be entered.
-    if (onFoot) for (const d of [...this.world.loadedRegions().flatMap((r) => r.doors), ...this.world.landmarkDoors, ...this.homeDoors()]) {
+    if (onFoot) for (const d of [...this.world.loadedRegions().flatMap((r) => r.doors), ...this.world.landmarkDoors, ...this.homeDoors(), CASTLE_DOOR]) {
       const dd = Math.hypot(d.x - p.x, d.z - p.z);
       if (dd < 2.6 && Math.abs(d.y - p.y) < 2.5) cands.push([dd + 0.3, { kind: 'door', door: d, label: `🚪 ${doorLabel(d)}` }]);
     }
@@ -698,13 +699,14 @@ export class Game {
   }
 
   sell(item: string): number {
-    const got = sell(this.st, item, this.region.id, this.region.wanted);
+    // Your own sales fill the market just as the couriers' do (supply.ts).
+    const got = sellHere(this.st, item, this.region.id);
     if (got) this.bus.emit('coins:changed', { coins: this.st.coins });
     return got;
   }
 
   priceHere(item: string): number {
-    return sellPrice(item, this.region.id, this.region.wanted);
+    return marketPrice(this.st, item, this.region.id);
   }
 
   /** Keepers sell their land's materials. */

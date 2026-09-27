@@ -3,6 +3,7 @@ import { DAY_MINUTES, type GameState } from '../core/state';
 import { REGION_BY_ID, REGIONS, type RegionId } from '../world/regions';
 import { hasItems, level, removeItems } from './economy';
 import { ITEMS, LEVEL_XP, SKILLS, type SkillId } from './items';
+import { certLevel, certNeeded, rankCap } from '../institutions/certificates';
 
 /**
  * Service work (owner's brief — NEXT_WORK C4: "being able to sell a service with a required skill
@@ -72,17 +73,19 @@ function addXp(st: GameState, skill: SkillId, xp: number): { from: number; to: n
 export const workedToday = (st: GameState, jobId: string): boolean => st.work.shifts[jobId] === today(st);
 
 /** Work a shift at an employer (one a day each): paid by your level, and your skill grows. */
-export function workShift(st: GameState, jobId: string): { error: string } | { pay: number; title: string; promoted: string | null } {
+export function workShift(st: GameState, jobId: string): { error: string } | { pay: number; title: string; promoted: string | null; capped: string | null } {
   const job = JOB_BY_ID[jobId];
   if (!job) return { error: 'There is no such job.' };
   if (workedToday(st, jobId)) return { error: `You have worked your shift at ${job.employer} today — come back tomorrow.` };
-  const lvl = level(st, job.skill), pay = shiftPay(lvl);
+  // Skill earns the work; a certificate earns the rank above Associate (certificates.ts).
+  const lvl = Math.min(level(st, job.skill), rankCap(st, job.skill)), pay = shiftPay(lvl);
   st.coins += pay;
   st.minutes += job.hours * 60;
   st.work.shifts[jobId] = today(st);
   st.work.worked[jobId] = (st.work.worked[jobId] ?? 0) + 1;
   const { from, to } = addXp(st, job.skill, SHIFT_XP);
-  return { pay, title: titleAt(job, from), promoted: to > from ? titleAt(job, to) : null };
+  const cap = rankCap(st, job.skill), f = Math.min(from, cap), t = Math.min(to, cap);
+  return { pay, title: titleAt(job, f), promoted: t > f ? titleAt(job, t) : null, capped: to > cap && from <= cap ? `To rise above ${titleAt(job, cap)}, earn a ${SKILLS[job.skill].name} certificate — take a course at an institute.` : null };
 }
 
 // ───── freelance ─────
@@ -126,6 +129,7 @@ export function doGig(st: GameState, gig: Gig): { error: string } | { pay: numbe
   if (Number(gig.id.split(':')[1]) !== today(st)) return { error: 'That gig has been taken by someone else.' };
   if (level(st, gig.skill) < gig.min) return { error: `The client needs ${SKILLS[gig.skill].name} level ${gig.min}.` };
   if (!hasItems(st, gig.needs)) return { error: `You need ${Object.entries(gig.needs).map(([id, n]) => `${n}× ${ITEMS[id]?.name ?? id}`).join(' and ')}.` };
+  if (certLevel(st, 'you', gig.skill) < certNeeded(gig.min)) return { error: `The client asks for a ${SKILLS[gig.skill].name} certificate (level ${certNeeded(gig.min)}) — take a course at an institute.` };
   removeItems(st, gig.needs);
   st.coins += gig.pay;
   st.minutes += gig.hours * 60;

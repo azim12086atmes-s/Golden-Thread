@@ -3,7 +3,7 @@ import { AnimalModel } from '../animals/AnimalModel';
 import { CharacterModel } from '../characters/CharacterModel';
 import type { Game } from '../Game';
 import { wardrobeFor } from '../npc/Townsfolk';
-import { REGION_BY_ID, regionCenter } from '../world/regions';
+import { REGION_BY_ID, regionCenter, type RegionId } from '../world/regions';
 import { surfaceAt } from '../world/terrain';
 import { Carpet } from './Carpet';
 import { DIMS } from '../characters/CharacterModel';
@@ -11,7 +11,7 @@ import { PET_BEDS, RIDE_CHILD_SEATS, VAN } from '../vehicles/vanLayout';
 
 /** Children are drawn at this scale of an adult. */
 const CHILD_SCALE = 0.62;
-import { CARPET_L, CARPET_W, CHILDREN, COMPANION_BY_ID, MAX_CHILDREN, TRAVELLER_CLEARANCE, CARPET_SIDE, caravanStep, canJoin, balloonFor, carpetTarget, offerFood, strayHome, PETS, type CompanionDef, type Member, type PetDef } from './caravan';
+import { arrivalsIn, bringHome, CARPET_L, CARPET_W, CHILDREN, COMPANION_BY_ID, MAX_CHILDREN, TRAVELLER_CLEARANCE, CARPET_SIDE, caravanStep, canJoin, balloonFor, carpetTarget, offerFood, strayHome, PETS, type CompanionDef, type Member, type PetDef } from './caravan';
 
 /**
  * The caravan in the world: the children and pets travelling with the two, walking behind them
@@ -39,6 +39,13 @@ export class CaravanView {
     this.carpet.root.visible = false;
     g.scene.add(this.carpet.root, this.carpet.trail);
     for (const id of g.st.caravan) this.add(id);
+    // Children go home when the caravan reaches their destination.
+    g.bus.on('region:entered', ({ regionId }) => {
+      for (const c of arrivalsIn(g.st.caravan, regionId)) {
+        const line = bringHome(g.st, c.id, REGION_BY_ID[regionId as RegionId].name);
+        if (line) { this.remove(c.id); g.toast(line, 'story'); }
+      }
+    });
     // Children from a land ask to join once its chapter is done (with their family's blessing).
     g.bus.on('quest:completed', ({ questId }) => {
       if (!questId.startsWith('main-')) return;
@@ -57,6 +64,16 @@ export class CaravanView {
         }
       }
     });
+  }
+
+  /** Take a child's figure out of the caravan (they have gone home). */
+  private remove(id: string): void {
+    const i = this.bodies.findIndex((b) => b.def.id === id);
+    if (i < 0) return;
+    const b = this.bodies[i];
+    if (b.child) this.g.scene.remove(b.child.root);
+    if (b.pet) this.g.scene.remove(b.pet.root);
+    this.bodies.splice(i, 1);
   }
 
   private add(id: string): void {

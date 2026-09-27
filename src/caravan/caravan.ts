@@ -274,3 +274,30 @@ export function balloonFor(childId: string, land: string, day: number, festive: 
   if (!festive && !BALLOON_LANDS.includes(land) && (day + childId.length) % 3 !== 0) return null;
   return BALLOON_COLOURS[h % BALLOON_COLOURS.length];
 }
+
+/** The children in the caravan who have reached their destination (they go home there). */
+export function arrivalsIn(caravan: readonly string[], land: string): ChildDef[] {
+  return caravan.map((id) => COMPANION_BY_ID[id]).filter((c): c is ChildDef => !!c && c.kind === 'child' && c.destination === land);
+}
+
+/**
+ * A child reaches their destination and goes home to their family there (or stays with the
+ * relatives or teacher they came to learn from): they leave the caravan, freeing their bunk, and
+ * the homecoming is remembered. Returns the words for it, or null if they were not travelling.
+ */
+export function bringHome(st: { caravan: string[]; homecomings: Record<string, { land: string; day: number }>; minutes: number }, childId: string, landName: string): string | null {
+  const def = COMPANION_BY_ID[childId];
+  const i = st.caravan.indexOf(childId);
+  if (!def || def.kind !== 'child' || i < 0) return null;
+  st.caravan.splice(i, 1);
+  st.homecomings[childId] = { land: def.destination, day: Math.floor(st.minutes / 1440) + 1 };
+  const why = HOMECOMING[def.help] ?? 'hugs everyone goodbye';
+  return `🏡 ${def.name} has reached ${landName} and ${why}. A bunk in the van is free again.`;
+}
+
+const HOMECOMING: Record<string, string> = {
+  'learns-craft': 'runs to the workshop where the lessons begin, waving until you are out of sight',
+  'herds-animals': 'is swept up by family at the gate, already telling them about every animal on the road',
+  'lifts-spirits': 'is home at last — and leaves a paper crane on the dashboard for you both',
+  'carries-letters': 'delivers every letter by hand, then writes your names in the notebook, beautifully',
+};

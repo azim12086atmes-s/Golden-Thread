@@ -4,7 +4,7 @@ import { SITE_BY_ID, instituteAt, isEmployed, pantryOf, servesWith } from '../in
 import { hasHarbour } from '../world/harbours';
 import { FIELD_BY_ID } from '../world/plots';
 import { REGION_BY_ID, REGIONS, type RegionId } from '../world/regions';
-import { sellPrice } from './economy';
+import { removeItems, sellPrice } from './economy';
 import { ITEMS } from './items';
 import { WORKER_BY_ID, type Worker } from './workers';
 
@@ -63,6 +63,15 @@ export function glutOf(st: GameState, land: RegionId, item: string): number {
 /** What a land's market pays your couriers for one more unit today. */
 export function marketPrice(st: GameState, item: string, land: RegionId): number {
   return Math.max(1, Math.round(sellPrice(item, land, REGION_BY_ID[land].wanted) / (1 + glutOf(st, land, item) / 20)));
+}
+
+/**
+ * Sell one of an item at a land's market yourself. Like the couriers' sales, each one fills the
+ * market a little (the next pays less) and the glut fades a fifth a day.
+ */
+export function sellHere(st: GameState, item: string, land: RegionId): number {
+  if (!removeItems(st, { [item]: 1 })) return 0;
+  return sellInto(st, land, item, 1);
 }
 
 function sellInto(st: GameState, land: RegionId, item: string, n: number): number {

@@ -76,7 +76,7 @@ or herb leaf for medicine, never a cross).
 | # | Request | Specification | Status |
 |---|---------|---------------|--------|
 | 6.1 | More colour and pattern on all dresses | Patterned fabrics (prints, borders, embroidery motifs) from textures, per outfit. | Open |
-| 6.2 | Starry dress: large glowing butterfly wings | Stained-glass wings: intricate curves, hearts, strokes and veins, colourful glassy panes, shining and glowing, animated (a slow flutter). A canvas-drawn texture, additive glow at night. Modest: wings attach at the back over the dress. | Open |
+| 6.2 | Starry dress: large glowing butterfly wings | **Owner's exact brief:** stained (tinted) glass wings on Syeda Fathima's starry dress, **heart-shaped**, each pair **twice the girl's height**. They **flap slowly** (they are large) and **curve/bend while flapping**. The pattern is an intricate, delicate stained-glass mosaic: **small and large, geometric and fragmented, uneven**, with **uneven straight and curved lines**, **curved strokes**, colourful **mosaic panes with even patches of colour**, all **partitioned by veins and strokes** (the leading between the panes). Shining and glowing, drawn as images (canvas textures). Modest: they attach at the back over the dress; they never touch the boy. | Open (after the institutes and game logic, as the owner ordered) |
 
 ## 7. Building, institutes and monuments
 
@@ -136,3 +136,4 @@ The owner's order: **institutional buildings first, then complete the game logic
 | 10.11 | Desert pebbles and small rocks | Scattered procedurally round the travellers, like the grass. | Open |
 | 10.12 | Roads overlapping and chunking with the land | See 10.4. | Open |
 | 10.13 | Butterfly wings and dress decoration | As §6.2: large, glowing, animated stained-glass wings on the starry dress with intricate curves, hearts, curved strokes and veins, drawn as images; richer patterns on all dresses. | Open |
+| 10.14 | Monuments: external architecture detail and texturing | Each of the 20 landmarks rebuilt with real architectural detail (mouldings, arcades, carving, domes, finials, stairs) and surface textures (stone coursing, marble veining, brick, glazed tile, timber). | Open |

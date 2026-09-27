@@ -140,20 +140,19 @@ Everything here is logic (rules, state, placement, wiring, UI, tests); 3D models
    - Lantern boats at dusk.
    - Kites and balloons by day.
    - Sky Isles cable gondolas.
-5. **The celebration castle's door**
-   - Walk into the castle.
-   - Its great hall, library and tower as built interiors (`buildInterior` `castle`; the wiring is done).
+5. **The celebration castle's door** — Done: the great doors open onto its great hall of floating
+   candles, with a library alcove and the tower stair (`world/interiors3d.ts`).
 6. **Penthouses in New Yonder**
    - Buy one, furnish it, and live there or house people you sponsor.
    - After the 3D side builds the penthouse and its interior.
-7. **Pay in opportunities**
-   - Pay someone with a course, training or a certificate instead of coins.
-   - Certificates from courses unlock job ranks and service tiers.
-8. **Markets fill up for your own sales too.** Today only couriers' sales lower a market's price.
+7. **Pay in opportunities** — Done: pay a sponsored person or a hired expert with a course at an
+   institute (`institutions/opportunities.ts`); courses award certificates, which lift your rank
+   ceiling at employers and open the demanding gigs (`institutions/certificates.ts`).
+8. **Markets fill up for your own sales too** — Done (`supply.sellHere`).
 9. **Manufacturing and inventions**
    - Make and sell the inventions from your theses at your institutes.
    - Healthcare, tech and logistics as businesses you run: the "economy of services" still open in D.
-10. **Children going home** at their destinations when the caravan is full (J).
+10. **Children going home** — Done: they go home when the caravan reaches their destination (`caravan.bringHome`).
 11. **Performance**
     - Instanced party guests at the celebration.
     - A real-GPU frame-rate check.
