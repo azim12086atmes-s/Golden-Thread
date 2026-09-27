@@ -33,6 +33,7 @@ import { WONDERS, foundWonder, wonderHint, wonderPos } from '../world/wonders';
 import { VEHICLES, type VehicleId } from '../vehicles/vehicles';
 import { GRID_COLS, GRID_ROWS, REGIONS, REGION_BY_ID, regionCenter, type RegionId, type RegionSpec } from '../world/regions';
 import { INSTITUTE_SITES } from '../institutions/sites';
+import { CAVES, CAVE_NAME, caveMouth } from '../world/caves';
 import { FIELD_SITES } from '../world/plots';
 import type { Game } from '../Game';
 
@@ -1234,6 +1235,24 @@ export class UI {
         known ? h('p', { class: 'dim' }, `Teaches ${SKILLS[sel.skill].icon} ${SKILLS[sel.skill].name} · Market wants ${sel.wanted.map((w) => ITEMS[w].icon).join(' ')}`) : null,
         known && sel.id !== this.g.region.id ? btn(`Travel to ${sel.name}`, () => { this.g.travelTo(sel.id); this.closePanel(); }, 'primary') : null,
       ));
+      // The land's caves: out past the ends of the avenues, their mouths facing the town.
+      const caves = CAVES.filter((cv) => cv.land === sel.id);
+      if (known && caves.length) {
+        const rc = regionCenter(sel);
+        body.append(h('h3', {}, `🕳️ Caves of ${sel.name}`), ...caves.map((cv) => {
+          const dx = cv.x - rc.x, dz = cv.z - rc.z;
+          const side = Math.abs(dx) > Math.abs(dz) ? (dx > 0 ? 'east' : 'west') : dz > 0 ? 'south' : 'north';
+          const name = CAVE_NAME[cv.style];
+          return h('div', { class: 'quest' }, h('b', {}, `${cv.style === 'ice' ? '🧊' : cv.style === 'crystal' ? '💎' : '🪨'} A ${name}`),
+            h('small', {}, `${Math.round(Math.hypot(dx, dz))} m ${side} of the town`),
+            btn('Show the way', () => {
+              const m = caveMouth(cv);
+              this.g.guide.pin({ title: `The ${name}`, text: `Walk to the ${name}'s mouth and press E to explore`, x: m.x, z: m.z, region: cv.land });
+              this.closePanel();
+              this.g.toast(`Follow the golden motes to the ${name}.`);
+            }, 'small'));
+        }));
+      }
     } else body.append(h('p', { class: 'dim' }, 'North is at the top. Select a land.'));
   }
 

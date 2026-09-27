@@ -16,11 +16,19 @@ import { M, archPanel, box, cone, cyl, dome, sphere } from './kit';
  */
 
 const STOREY = 3.3;
-interface K { c: Ctx; st: LandStyle; wall: string; wall2: string; trim: string; roof: string }
+interface K { c: Ctx; st: LandStyle; wall: string; wall2: string; trim: string; roof: string; dome: string }
+
+/** A dome in the land's roof colour, never near-black: dark slate turns to weathered lead-green copper. */
+function domeColour(roof: string): string {
+  const c = new THREE.Color(roof), hsl = { h: 0, s: 0, l: 0 };
+  c.getHSL(hsl);
+  if (hsl.l < 0.35) return '#' + c.lerp(new THREE.Color('#7fae9a'), 0.6).getHexString();
+  return roof;
+}
 
 function kit(c: Ctx): K {
   const walls = c.s.walls;
-  return { c, st: LAND_STYLE[c.s.id], wall: walls[0], wall2: walls[1 % walls.length], trim: c.s.trims[0], roof: c.s.roofs[0] };
+  return { c, st: LAND_STYLE[c.s.id], wall: walls[0], wall2: walls[1 % walls.length], trim: c.s.trims[0], roof: c.s.roofs[0], dome: domeColour(c.s.roofs[0]) };
 }
 
 /** Draw fn in both builders' frames at (x, y, z) turned by ry. */
@@ -294,7 +302,7 @@ function school(k: K, s: 0 | 1 | 2 | 3): Footprint {
         cyl(g, 4, 4.2, 6, k.wall2, 0, 0, 0, 20);
         for (let i = 0; i < 12; i++) { const a = (i / 12) * Math.PI * 2; cyl(g, 0.22, 0.24, 5.4, k.trim, Math.cos(a) * 4.6, 0, Math.sin(a) * 4.6, 8); }
         cyl(g, 4.9, 4.9, 0.5, k.trim, 0, 5.6, 0, 20);
-        dome(g, 3.8, k.roof, 0, 6.1, 0, 18);
+        dome(g, 3.8, k.dome, 0, 6.1, 0, 18);
         for (let i = 0; i < 8; i++) { const a = (i / 8) * Math.PI * 2; archPanel(glow, 1, 2.2, k.c.s.glow, Math.sin(a) * 4.05, 1.4, Math.cos(a) * 4.05, a, 0.06, k.st.arch === 'pointed'); }
       });
       at(k, -7, 0, 10, 0, () => {
@@ -338,7 +346,7 @@ function library(k: K, s: 0 | 1 | 2 | 3): Footprint {
         }
         cyl(g, 8.8, 8.8, 0.6, k.trim, 0, 7.2, 0, 28);
         cyl(g, 6.6, 6.8, 2, k.wall2, 0, 7.8, 0, 28);
-        dome(g, 6.4, k.roof, 0, 9.8, 0, 22);
+        dome(g, 6.4, k.dome, 0, 9.8, 0, 22);
         cyl(g, 0.9, 1, 1.4, '#fbf7ee', 0, 9.8 + 6.2, 0, 10);
         dome(g, 0.9, '#d4af37', 0, 9.8 + 7.6, 0, 10);
       });
