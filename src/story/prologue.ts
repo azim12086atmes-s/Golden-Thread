@@ -24,6 +24,8 @@ export function prologue(st: GameState): Page[] {
         'Be kind first, and help whoever you meet — a small errand can change someone\'s whole day.',
         'Do honest work, and do it well. Make things with your hands, and give them away. Share what you have. Keep your commitments.',
         'Keep learning: every Keeper, stallholder and neighbour can teach you a skill, and every skill lets you help someone new.',
+        'Adopt everyone as family: sponsor those who have no one, ease their hardships, and give opportunities — then make new ones. Build, teach and contribute to the society you join.',
+        'Bond with each other and, through each other, with everyone: make each other part of yourselves, and others part of you both.',
         'Care for animals and the land. Be patient, be honest, and be grateful for each day. Write back to your friends, and never lose the way home.',
       ],
     },

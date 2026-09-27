@@ -3,12 +3,14 @@ import type { GameState } from '../core/state';
 import { REGION_BY_ID, type RegionId } from '../world/regions';
 
 /**
- * The story of the game, told as a cinematic over real places in the world. It is about living:
- * going places, doing honest work, solving problems for people. Her new job is only a step: the
- * story is the life they live together afterwards — exploring while they live and own a home,
- * earning by helping, learning new skills, becoming part of the people they meet (the children
- * and animals who travel with them too), and staying connected to home. Pure data: the scene plays
- * it, the journal prints it, tests check it.
+ * The story of the game, told as a cinematic over real places in the world. Her new job is how
+ * the two of them enter the world — a doorway, not the destination. Through it they learn, build
+ * and contribute to the society they join, while their love for each other grows as a couple who
+ * intend to marry. They become part of the people they meet: adopting everyone as family, easing
+ * hardships, giving opportunities and making new ones, and never stopping learning and helping.
+ * As they bond with each other they bond with everyone else: each makes the other part of
+ * themselves, and together they make others part of them both. Pure data: the scene plays it,
+ * the journal prints it, tests check it.
  */
 
 export type Focus = 'landmark' | 'castle' | 'travellers' | 'market' | 'noor' | 'children' | 'pets';
@@ -27,7 +29,8 @@ export interface Shot {
   lines: string[];
 }
 
-export const STORY_FLAG = 'story-2';
+/** Bumped when the story changes, so everyone sees the new opening once. */
+export const STORY_FLAG = 'story-3';
 
 /** "Rosie and Teo", "Rosie, Teo and Mina". */
 const names = (list: string[]) => list.length <= 1 ? list.join('') : `${list.slice(0, -1).join(', ')} and ${list[list.length - 1]}`;
@@ -53,13 +56,20 @@ export function storyline(st: GameState): Shot[] {
     },
     {
       land: 'meadow', focus: 'castle', hour: 18.6, dur: 10, radius: 110, height: 36, spin: 0.4,
-      lines: [`${girl} has just secured her new job.`, 'It is a proud step, but it is only a step. The job is not the destination. The life they live together is.'],
+      lines: [`${girl} has just secured her new job — and with it, the two of them are entering the world.`, 'Through it they will learn, build and contribute to the people around them. It is a proud step, but only a step: the job is not the destination. The life they build together is.'],
     },
     {
       land: 'meadow', focus: 'travellers', hour: 8.5, dur: 12, radius: 9, height: 2.6, spin: 0.5,
       lines: [
-        `${girl} and ${boy} are committed to each other. A golden thread joins them, and it glows brighter with every kindness they share.`,
-        'Together they will keep exploring while they live: making a home of their own, earning by helping, learning new skills in every land.',
+        `${girl} and ${boy} are committed to each other and intend to marry. A golden thread joins them, and their love grows brighter with every kindness they share.`,
+        'Together they will keep learning while they live: making a home of their own, earning by helping, learning new skills in every land and giving back to the society they join.',
+      ],
+    },
+    {
+      land: 'islamic', focus: 'landmark', hour: 10.5, dur: 11, radius: 75, height: 26, spin: 0.3,
+      lines: [
+        'They will adopt everyone they meet as family: the orphan, the elder, the homeless and the family in need. They will ease hardships and open doors, giving opportunities and making new ones where there were none.',
+        'And as they bond with each other, they bond with everyone else. Each makes the other part of themselves; together, they make everyone they meet part of them both.',
       ],
     },
   ];
@@ -92,7 +102,7 @@ export function storyline(st: GameState): Shot[] {
     {
       land: 'meadow', focus: 'landmark', hour: 9.5, dur: 12, radius: 55, height: 18, spin: 0.3,
       lines: [
-        'Your journey: live life together and keep exploring. Earn by helping, learn from every land, own a home, and light all twenty lanterns.',
+        'Your journey: live life together and keep exploring. Learn, build and contribute; earn by helping, adopt everyone as family, own a home, and light all twenty lanterns.',
         partyWaits
           ? 'A lifelong journey of bonding: with each other, with the people you meet, and with home. But first, tonight, there is something to celebrate.'
           : 'A lifelong journey of bonding: with each other, with the people you meet, and with home.',

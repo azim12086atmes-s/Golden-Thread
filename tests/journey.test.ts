@@ -89,6 +89,9 @@ describe('the story cinematic', () => {
     // becoming part of the people they meet, and staying connected to home.
     for (const w of ['only a step', 'together', 'a home of their own', 'earning by helping', 'new skill', 'part of the people', 'connected to home']) expect(text).toContain(w);
     expect(text.toLowerCase()).not.toContain('promise');
+    // The job is how they enter the world: they learn, build and contribute, grow in love as a
+    // couple who intend to marry, adopt everyone as family, and make others part of them both.
+    for (const w of ['entering the world', 'learn, build and contribute', 'intend to marry', 'adopt everyone', 'making new ones', 'part of them both']) expect(text).toContain(w);
     expect(text).toContain(st.names.girl);
     expect(text).toContain('something to celebrate');
     st.flags.push('celebration-done');
