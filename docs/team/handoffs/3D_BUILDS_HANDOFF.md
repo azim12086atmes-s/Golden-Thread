@@ -60,6 +60,37 @@ https://azim12086atmes-s.github.io/Golden-Thread/ (earlier builds under `/versio
 - **Verify visually**: `scripts/probe/` (Playwright + software GL; README inside). `scripts/probe/example.js` shows how to
   teleport to a land and take screenshots. Always screenshot what you build, in day and night.
 
+## 2a. Master checklist — architecture detailing, land by land
+
+Status: **Done** = real architecture, screenshot-checked; **Built** = real architecture, checked only by tests;
+**Early** = an old primitive build that needs detailing; **None** = not built.
+
+| # | Land (`id`) | Houses | Monument (landmark) | City lighting | Also needed here |
+|---|---|---|---|---|---|
+| 1 | Wanderers' Meadow (`meadow`) | Done (fairy keeps, towers, cottages, toadstools, wizard towers) | Great Tree — Done; fairy castle (`event/Castle.ts`) — Early | Fairy lights — partial | Hogwarts-style magic school, potion shop → guild hall ladder, balloons |
+| 2 | Sakura Hollow (`japan`) | Done (machiya, minka) | Pagoda — Early | Lamp posts only | Torii, stone tōrō lanterns, red arched bridge, lotus pond, koinobori |
+| 3 | Hanok Village (`korea`) | Built (hanok, choga) | Palace hall — Early | Lamp posts only | Palace gate and walls, lotus pond |
+| 4 | Jade Terraces (`china`) | Built (halls, shophouses) | Temple of Heaven — Early | Lamp posts only | More sky lanterns, red lantern strings, moon bridge, lotus pond, TCM herb stall → academy |
+| 5 | Fjordhavn (`norway`) | Built (Bryggen facade kit) | Stave church — Early | Lamp posts only | Candle lanterns, timber bridges, boathouses |
+| 6 | Alpenrose (`switzerland`) | Built (chalet facade kit) | Zytglogge clock tower — Early | Lamp posts only | Watch boutique → workshop → manufacture → school, stone bridges |
+| 7 | Old London (`london`) | Done (Georgian/Victorian facade kit) | Westminster + Big Ben — Early | **Gas-lamp street lighting — None** | Stone and iron bridges, repair shop → works ladder |
+| 8 | New Yonder (`newyork`) | Done (deco/glass towers, brownstones, lofts) | Art-deco crown tower — Early | Neon — partial | **Large display screens, TV panels, cyber/solarpunk artifacts, penthouses — None**; garage → tech campus |
+| 9 | Firenzia (`renaissance`) | Done (palazzo facade kit) | Florence cathedral dome — Early | Lamp posts only | Stone bridges (Ponte Vecchio), workshops (botteghe) |
+| 10 | Maple Row (`vintage`) | Built (Painted Ladies facade kit) | Carousel + bandstand — Early | Lamp posts only | Pier pavilion or ferris wheel |
+| 11 | Madinat an-Nur (`islamic`) | Done (riads) | Court of the Lions / great mosque — Early | **Hanging brass lanterns — None** | Bookseller → library → madrasa → university/observatory, fountains |
+| 12 | Souq al-Qamar (`middleeast`) | Built (Gulf houses, barjeel) | Coral-stone fort and souq — Early | Lamp posts only | Lantern-lit covered souq |
+| 13 | Nile Crossing (`egypt`) | Built (Nubian houses) | Pylon temple + pyramids — Early | Lamp posts only | Nilometer, papyrus workshops, reed-boat jetties |
+| 14 | Tents of Rimal (`desert`) | Built (Bedouin and round tents) | Great majlis tent + oasis — Early | **Tent lamps — None** | Tent schools, oasis palms |
+| 15 | Gulabi Nagar (`indianorth`) | Done (havelis with jharokhas) | Hawa Mahal — Early | **Diyas — None** | Ayurveda garden → college, Jantar Mantar instruments, lotus pond |
+| 16 | Kaveri Coast (`indiasouth`) | Built (Kerala homes) | Gopuram + temple tank — Early | Lamp posts only | Oil lamps (nilavilakku), lotus ponds, spice trading houses |
+| 17 | Bagh-e-Noor (`mughal`) | Built (pishtaq pavilions) | Taj Mahal + charbagh — Early | Lamp posts only | Lotus pools, marble bridges, garden hydraulics |
+| 18 | Nusa Rinjani (`indonesia`) | Built (bale, tongkonan) | Borobudur / pura — Early | Lamp posts only | Candi bentar gates, penjor, lotus ponds, bamboo bridges |
+| 19 | Aurora Huts (`aurora`) | Done (lavvu, igloos, turf huts, cabins) | Ice hall — Early | **Tent lamps — None** | Glowing ice sculptures |
+| 20 | The Sky Isles (`skyisles`) | Built (spires, pavilions) | Temple of the Great Lantern — Early | Crystal lanterns — partial | **More and larger trees, ground texture, richer surfaces, floating islands with bridges and waterfalls** (see 3.2a) |
+
+Everywhere: bridges over rivers (None), homes that grow storeys (None — rules exist), staged institution buildings
+(None), soup kitchens/clinics/schools/madrasas/libraries (None), balloons (None).
+
 ## 3. What to build — in priority order
 
 ### 3.1 Monuments (landmarks) — NOT yet detailed. Highest priority.
@@ -122,9 +153,9 @@ traditional kits and the research sources. Keep the south door area clear, keep 
 
 ### 3.2a The Sky Isles need care (owner: "very little trees and very little texturing")
 
-- **Trees**: the land plants only 60 trees (`treeCount` in `src/world/RegionBuilder.ts`: `isSky ? 60 : …340`), never giants,
+- **Trees are too few and too small**: the land plants only 60 trees (`treeCount` in `src/world/RegionBuilder.ts`: `isSky ? 60 : …340`), never giants,
   and its flora (`regions.ts` skyisles: `cloud`, `crystal`, `candy`, `glowtree`) are mostly non-branching shapes. Raise the
-  count to match other lands, allow giants, and give the isles their own branching fantasy species in `src/world/trees.ts`
+  count to match other lands, make them larger (the isles' trees read tiny next to the houses), allow giants, and give the isles their own branching fantasy species in `src/world/trees.ts`
   `HABITS` (e.g. pastel blossom trees, silver-barked moon trees, trailing wisteria-like cloud willows, crystal-fruit trees)
   with leaf-image crowns like every other land; keep glowing fruit small.
 - **Texturing**: the ground is near-white (`ground: '#f4f4ff'`, `groundAlt: '#e6e8ff'`) and reads flat. Add ground
