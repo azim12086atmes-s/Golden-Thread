@@ -1,6 +1,8 @@
 # Working on The Golden Thread
 
 Read [docs/GAME_DESIGN.md](docs/GAME_DESIGN.md) first, then [docs/ROADMAP.md](docs/ROADMAP.md), and [docs/REQUIREMENTS_EXPANSION.md](docs/REQUIREMENTS_EXPANSION.md) for the latest owner amendments.
+The current handoff and the owner's open requests are in `docs/team/handoffs/NEXT_WORK_2026-09-27.md` and
+`docs/team/handoffs/CLAUDE_CLOUD_CURRENT_WORK.md`.
 
 ## Non-negotiable content rules
 

@@ -9,6 +9,10 @@ animal; modest clothing via `modestify()`.
 
 ## Handoff — session 2026-09-27 (cloud). START HERE.
 
+**Then read `docs/team/handoffs/NEXT_WORK_2026-09-27.md`** — the owner's newest requests verbatim (charity and
+sponsorship, institutions, hiring, skills/courses/theses, supply chains, city lighting, bridges, New Yonder TV panels and
+penthouses, balloons) with specifications and the order of work.
+
 **Branch** `claudes-current-work` (push here; no PRs, no merges to other branches unless the owner asks).
 **Live build** https://azim12086atmes-s.github.io/Golden-Thread/ — every earlier build under `/versions/`.
 Publish with `bash scripts/deploy-pages.sh` (builds, tests, copies to gh-pages root and `versions/<sha>/`, never force-pushes).
