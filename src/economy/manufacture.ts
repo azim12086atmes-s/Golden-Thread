@@ -1,3 +1,4 @@
+import { bonus } from './inventions';
 import { DAY_MINUTES, type GameState } from '../core/state';
 import { INSTITUTE_BY_KIND, type InstituteKind } from '../institutions/catalogue';
 import { SITE_BY_ID, instituteAt, landScience, standingStage } from '../institutions/institutions';
@@ -78,7 +79,7 @@ export function productPrice(st: GameState, invention: string, land: RegionId): 
   if (!p) return 0;
   const wanted = p.wantedIn.includes(land) ? 1.8 : 1;
   // A tech company of yours markets them better (business.ts).
-  return Math.max(1, Math.round((p.value * wanted * (1 + techBonus(st))) / (1 + glut(st, land, invention) / 12)));
+  return Math.max(1, Math.round((p.value * wanted * (1 + techBonus(st) + bonus(st, 'craft'))) / (1 + glut(st, land, invention) / 12)));
 }
 
 /** Sell one of your products here. Returns the coins, or 0 if you have none. */

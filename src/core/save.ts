@@ -1,3 +1,4 @@
+import { fromOldSave } from '../economy/business';
 import { newGame, type GameState } from './state';
 
 export const SAVE_KEY = 'golden-thread/save/v1';
@@ -45,6 +46,8 @@ export function deserialize(json: string): GameState | null {
       base[k] = v;
     }
   }
+  // Businesses from older saves (bought by sector) become ones grown the new way.
+  if (Array.isArray(base.businesses)) base.businesses = (base.businesses as unknown[]).map(fromOldSave).filter((b) => b !== null);
   return base as unknown as GameState;
 }
 

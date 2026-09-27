@@ -1,3 +1,4 @@
+import { bonus } from '../economy/inventions';
 import { DAY_MINUTES, type GameState } from '../core/state';
 import { count, removeItems } from '../economy/economy';
 import { ITEMS, type SkillId } from '../economy/items';
@@ -113,7 +114,8 @@ export function give(st: GameState, personId: string, pay: { coins: number } | {
     if (pay.coins <= 0) return 'Nothing given.';
     if (st.coins < pay.coins) return `You need ${pay.coins} coins.`;
     st.coins -= pay.coins;
-    days = pay.coins / DAY_COINS;
+    // Fair-share tables (economy/inventions.ts) make every coin go further.
+    days = (pay.coins / DAY_COINS) * (1 + bonus(st, 'fair'));
   } else {
     days = daysOf(pay.item, p.kind);
     if (days <= 0) return `${p.name} has no use for that.`;
@@ -136,7 +138,7 @@ function settle(st: GameState, s: Sponsorship): void {
   const now = st.minutes;
   if (now <= s.at) return;
   const paidPart = Math.max(0, Math.min(now, s.paidUntil) - s.at), unpaid = (now - s.at) - paidPart;
-  s.wellbeing = Math.max(0, Math.min(100, s.wellbeing + (paidPart / DAY_MINUTES) * (12 + (s.home ? 8 : 0)) - (unpaid / DAY_MINUTES) * 10));
+  s.wellbeing = Math.max(0, Math.min(100, s.wellbeing + (paidPart / DAY_MINUTES) * (12 + (s.home ? 8 + bonus(st, 'comfort', s.home) : 0)) - (unpaid / DAY_MINUTES) * 10));
   s.at = now;
 }
 
@@ -219,13 +221,15 @@ export function buildFloor(st: GameState, plotId: string, how: 'coins' | 'kind')
     removeItems(st, c.items);
     takeFood(st, food);
   }
-  h.buildingUntil = st.minutes + FLOOR_MINUTES;
+  h.buildingUntil = st.minutes + Math.round(FLOOR_MINUTES * (1 - bonus(st, 'build')));
   return null;
 }
 
 export const residentsOf = (st: GameState, plotId: string): Sponsorship[] => st.sponsored.filter((s) => s.home === plotId);
 /** Everyone living in a home: the people you sponsor there and the staff you house there. */
-export const occupantsOf = (st: GameState, plotId: string): number => residentsOf(st, plotId).length + st.hires.filter((h) => h.home === plotId && st.minutes < h.paidUntil).length;
+export const occupantsOf = (st: GameState, plotId: string): number => residentsOf(st, plotId).length + st.hires.filter((h) => h.home === plotId && st.minutes < h.paidUntil).length
+  // …and those who work in your businesses for their keep (economy/business.ts).
+  + st.businesses.reduce((a, b) => a + (b.team ?? []).filter((m) => m.pay === 'keep' && m.home === plotId).length, 0);
 
 /** Invite someone you sponsor to live in a home you own (if it has room). */
 export function takeHome(st: GameState, personId: string, plotId: string): string | null {

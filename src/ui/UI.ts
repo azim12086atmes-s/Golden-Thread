@@ -35,7 +35,8 @@ import { GRID_COLS, GRID_ROWS, REGIONS, REGION_BY_ID, regionCenter, type RegionI
 import { INSTITUTE_SITES } from '../institutions/sites';
 import { certificatesOf, rankCap } from '../institutions/certificates';
 import { BENCH_FEE, PRODUCT_BY_INVENTION, bestMarkets as bestProductMarkets, manufacture, productPrice, sellProduct, workshopAt } from '../economy/manufacture';
-import { SECTORS, businessTitle, dailyNet, growBusiness, openBusiness, staffBusiness, type Sector } from '../economy/business';
+import { USES, placeName, placesFor, putToUse } from '../economy/inventions';
+import { MANAGER, TRADES, TRADE_IDS, canBegin, candidatesFor, clientsOf, firstHire, handOut, homesWithRoom, isPaid, managerBlock, memberLevel, monthlyWage, orderPay, perDay, personName, stageOf, startBusiness, takeOn, takeOrder, teachMember, appoint, payWage, letGo, businessTitle } from '../economy/business';
 import { courseCost, courseOffer, payWithCourse } from '../institutions/opportunities';
 import { CAVES, CAVE_NAME, caveMouth } from '../world/caves';
 import { FIELD_SITES } from '../world/plots';
@@ -1000,7 +1001,7 @@ export class UI {
     const g = this.g, st = g.st, land = g.region.id;
     const act = (e: string | null, ok: string) => { g.toast(e ?? ok, e ? 'info' : 'reward'); g.bus.emit('coins:changed', { coins: st.coins }); this.render(); };
     body.append(h('h3', {}, '💡 Your inventions'));
-    if (!st.inventions.length) { body.append(h('p', { class: 'dim' }, 'Finish a thesis under a professor to invent something of your own — then make it here and sell it.')); return; }
+    if (!st.inventions.length) { body.append(h('p', { class: 'dim' }, 'Finish a thesis under a professor to invent something of your own — then make it, put it to use at your homes and fields or carry it, and sell the rest.')); return; }
     const sites = INSTITUTE_SITES.filter((q) => q.land === land);
     for (const inv of st.inventions) {
       const p = PRODUCT_BY_INVENTION[inv];
@@ -1009,29 +1010,70 @@ export class UI {
       const need = Object.entries(p.needs).map(([k, v]) => `${v}× ${ITEMS[k]?.name ?? k}`).join(', ');
       const best = bestProductMarkets(st, inv).map((m) => `${REGION_BY_ID[m.land].name} ${m.price}🪙`).join(' · ');
       const have = st.products[inv] ?? 0;
+      const use = USES[inv], at = placesFor(st, inv, land)[0], inUse = st.installed.filter((i) => i.invention === inv);
       body.append(h('div', { class: 'quest' }, h('b', {}, `💡 ${inv}`),
+        use ? h('small', {}, `${use.does}${inUse.length ? ` · in use: ${inUse.map((i) => placeName(i.at)).join(', ')}` : ''}`) : null,
         h('small', {}, `${have} made · needs ${need} a piece · best markets: ${best}`),
         h('div', { class: 'acts' },
+          use ? btn(at ? `🔧 Put to use · ${placeName(at)}` : use.place === 'home' ? 'Built at a home of yours' : use.place === 'field' ? 'Built in a field of yours' : 'In use', () => act(putToUse(st, inv, at!), `The ${inv} is put to use — ${use.does.toLowerCase()}.`), 'small', !at || have <= 0) : null,
           site ? btn(`🛠️ Make 1${workshopAt(st, inv, site.id) === 'bench' ? ` · bench ${BENCH_FEE}🪙` : ''}`, () => act(manufacture(st, inv, site.id, 1), `You make a ${inv}.`), 'small') : h('small', { class: 'dim' }, 'Made at an institute of its science'),
           btn(`Sell here · ${productPrice(st, inv, land)}🪙`, () => { const c = sellProduct(st, inv, land); act(c ? null : 'You have none made.', `Sold for ${c} coins.`); }, 'small ghost', have <= 0))));
     }
   }
 
-  /** Businesses you run: open one here, grow it, staff it. */
+  /**
+   * Businesses grown from the ground up: take the orders yourself, teach or hire people, hand the
+   * orders out, then make one of them manager (economy/business.ts).
+   */
   private businessSection(body: HTMLElement): void {
     const g = this.g, st = g.st, land = g.region.id;
     const act = (e: string | null, ok: string) => { g.toast(e ?? ok, e ? 'info' : 'reward'); g.bus.emit('coins:changed', { coins: st.coins }); this.render(); };
-    body.append(h('h3', {}, '🏢 Your businesses'));
+    body.append(h('h3', {}, '🏪 Your businesses'));
+    body.append(h('p', { class: 'dim' }, 'Begin by taking orders yourself. As word spreads, more clients come — teach the trade to someone you sponsor or someone looking for work (or hire someone who knows it), hand the orders out, and when the team is big enough make one of them manager.'));
+    const stageText = { solo: 'You take the orders yourself', team: 'Your people do the orders — you hand them out', managed: 'Run by your manager' } as const;
     for (const b of st.businesses) {
-      const d = SECTORS[b.sector], staffable = EXPERTS.filter((e) => e.skill === d.skill && hireOf(st, e.id) && !st.businesses.some((o) => o.staff.includes(e.id)));
-      body.append(h('div', { class: 'quest main' }, h('b', {}, `${d.icon} ${businessTitle(b)}`),
-        h('small', {}, `level ${b.level} · ${b.staff.length}/${b.level * 2} staff · about ${dailyNet(st, b)}🪙 a day · earned ${b.earned}🪙 · ${d.good}`),
-        h('div', { class: 'acts' },
-          b.level < 4 ? btn(`Grow · ${d.upgrade[b.level - 1]}🪙`, () => act(growBusiness(st, b.id), `It grows into a ${d.ranks[b.level]}.`), 'small') : null,
-          ...staffable.slice(0, 2).map((e) => btn(`+ ${e.name}`, () => act(staffBusiness(st, b.id, e.id), `${e.name} joins.`), 'small ghost')))));
+      const t = TRADES[b.trade], here = b.land === land, stage = stageOf(st, b);
+      const card = h('div', { class: 'quest main' }, h('b', {}, `${t.icon} ${businessTitle(b)}`),
+        h('small', {}, `${stageText[stage]}${b.manager && stage === 'managed' ? ` (${personName(b.manager)})` : ''} · ${clientsOf(b, st)} clients · ${here || stage === 'managed' ? `${b.orders} orders waiting · ` : ''}${b.done} done · earned ${b.earned}🪙${t.good ? ` · ${t.good}` : ''}`));
+      const acts = h('div', { class: 'acts' });
+      if (here) {
+        acts.append(btn(`${t.icon} Take an order · ${t.hours} h · +${orderPay(b.trade, level(st, t.skill))}🪙`, () => act(takeOrder(st, b.id, land), `Done — ${t.order}. The client will tell their friends.`), 'small', level(st, t.skill) < 1 || b.orders <= 0));
+        if (b.team.length) acts.append(btn('📋 Hand out orders · 1 h', () => { const r = handOut(st, b.id, land); act('error' in r ? r.error : null, 'error' in r ? '' : `Your people take ${r.n} orders and earn ${r.coins} coins.`); }, 'small ghost', b.orders <= 0));
+      } else if (stage !== 'managed') acts.append(h('small', { class: 'dim' }, `Its orders are taken in ${REGION_BY_ID[b.land].name}.`));
+      card.append(acts);
+      // The team: what each knows, how they are paid, and what you can do for them.
+      for (const m of b.team) {
+        const lvl = memberLevel(st, b, m.id), paid = isPaid(st, m), days = Math.max(0, Math.ceil((m.paidUntil - st.minutes) / 1440));
+        const pay = m.pay === 'care' ? 'cared for by you' : m.pay === 'keep' ? 'works for their keep (a room and food)' : `wage · ${days} days paid`;
+        const block = managerBlock(st, b, m.id);
+        card.append(h('div', { class: 'acts' }, h('small', {}, `${b.manager === m.id ? '⭐ ' : ''}${personName(m.id)} · ${lvl < 1 ? 'apprentice' : `level ${lvl} · ${perDay(lvl)} orders a day`} · ${pay}${paid ? '' : ' · not paid — not working'}`),
+          here && lvl < level(st, t.skill) ? btn('🧑‍🏫 Teach · 2 h', () => act(teachMember(st, b.id, m.id, land), `You teach ${personName(m.id)}.`), 'small ghost') : null,
+          m.pay === 'wage' ? btn(`Pay a month · ${monthlyWage(lvl)}🪙`, () => act(payWage(st, b.id, m.id), 'Paid for another month.'), 'small ghost', st.coins < monthlyWage(lvl)) : null,
+          b.manager !== m.id ? btn('⭐ Make manager', () => act(appoint(st, b.id, m.id), `${personName(m.id)} will run it now.`), 'small ghost', !!block) : null,
+          btn('Let go', () => { letGo(st, b.id, m.id); this.render(); }, 'small ghost')));
+      }
+      if (!b.manager && b.team.length) card.append(h('small', { class: 'dim' }, `A manager needs level ${MANAGER.level}, ${MANAGER.crew} others working, and ${MANAGER.clients} clients.`));
+      // People who could join, and how you can pay them.
+      if (here) {
+        const homes = homesWithRoom(st, land);
+        for (const c of candidatesFor(st, b).slice(0, 5)) {
+          card.append(h('div', { class: 'acts' }, h('small', {}, `${c.name} · ${c.note}${c.level ? ` · level ${c.level}` : ''}`),
+            ...c.pays.map((p) => p === 'care'
+              ? btn('Take on', () => act(takeOn(st, b.id, c.id, 'care'), `${c.name} joins — teach them the trade.`), 'small ghost')
+              : p === 'wage'
+                ? btn(`Monthly wage · ${monthlyWage(c.level)}🪙`, () => act(takeOn(st, b.id, c.id, 'wage'), `${c.name} joins.`), 'small ghost', st.coins < monthlyWage(c.level))
+                : btn('Room and food', () => act(takeOn(st, b.id, c.id, 'keep'), `${c.name} moves into your home and joins.`), 'small ghost', !homes.length))));
+        }
+      }
+      body.append(card);
     }
-    const open = (Object.keys(SECTORS) as Sector[]).filter((sct) => !st.businesses.some((b) => b.sector === sct && b.land === land));
-    if (open.length) body.append(h('div', { class: 'acts' }, ...open.map((sct) => btn(`${SECTORS[sct].icon} Open a ${SECTORS[sct].name.toLowerCase()} here · ${SECTORS[sct].open}🪙`, () => act(openBusiness(st, sct, land), `Your ${SECTORS[sct].name.toLowerCase()} opens.`), 'small ghost'))));
+    // Begin a business here: in a trade you know, or by hiring someone who knows it.
+    const begin = TRADE_IDS.map((id) => ({ id, how: canBegin(st, id, land) })).filter((x) => x.how);
+    if (begin.length) body.append(h('div', { class: 'chips wrap' }, ...begin.map(({ id, how }) => {
+      const t = TRADES[id], hire = how === 'hire' ? firstHire(land, id) : undefined;
+      return btn(how === 'yourself' ? `${t.icon} Begin a ${t.name.toLowerCase()}` : `${t.icon} Begin a ${t.name.toLowerCase()} with ${personName(hire!)} · a month's wage`,
+        () => act(startBusiness(st, id, land, hire), how === 'yourself' ? `Your ${t.name.toLowerCase()} begins — take the first orders yourself.` : `Your ${t.name.toLowerCase()} begins with ${personName(hire!)}.`), 'small ghost chip');
+    })));
   }
 
   // ───── harbours ─────

@@ -1,3 +1,4 @@
+import { bonus } from '../economy/inventions';
 import { certify } from './certificates';
 import { DAY_MINUTES, type GameState } from '../core/state';
 import { WORKER_BY_ID, type Worker } from '../economy/workers';
@@ -293,7 +294,7 @@ export function tickInstitutes(st: GameState): InstituteNews[] {
       for (const s of mine) s.wellbeing = Math.min(100, s.wellbeing + (3 + stage * 2) * days);
       // Serving from the pantry: the chef cooks for the people you sponsor first (each meal is a
       // day of their care), then for anyone who comes hungry; the clinic treats the sick.
-      const n = takeFromPantry(st, inst.site, SERVE_PER_DAY[stage] * days);
+      const n = takeFromPantry(st, inst.site, Math.round(SERVE_PER_DAY[stage] * days * (inst.kind === 'clinic' ? 1 + bonus(st, 'heal') : 1)));
       if (n > 0) {
         if (inst.kind === 'kitchen') {
           for (let i = 0; i < n && mine.length; i++) { const s = mine[i % mine.length]; s.paidUntil = Math.max(s.paidUntil, st.minutes) + (i < mine.length * days ? DAY_MINUTES : 0); }

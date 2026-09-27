@@ -150,8 +150,13 @@ Everything here is logic (rules, state, placement, wiring, UI, tests); 3D models
    ceiling at employers and open the demanding gigs (`institutions/certificates.ts`).
 8. **Markets fill up for your own sales too** — Done (`supply.sellHere`).
 9. **Manufacturing and inventions** — Done: make your theses' inventions at an institute of their
-   science and sell them where they are wanted (`economy/manufacture.ts`); run healthcare, tech and
-   logistics businesses, staffed and grown with certificates (`economy/business.ts`).
+   science and sell them where they are wanted (`economy/manufacture.ts`). Every invention has a
+   real use once made: carried (a star compass speeds every courier), built at a home (everlight,
+   solar skin that earns daily) or in a field (pump, water screw) (`economy/inventions.ts`).
+   Businesses grow organically, one town each (owner's amendment): take orders yourself → teach the
+   trade to someone you sponsor who wants it or someone looking for work, or hire someone who knows
+   it → hand the orders out → appoint a manager who runs the day. Pay is care, a monthly wage, or
+   keep (a room in your home there and food from your fields) (`economy/business.ts`).
 10. **Children going home** — Done: they go home when the caravan reaches their destination (`caravan.bringHome`).
 11. **Performance**
     - Instanced party guests at the celebration.

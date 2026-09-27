@@ -1,3 +1,4 @@
+import { bonus } from '../economy/inventions';
 import { DAY_MINUTES, type GameState } from '../core/state';
 import { level, removeItems } from '../economy/economy';
 import { ITEMS, LEVEL_XP, SKILLS } from '../economy/items';
@@ -108,7 +109,7 @@ export function workOnThesis(st: GameState, siteId: string): { error: string } |
   const mat = REGION_BY_ID[site.land].materials[0];
   if (!removeItems(st, { [mat]: 1 })) return { error: `Today's work needs 1× ${ITEMS[mat].name} for your experiments.` };
   th.day = today;
-  th.progress = Math.min(100, th.progress + dayProgress(level(st, skill)));
+  th.progress = Math.min(100, th.progress + Math.round(dayProgress(level(st, skill)) * (1 + bonus(st, 'research'))));
   addXp(st, skill, 20);
   st.minutes += THESIS_HOURS * 60;
   if (th.progress < 100) return { progress: th.progress, done: null };

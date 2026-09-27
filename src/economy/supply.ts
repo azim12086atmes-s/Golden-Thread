@@ -1,3 +1,4 @@
+import { bonus } from './inventions';
 import { DAY_MINUTES, type GameState } from '../core/state';
 import { INSTITUTE_BY_KIND } from '../institutions/catalogue';
 import { SITE_BY_ID, instituteAt, isEmployed, pantryOf, servesWith } from '../institutions/institutions';
@@ -150,7 +151,7 @@ export function tickSupply(st: GameState): SupplyNews[] {
     if (!Object.keys(items).length) continue;
     const from = FIELD_BY_ID[r.from].land;
     // A logistics company of yours speeds every trip (business.ts).
-    st.shipments.push({ route: r.id, courier: r.courier, from: r.from, to: r.to, items, left: st.minutes, arrive: st.minutes + Math.round(tripMinutes(w, from, land) * (1 - logisticsBonus(st))) });
+    st.shipments.push({ route: r.id, courier: r.courier, from: r.from, to: r.to, items, left: st.minutes, arrive: st.minutes + Math.round(tripMinutes(w, from, land) * (1 - Math.min(0.6, logisticsBonus(st) + bonus(st, 'travel')))) });
   }
   return out;
 }

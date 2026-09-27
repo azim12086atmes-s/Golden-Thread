@@ -1,3 +1,4 @@
+import { bonus } from './inventions';
 import { DAY_MINUTES, type GameState } from '../core/state';
 import { CROPS, SEED_SHOP, WATER_BOOST } from '../housing/housing';
 import { staffLevel } from '../institutions/institutions';
@@ -61,7 +62,8 @@ export function plantField(st: GameState, id: string, seed: string): string | nu
 
 export function fieldGrowth(st: GameState, id: string): number {
   const c = st.fields[id]?.crop;
-  return c ? Math.min(1, (st.minutes - c.plantedAt) / fieldGrowTime(c.seed)) : 0;
+  // A pump or water screw built in the field (economy/inventions.ts) makes it grow faster.
+  return c ? Math.min(1, ((st.minutes - c.plantedAt) * (1 + bonus(st, 'growth', id))) / fieldGrowTime(c.seed)) : 0;
 }
 
 /** Water the whole field once a planting: the harvest comes sooner. */
@@ -82,7 +84,7 @@ export function harvestField(st: GameState, id: string): { error: string } | { i
   const f = st.fields[id];
   if (!f?.crop) return { error: 'Nothing is planted.' };
   if (fieldGrowth(st, id) < 1) return { error: 'It is not ripe yet.' };
-  const item = CROPS[f.crop.seed].out, n = fieldYield(f.crop.seed, level(st, 'gardening'));
+  const item = CROPS[f.crop.seed].out, n = Math.round(fieldYield(f.crop.seed, level(st, 'gardening')) * (1 + bonus(st, 'harvest', id)));
   f.store[item] = (f.store[item] ?? 0) + n;
   f.crop = undefined;
   addXp(st, 10);

@@ -104,6 +104,8 @@ export interface GameState {
   products: Record<string, number>;
   /** Businesses you run (economy/business.ts). */
   businesses: import('../economy/business').Business[];
+  /** Inventions put to use (economy/inventions.ts): carried ('you'), or built at a home or field; `day` of their last daily good. */
+  installed: Array<{ invention: string; at: string; day: number }>;
   vehicles: string[];
   discovered: string[];
   lanterns: string[];
@@ -166,6 +168,7 @@ export function newGame(): GameState {
     inventions: [],
     products: {},
     businesses: [],
+    installed: [],
     vehicles: ['walk', 'fly', 'van'],
     discovered: ['meadow'],
     lanterns: [],

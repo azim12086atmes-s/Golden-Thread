@@ -30,6 +30,11 @@ export function level(state: GameState, skill: SkillId): number {
   return skillLevel(state.skills[skill]);
 }
 
+/** Add experience in a skill (capped at the top level). */
+export function addXpTo(state: GameState, skill: SkillId, xp: number): void {
+  state.skills[skill] = Math.min(LEVEL_XP[LEVEL_XP.length - 1], state.skills[skill] + xp);
+}
+
 /** A Keeper's lesson: raises a skill to at least level 1. Returns true if it was new. */
 export function teach(state: GameState, skill: SkillId): boolean {
   if (state.skills[skill] >= LEVEL_XP[1]) return false;

@@ -143,3 +143,21 @@ The owner's order: **institutional buildings first, then complete the game logic
 | 10.18 | Pebbles and rocks as images | A procedural field of pebble and small-rock images round the travellers, like the grass, in the deserts and rocky ground. | Open |
 | 10.19 | Aurora snow | A grainy snow pattern for the ground, and ice crystals scattered on it like grass — colourful, glinting, random (never a grid). | Open |
 | 10.20 | Vehicles by land, air and sea, per location, with animals | Every land's traffic built for its place: road vehicles, boats and ships, aircraft, and the animals that carry people or goods there (camels, reindeer, elephants, horses, oxen…). | Open |
+
+## 11. Businesses and inventions (owner, 2026-09-27, late) — Done
+
+- **No buying a company.** A business is grown: you take its orders yourself in one town; clients
+  come back and bring others (word of mouth); you teach the trade to someone you sponsor who wants
+  to learn it or to someone looking for work — or, not knowing it, you hire someone who does from
+  the start; you hand the orders out; then one who knows it well becomes manager and runs each day.
+  One town per business. Fourteen trades, one per craft (delivery, boutique, clinic, software, …).
+- **Paying people needs resources:** your care (people you sponsor), a monthly wage, or their keep —
+  a room in a home you own in that town (home capacity counts them) and food each day from your
+  fields there or what you carry. No food, no work until it comes.
+- **Inventions do real things.** Each is made, then put to use: carried, built at a home, or built in
+  a field. Effects: crops grow faster or yield more, couriers and ships arrive sooner, residents
+  thrive, roofs earn from the sun, nets bring food, clinics heal more, products sell for more,
+  floors go up faster, theses go faster, charity goes further, businesses draw more clients.
+  Code: `economy/business.ts`, `economy/inventions.ts`; tests `business.test.ts`, `inventions.test.ts`.
+- Still to do: show installed inventions in 3D at homes and fields (lanterns, solar skins, pumps).
+
