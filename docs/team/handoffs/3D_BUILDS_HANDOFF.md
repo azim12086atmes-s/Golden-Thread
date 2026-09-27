@@ -194,6 +194,42 @@ Existing: each land has its own lantern design (`src/world/lanterns.ts`), used f
   VW Type 2 split-screen bus (V-front, two-tone paint, loaf body), the little car, the old truck, the biplane. Keep the
   seat layout and `SEAT_GAP` exactly (tests check it).
 
+
+#### How traffic spawns today (`src/traffic/Traffic.ts`)
+
+- **When**: only for the land the travellers are in (`Traffic.setLand`, called every frame with `regionAt(player)`); on
+  crossing into another land the old land's traffic is cleared and the new land's is placed at once. It runs day and
+  night alike (no schedules); lights (`glow`) brighten after dusk. Paused while inside the van or a house.
+- **Where — roads** (every land but the Sky Isles): each of the four avenues has two out-and-back loops, plaza edge
+  (60 m) → 128 m and 152 m → town edge (274 m), turning back before the ring-road junction; the ring road (radius 140 m)
+  has one lane each way. Lanes are 2.8 m off the centre line (left-hand in London, Japan, Indonesia and the three Indian
+  lands). The roster's road vehicles are shuffled and shared round-robin over these ten routes, evenly spaced; they start
+  still and accelerate, keep their distance and stop for the travellers.
+- **Where — water** (every land but the Sky Isles): each lake has an outer loop (58 % of its radius) and an inner loop
+  (30 %); each pond a loop; the river an out-and-back route along each bank. A boat only goes where there is room
+  (`room > length × 0.45`), at a random point on the route.
+- **Where — sky**: each craft or flock circles the town on its own circle (centre within ±40 m of the plaza, radius and
+  height from the design's `radius` / `alt`, e.g. air taxis 70–260 m round at 28–60 m, airliners 900–1400 m at 320–420 m),
+  clockwise or anticlockwise, starting anywhere on it.
+- **How many**: `src/traffic/roster.ts` (e.g. London: 19 road vehicles, 8 boats and birds, 6 in the sky).
+
+#### Traffic still to build
+
+1. Visual check and polish of most designs (only a few are screenshot-verified).
+2. **Entering and leaving**: vehicles loop forever; nothing drives in from the countryside or out of town, and nothing
+   travels **between lands** (no highways, trade routes or flights from land to land). Traffic pops in when you cross a
+   border because only one land is populated.
+3. **Junctions and turning**: vehicles never turn onto other streets or cross the ring road; no traffic lights,
+   roundabouts or give-way.
+4. **Stops and purpose**: bus stops, taxi ranks, ferry piers, boat jetties, harbours, airports/airfields, helipads and
+   drone docks; planes and air taxis taking off and landing; boats docking; carts stopping at markets.
+5. **Riding**: the travellers taking a bus, taxi, tram, ferry, gondola or air taxi (paid with coins; seats apart as always).
+6. **Couriers and supply**: hired delivery workers carrying goods on these vehicles (game-rules side, NEXT_WORK C3/C5).
+7. **Time of day**: fewer vehicles late at night, lantern boats and festival craft in the evening, kites and balloons
+   by day.
+8. **Others**: townsfolk crossing streets (vehicles stop only for the travellers now), bridges where roads meet rivers,
+   Sky Isles transit (cloud gondolas / cable cars between isles), distance culling and cheaper shadows if frame time suffers.
+
 ### 3.6 Characters' accessories (done — for reference)
 
 The girl wears the grand arched gold crown (rose and ruby gems, pearls, leaves, arches, star; larger), the boy a fine pearl
