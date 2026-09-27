@@ -37,10 +37,10 @@ const FRAG = /* glsl */ `
   }`;
 
 /**
- * The plots of land, painted into the ground: every plot is a soft lawn that fades into the land
- * round it (richer where it is yours), and the one you are looking at — in the land-for-sale panel,
- * or standing on it — has a glowing green boundary. The people you have given a home stand in its
- * garden (and inside it, HouseInterior.ts).
+ * The plot you are choosing — open in the land-for-sale panel, or for sale where you stand — is
+ * painted green into the ground, fading softly into the land round it, with a gently glowing
+ * boundary. Land you own is left looking like the land round it (the owner's wish). The people
+ * you have given a home stand in its garden (and inside it, HouseInterior.ts).
  */
 export class PlotsView {
   private lawns = new Map<string, { mesh: THREE.Mesh; mat: THREE.ShaderMaterial }>();
@@ -58,8 +58,12 @@ export class PlotsView {
     }
     for (const [id, l] of this.lawns) {
       const u = l.mat.uniforms;
-      u.uOwned.value = this.st.plots[id] ? 1 : 0;
-      u.uSelected.value = id === this.selected || id === standingOn ? 1 : 0;
+      // Owned land looks like the land round it; only a plot you are choosing — open in the
+      // land-for-sale panel, or for sale where you stand — is painted green.
+      const choosing = !this.st.plots[id] && (id === this.selected || id === standingOn);
+      l.mesh.visible = choosing;
+      u.uOwned.value = 0;
+      u.uSelected.value = choosing ? 1 : 0;
       u.uTime.value = t;
       u.uNight.value = night;
     }
