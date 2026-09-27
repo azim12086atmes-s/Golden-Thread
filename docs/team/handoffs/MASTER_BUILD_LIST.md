@@ -22,8 +22,8 @@ sections C1–C7) and `3D_BUILDS_HANDOFF.md` (3D work, sections 2a and 3.x). Tic
 
 ## C. Work, skills and learning (C3, C4)
 - [x] Employ experts (daily wage in coins or food) or pay them freelance for one build; teach someone you sponsor; courses, interning, teaching; skills grow by doing
-- [ ] Hire people as employees or freelancers: teachers, chefs, builders, tent-layers, weavers, doctors, researchers (farmhands and couriers done — `economy/workers.ts`)
-- [ ] Pay in coins or in kind (housing, food, necessities, training)
+- [x] Hire people as employees or freelancers: farmhands, couriers, shipping lines, builders (tent-layers in the tent lands) who speed up building, weavers who weave your fibre; experts in every land's sciences plus cooking, medicine, teaching and research (`economy/workers.ts`, `economy/crews.ts`; Work panel lists who you can employ)
+- [x] Pay in coins, food, or a room in your home (training as pay still to come)
 - [x] Skills grow only by doing them; services need a skill level and pay more at higher levels; new skills: teaching, medicine, research, building, software, hardware, logistics (`economy/items.ts`, `economy/services.ts`)
 - [ ] Teaching as a service; interning; doing a course (fee in coins or goods, certificate)
 - [x] Research under professors (assist for pay; scientific and magic theses → degree, invention, purse)

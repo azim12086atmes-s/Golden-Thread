@@ -1,11 +1,12 @@
 import { ASSIST_LEVEL, PROFESSORS, THESIS_LEVEL, TOPIC_BY_ID, assist, dayProgress, startThesis, topicsAt, workOnThesis } from '../institutions/research';
 import { INSTITUTE_BY_KIND, institutesOf, type InstituteKind } from '../institutions/catalogue';
-import { SERVE_PER_DAY, pantryOf, servesWith, stockPantry, COURSE_FEE, DAILY_INCOME, EXPERTS, EXPERT_BY_ID, SITE_BY_ID, assignStaff, buildStage, candidates, employ, freelanceFee, hireOf, instituteAt, intern, isBuilding, kindFood, landScience, learnerLevel, standingStage, takeCourse, teachClass, teachLearner, wage, type Staff } from '../institutions/institutions';
+import { isEmployed, SERVE_PER_DAY, pantryOf, servesWith, stockPantry, COURSE_FEE, DAILY_INCOME, EXPERTS, EXPERT_BY_ID, SITE_BY_ID, assignStaff, buildStage, candidates, employ, freelanceFee, hireOf, instituteAt, intern, isBuilding, kindFood, landScience, learnerLevel, standingStage, takeCourse, teachClass, teachLearner, wage, type Staff } from '../institutions/institutions';
 import { DAY_COINS, FLOOR_COST, MAX_FLOORS, NEED_LABEL, PEOPLE_IN_NEED, PERSON_BY_ID, buildFloor, daysLeft, floorBuilding, floorsOf, giftsFor, give, homeCapacity, ownedHomes, residentsOf, sponsorOf, takeHome, type Person } from '../charity/charity';
 import * as THREE from 'three';
 import { FIELD_BY_ID, FIELD_ROWS, barnCount, buyField, fieldGrowTime, fieldGrowth, fieldYield, harvestField, plantField, setHand, takeFromBarn, waterField, type Hand } from '../economy/fields';
 import { addRoute, bestMarkets, destLabel, marketDest, pantryDest, removeRoute, shipmentOf, tripMinutes } from '../economy/supply';
-import { WORKER_BY_ID, workersOf, type Worker } from '../economy/workers';
+import { WORKER_BY_ID, roleTitle, workersOf, type Role, type Worker } from '../economy/workers';
+import { HAND_HOURS, helpedToday, hurry, hurryShare, type Project } from '../economy/crews';
 import { hasHarbour } from '../world/harbours';
 import { RANKS, doGig, gigsFor, jobsIn, shiftPay, titleAt, workShift, workedToday } from '../economy/services';
 import { buySeed } from '../housing/housing';
@@ -765,7 +766,20 @@ export class UI {
         floors >= MAX_FLOORS ? h('small', { class: 'dim' }, 'All the floors it can take.') : h('div', { class: 'acts' },
           btn(`Build a floor · ${FLOOR_COST.coins.coins}🪙 + ${FLOOR_COST.coins.items.wood} wood`, () => act(() => buildFloor(st, hid, 'coins'), 'The builders begin — the floor will be ready in a day.'), 'small primary', !!building),
           btn(`Pay in kind · ${FLOOR_COST.kind.items.wood} wood + ${FLOOR_COST.kind.food} food for the builders`, () => act(() => buildFloor(st, hid, 'kind'), 'The builders begin, fed from your stores — ready in a day.'), 'small ghost', !!building))));
+      if (building) this.hurryRow(body, { kind: 'floor', plot: hid }, PLOT_BY_ID[hid].region);
     }
+  }
+
+  /** Speed up something being built: lend a hand yourselves, or put the land's builder to work. */
+  private hurryRow(body: HTMLElement, p: Project, land: RegionId): void {
+    const g = this.g, st = g.st, [b] = workersOf(land, 'builder');
+    const go = (who: string, ok: string) => { const e = hurry(st, p, who); g.toast(e ?? ok, e ? 'info' : 'reward'); g.institutesView.update(); this.render(); };
+    const hired = isEmployed(st, b.id);
+    body.append(h('div', { class: 'acts' },
+      btn(`🧱 Lend a hand · ${HAND_HOURS} h · saves ${Math.round(hurryShare('you', level(st, 'building')) * 100)}% of what is left`, () => go('you', 'You work alongside the builders — and learn.'), 'small ghost', helpedToday(st, p, 'you')),
+      hired
+        ? btn(`👷 Put ${b.name} the ${roleTitle(b)} to work · saves ${Math.round(hurryShare('builder', b.level) * 100)}%`, () => go(b.id, `${b.name} gets the work moving.`), 'small primary', helpedToday(st, p, b.id))
+        : btn(`👷 Employ ${b.name} the ${roleTitle(b)} · 5 days · ${wage(b) * 5}🪙`, () => { const e = employ(st, b.id, 5); g.toast(e ?? `${b.name} is employed.`, e ? 'info' : 'reward'); this.render(); }, 'small ghost', st.coins < wage(b) * 5)));
   }
 
   // ───── farmland and the supply chain ─────
@@ -893,6 +907,20 @@ export class UI {
         h('small', {}, `${titleAt(j, lv)} · ${SKILLS[j.skill].name} level ${lv} · ${j.hours} h shift${st.work.worked[j.id] ? ` · ${st.work.worked[j.id]} shifts worked` : ''}`)),
       h('div', { class: 'acts' }, btn(done ? 'Shift done today' : `💼 Work a shift · +${shiftPay(lv)}🪙`, () => say(workShift(st, j.id), `A good day at ${j.employer}.`), 'small', done)));
     }
+    // People you can employ here, and what each does for you.
+    const does: Record<Role, string> = {
+      farmhand: 'tends your fields here', courier: 'carries your harvest to markets and kitchens', ship: 'sails your cargo harbour to harbour',
+      builder: 'speeds up what you build here', weaver: 'weaves the fibre you carry into cloth each day',
+    };
+    const crew = (['builder', 'weaver', 'farmhand', 'courier', 'ship'] as Role[]).flatMap((r) => workersOf(land, r));
+    body.append(h('h3', {}, 'People you can employ here'));
+    for (const w of crew) {
+      const hw = hireOf(st, w.id), left = hw && st.minutes < hw.paidUntil ? Math.ceil((hw.paidUntil - st.minutes) / 1440) : 0;
+      body.append(h('div', { class: 'quest' }, h('b', {}, `${w.name} · ${roleTitle(w)}`), h('small', {}, `${does[w.role]}${left ? ` · employed, ${left} days paid` : ''}`)),
+        h('div', { class: 'acts' },
+          btn(`Employ · 5 days · ${wage(w) * 5}🪙`, () => { const e = employ(st, w.id, 5); g.toast(e ?? `${w.name} is employed.`, e ? 'info' : 'reward'); this.render(); }, 'small ghost', st.coins < wage(w) * 5),
+          btn('…or for 5 food', () => { const e = employ(st, w.id, 5, 'kind'); g.toast(e ?? `${w.name} is employed.`, e ? 'info' : 'reward'); this.render(); }, 'small ghost')));
+    }
     // Freelance: this land's board, and remote software work from two other lands.
     const rest = REGIONS.filter((r) => r.id !== land), others = [rest[(day * 3) % rest.length], rest[(day * 3 + 7) % rest.length]];
     const board = [...gigsFor(land, day), ...others.flatMap((r) => gigsFor(r.id, day).filter((x) => x.remote))];
@@ -1011,7 +1039,10 @@ export class UI {
       body.append(h('p', { class: 'dim' }, `${def.blurb}`),
         h('div', { class: 'quest main' }, h('b', {}, stage >= 0 ? def.stages[stage].name : 'Being founded'), h('small', {}, stage >= 0 ? def.stages[stage].what : ''),
           h('small', {}, `Run by ${staffName}${stage >= 0 ? ` · earns ${DAILY_INCOME[stage]}🪙 a day when staffed at ${SKILLS[def.skill].name} level ${def.stages[stage].level}` : ''}`)));
-      if (isBuilding(st, inst)) body.append(h('p', { class: 'story' }, `Building the ${def.stages[inst.stage].name.toLowerCase()} — ${((inst.buildingUntil! - st.minutes) / 60).toFixed(1)} hours left.`));
+      if (isBuilding(st, inst)) {
+        body.append(h('p', { class: 'story' }, `Building the ${def.stages[inst.stage].name.toLowerCase()} — ${((inst.buildingUntil! - st.minutes) / 60).toFixed(1)} hours left.`));
+        this.hurryRow(body, { kind: 'institute', site: site.id }, site.land);
+      }
       else if (next <= 3) {
         const s = def.stages[next];
         body.append(h('h3', {}, `Grow it: ${s.name}`), h('p', { class: 'dim' }, `${s.what} ${s.days} day${s.days > 1 ? 's' : ''} to build. Needs ${SKILLS[def.skill].name} level ${s.level}. Costs ${s.coins}🪙 + ${s.goods.wood} wood — or in kind: ${Object.entries(s.goods).map(([k, n]) => `${n}× ${ITEMS[k]?.name ?? k}`).join(', ')} and ${kindFood(s)} food for the builders.`));

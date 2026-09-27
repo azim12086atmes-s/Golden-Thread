@@ -12,7 +12,7 @@ import type { SkillId } from './items';
  * employed through `employ` like any expert (institutions.ts), so their wage, keep or a room in
  * your home work the same way. Pure data (tests/supply.test.ts).
  */
-export type Role = 'farmhand' | 'courier' | 'ship';
+export type Role = 'farmhand' | 'courier' | 'ship' | 'builder' | 'weaver';
 
 export interface Worker {
   id: string;
@@ -44,9 +44,21 @@ export const WORKERS: Worker[] = REGIONS.flatMap((r, ri) => {
   return [
     { id: `farmhand-${r.id}`, land: r.id, name: folkOf(r.id, 700 + ri * 7, 0).name, role: 'farmhand' as Role, level: 2 + (ri % 2), skill: 'gardening' as SkillId },
     { id: `courier-${r.id}`, land: r.id, name: folkOf(r.id, 800 + ri * 7, 0).name, role: 'courier' as Role, level: 2, vehicle, capacity, speed },
+    // A builder (a tent-layer where homes are tents and huts) who speeds up what you build, and a weaver.
+    { id: `builder-${r.id}`, land: r.id, name: folkOf(r.id, 870 + ri * 7, 0).name, role: 'builder' as Role, level: 3 + (ri % 2), skill: 'building' as SkillId },
+    { id: `weaver-${r.id}`, land: r.id, name: folkOf(r.id, 880 + ri * 7, 0).name, role: 'weaver' as Role, level: 3, skill: 'weaving' as SkillId },
     // Harbour lands: a shipping line whose captain you can charter, harbour to harbour.
     ...(SHIP_LINE[r.id] ? [{ id: `ship-${r.id}`, land: r.id, name: `Captain ${folkOf(r.id, 850 + ri * 7, 0).name}`, role: 'ship' as Role, level: 6, vehicle: SHIP_LINE[r.id]![1], wants: SHIP_LINE[r.id]![0], capacity: 90, speed: 2.2 }] : []),
   ];
 });
 export const WORKER_BY_ID: Record<string, Worker> = Object.fromEntries(WORKERS.map((w) => [w.id, w]));
 export const workersOf = (land: RegionId, role: Role): Worker[] => WORKERS.filter((w) => w.land === land && w.role === role);
+
+/** Lands whose homes are tents and huts: their builders are tent-layers. */
+export const TENT_LANDS: RegionId[] = ['desert', 'middleeast', 'aurora'];
+
+/** What someone does, in a word. */
+export function roleTitle(w: Worker): string {
+  if (w.role === 'builder') return TENT_LANDS.includes(w.land) ? 'tent-layer' : 'builder';
+  return { farmhand: 'farmhand', courier: 'courier', ship: 'shipping line', weaver: 'weaver' }[w.role];
+}
