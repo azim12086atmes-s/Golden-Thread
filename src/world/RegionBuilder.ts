@@ -10,6 +10,7 @@ import { CITY_RADIUS, REGION_SIZE, regionCenter, type RegionSpec } from './regio
 import { CASTLE_SITE, WATER_Y, terrainHeight } from './terrain';
 import { HABITS, speciesHeight } from './trees';
 import { blobMaterial, leafCardMesh } from './foliage';
+import { surfacesByColour } from './surfaces';
 
 export interface Collider { x: number; z: number; r: number; h: number }
 
@@ -111,6 +112,8 @@ export function buildRegion(spec: RegionSpec, solid: THREE.Material, glowMat: TH
   const g = new GeoBuilder(), glow = new GeoBuilder();
   // Collect leaf cards for the tree crowns (one instanced draw for the land).
   g.cards = [];
+  // What this land's walls, roofs and roads are made of (drawn by the shader).
+  g.surfaces = surfacesByColour(spec);
   const ctx: Ctx = { g, glow, rng, s: spec };
   const colliders: Collider[] = [];
   const spots: Array<{ x: number; z: number }> = [];

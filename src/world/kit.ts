@@ -19,6 +19,10 @@ export class GeoBuilder {
    * (set to [] to opt in; see foliage.ts). Flat: CARD_STRIDE numbers per card.
    */
   cards: number[] | null = null;
+  /** What each colour is made of (surfaces.ts): parts in a listed colour get that surface. */
+  surfaces: Map<string, number> | null = null;
+  /** A surface for the next parts regardless of colour (null: look the colour up). */
+  surface: number | null = null;
 
   /**
    * One leaf card at (x, y, z) in the current frame, facing outwards along (nx, ny, nz), `size`
@@ -90,6 +94,8 @@ export class GeoBuilder {
     g.setAttribute('color', new THREE.BufferAttribute(cols, 3));
     g.setAttribute('sway', new THREE.BufferAttribute(new Float32Array(n), 1));
     g.setAttribute('leaf', new THREE.BufferAttribute(new Float32Array(n).fill(leaf), 1));
+    const surf = leaf ? 0 : this.surface ?? this.surfaces?.get('#' + this.tmpColor.getHexString()) ?? 0;
+    g.setAttribute('surf', new THREE.BufferAttribute(new Float32Array(n).fill(surf), 1));
     this.parts.push(g);
     return this;
   }

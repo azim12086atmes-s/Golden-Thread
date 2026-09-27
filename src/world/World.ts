@@ -3,6 +3,7 @@ import { Rng } from '../core/rng';
 import { buildLandmark } from './architecture';
 import { GeoBuilder } from './kit';
 import { blobMaterial, leafCardMesh } from './foliage';
+import { surfacesByColour } from './surfaces';
 import { buildRegion, type Collider, type RegionInstance, type ResourceNode } from './RegionBuilder';
 import { REGIONS, REGION_SIZE, regionCenter, type RegionSpec } from './regions';
 import { CHUNK, WATER_Y, addPlatform, buildTerrainChunk, terrainHeight } from './terrain';
@@ -18,7 +19,7 @@ import { LOCALES } from './locale';
 export class World {
   readonly group = new THREE.Group();
   /** Walls, roofs, trees and flowers: leaves and petals carry a sway weight and move in the wind. */
-  readonly solid = swayMaterial(new THREE.MeshStandardMaterial({ vertexColors: true, roughness: 0.9, side: THREE.DoubleSide }), 0.45, true);
+  readonly solid = swayMaterial(new THREE.MeshStandardMaterial({ vertexColors: true, roughness: 0.9, side: THREE.DoubleSide }), 0.45, true, true);
   readonly glow = new THREE.MeshBasicMaterial({ vertexColors: true, toneMapped: false });
   readonly terrainMat = new THREE.MeshStandardMaterial({ vertexColors: true, roughness: 1 });
   private waterMat = waterMaterial();
@@ -51,6 +52,7 @@ export class World {
       const c = regionCenter(r);
       const g = new GeoBuilder(), glow = new GeoBuilder();
       g.cards = [];
+      g.surfaces = surfacesByColour(r);
       const out = buildLandmark({ g, glow, rng: new Rng(`landmark:${r.id}`), s: r });
       const grp = new THREE.Group();
       grp.position.set(c.x, 0, c.z);

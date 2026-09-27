@@ -1,5 +1,6 @@
 import * as THREE from 'three';
 import type { RegionId } from './regions';
+import { SURFACE_GLSL } from './surfaces';
 
 /**
  * The wind. One breeze for the whole world: it turns slowly, gusts come and go, and each land
@@ -79,21 +80,27 @@ const LEAF_FRAG = /* glsl */ `
  * up to 1 for leaves and flowers), and move with the wind in world space. With `leaves`, parts
  * marked as foliage are drawn as leaves (see LEAF_FRAG).
  */
-export function swayMaterial<T extends THREE.Material>(mat: T, amount = 0.45, leaves = false): T {
+export function swayMaterial<T extends THREE.Material>(mat: T, amount = 0.45, leaves = false, surfaces = false): T {
   mat.onBeforeCompile = (sh) => {
     Object.assign(sh.uniforms, WIND_UNIFORMS, leaves ? FOLIAGE_UNIFORMS : {});
     sh.vertexShader = sh.vertexShader
-      .replace('#include <common>', `#include <common>\nattribute float sway;\n${WIND_GLSL}${leaves ? '\nattribute float leaf; varying float vLeaf; varying vec3 vLW; varying vec3 vLN;' : ''}`)
+      .replace('#include <common>', `#include <common>\nattribute float sway;\n${WIND_GLSL}${leaves ? '\nattribute float leaf; varying float vLeaf; varying vec3 vLW; varying vec3 vLN;' : ''}${surfaces ? '\nattribute float surf; varying float vSurf;' : ''}`)
       .replace('#include <begin_vertex>', `#include <begin_vertex>\nif (sway > 0.0) { vec3 wpS = (modelMatrix * vec4(transformed, 1.0)).xyz; transformed.xz += windOffset(wpS, sway) * ${amount.toFixed(3)}; }`);
     if (!leaves) return;
     sh.vertexShader = sh.vertexShader.replace('#include <project_vertex>', `#include <project_vertex>
-      vLeaf = leaf; vLW = (modelMatrix * vec4(transformed, 1.0)).xyz; vLN = normalize(mat3(modelMatrix) * objectNormal);`);
+      vLeaf = leaf; vLW = (modelMatrix * vec4(transformed, 1.0)).xyz; vLN = normalize(mat3(modelMatrix) * objectNormal);${surfaces ? ' vSurf = surf;' : ''}`);
     sh.fragmentShader = sh.fragmentShader
       .replace('#include <common>', `#include <common>
-        varying float vLeaf; varying vec3 vLW; varying vec3 vLN; uniform vec3 uSunDir; uniform float uLeafNight;`)
+        varying float vLeaf; varying vec3 vLW; varying vec3 vLN; uniform vec3 uSunDir; uniform float uLeafNight;${surfaces ? `\nvarying float vSurf;\n${SURFACE_GLSL}` : ''}`)
       .replace('#include <color_fragment>', `#include <color_fragment>
         float vLeafGlow = 0.0;
-        ${LEAF_FRAG}`)
+        ${LEAF_FRAG}
+        ${surfaces ? `if (vSurf > 0.5) {
+          // What the wall, roof or road is made of (surfaces.ts), fading to plain colour far away.
+          vec2 sg = surface(vSurf, vLW, normalize(vLN));
+          float sfade = 1.0 - smoothstep(45.0, 140.0, length(vLW - cameraPosition));
+          diffuseColor.rgb *= mix(1.0, sg.x * (1.0 - sg.y * 0.45), sfade);
+        }` : ''}`)
       .replace('#include <emissivemap_fragment>', `#include <emissivemap_fragment>
         if (vLeafGlow > 0.5) {
           // Sunlight through the leaves, and a soft inner light so crowns never go dead-dark.
@@ -101,6 +108,6 @@ export function swayMaterial<T extends THREE.Material>(mat: T, amount = 0.45, le
           totalEmissiveRadiance += diffuseColor.rgb * (back * 0.6 + 0.07) * (1.0 - uLeafNight);
         }`);
   };
-  mat.customProgramCacheKey = () => 'sway' + amount + (leaves ? '-leaves' : '');
+  mat.customProgramCacheKey = () => 'sway' + amount + (leaves ? '-leaves' : '') + (surfaces ? '-surfaces' : '');
   return mat;
 }
