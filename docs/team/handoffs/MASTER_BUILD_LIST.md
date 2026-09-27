@@ -111,4 +111,5 @@ sections C1–C7) and `3D_BUILDS_HANDOFF.md` (3D work, sections 2a and 3.x). Tic
 
 ## K. Interiors (NEW)
 - [ ] 3D: interiors for monuments, the castle (great hall, library, tower), every institute stage, penthouses and caverns (`CHATGPT_3D_MODELS.md` §20; contract `src/world/models/interiors.ts`)
-- [ ] Logic (Claude): use `buildInterior` when it returns a scene — enter/leave, camera, seats, people's spots, the institute and research panels inside; enter the castle and caverns
+- [x] Logic: doors ask `buildInterior` first (monuments, institutes via “Step inside”, caverns after exploring, castle, penthouses) and use its seats, spots, gather point and camera; scenes seating the two closer than 2.2 m are refused (`HouseInterior.safeInterior`); the institute panel opens from inside
+- [ ] Logic: a door into the celebration castle, and penthouses to buy (after their models)

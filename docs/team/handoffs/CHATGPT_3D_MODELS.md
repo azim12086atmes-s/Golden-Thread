@@ -525,6 +525,11 @@ landmarks reuse it with their name. The owner wants real interiors for the new b
 room is used). Claude wires entering, the camera, who sits and stands where, and the actions (gather, talk, rest, the
 institute and research panels) — you build the scene and say where people go.
 
+**Wired (logic done):** return a build and it is used at once. Seats are `[x, seat height, z]` (0.45 chair, 0.25 floor
+cushion); the first of `spots` is where the host stands, the rest are for residents and staff; `gather` puts the
+glowing mote; the camera sways gently about `camera.pos`. Institutes are entered with “Step inside” on the institute
+panel (`spec.ref` = kind, `spec.stage`), caverns after exploring a cave (`spec.ref` = `sandstone`/`rock`/`ice`).
+
 **Rules for every interior**: floor at y = 0, the way in at +z; the two travellers' `seats` at least 2.2 m apart (they
 never touch); `spots` for others at least 1.5 m from both seats; windows show day or night by `spec.night`; lamps small
 glow; ≤ 60 k triangles (≤ 120 k for the castle great hall and stage-3 institutes); no images of worship, no statues with

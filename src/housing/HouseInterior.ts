@@ -1,4 +1,5 @@
 import * as THREE from 'three';
+import { buildInterior, type InteriorBuild, type InteriorSpec } from '../world/models/interiors';
 import { CharacterModel, DIMS, HERO_SCALE } from '../characters/CharacterModel';
 import type { Outfit } from '../characters/modesty';
 import { Rng } from '../core/rng';
@@ -56,8 +57,40 @@ export const LANDMARK_NAME: Record<RegionId, string> = {
   skyisles: 'the temple of the Great Lantern',
 };
 
+/**
+ * Which built interior (world/models/interiors.ts) a door opens onto: monuments, the castle, the
+ * institutes (door id `inst:<site>:<kind>:<stage>`), caverns (`cavern:<style>:<id>`), penthouses.
+ * Everything else is the land's standard room.
+ */
+export function interiorSpecFor(door: Door, night: number): InteriorSpec | null {
+  const land = door.land as RegionId, seed = door.id;
+  if (door.kind === 'landmark') return { kind: 'landmark', land, ref: land, night, seed };
+  if (door.kind === 'institute') { const [, , ref, stage] = door.id.split(':'); return { kind: 'institute', land, ref, stage: Number(stage), night, seed }; }
+  if (door.kind === 'cavern') return { kind: 'cavern', land, ref: door.id.split(':')[1], night, seed };
+  if (door.kind === 'castle') return { kind: 'castle', land, ref: 'hall', night, seed };
+  if (door.kind === 'penthouse') return { kind: 'penthouse', land, night, seed };
+  return null;
+}
+
+/** Two people's seats must be this far apart (they never touch), and others this far from both. */
+export const INTERIOR_SEAT_GAP = 2.2, INTERIOR_CLEAR = 1.5;
+
+/**
+ * A built interior, checked against the content rules before anyone steps in: if the two seats are
+ * closer than 2.2 m it is refused (the standard room is used instead), and any spot for someone
+ * else that comes within 1.5 m of either seat is dropped.
+ */
+export function safeInterior(b: InteriorBuild | null): InteriorBuild | null {
+  if (!b) return null;
+  const [a, c] = b.seats;
+  if (Math.hypot(a[0] - c[0], a[2] - c[2]) < INTERIOR_SEAT_GAP) return null;
+  const spots = b.spots.filter(([x, z]) => Math.hypot(x - a[0], z - a[2]) >= INTERIOR_CLEAR && Math.hypot(x - c[0], z - c[2]) >= INTERIOR_CLEAR);
+  return { ...b, spots };
+}
+
 export function roomTitle(door: Door): string {
   const land = door.land as RegionId, place = REGION_BY_ID[land].name;
+  if (door.name) return `Inside ${door.name}`;
   if (door.kind === 'landmark') return `Inside ${LANDMARK_NAME[land]} in ${place}`;
   if (door.kind === 'home') return `Your home in ${place}`;
   const kind = door.kind === 'shop' ? 'a shop' : door.kind === 'tower' ? 'a tower house' : door.kind === 'courtyard' ? 'a courtyard house' : ROOM_NAME[land];
@@ -75,6 +108,9 @@ export class HouseInterior {
   readonly scene = new THREE.Scene();
   readonly camera = new THREE.PerspectiveCamera(55, 1, 0.05, 80);
   private room = new THREE.Group();
+  /** Where the camera stands and looks (the standard room's, or a built interior's). */
+  private camBase = new THREE.Vector3(0, 2.4, 5.2);
+  private camLook = new THREE.Vector3(0, 0.9, -1.2);
   private girl: CharacterModel;
   private boy: CharacterModel;
   private host: CharacterModel | null = null;
@@ -110,12 +146,19 @@ export class HouseInterior {
     const rng = new Rng(`room:${door.id}`);
     for (const c of [...this.room.children]) {
       this.room.remove(c);
-      if ((c as THREE.Mesh).geometry) (c as THREE.Mesh).geometry.dispose();
+      c.traverse((o) => { if ((o as THREE.Mesh).geometry) (o as THREE.Mesh).geometry.dispose(); });
     }
+    this.camBase.set(0, 2.4, ROOM.front + 1.2);
+    this.camLook.set(0, 0.9, -1.2);
     if (this.host) this.scene.remove(this.host.root);
     for (const r of this.residents) this.scene.remove(r.root);
     this.residents = [];
     for (const l of this.scene.children.filter((o) => (o as THREE.PointLight).isPointLight)) this.scene.remove(l);
+
+    // A built interior from the 3D side, when there is one for this door.
+    const ispec = interiorSpecFor(door, night);
+    const built = ispec ? safeInterior(buildInterior(ispec)) : null;
+    if (built) return this.enterBuilt(built, land, rng, gathered, !!home, residents);
 
     const g = new GeoBuilder(), glow = new GeoBuilder();
     const { halfW: W, back: B, front: F, height: H } = ROOM;
@@ -161,7 +204,7 @@ export class HouseInterior {
     // The family's furniture and artifacts.
     FURNISH[fam](g, glow, rng, land, fa, fb, trim);
     // Kinds of building add their own heart.
-    if (door.kind === 'shop') {
+    if (door.kind === 'shop' || door.kind === 'institute') {
       box(g, 4, 1.0, 0.8, '#8a5a36', 0, 0, -1.6);
       box(g, 4.1, 0.08, 0.9, '#d4a060', 0, 1.0, -1.6);
       for (let i = 0; i < 8; i++) box(g, 0.3, 0.3, 0.3, ['#ff6b3a', '#f2d14e', '#7fb35a', '#c83a5a', '#8ad8ff'][i % 5], -1.6 + i * 0.45, 1.05, -1.6);
@@ -231,6 +274,43 @@ export class HouseInterior {
     this.camera.lookAt(0, 0.9, -1.2);
   }
 
+  /** Step into a built interior: the two at its seats facing each other, others at its spots. */
+  private enterBuilt(b: InteriorBuild, land: RegionId, rng: Rng, gathered: boolean, home: boolean, residents: Person[]): void {
+    this.room.add(b.group);
+    const l = new THREE.PointLight('#ffd8a0', 16, Math.max(12, b.room.halfW * 3));
+    l.position.set(0, Math.min(b.room.height - 0.3, 3), (b.room.back + b.room.front) / 2);
+    this.scene.add(l);
+    const [sg, sb] = b.seats;
+    // Seated: the seat's height is where the hips rest (a floor cushion at least 0.25 m).
+    this.girl.root.position.set(sg[0], Math.max(sg[1], 0.25) - DIMS.hip * HERO_SCALE.girl, sg[2]);
+    this.boy.root.position.set(sb[0], Math.max(sb[1], 0.25) - DIMS.hip * HERO_SCALE.boy, sb[2]);
+    this.girl.root.rotation.y = Math.atan2(sb[0] - sg[0], sb[2] - sg[2]) - 0.35;
+    this.boy.root.rotation.y = Math.atan2(sg[0] - sb[0], sg[2] - sb[2]) + 0.35;
+    const person = (i: number, look: Outfit, skin: string, scale: number) => {
+      const [x, z] = b.spots[i];
+      const m = new CharacterModel(look, skin, scale);
+      m.root.position.set(x, 0, z);
+      m.root.rotation.y = Math.atan2((sg[0] + sb[0]) / 2 - x, (sg[2] + sb[2]) / 2 - z);
+      this.scene.add(m.root);
+      return m;
+    };
+    const skins = ['#f1c9a5', '#e0ac85', '#c68b62', '#a8704a', '#8a5a3a'];
+    if (!home && b.spots.length) {
+      const who = rng.chance(0.5) ? 'girl' : 'boy', pool = wardrobeFor(land, who);
+      this.host = person(0, pool[rng.int(0, pool.length - 1)], skins[rng.int(0, 4)], who === 'girl' ? 0.95 : 1.02);
+    } else this.host = null;
+    residents.slice(0, Math.max(0, b.spots.length - (home ? 0 : 1))).forEach((p, i) => {
+      const pool = wardrobeFor(p.land, p.id.length % 2 ? 'girl' : 'boy');
+      this.residents.push(person(i + (home ? 0 : 1), pool[(i * 3 + p.name.length) % pool.length], skins[(i + p.name.length) % 5], p.kind === 'orphan' ? 0.72 : p.kind === 'elder' ? 0.94 : 1));
+    });
+    if (b.gather) this.mote.position.set(b.gather[0], b.gather[1] + 1.2, b.gather[2]);
+    this.mote.visible = !!b.gather && !gathered && !home;
+    this.camBase.set(...b.camera.pos);
+    this.camLook.set(...b.camera.look);
+    this.camera.position.copy(this.camBase);
+    this.camera.lookAt(this.camLook);
+  }
+
   /** The item has been gathered today: the mote goes out. */
   setGathered(v: boolean): void {
     this.mote.visible = !v;
@@ -248,8 +328,8 @@ export class HouseInterior {
     }
     this.mote.rotation.y += dt * 1.5;
     this.mote.position.y = 1.2 + Math.sin(this.t * 2) * 0.1;
-    this.camera.position.x = Math.sin(this.t * 0.12) * 0.5;
-    this.camera.lookAt(0, 0.9, -1.2);
+    this.camera.position.set(this.camBase.x + Math.sin(this.t * 0.12) * 0.5, this.camBase.y, this.camBase.z);
+    this.camera.lookAt(this.camLook);
   }
 }
 

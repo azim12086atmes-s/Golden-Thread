@@ -576,6 +576,13 @@ export class UI {
     const g = this.g, d = g.house.door;
     if (!d) return;
     if (d.kind === 'home') return this.homePanel(body, d.id.slice(5));
+    if (d.kind === 'institute' || d.kind === 'cavern') {
+      body.append(h('p', { class: 'dim' }, d.kind === 'cavern' ? 'Your lanterns light the cavern: crystal and stone, and the sound of water somewhere below.' : 'Students at their benches, the masters at work, and the smell of ink and tea.'),
+        h('div', { class: 'acts' },
+          d.kind === 'institute' ? btn('🏛️ Learn, research and run things here', () => this.openInstitute(d.id.split(':')[1]), 'primary') : null,
+          btn('🚪 Step outside', () => g.exitHouse(), 'ghost')));
+      return;
+    }
     const done = g.houseGathered(d);
     body.append(
       h('div', { class: 'acts' },
@@ -960,6 +967,9 @@ export class UI {
     const act = (fn: () => string | null, ok: string) => { const e = fn(); g.toast(e ?? ok, e ? 'info' : 'reward'); g.institutesView.update(); this.render(); };
     const inst = instituteAt(st, site.id);
     const science = INSTITUTE_BY_KIND[landScience(site.land)];
+    // Step inside (the 3D side's interior when there is one, else a hall with a counter).
+    const standing = site.established ? 3 : inst ? standingStage(st, inst) : -1;
+    if (standing >= 0 && !g.inHouse) body.append(h('div', { class: 'acts' }, btn('🚪 Step inside', () => g.enterInstitute(site.id), 'small ghost')));
     const staffButtons = (skill: SkillId, lvl: number, go: (s: Staff) => void, freelance = true) => h('div', { class: 'acts' },
       ...candidates(st, site.land, skill).filter((c) => c.level >= lvl && (freelance || c.staff.who !== 'freelance')).map((c) => btn(`${c.staff.who === 'you' ? '🧭' : c.staff.who === 'learner' ? '🤲' : c.staff.who === 'freelance' ? '🧾' : '🧑‍🔧'} ${c.name} · lvl ${c.level} · ${c.note}`, () => go(c.staff), 'small ghost')));
     if (site.established) {

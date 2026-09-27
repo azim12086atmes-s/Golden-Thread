@@ -44,14 +44,15 @@ import { harbours } from './world/harbours';
 import { FIELD_SITES, FIELD_SIZE, fieldGrowth, tickFields } from './economy/fields';
 import { couriersIn, tickSupply } from './economy/supply';
 import { CAVE_LANDS, caveMouth, type Cave } from './world/caves';
-import { instituteAt, landScience, siteAt, tickInstitutes } from './institutions/institutions';
+import { SITE_BY_ID, instituteAt, landScience, siteAt, standingStage, tickInstitutes } from './institutions/institutions';
 import { INSTITUTE_BY_KIND } from './institutions/catalogue';
 import { Ambience } from './world/Ambience';
 import { RegionFX } from './world/RegionFX';
 import { TownDressing } from './world/TownDressing';
 import { SkyLanterns } from './world/SkyLanterns';
 import type { Door, ResourceNode } from './world/RegionBuilder';
-import { HouseInterior, doorLabel, roomTitle } from './housing/HouseInterior';
+import { HouseInterior, doorLabel, interiorSpecFor, roomTitle, safeInterior } from './housing/HouseInterior';
+import { buildInterior } from './world/models/interiors';
 import { REGION_BY_ID, regionAt, regionCenter, type RegionId, type RegionSpec } from './world/regions';
 import { Sky } from './world/Sky';
 import { SkyFX } from './world/SkyFX';
@@ -599,7 +600,7 @@ export class Game {
       case 'institute': return this.ui.openInstitute(t.site);
       case 'field': return this.ui.openField(t.field);
       case 'harbour': return this.ui.openHarbour(t.land);
-      case 'cave': return this.toast(this.exploreCave(t.cave), 'reward');
+      case 'cave': { this.toast(this.exploreCave(t.cave), 'reward'); const d = this.cavernDoor(t.cave); if (d) this.enterHouse(d); return; }
       case 'stray': return this.toast(this.caravan.adopt(t.pet), 'story');
       case 'market': this.townsfolk.turnTo(t.walker, this.trav.gPos); return this.ui.openMarket(t.walker.land);
       case 'npc': return this.talk(t.npc);
@@ -851,8 +852,29 @@ export class Game {
     this.target = null;
     const plot = d.kind === 'home' ? d.id.slice(5) : '';
     const residents = plot ? residentsOf(this.st, plot).map((r) => PERSON_BY_ID[r.id]).filter((p) => !!p) : [];
-    this.house.enter(d, this.sky.night, this.houseGathered(d), plot ? this.homeDecor(plot) : undefined, residents);
+    // Institutes and caverns have nothing to gather inside.
+    const gathered = d.kind === 'institute' || d.kind === 'cavern' || this.houseGathered(d);
+    this.house.enter(d, this.sky.night, gathered, plot ? this.homeDecor(plot) : undefined, residents);
     this.ui.openHouse(d);
+  }
+
+  /** Step inside an institute: the town's own, or one you have founded (its standing stage). */
+  enterInstitute(siteId: string): void {
+    const site = SITE_BY_ID[siteId], inst = instituteAt(this.st, siteId);
+    const kind = site?.established ? landScience(site.land) : inst?.kind;
+    const stage = site?.established ? 3 : inst ? standingStage(this.st, inst) : -1;
+    if (!site || !kind || stage < 0) { this.toast('Nothing stands here yet to step into.'); return; }
+    const name = `${site.established ? 'the' : 'your'} ${INSTITUTE_BY_KIND[kind].stages[stage].name.toLowerCase()} in ${REGION_BY_ID[site.land].name}`;
+    this.enterHouse({ id: `inst:${siteId}:${kind}:${stage}`, land: site.land, x: site.x, z: site.z, y: surfaceAt(site.x, site.z), facing: 0, kind: 'institute', r: 1, name });
+  }
+
+  /** A cavern you can walk into, when the 3D side has built one for this cave's style. */
+  private cavernDoor(cv: Cave): Door | null {
+    const d: Door = { id: `cavern:${cv.style}:${cv.id}`, land: cv.land, x: cv.x, z: cv.z, y: surfaceAt(cv.x, cv.z), facing: 0, kind: 'cavern', r: 1, name: `the ${cv.style === 'ice' ? 'ice cavern' : 'cave'}` };
+    const spec = interiorSpecFor(d, this.sky.night), b = spec ? safeInterior(buildInterior(spec)) : null;
+    if (!b) return null;
+    b.group.traverse((o) => { if ((o as THREE.Mesh).geometry) (o as THREE.Mesh).geometry.dispose(); });
+    return d;
   }
 
   /** Explore a cave (once a day): bring out two of what it holds. */

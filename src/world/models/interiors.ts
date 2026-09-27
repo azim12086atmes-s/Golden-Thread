@@ -30,9 +30,11 @@ export interface InteriorBuild {
   group: THREE.Group;
   /** The room's extent (m), for the camera and for keeping people inside. */
   room: { halfW: number; back: number; front: number; height: number };
-  /** Where the girl and the boy sit or stand: [x, y, z], at least 2.2 m apart. */
+  /** Where the girl and the boy sit: [x, seat height, z] (0.45 a chair, 0.25 a floor cushion), at least 2.2 m apart
+   *  — the game refuses the interior otherwise (housing/HouseInterior.ts `safeInterior`). */
   seats: [[number, number, number], [number, number, number]];
-  /** Where hosts, staff, students, patients or residents stand: [x, z]. */
+  /** Where hosts, staff, students, patients or residents stand: [x, z]; the first is the host. Spots within 1.5 m
+   *  of either seat are dropped. */
   spots: Array<[number, number]>;
   gather?: [number, number, number];
   camera: { pos: [number, number, number]; look: [number, number, number] };
