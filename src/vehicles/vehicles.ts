@@ -6,7 +6,7 @@ import { BUNKS, CAB_SEATS, PET_BEDS, VAN } from './vanLayout';
 
 /**
  * Ways to travel. In every vehicle the two sit in separate seats with a divider between them, and
- * on unicorns each rides their own — the no-touch rule holds in motion too (tests/vehicles.test.ts).
+ * on unicorns each rides their own — the no-touch rule holds in motion too (tests/van.test.ts, tests/world.test.ts).
  */
 
 export type VehicleId = 'walk' | 'fly' | 'car' | 'van' | 'truck' | 'plane' | 'unicorn' | 'dragon';

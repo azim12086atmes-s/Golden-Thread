@@ -37,7 +37,7 @@ sections C1–C7) and `3D_BUILDS_HANDOFF.md` (3D work, sections 2a and 3.x). Tic
 
 ## E. Monuments (3D; section 3.1 — 19 of 20 still early builds)
 - [x] Meadow — Great Tree
-- [ ] Meadow — fairy castle
+- [ ] Meadow — celebration castle revamp (keep its ivory, rose and gold palette; `CHATGPT_3D_MODELS.md` §19)
 - [ ] Sakura Hollow — five-storey pagoda
 - [ ] Hanok Village — palace throne hall
 - [ ] Jade Terraces — Temple of Heaven
@@ -101,3 +101,7 @@ sections C1–C7) and `3D_BUILDS_HANDOFF.md` (3D work, sections 2a and 3.x). Tic
 - [ ] Robes and headscarves swaying in the wind
 - [ ] Instanced party guests at the celebration (performance)
 - [ ] Real-GPU frame-rate measurement
+
+## K. Interiors (NEW)
+- [ ] 3D: interiors for monuments, the castle (great hall, library, tower), every institute stage, penthouses and caverns (`CHATGPT_3D_MODELS.md` §20; contract `src/world/models/interiors.ts`)
+- [ ] Logic (Claude): use `buildInterior` when it returns a scene — enter/leave, camera, seats, people's spots, the institute and research panels inside; enter the castle and caverns

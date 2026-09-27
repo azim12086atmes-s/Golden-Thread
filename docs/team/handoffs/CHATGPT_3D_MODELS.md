@@ -51,7 +51,7 @@ and stalls beyond). `tests/world.test.ts` builds every land; `tests/houses.test.
 
 | Land | Monument (reference) | Must have | Size (approx.) | Surfaces / colours | Night |
 |---|---|---|---|---|---|
-| `meadow` | Fairy castle (Neuschwanstein) in `event/Castle.ts` | Keep the Great Tree landmark as is; detail the castle: white limestone walls, red-brick accents, round towers with tall conical blue roofs, a gatehouse, battlements, balconies, arched Romanesque windows, banners | castle as now | marble, brick, slate | windows, lanterns on the gate |
+| `meadow` | The Great Tree (done) + the celebration castle | The Great Tree stays as is. The castle is revamped separately — see **§19** | — | — | — |
 | `japan` | Five-storey pagoda (Tō-ji / Hōryū-ji) | stone plinth with steps; five storeys each smaller, each with deep swept eaves on bracket sets (tokyō), a balcony railing on each level; bronze sōrin finial with 9 rings; a torii on the approach and stone tōrō lanterns; gravel court | 12 × 12 m base, 32 m tall | dark timber, vermilion posts, grey kawara tiles (`clayTile`/`slate`) | lit tōrō lanterns, eave lanterns |
 | `korea` | Geunjeongjeon throne hall (Gyeongbokgung) | two-tier stone terrace with balustrades and stairs with a carved central ramp; hall of 5 × 3 bays on red columns; double-eaved hip-and-gable roof with up-curved corners; dancheong painted beams (green, blue, red); a walled court with a gate | 30 × 20 m terrace, 20 m tall | granite (`ashlar`), red columns, green-blue paint, grey giwa | lanterns on terrace |
 | `china` | Temple of Heaven, Hall of Prayer for Good Harvests | three concentric white marble terraces with carved balustrades and stairs; round hall with 3 tiers of blue-glazed conical roofs and a gilded finial; red columns; dougong; painted beams | 32 m terrace diameter, 38 m tall | marble, red lacquer, blue `glazed` tiles, gold | red lanterns, lit windows |
@@ -211,62 +211,206 @@ what changed per land with before/after screenshots.
   group's origin (Claude attaches it to a child's hand anchor); tag meshes `userData.part = 'accessory'`.
 - Balloon clusters drifting in the sky (in `SkyOrnaments.ts`).
 
-## 11. Sky artifacts and nature by terrain
+## 11. Sky artifacts — guidelines and every land
 
-Per land (in `SkyOrnaments.ts`): Chinese lantern festival (hundreds of rising lanterns), koinobori carp streamers on poles
-(Sakura Hollow), Diwali lantern strings over Gulabi Nagar, penjor arches (Nusa Rinjani), kites over Bagh-e-Noor, balloon
-clusters. Nature by terrain (tree/shrub/flower species by ground type): desert shrubs and acacias on dunes, reeds and
-lotus at water edges, mangroves on warm coasts, alpine flowers above the tree line, snow-laden conifers in the north.
+**What is already in the sky** (do not duplicate): each land's sky effects (`skies.ts`/`SkyFX.ts`: clouds, kites, birds,
+sunbeams, rainbows, alpenglow, aurora, Milky Way, nebula, shooting stars, fireworks, searchlights, halos, moons, planets,
+comets, constellations, hex canopy, floating islands, turning star, balloons, noctilucent clouds), each land's lanterns
+rising (`SkyLanterns.ts`), sky ornaments (`SkyOrnaments.ts`) and the moving sky traffic (`src/traffic/`: airships, planes,
+air taxis, drones, sky ships, flying carpets, the festival dragon, the sun-barque, the vimana, the janggan kite, sky whales,
+sky koi, pegasi, birds).
 
-## 12. Vehicles
+**Guidelines for every sky artifact:**
+1. **Belongs to the land**: a real tradition of that place (a festival, a craft, a story), or clearly fantasy in the Meadow
+   and the Sky Isles. Two or three signature artifacts per land; do not give every land everything.
+2. **Readable silhouette** at 50–300 m: bold, simple outlines; bright but not neon colours by day; a soft glow at night.
+3. **Height bands**: kites and streamers 15–60 m (tied to the ground with visible strings); lantern festivals rise from
+   rooftops to 200 m; balloons 60–200 m; ornaments (arches, rings, canopies) 150–600 m; celestial things beyond 2 km.
+4. **Motion**: everything moves gently — sway, drift, rise, flutter, slow turning. Nothing fast or jerky; nothing that
+   crosses the sun or moon disc for long.
+5. **Time of day**: say for each artifact when it shows (day / dusk / night / festival) and fade it in and out over
+   ~1 game hour (`SkyFX` passes `night` 0–1 and a land weight; follow the existing `level` pattern).
+6. **Content rules**: creature-shaped artifacts (carp, dragons, birds) have no eyes/nose/mouth and a floating head;
+   religious symbols are shown respectfully and never as objects of worship; no text needed.
+7. **Budget**: instanced meshes or points; ≤ 1 k triangles per artifact design, ≤ 500 instances per land; glow small.
+8. **Blending between lands**: artifacts ease out as you cross into the next land (use the land weight `SkyFX` gives).
 
-- Polish every traffic design (`src/traffic/designs.ts`) after screenshotting each land's roads, waters and skies
-  (scale, colour, orientation, detail). Keep the creature rules (floating heads, no faces) and piece animations.
-- Rebuild the travellers' own vehicles in `src/vehicles/vehicles.ts` with the `shaper.ts` kit: **Safar the van** as a VW
-  Type 2 split-screen bus (loaf body, V-front panel with the split two-pane windscreen under a peak, two-tone paint with
-  a white top, roof rack), the little car, the old truck, the biplane. **Keep every seat position and `SEAT_GAP` exactly**
-  (`tests/vehicles.test.ts`), and the van's floor plan (`vanLayout.ts`).
+| Land | Signature sky artifacts to add | When | Notes |
+|---|---|---|---|
+| Wanderers' Meadow | balloon clusters; flower-petal kites; floating lantern-flowers over the fields | day / dusk / night | fairy-tale colours; the celebration already has every land's sky |
+| Sakura Hollow | **koinobori** carp streamers on tall poles above houses (tied, fluttering); paper lanterns on strings over the lanes | day / night | carp: faceless, floating heads, 3–5 per pole, black-red-blue |
+| Hanok Village | **yeon** shield kites (rectangular with a round hole) on long strings; lotus lanterns at night (Yeondeunghoe) | day / night | lotus lanterns float low over the streets |
+| Jade Terraces | **lantern festival**: hundreds of kongming lanterns rising at dusk; the festival dragon already flies | dusk / night | rise from rooftops, drift with wind, fade high up |
+| Fjordhavn | **sea-eagle flocks** (traffic has eagles); **northern lights** lower and richer over the fjord; **midsummer bonfire sparks** rising from the shore | night / midsummer dusk | natural and calm — no fantasy craft here |
+| Alpenrose | **hot-air balloons** over the peaks at dawn; alpine choughs; a paraglider-shaped kite (no person) | dawn / day | balloons with alpine patterns (stripes, edelweiss, cowbell motifs) |
+| Old London | a **blimp** with lit panels (traffic has an airship); pigeons; **fog lanterns** glowing through mist | day / night | keep it grey-gold and Victorian |
+| New Yonder | **drone light shows** (hundreds of points forming shapes: a heart, a tree, the lantern), **hologram billboards** in the sky, solar kites | night / day | the drones are points of light moving in formation |
+| Firenzia | **Leonardo flying machines** (traffic has one); painted-ceiling cloud ornaments; paper hot-air balloons (Montgolfier style) | day | Renaissance colours — gold, rose, ultramarine |
+| Maple Row | **biplanes trailing banners** (traffic), vintage balloons, a seaside kite festival (box kites, diamond kites) | day | pastel and bright |
+| Madinat an-Nur | **hanging star lanterns** over the courtyards; a turning girih star already exists; doves | dusk / night | pierced-brass star shapes, warm light |
+| Souq al-Qamar | **falcons** (traffic), flying carpets (traffic); **Ramadan lanterns (fanous)** strung over the souq | dusk / night | coloured-glass fanous |
+| Nile Crossing | the **sun-barque** (traffic); **ibis flocks**; felucca-sail kites | day / dusk | gold and lapis blue |
+| Tents of Rimal | the **Milky Way** (exists) made brighter; **sky lanterns released from the dunes**; falcons | night | minimal, starry, calm |
+| Gulabi Nagar | **Makar Sankranti kites** (hundreds of paper kites, strings to rooftops); **Diwali lantern strings** (akash kandil) | day / night | kites fill the day sky; kandils glow at night |
+| Kaveri Coast | **kite festival**; **temple-festival lamps** in the sky (floating oil-lamp lanterns); egrets | day / night | brass and marigold colours |
+| Bagh-e-Noor | **kites over the gardens** (patang); pigeon flights (kabootar-baazi, traffic has pigeons); lamps floating on the channels at night | day / night | Mughal reds and whites |
+| Nusa Rinjani | **janggan kites** (traffic) and **bebean fish kites**; **penjor** bamboo arches along the streets | day | penjor are tall curved bamboo poles with hanging palm-leaf ornaments |
+| Aurora Huts | the aurora (exists) with **ice-crystal halos** and **sun pillars**; snowy owls (traffic) | night / day | cold blues and greens |
+| The Sky Isles | **floating islands with waterfalls** (exists far off; bring some closer), **sky whales** (traffic), **cloud bridges**, drifting crystal lanterns | always | pale pearl, lilac and gold |
 
+## 12. Vehicles — every design, how to detail it, and Safar's revamp
 
-## 13. Trees and nature (NEW — owner: small trees, pines and palms never revamped)
+### 12.1 What exists (about 110 traffic designs in `src/traffic/designs.ts`, placed per land by `roster.ts`)
 
-Placement is already logic (Claude, `src/world/nature.ts`): every spot is read as a zone (dune, sand, rock, snow, alpine,
-waterside, grass, cloud) and each land lists which species grow there, how thickly, and a size multiplier (deserts ×1.3–1.55,
-Sky Isles ×1.9, the north ×1.15–1.25). **Your part is the trees themselves.** These 12 species still use the old simple
-primitives in `kit.ts` `tree()` and must be rebuilt as real branching trees with leaf-picture crowns (add them to
-`HABITS` in `src/world/trees.ts`, or give them a dedicated grower — palms and bamboo do not fork):
-- **Palm** (date palm): a tall, slightly curved, ringed trunk; a crown of 15–25 long arching pinnate fronds (leaf-card
-  strips along each frond), hanging date clusters, dead fronds skirting below the crown.
-- **Coconut**: a leaning, curved trunk; a looser crown of long drooping fronds; coconut clusters.
-- **Pine** (Scots / stone pine): tall straight trunk, orange-brown upper bark, tiered branches with needle-card clumps;
-  stone pine variant with an umbrella crown (Firenzia).
-- **Snow pine** (spruce/fir): conical, dense tiers of drooping branches to the ground, snow lying on each tier.
-- **Cypress** (Italian): a tall narrow flame-shaped column of dense dark foliage.
-- **Bamboo**: clumps of 10–30 jointed culms with nodes, arching tops, narrow leaf cards.
-- **Banana**: a fleshy pseudostem, huge paddle leaves (some torn), a hanging bunch with a purple flower.
-- **Baobab**: a massive bottle-shaped trunk, short stubby branches like roots at the top, sparse leaves.
-- **Sky Isles fantasy trees** (`cloud`, `crystal`, `candy`, `glowtree`): rebuild as real branching fantasy trees —
-  cloud willows with trailing pale foliage, crystal-fruit trees with glowing gem fruit, candy-blossom trees, glow trees with
-  softly lit leaves; plus new pastel blossom and silver-barked moon trees. Allow giants.
-- Also: desert shrubs, acacias, reeds and lotus at water edges, mangroves on warm coasts, alpine flowers, low scrub on
-  rocky slopes — as small plants in `kit.ts` so the zones can place them (tell Claude the names to add to `nature.ts`).
+| Family | Designs (ids) | How they are built now |
+|---|---|---|
+| Buses, trams, trucks | `double-decker`, `post-bus`, `city-bus`, `red-bus`, `bemo`, `painted-truck`, `solar-tram`, `streetcar`, `cable-car`, `hover-bus` | `bus()` / `tram()` / `hoverBus()`: box bodies, window bands that glow at night, box wheels |
+| Cars (classic) | `black-cab`, `solar-cab`, `vintage-car`, `vintage-car-2`, `nordic-car`, `taxi`, `petit-taxi`, `land-cruiser`, `dune-buggy`, `kei-van`, `snowmobile` | `car()`: a box or rounded body, cabin, glass, lamps |
+| Cars (modern, futuristic) | `sedan`, `sedan-2`, `hatchback`, `hatchback-2`, `suv`, `suv-2`, `pickup`, `hover-car`, `hover-car-2`, `future-ev`, `future-ev-2` | `modern()` / `future()`: lathe glasshouse, rounded body, light bars |
+| Three-wheelers | `auto-rickshaw`, `auto-rickshaw-2`, `tuk-tuk`, `tuk-tuk-2` | `autoRickshaw()` / `tukTuk()` |
+| Animal-drawn and sleds | `carriage`, `caleche`, `tonga`, `pumpkin-coach`, `flower-cart`, `vardo`, `bullock-cart`, `buffalo-cart`, `donkey-cart`, `reindeer-sled`, `dog-sled`, `elephant`, `camel-caravan` | `cart()` + `quadruped()` from `creatures.ts` (legs trot) |
+| Boats | `gondola`, `narrowboat`, `punt`, `ferry`, `yacht`, `catboat`, `longship`, `fishing-boat`, `paddle-steamer`, `junk`, `dragon-boat`, `sampan`, `yakatabune`, `turtle-ship`, `jukung`, `phinisi`, `dhow`, `abra`, `felucca`, `reed-boat`, `kettuvallam`, `snake-boat`, `shikara`, `ganga-boat`, `kayak`, `swan-boat`, `raft`, `tall-ship` | `shaper.hull()` + sails (`sailBoat()`), canopies (`rowBoat()`) |
+| Aircraft | `airship`, `solar-blimp`, `zeppelin`, `air-taxi`, `air-taxi-2`, `drone`, `biplane`, `biplane-2`, `ornithopter`, `seaplane`, `light-plane`, `airliner`, `airliner-2`, `sky-jet` | lathe fuselages/envelopes, box wings, spinning propeller/rotor pieces |
+| Magical craft | `sky-ship`, `crystal-skiff`, `flying-carpet`, `flying-carpet-2`, `sun-barque`, `pushpaka`, `festival-dragon`, `janggan` | hulls with wings, platforms, chained bodies |
+| Creatures | `pegasi`, `unicorns-flying`, `little-dragons`, `sky-whale`, `sky-koi`, `sky-koi-2`, `cranes`, `eagle`, `owls`, `falcons`, `roc`, `phoenix`, `peacock-garuda`, `pigeons`, `light-birds`, `swans`, `ducks` | `quadruped()`, `bird()`, `skyWhale()`, `skyKoi()` — floating heads, animated pieces |
 
-## 14. Terrain and texturing (NEW)
+Only the London double-decker, the gondola, the drone, the petit taxi, the kei van and the reindeer sleds have been seen
+in screenshots. **Contract**: each design is `Design` (`pieces` of `solid`/`glow` geometry + an `anim` about a `pivot`);
+keep the ids, `realm`, rough `len`, and the animated pieces (`flapL/R`, `spinX/Y/Z`, `swingA/B`, `tail`, `fluke`).
 
-More texture everywhere, especially the desert, the Arctic and the Sky Isles: ground patterns in `src/world/Meadow.ts`
-`patternGround` (wind ripples and dune crests, rock strata on slopes, snow drifts and sastrugi, cracked clay near oases,
-cloud-stone paving on the isles); richer surfaces (`surfaces.ts`) for tents (woven cloth with stripes), huts (turf, birch
-bark, logs), igloos (snow blocks), rock (strata, sandstone layers). Scatter rocks, boulders and outcrops by zone.
+### 12.2 How to detail a vehicle (checklist for every design)
 
-## 15. Caves and caverns (NEW)
+1. **Reference first**: find the real vehicle (the brief names it) and match its proportions — length : height : width,
+   wheelbase, overhangs, the cabin's rake. Traffic reads from 10–60 m, so silhouette matters most.
+2. **Shape**: rounded, smooth bodies (lathe, scaled spheres, extrusions with bevels), never bare boxes. Panel gaps and
+   shut lines as thin dark strips; bumpers, grilles, mirrors, door handles, roof racks where the real one has them.
+3. **Wheels**: tyre with a darker tread band, a rim with 5–6 spokes or a hubcap, visible wheel arches; wheel size right
+   for the vehicle (a bus ~1 m, a car ~0.65 m, a rickshaw ~0.5 m).
+4. **Glass**: dark tinted by day (`GLASS`), warm glow panel behind it at night (`WARM`, glow geometry) — never bright
+   white by day.
+5. **Lights**: headlamps (`HEAD`), tail lamps (`TAIL`), indicators, cab signs; all small glow geometry.
+6. **Livery by land**: colours and patterns from the land (London red, New Yonder yellow and solar blue, Indian painted
+   trucks with floral panels, Balinese jukung stripes). Give each family 2–3 liveries.
+7. **Boats**: correct hull shape per type (flat punt, high-prowed gondola with its ferro, clinker longship with shields,
+   junk with battened sails, dhow and felucca lateen sails, houseboat thatched roof), a waterline, oars or rudders, rigging
+   lines as thin rods.
+8. **Aircraft**: correct wing plan and tail, engines, propellers as a spinning piece, landing gear, navigation lights
+   (red left, green right, white tail).
+9. **Nothing carries a person** (seats empty, glass glows). Animals pulling carts keep the creature rules.
+10. **Budget** ≤ 3 k triangles per design (≤ 6 k for tall ship, ferry, airliner), few pieces (each piece is a draw call
+    per design).
 
-Placement, entrances and exploring are logic (Claude, `src/world/caves.ts`: 3–5 caves per land in the desert, the Nile,
-the Gulf hills, the fjords, the Arctic and the Alps; styles `sandstone`, `rock`, `ice`; the mouth faces the town; E at the
-mouth explores it once a day). **Model them**: `buildCave(c, style, r)` in `src/world/models/caves.ts` (placeholder
-exists) — a real rock formation: layered sandstone cliffs and arches with a cave mouth (desert/Nile), dark rock outcrop
-with a jagged mouth (Gulf, fjord sea-cliff caves), blue ice with icicles and a glowing mouth (Arctic, Alps). Mouth ≈ 3 m
-high, 3–4 m wide, facing +z, kept walkable. Later: cavern interiors (stalactites, crystal clusters, an underground pool,
-glowing ice) as a scene to enter — describe the API you want under "Contract requests".
+### 12.3 Does Safar need a revamp? **Yes.**
+
+Safar (`buildVan` in `src/vehicles/vehicles.ts`) is built from flat boxes: teal and cream wall panels, window cut-outs,
+a half-cylinder roof, box chassis. It works (the interior shows through the windows and matches the floor plan) but it
+does not look like a real campervan. Rebuild it as a **Volkswagen Type 2 (T1 "split-screen") bus** in spirit (no badge):
+- a **loaf-shaped body** with rounded corners all round, a slightly curved roof and a curved front;
+- the **V-shaped front panel** (the "V" of the two-tone paint meeting at the nose) under a **split two-pane windscreen**
+  with a centre pillar, beneath a small peak;
+- **two-tone paint**: white/cream upper body and roof, colour (teal) lower body, divided along the waistline;
+- round headlamps on the front, a spare-wheel mount, bumpers, hubcaps, a roof rack with luggage and the ladder;
+- side windows in a row (keep the openings where the benches and bunks are, so the crew inside still shows);
+- keep the **golden-thread band** of vines and flowers along the body (it is Safar's identity), the skylight, and the
+  interior (`VanInterior.ts`, `vanLayout.ts`) exactly as laid out.
+
+**Hard constraints** (tests): the floor plan in `vanLayout.ts` (`VAN.halfW`, `back`, `cab`, `front`, `floorY`, `wall`),
+the two cab seats `CAB_SEATS` at least `SEAT_GAP` apart with the divider, the bunk and pet-bed positions — the body must
+wrap them, never move them. Run `tests/van.test.ts`, `tests/world.test.ts` and `tests/celebration.test.ts` (they check the seats, `SEAT_GAP` and the divider).
+
+Also rebuild the **little car** (a 1950s–60s rounded two-door, e.g. Fiat 500 / Beetle-like, two separate seats and the
+console divider), the **old truck** (a 1950s pickup/lorry with rounded cab and wooden flatbed), and the **biplane**
+(Tiger Moth-like: fabric wings with ribs, struts and wires, a radial or inline engine, the tandem cockpits with the
+divider). Same seat constraints.
+
+## 13. Trees and nature — what to rebuild, and how trees are built and textured here
+
+### 13.1 How a tree is built (read `src/world/trees.ts`, `src/world/foliage.ts`, `src/world/wind.ts`)
+
+- A species is a `Habit` in `HABITS`: height `h`, trunk radius, crown radius `r`, how it forks (`forks`, `spread`, `lift`,
+  `limb`, `shrink`, `depth`, `leader`/`tiers` for conifer-like leaders), crown blob shape (`blob`, `squash`), `gnarl`,
+  bark colour and marks, leaf colours and `card` (which leaf picture).
+- `growTree()` grows the trunk and limbs as oriented cylinders (`wood()`), then crowns: smooth **blobs** (merged into a
+  leafy mesh, slightly translucent, shaded with dappled light — `LEAF_FRAG` in `wind.ts`) covered in **leaf cards**
+  (small textured quads from the leaf atlas, `leafCards()`), which sway in the wind.
+- The **leaf atlas** (`leafAtlas()` in `foliage.ts`) is a 2 × 2 canvas-painted texture: `Broad`, `Small`, `Needles`,
+  `Blossom`. Add cells for the new species (palm frond segment, bamboo leaves, banana leaf, pine needle tuft, fantasy
+  crystal leaves) — widen it to 4 × 2 and extend `LeafKind`.
+- **Bark**: trunk colour comes from the habit; the building surface shader (`surfaces.ts`) can pattern it — add bark
+  surfaces (rough furrowed bark, papery birch, ringed palm trunk, jointed bamboo, smooth baobab) to `SURF` and set
+  `g.surface` round the trunk parts.
+- Wind: `sway` weights (0 at the base, 1 at the top) make crowns and fronds move; palms and bamboo should sway more.
+
+### 13.2 The 12 species to rebuild (they still use the old primitives in `kit.ts` `tree()`)
+
+- **Palm** (date palm): tall, slightly curved, ringed trunk (bark surface: rings); a crown of 15–25 long arching pinnate
+  fronds — each frond a curved spine with leaf-card strips down both sides; hanging date clusters; dead fronds skirting
+  below the crown. Height 12–20 m (×1.3–1.55 in the deserts).
+- **Coconut**: leaning, curved trunk; looser crown of long drooping fronds; coconut clusters under the crown.
+- **Pine** (Scots / stone pine): straight trunk, orange-brown upper bark, tiered branches with needle-card clumps; a
+  stone-pine variant with an umbrella crown for Firenzia.
+- **Snow pine** (spruce/fir): conical, dense tiers of drooping branches to the ground, snow lying on each tier (white
+  blobs on top of the needle tiers).
+- **Cypress**: a tall narrow flame-shaped column of dense dark foliage (one tall blob with many small needle cards).
+- **Bamboo**: clumps of 10–30 jointed culms (nodes as rings) arching at the top, with narrow leaf cards in sprays.
+- **Banana**: a fleshy pseudostem, 6–10 huge paddle leaves (some torn at the edges), a hanging bunch with a purple bud.
+- **Baobab**: a massive bottle-shaped trunk, short stubby branches like roots at the top, sparse small leaves.
+- **Sky Isles** (`cloud`, `crystal`, `candy`, `glowtree`): real branching fantasy trees — cloud willows with long trailing
+  pale foliage, crystal-fruit trees with small glowing gem fruit, candy-blossom trees in pastel pinks, glow trees with
+  softly lit leaves; plus new pastel blossom and silver-barked moon trees. Allow giants (the logic already places them).
+- **Small plants** for the terrain zones (`nature.ts`): desert shrubs, acacia (umbrella thorn tree), reeds and lotus at
+  water edges, mangroves on warm coasts, alpine flowers, low scrub on rocky slopes. Add them as kit plants and tell Claude
+  their names so the zone tables can place them.
+
+**Done means**: each species screenshotted up close (6 m) and in a stand (40 m), by day and in wind; ≤ 3 k triangles
+per tree and ≤ 40 leaf cards per crown on average; `tests/foliage.test.ts` and `tests/world.test.ts` pass.
+
+## 14. Terrain and texturing
+
+### 14.1 How the ground is drawn now
+- `src/world/terrain.ts`: heights (`naturalHeight`: relief, dunes via `duneShape`, carved water) and per-vertex ground
+  colour (`groundColor`: the land's `ground`/`groundAlt` blended by noise, snow above the snowline, rock on slopes via
+  `rockOnSlope`, sand at water edges).
+- `src/world/Meadow.ts` `patternGround`: a shader layer on the ground — sand ripples, snow sastrugi and glints, driven by
+  the wind direction; plus the grass and flower rings.
+- `src/world/surfaces.ts`: procedural surfaces for buildings (`SURF`), patterned in world space and faded with distance.
+
+### 14.2 What to add (lands that look flat now: the desert, the Nile, the Gulf, the Arctic, the Sky Isles)
+- **Desert and sand**: wind ripples at two scales, sharper dune crests with a lit windward side and a shadowed slip face,
+  darker damp sand round oases, scattered pebbles, cracked-clay pans between dunes.
+- **Rock**: horizontal strata bands on slopes (sandstone reds and ochres in the desert, grey granite in the north),
+  boulders and outcrops scattered by zone (`nature.ts` `rock` zone), scree at the foot of slopes.
+- **Snow and ice**: drift ridges (sastrugi) aligned with the wind, blue shadows in hollows, glittering sparkle at low
+  sun, bare wind-scoured patches, frozen lake ice with cracks.
+- **Grass lands**: worn earth paths between houses, mud near water, clover and moss patches.
+- **Sky Isles**: cloud-stone paving near buildings, star-dust veins (faint glowing lines at night), moss and flower
+  meadows, soft pearl-white ground with lilac and blue tints.
+- **Surfaces** (`surfaces.ts` `SURF`): woven tent cloth with stripes, turf, birch bark, log ends, snow blocks, sandstone
+  layers, coral stone, mud brick with straw, thatch variants, glazed tiles in more patterns.
+Keep every pattern world-space and distance-faded (the existing shader shows how) so there is no shimmering.
+
+## 15. Caves and caverns
+
+**Logic (done by Claude, `src/world/caves.ts`)**: 3–5 caves in each of: Tents of Rimal and Nile Crossing (`sandstone`),
+Souq al-Qamar and Fjordhavn (`rock`), Aurora Huts and Alpenrose (`ice`). Each stands in the countryside with its mouth
+facing the town; the travellers explore it with E at the mouth once a day and bring out finds (cave crystals, glass sand,
+ice, …). Colliders are placed by the logic (a circle of 0.85 × the cave radius).
+
+**Your model**: `buildCave(c, style, r)` in `src/world/models/caves.ts` (placeholder: a heap of boulders with a dark arch).
+
+| Style | Where | Build it as | Surfaces / colours | Details and glow |
+|---|---|---|---|---|
+| `sandstone` | Tents of Rimal, Nile Crossing | a wind-carved sandstone outcrop or cliff with horizontal strata, an arch or overhang, the cave mouth in its face; fallen blocks at the foot | layered reds, ochres and creams | a hint of torchlight inside at night; sand drifted into the mouth |
+| `rock` | Souq al-Qamar (dark limestone hills), Fjordhavn (sea-cliff caves) | a craggy dark rock outcrop with a jagged mouth; for the fjord, a cliff face with a sea cave at the waterline | greys and browns; lichen on the north side | a glint of crystal in the dark; drips (particles, §17) |
+| `ice` | Aurora Huts, Alpenrose | a mound of blue glacier ice and snow with an arched mouth, icicles hanging from the lip | white snow over translucent blue ice | a soft blue glow from inside (glow geometry), frost sparkle (§17) |
+
+**Constraints**: size `r` 7–11 m (given); mouth ≈ 3 m high and 3–4 m wide, facing **+z**, floor at y ≈ 0 and walkable to
+~2 m inside; the mound must enclose the collider circle; ≤ 8 k triangles each; vary each cave (use `c.rng`).
+
+**Later — cavern interiors**: a scene to enter from the mouth (like the house interiors): stalactites and stalagmites,
+crystal clusters that glow, an underground pool, ice columns and frozen waterfalls in the ice caverns, rock paintings
+of abstract patterns (no figures). Propose the API under "Contract requests" (suggestion: `buildCavern(style, seed):
+THREE.Group` with the entrance at +z and the floor at y = 0); Claude will wire entering and leaving.
 
 ## 16. Fixed already (for your information)
 
@@ -292,6 +436,74 @@ Particle and sky systems live in `src/world/Weather.ts`, `Ambience.ts`, `RegionF
   requests before editing `CharacterModel.ts`.)
 - Time-of-day behaviour of sky traffic (kites and balloons by day, lantern boats at dusk, quieter nights) and aircraft
   landing at airfields are **logic** (Claude) — tell Claude if a design needs extra pieces for them.
+
+## 18. How texturing works here — vehicles, trees, buildings, terrain, creatures
+
+There are **no image texture files** in this project (except canvas-painted atlases made in code). Everything is
+**procedural**: shapes carry colours per vertex, and shaders add patterns. Follow the pattern that fits:
+
+| What | How it is textured now | How to texture it better |
+|---|---|---|
+| **Buildings, landmarks, bridges, caves** (`GeoBuilder`) | vertex colour + a per-vertex **surface id** (`surf` attribute) that the world shader turns into brick, stone, plaster, tiles, thatch, wood, glass… in world space, faded with distance (`surfaces.ts`, `wind.ts` `swayMaterial`) | set `c.g.surface = SURF.x` around parts (see `surf()` in `traditions.ts`), or map a colour to a surface in `LAND_SURFACES`; add new surfaces to `SURF` + `SURFACE_GLSL` (keep the `aa` distance fade) |
+| **Trees** | trunk colour per habit; crowns are translucent dappled blobs + leaf cards from a canvas atlas (`foliage.ts`) | add atlas cells for new leaves; add bark surfaces (§13.1) |
+| **Terrain** | per-vertex ground colour (`terrain.ts`) + ground patterns shader (`Meadow.ts` `patternGround`) | add patterns per zone (§14) |
+| **Animals and creatures** | object-space procedural skins in `src/animals/skins.ts`: fur streaks, feather barbs, overlapping scales with sheen | reuse `skinMaterial(colour, 'fur' | 'feather' | 'scale')` for traffic creatures too (they use flat colours now) |
+| **Traffic vehicles** (`src/traffic/`) | flat vertex colours on one `MeshStandardMaterial` per land (instanced), glow on an additive material | add an **object-space** pattern shader like `skins.ts` (position in the vehicle's own frame, so patterns move with it) keyed by a per-vertex `surf` id from `Shaper` (add a `surface` option to `Shaper.add`): car paint with fine metallic flake, chrome, rubber tyre tread, wood planks and grain (boats, carts), canvas and sailcloth weave (sails, canopies, tents), rattan/bamboo weave (Asian boats, rickshaw hoods), riveted steel (trams, ferries), fabric wing ribs (biplane), balloon envelope gores |
+| **Player vehicles** (`src/vehicles/vehicles.ts`) | `finish(colour)` chooses clear-coat paint, chrome, rubber or wood by colour, lit by a small studio reflection (`setVehicleEnvironment`) | keep the finishes; add the object-space patterns for wood, fabric, tread; Safar's two-tone paint with a subtle gloss |
+
+Rules for all texturing: patterns must not shimmer at a distance (fade them with `fwidth`/distance as `surfaces.ts` does),
+keep colours in the land's palette, keep glow small, and never paint faces or eyes onto anything.
+
+## 19. The celebration castle — revamp
+
+**What it is**: the Meadow's fairy-tale castle where the story's celebration evening happens (`src/event/Castle.ts`,
+`buildCastle(solid, glowMat)` → `{ group, colliders, y }`; placed at `CASTLE_SITE` north of the Meadow town; the evening
+itself is staged in its courtyard by `src/event/CelebrationScene.ts` and `Celebration.ts`). Now: an ivory keep with
+rose-pink spires and gold finials, a grand stair, a round courtyard with a rose-arched aisle, fairy lights and flowers
+(153 lines of primitives).
+
+**Keep**: its palette — ivory `#fbf1f4`, stone `#eadfe6`, pink `#f49ac1`, rose `#e8588c`, gold `#f5c451`, lilac
+`#c9b3f0` (the Meadow is pink-hazed and fairy-tale; do not turn it white-and-blue); the courtyard's position, size and the
+aisle where the celebration is staged (read `CelebrationScene.ts` for the positions it uses — seats, the aisle, the stage
+spots — and do not move them); `colliders` covering every wall and tower; the grand stair walkable.
+
+**Rebuild it as a real fairy-tale castle** (after Neuschwanstein, Disney-like silhouettes and Château de Chambord for the
+roofscape):
+- a **curtain wall** with battlements and a **gatehouse** (arched gate, portcullis raised, two drum towers);
+- a **keep / palace block** of 4–5 storeys with tall arched windows, balconies with balustrades, oriel windows, a bay;
+- **towers of different heights** (5–9): round and octagonal, each with a tall conical or bell-shaped roof in rose-pink
+  with gold finials and pennants; slender turrets on corbels; a tallest central tower;
+- **roofscape**: steep roofs with dormers, chimneys, ridge crests, weather vanes (no faces);
+- the **grand stair** from the meadow to the gate; the **round courtyard** with arcades round it, the rose-arched aisle,
+  a fountain;
+- **gardens** round it: hedges, rose beds, lantern-lined paths, a bridge over a moat or stream;
+- **night**: every window softly lit, lanterns on the gate, fairy lights along the battlements and spires (glow, small).
+Budget ≤ 200 k triangles; one merged solid + one glow mesh as now.
+
+**Castle interior** (see §20): the **great hall** (vaulted, stained-glass windows, chandeliers of floating candles,
+a gallery, long tables for the feast — the celebration's dress and banquet can later move inside), a **library tower**
+room, and a **tower-top balcony** room looking out over the Meadow.
+
+## 20. Interiors for these builds
+
+Today every door leads to one standard furnished room (`src/housing/HouseInterior.ts`, 9 × 8 m, styled per land family);
+landmarks reuse it with their name. The owner wants real interiors for the new builds. **Contract**:
+`buildInterior(spec): InteriorBuild | null` in `src/world/models/interiors.ts` (placeholder returns null → the standard
+room is used). Claude wires entering, the camera, who sits and stands where, and the actions (gather, talk, rest, the
+institute and research panels) — you build the scene and say where people go.
+
+**Rules for every interior**: floor at y = 0, the way in at +z; the two travellers' `seats` at least 2.2 m apart (they
+never touch); `spots` for others at least 1.5 m from both seats; windows show day or night by `spec.night`; lamps small
+glow; ≤ 60 k triangles (≤ 120 k for the castle great hall and stage-3 institutes); no images of worship, no statues with
+faces, no eyes on anything.
+
+| Interior | `spec.kind` / `ref` | What it should be |
+|---|---|---|
+| Monument halls | `landmark` / land id | inside each monument (§1): the pagoda's central-pillar hall with lanterns; the Korean throne hall with painted beams and an empty dais; the Temple of Heaven's round hall with its blue-gold ceiling; the stave church's dark timber nave with candles; the Zytglogge clock mechanism room; Westminster Hall's hammer-beam roof; the deco tower's lobby and an observation deck; Florence's nave under the dome; the carousel pavilion; the Alhambra courts and the mosque's prayer hall (carpets, lamps, mihrab niche with geometry — no images); the souq arcades; the majlis tent; the hypostyle hall; the Hawa Mahal's lattice galleries; a pillared mandapa with oil lamps (no images); the Taj's octagonal hall with the marble jali screen; Borobudur's gallery walk; the ice hall's glowing ice rooms; the Great Lantern's temple |
+| The castle | `castle` / `hall`, `library`, `tower` | §19 |
+| Institutes | `institute` / kind, `stage` 0–3 | the inside of every stage (§2): the watch boutique's counter and display cases; the atelier's benches under big windows; the manufacture's workshop floor; the school's classrooms; soup kitchen pots, serving counter and long tables; clinic beds and a medicine cabinet (a green crescent or herb-leaf sign, no cross); hospital wards; tent-school mats and board; library shelves and reading tables; the lab with instruments where theses are written; the castle school's great hall of floating candles |
+| Penthouses | `penthouse` | glass walls onto a terrace, a lounge, a kitchen, plants, a pool outside, the city lights of New Yonder beyond |
+| Caverns | `cavern` / `sandstone`, `rock`, `ice` | §15 "later": stalactites, glowing crystal clusters, an underground pool, ice columns and frozen waterfalls, abstract rock patterns |
 
 ---
 
