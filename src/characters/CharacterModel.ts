@@ -406,14 +406,15 @@ export class CharacterModel {
         const c = (mm.material as THREE.MeshStandardMaterial).color;
         if (!c) return;
         const hex = `#${c.getHexString()}`;
-        const m = fabricMaterial(part === 'leg' ? 'none' : o.pattern, hex, o.trim, part === 'leg' ? 0 : glow);
+        // Only the skirt glows; the bodice, sleeves and cape stay unlit (owner: no glow at the chest).
+        const m = fabricMaterial(part === 'leg' ? 'none' : o.pattern, hex, o.trim, part === 'garment' ? glow : 0);
         if (!m) return;
         tileUVs(mm.geometry, 0.34, o.pattern === 'bands' && part !== 'leg');
         mm.material = m;
       });
     } else if (shine) b.traverse((x) => {
       const mm = x as THREE.Mesh;
-      if (!mm.isMesh || !['garment', 'torso', 'sleeve'].includes(mm.userData.part)) return;
+      if (!mm.isMesh || mm.userData.part !== 'garment') return;
       const c = (mm.material as THREE.MeshStandardMaterial).color;
       if (c) mm.material = glowingFabric(`#${c.getHexString()}`, shine);
     });

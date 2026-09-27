@@ -7,9 +7,31 @@ export function count(state: GameState, id: string): number {
   return state.inventory[id] ?? 0;
 }
 
-export function addItem(state: GameState, id: string, qty = 1): void {
+/**
+ * Carrying (owner's brief): the bag holds only so much. What will not fit goes to the van's
+ * storage (also limited), and what will not fit there is left behind — `carryNews` says so.
+ * Homes have their own stores (economy/storage.ts).
+ */
+export const BAG_CAP = 50, VAN_CAP = 150;
+/** How much is in a store (the bag, the van or a home). */
+export const loadOf = (store: Record<string, number>): number => Object.values(store).reduce((a, n) => a + Math.max(0, n), 0);
+export const bagRoom = (state: GameState): number => Math.max(0, BAG_CAP - loadOf(state.inventory));
+/** Messages for the player about what did not fit (the game shows and clears them). */
+export const carryNews: string[] = [];
+
+/** Put things in the bag; what does not fit goes to the van, then is left behind. Returns how many went in the bag. */
+export function addItem(state: GameState, id: string, qty = 1): number {
   if (!ITEMS[id]) throw new Error(`Unknown item: ${id}`);
-  state.inventory[id] = count(state, id) + qty;
+  const inBag = Math.min(qty, bagRoom(state));
+  if (inBag > 0) state.inventory[id] = count(state, id) + inBag;
+  let rest = qty - inBag;
+  if (rest > 0) {
+    const van = (state.stores.van ??= {});
+    const toVan = Math.min(rest, Math.max(0, VAN_CAP - loadOf(van)));
+    if (toVan > 0) { van[id] = (van[id] ?? 0) + toVan; rest -= toVan; carryNews.push(`🎒 Your bag is full — ${toVan}× ${ITEMS[id].icon} ${ITEMS[id].name} went to the van.`); }
+    if (rest > 0) carryNews.push(`🎒 Your bag and the van are full — ${rest}× ${ITEMS[id].icon} ${ITEMS[id].name} left behind.`);
+  }
+  return inBag;
 }
 
 export function hasItems(state: GameState, needs: Record<string, number>): boolean {

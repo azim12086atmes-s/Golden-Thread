@@ -106,6 +106,10 @@ export interface GameState {
   businesses: import('../economy/business').Business[];
   /** Inventions put to use (economy/inventions.ts): carried ('you'), or built at a home or field; `day` of their last daily good. */
   installed: Array<{ invention: string; at: string; day: number }>;
+  /** Stores beyond the bag (economy/storage.ts): 'van', and each home you own by plot id. */
+  stores: Record<string, Record<string, number>>;
+  /** Townsfolk waiting for something you said you would bring (npc/folk.ts): where they wait, and until when. */
+  errands: Array<{ key: string; land: string; name: string; item: string; qty: number; coins: number; done: string; x: number; z: number; until: number }>;
   vehicles: string[];
   discovered: string[];
   lanterns: string[];
@@ -169,6 +173,8 @@ export function newGame(): GameState {
     products: {},
     businesses: [],
     installed: [],
+    stores: {},
+    errands: [],
     vehicles: ['walk', 'fly', 'van'],
     discovered: ['meadow'],
     lanterns: [],
