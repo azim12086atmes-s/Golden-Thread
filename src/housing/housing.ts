@@ -19,6 +19,8 @@ export interface DecorDef {
   r: number;
   /** Land whose house style this is (for `house-<region>`). */
   style?: RegionId;
+  /** Available to everyone from the start, old saves included. */
+  always?: boolean;
 }
 
 export const DECOR: DecorDef[] = [
@@ -36,6 +38,7 @@ export const DECOR: DecorDef[] = [
   { id: 'fountain', name: 'Fountain', icon: '⛲', price: 80, r: 2.6 },
   { id: 'rangoli', name: 'Rangoli', icon: '🔆', price: 20, r: 1.6 },
   { id: 'star-arch', name: 'Arch of Stars', icon: '🌠', price: 0, r: 2 },
+  { id: 'balloons', name: 'Balloons', icon: '🎈', price: 12, r: 0.8, always: true },
   ...REGIONS.map((r) => ({ id: `house-${r.id}`, name: `${r.name} House`, icon: '🏠', price: 220, r: 5, style: r.id })),
 ];
 export const DECOR_BY_ID = Object.fromEntries(DECOR.map((d) => [d.id, d]));
@@ -136,7 +139,7 @@ export class Housing {
   }
 
   unlocked(): DecorDef[] {
-    return DECOR.filter((d) => this.st.unlockedDecor.includes(d.id) || (d.style && this.st.lanterns.includes(d.style)));
+    return DECOR.filter((d) => d.always || this.st.unlockedDecor.includes(d.id) || (d.style && this.st.lanterns.includes(d.style)));
   }
 
   /** Local coordinates are relative to the plot centre. */

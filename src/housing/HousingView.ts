@@ -1,4 +1,5 @@
 import * as THREE from 'three';
+import { balloonCluster } from '../world/models/balloons';
 import { Rng } from '../core/rng';
 import type { GameState, PlacedDecor } from '../core/state';
 import { buildHouse, lampPost } from '../world/architecture';
@@ -119,6 +120,9 @@ export function buildDecor(kind: string, region: RegionId, seed: string, growth 
           cyl(g, 0.18, 0.18, 0.03, ['#e8364a', '#f2a13a', '#f2d14e', '#2f7a5a', '#5a8ab5'][(r + i) % 5], Math.cos(a) * r * 0.45, 0.01, Math.sin(a) * r * 0.45, 5);
         }
       }
+      break;
+    case 'balloons':
+      balloonCluster(g, 0, 0, 0, ['#e8364a', '#f2d14e', '#3a8ad8', '#ff8fb8', '#4fb86a', '#b86ad8', '#f2a13a']);
       break;
     case 'star-arch':
       for (let i = 0; i <= 14; i++) {

@@ -210,6 +210,9 @@ what changed per land with before/after screenshots.
 - A balloon held by a child: `heldBalloon(colour): THREE.Group` — a balloon on a 1 m string whose lower end is at the
   group's origin (Claude attaches it to a child's hand anchor); tag meshes `userData.part = 'accessory'`.
 - Balloon clusters drifting in the sky (in `SkyOrnaments.ts`).
+- **Wired (logic done):** both contracts now exist in `src/world/models/balloons.ts` with placeholders; the game hangs
+  `heldBalloon` from the travelling children's free hands at full size and keeps it upright, and the `balloons` decor
+  item calls `balloonCluster`. Replace the bodies; keep the signatures.
 
 ## 11. Sky artifacts — guidelines and every land
 

@@ -1,4 +1,5 @@
 import * as THREE from 'three';
+import { heldBalloon } from '../world/models/balloons';
 import { mergeGeometries } from 'three/addons/utils/BufferGeometryUtils.js';
 import { mergeVertices } from 'three/addons/utils/BufferGeometryUtils.js';
 import { HEAD_GAP, type Part } from './anatomy';
@@ -184,6 +185,8 @@ export interface AnimState {
   t: number;
 }
 
+const _bq = new THREE.Quaternion(), _sway = new THREE.Quaternion(), _se = new THREE.Euler();
+
 export class CharacterModel {
   readonly root = new THREE.Group();
   private legL = new THREE.Group();
@@ -200,6 +203,9 @@ export class CharacterModel {
   private capeCloth?: { mesh: THREE.Mesh; base: Float32Array; len: number };
   /** 0..1: raises the free hand (the one not holding the thread) forward, palm up, to offer something. */
   offer = 0;
+  /** A balloon held in the free hand (children on festive days), kept upright as they move. */
+  private balloon: THREE.Group | null = null;
+  private balloonColour: string | null = null;
   /** Added to the offering arm's forward angle: negative lifts it higher, positive lowers it. */
   offerLift = 0;
 
@@ -551,6 +557,24 @@ export class CharacterModel {
     }
   }
 
+  /** Hold a balloon of this colour in the free hand (null lets it go). The model is the 3D side's `heldBalloon`. */
+  holdBalloon(colour: string | null): void {
+    if (colour === this.balloonColour) return;
+    if (this.balloon) {
+      this.balloon.parent?.remove(this.balloon);
+      this.balloon.traverse((o) => { if ((o as THREE.Mesh).isMesh) (o as THREE.Mesh).geometry.dispose(); });
+    }
+    this.balloon = null;
+    this.balloonColour = colour;
+    if (!colour) return;
+    const b = heldBalloon(colour);
+    b.position.set(0, -0.66, 0);
+    // A balloon is the same size whoever holds it: the string rises well above a child's head.
+    b.scale.setScalar(1 / this.scale);
+    (this.threadHand > 0 ? this.armL : this.armR).add(b);
+    this.balloon = b;
+  }
+
   /** World position just above the free hand's palm. */
   freeHand(out: THREE.Vector3): THREE.Vector3 {
     const arm = this.threadHand > 0 ? this.armL : this.armR;
@@ -782,6 +806,11 @@ export class CharacterModel {
   }
 
   update(dt: number, s: AnimState): void {
+    if (this.balloon?.parent) {
+      // The string stays upright whatever the arm does, with a gentle sway.
+      this.balloon.parent.getWorldQuaternion(_bq);
+      this.balloon.quaternion.copy(_bq).invert().multiply(_sway.setFromEuler(_se.set(Math.sin(s.t * 1.3) * 0.12, 0, Math.cos(s.t * 1.1) * 0.1)));
+    }
     const moving = s.speed > 0.2 && !s.airborne && !s.riding;
     this.phase += dt * (moving ? Math.min(12, 3 + s.speed * 1.4) : 2);
     const swing = moving ? Math.min(0.7, 0.2 + s.speed * 0.06) : 0;

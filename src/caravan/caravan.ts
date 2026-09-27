@@ -257,3 +257,20 @@ export function offerFood(st: { inventory: Record<string, number>; caravan: stri
   st.caravan.push(def.id);
   return r;
 }
+
+/** Balloon colours: bright and cheerful. */
+export const BALLOON_COLOURS = ['#e8364a', '#f2a13a', '#f2d14e', '#4fb86a', '#3a8ad8', '#b86ad8', '#ff8fb8', '#ffffff'];
+/** Lands with a funfair air, where children always have a balloon. */
+export const BALLOON_LANDS = ['meadow', 'vintage'];
+
+/**
+ * Whether a travelling child holds a balloon today, and its colour (owner's brief: "balloons …
+ * held by children"). Always at a festivity and in the funfair lands; elsewhere on market days
+ * (one day in three, a different day for each child); a new colour each day.
+ */
+export function balloonFor(childId: string, land: string, day: number, festive: boolean): string | null {
+  let h = day * 31;
+  for (const ch of childId) h = (h * 33 + ch.charCodeAt(0)) >>> 0;
+  if (!festive && !BALLOON_LANDS.includes(land) && (day + childId.length) % 3 !== 0) return null;
+  return BALLOON_COLOURS[h % BALLOON_COLOURS.length];
+}

@@ -82,7 +82,8 @@ sections C1–C7) and `3D_BUILDS_HANDOFF.md` (3D work, sections 2a and 3.x). Tic
 
 ## H. Sky, nature and decor (3D; section 3.4)
 - [ ] More land-specific sky artifacts (lantern festivals, koinobori, Diwali lantern strings, penjor, kites, balloon clusters)
-- [ ] Balloons as house decor, children holding balloons, balloons in the skies
+- [x] Balloons (logic): children hold one at festivities, in the Meadow and Maple Row, and on market days (`caravan.ts` `balloonFor`, `CharacterModel.holdBalloon`); a Balloons decor item for everyone
+- [ ] 3D: `heldBalloon` and `balloonCluster` models (`world/models/balloons.ts`, `CHATGPT_3D_MODELS.md` §10); balloon clusters in the skies
 - [x] Nature by terrain — logic (zones, species per zone, sizes; `world/nature.ts`)
 - [ ] Nature by terrain — models: shrubs, reeds, lotus, mangroves, alpine flowers; pines, palms and 10 more species rebuilt (3D)
 - [x] Caves — logic (placement, explore once a day; `world/caves.ts`)

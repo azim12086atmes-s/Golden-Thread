@@ -11,7 +11,7 @@ import { PET_BEDS, RIDE_CHILD_SEATS, VAN } from '../vehicles/vanLayout';
 
 /** Children are drawn at this scale of an adult. */
 const CHILD_SCALE = 0.62;
-import { CARPET_L, CARPET_W, CHILDREN, COMPANION_BY_ID, MAX_CHILDREN, TRAVELLER_CLEARANCE, CARPET_SIDE, caravanStep, canJoin, carpetTarget, offerFood, strayHome, PETS, type CompanionDef, type Member, type PetDef } from './caravan';
+import { CARPET_L, CARPET_W, CHILDREN, COMPANION_BY_ID, MAX_CHILDREN, TRAVELLER_CLEARANCE, CARPET_SIDE, caravanStep, canJoin, balloonFor, carpetTarget, offerFood, strayHome, PETS, type CompanionDef, type Member, type PetDef } from './caravan';
 
 /**
  * The caravan in the world: the children and pets travelling with the two, walking behind them
@@ -194,8 +194,10 @@ export class CaravanView {
       root.visible = true;
       root.position.set(m.x, surfaceAt(m.x, m.z, tr.gPos.y + 3), m.z);
       if (Math.hypot(dx, dz) > 0.002) root.rotation.y = Math.atan2(dx, dz);
-      if (b.child) b.child.update(dt, { speed: m.speed, airborne: false, riding: false, t: t + b.ph });
-      else b.pet!.update(dt, m.speed, t + b.ph);
+      if (b.child) {
+        b.child.holdBalloon(balloonFor(b.def.id, this.g.region.id, Math.floor(this.g.st.minutes / 1440), this.g.celebration.festivities.level > 0.5));
+        b.child.update(dt, { speed: m.speed, airborne: false, riding: false, t: t + b.ph });
+      } else b.pet!.update(dt, m.speed, t + b.ph);
     });
   }
 
