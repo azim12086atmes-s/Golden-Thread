@@ -39,6 +39,7 @@ import { Traffic } from './traffic/Traffic';
 import { PERSON_BY_ID, floorBuilding, floorsOf, residentsOf, tickCharity } from './charity/charity';
 import { InstitutesView } from './institutions/InstitutesView';
 import { NeedFolkView } from './charity/NeedFolkView';
+import { PlotsView } from './housing/PlotsView';
 import { NEED_LABEL, hasMet, meet, type Person } from './charity/charity';
 import { FieldsView } from './economy/FieldsView';
 import { HarboursView } from './economy/HarboursView';
@@ -132,6 +133,7 @@ export class Game {
   readonly harboursView: HarboursView;
   readonly bridgesView: BridgesView;
   readonly needFolk: NeedFolkView;
+  readonly plotsView: PlotsView;
   readonly trav: Travellers;
   readonly npcs: Npcs;
   readonly townsfolk: Townsfolk;
@@ -216,6 +218,7 @@ export class Game {
     this.harboursView = new HarboursView(this.scene, this.world);
     this.bridgesView = new BridgesView(this.scene, this.world);
     this.needFolk = new NeedFolkView(this.scene, this.st, this.world);
+    this.plotsView = new PlotsView(this.scene, this.st, this.world);
     this.trav = new Travellers(this.scene, this.world, this.st, OUTFITS[this.st.outfits.girl], OUTFITS[this.st.outfits.boy]);
     this.van = new VanInterior(this.st, OUTFITS[this.st.outfits.girl], OUTFITS[this.st.outfits.boy]);
     this.house = new HouseInterior(OUTFITS[this.st.outfits.girl], OUTFITS[this.st.outfits.boy]);
@@ -401,6 +404,7 @@ export class Game {
     this.sky.moonHidden = this.skyFx.hideMoon;
     this.npcs.update(dt, this.t, this.trav.gPos);
     this.needFolk.update(dt, this.t);
+    this.plotsView.update(dt, this.t, this.sky.night, this.housing.plotAt(this.trav.gPos.x, this.trav.gPos.z)?.id ?? null);
     this.townsfolk.update(dt, this.t, this.trav.gPos);
     this.dressing.update(this.sky.night);
     this.animals.update(dt, this.t, this.trav.gPos);

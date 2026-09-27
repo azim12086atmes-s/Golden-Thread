@@ -493,6 +493,7 @@ export class UI {
     if (this.panel === 'build') this.g.exitBuild();
     if (this.panel === 'van') { this.g.inVan = false; this.vanHidden = false; }
     if (this.panel === 'house') this.g.inHouse = false;
+    if (this.panel === 'property') this.g.plotsView.selected = null;
     this.panel = null;
     this.dialogueNpc = null;
     this.panelEl.classList.remove('show');
@@ -707,6 +708,7 @@ export class UI {
 
   openProperty(site: PlotSite): void {
     this.propertySite = site;
+    this.g.plotsView.selected = site.id;
     this.open('property');
   }
 
