@@ -49,7 +49,7 @@ function place(land: RegionId): Cave[] {
   const r0 = REGIONS.find((r) => r.id === land)!, c = regionCenter(r0), rng = new Rng(`caves:${land}`), out: Cave[] = [];
   const half = REGION_SIZE / 2;
   for (let tries = 0; tries < 200 && out.length < cfg.count; tries++) {
-    const a = rng.range(0, Math.PI * 2), d = rng.range(CITY_RADIUS + 70, half - 50), r = rng.range(7, 11);
+    const a = rng.range(0, Math.PI * 2), d = rng.range(CITY_RADIUS + 70, half - 50), r = rng.range(11, 16); // grand enough to walk into, and seen from afar
     const x = c.x + Math.cos(a) * d, z = c.z + Math.sin(a) * d;
     // Keep off the four avenue lines where they run out of town.
     const lx = x - c.x, lz = z - c.z;

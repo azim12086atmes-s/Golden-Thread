@@ -157,12 +157,13 @@ export class SkyOrnaments {
       x.lineWidth = 2; x.strokeStyle = 'rgba(255,245,210,0.6)'; path(44); x.stroke();
     });
     const tiles: THREE.Vector3[] = [];
-    const N = 11, step = 0.105;
+    // The canopy reaches down to about 20° above the horizon, so it is seen without looking straight up.
+    const N = 14, step = 0.105;
     for (let q = -N; q <= N; q++) for (let r = -N; r <= N; r++) {
       if (Math.abs(q + r) > N) continue;
       const u = (q + r / 2) * step, v = (r * Math.sqrt(3) / 2) * step;
       const d = Math.hypot(u, v);
-      if (d > 0.95) continue;
+      if (d > 1.22) continue;
       tiles.push(dir(Math.atan2(v, u), Math.PI / 2 - d));
     }
     this.hexDirs = tiles;
@@ -303,7 +304,7 @@ export class SkyOrnaments {
     });
     this.mandala = new THREE.Mesh(new THREE.PlaneGeometry(2600, 2600), new THREE.MeshBasicMaterial({ map: girih, transparent: true, depthWrite: false, side: THREE.DoubleSide, blending: THREE.AdditiveBlending, fog: false, toneMapped: false, opacity: 0 }));
     this.mandala.rotation.x = Math.PI / 2;
-    this.mandala.position.y = 1500;
+    this.mandala.position.y = 1150;
     this.mandala.frustumCulled = false;
     this.group.add(this.mandala);
 
@@ -433,7 +434,7 @@ export class SkyOrnaments {
       this.mandala.material.opacity = s;
       this.mandala.material.color.copy(pal[0]).lerp(tmpC.set('#ffffff'), 0.5);
       this.mandala.rotation.z = t * 0.01;
-      this.mandala.position.y = focus.y + 1500;
+      this.mandala.position.y = focus.y + 1150;
     }
     // Balloons drift with the breeze by day, in the land's colours.
     {
