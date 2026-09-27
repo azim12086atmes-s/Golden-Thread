@@ -71,7 +71,7 @@ export const INSTITUTES: InstituteDef[] = [
     ['Printing house', 'A hanok hall with type cases, presses and hanji drying racks.'],
     ['Royal academy', 'A courtyard academy (seowon) of hanok halls with a lecture hall.'],
   ], 'hanji'),
-  D('tcm', 'Chinese medicine', 'china', 'gardening', 'Herbal medicine, acupuncture and the balance of the body.', [
+  D('tcm', 'Chinese medicine', 'china', 'medicine', 'Herbal medicine, acupuncture and the balance of the body.', [
     ['Herb stall', 'A red-pillared stall of drawers and jars of herbs.'],
     ['Apothecary', 'A shophouse with a wall of wooden herb drawers and a gallery above.'],
     ['Clinic of medicine', 'A courtyard clinic with treatment rooms and a herb garden.'],
@@ -95,7 +95,7 @@ export const INSTITUTES: InstituteDef[] = [
     ['Engine works', 'A brick works hall with arched windows, a chimney and a crane.'],
     ['Institution of engineers', 'A columned Victorian institution with a lecture theatre dome.'],
   ], 'gear'),
-  D('tech', 'Technology', 'newyork', 'mechanics', 'Computing, renewable energy and biotech.', [
+  D('tech', 'Technology', 'newyork', 'software', 'Computing, renewable energy and biotech.', [
     ['Garage start-up', 'A garage with a roll-up door, desks and a neon sign.'],
     ['Studio', 'A loft studio with solar panels and a green wall.'],
     ['Company tower', 'A glass tower with sky gardens and a display screen crown.'],
@@ -107,13 +107,13 @@ export const INSTITUTES: InstituteDef[] = [
     ['Academy of drawing', 'A palazzo with a loggia and a skylit drawing hall.'],
     ['University', 'An arcaded courtyard university with a dome and a tower.'],
   ], 'marble'),
-  D('radio', 'Radio and electronics', 'vintage', 'mechanics', 'Valve radios, telephones and early electronics.', [
+  D('radio', 'Radio and electronics', 'vintage', 'hardware', 'Valve radios, telephones and early electronics.', [
     ['Radio repair stall', 'A booth with radios on shelves and an aerial.'],
     ['Radio shop', 'A Painted-Lady shopfront with a tall aerial mast.'],
     ['Broadcasting house', 'A deco broadcasting house with a transmitter mast.'],
     ['Institute of electronics', 'A campus with a dish antenna and labs.'],
   ], 'spool'),
-  D('islamicsciences', 'Islamic sciences', 'islamic', 'calligraphy', 'Astronomy, optics, algebra, medicine and great libraries (the House of Wisdom).', [
+  D('islamicsciences', 'Islamic sciences', 'islamic', 'research', 'Astronomy, optics, algebra, medicine and great libraries (the House of Wisdom).', [
     ['Bookseller', 'A small arched shop of books and calligraphy.'],
     ['Library', 'A riad library with a courtyard fountain and shelves of books.'],
     ['Madrasa', 'A madrasa courtyard with arcades, a prayer hall and students’ rooms.'],
@@ -125,25 +125,25 @@ export const INSTITUTES: InstituteDef[] = [
     ['Water works', 'A cistern and falaj channel works with a wind tower.'],
     ['School of the sea and stars', 'A courtyard school with an observatory and a harbour.'],
   ], 'incense'),
-  D('irrigation', 'Surveying and irrigation', 'egypt', 'gardening', 'The Nile’s gift: surveying, irrigation and papyrus.', [
+  D('irrigation', 'Surveying and irrigation', 'egypt', 'building', 'The Nile’s gift: surveying, irrigation and papyrus.', [
     ['Papyrus stall', 'A reed stall of papyrus sheets.'],
     ['Scribes’ house', 'A Nubian house of scribes with painted walls.'],
     ['Nilometer and water works', 'A stepped nilometer well and shaduf water lifts.'],
     ['House of life', 'A temple-like school of columns, a library and gardens.'],
   ], 'papyrus'),
-  D('starlore', 'Star lore and water finding', 'desert', 'gardening', 'Finding water and the way by the stars.', [
+  D('starlore', 'Star lore and water finding', 'desert', 'research', 'Finding water and the way by the stars.', [
     ['Storyteller’s rug', 'A rug under a shade cloth where the stars are taught.'],
     ['Tent school', 'A long open tent with a board and cushions.'],
     ['Well house', 'A stone well house with a windlass and troughs.'],
     ['Oasis academy', 'Tents and mud-brick halls round an oasis with a star-watching tower.'],
   ], 'dates'),
-  D('ayurveda', 'Ayurveda and astronomy', 'indianorth', 'gardening', 'Ayurvedic healing, textiles and the Jantar Mantar instruments.', [
+  D('ayurveda', 'Ayurveda and astronomy', 'indianorth', 'medicine', 'Ayurvedic healing, textiles and the Jantar Mantar instruments.', [
     ['Herb garden', 'A walled herb garden with a small shrine-like pavilion (no idols) and a well.'],
     ['Vaidya’s dispensary', 'A haveli shop with jars of remedies and a jharokha above.'],
     ['Ayurvedic clinic', 'A courtyard haveli clinic with treatment rooms.'],
     ['College and observatory', 'A college with Jantar Mantar–style giant instruments.'],
   ], 'spice'),
-  D('siddha', 'Siddha and spices', 'indiasouth', 'cooking', 'Siddha medicine, spice agronomy and temple engineering.', [
+  D('siddha', 'Siddha and spices', 'indiasouth', 'medicine', 'Siddha medicine, spice agronomy and temple engineering.', [
     ['Spice stall', 'A stall of spice baskets under a palm-leaf roof.'],
     ['Spice house', 'A Kerala trading house with a tiled roof and drying yard.'],
     ['Siddha clinic', 'A nalukettu courtyard clinic.'],
@@ -161,7 +161,7 @@ export const INSTITUTES: InstituteDef[] = [
     ['Water temple works', 'A subak water-sharing works of channels and a meeting pavilion.'],
     ['Academy of the terraces', 'Bale halls on stepped terraces with a split gate.'],
   ], 'rattan'),
-  D('polar', 'Polar science', 'aurora', 'lampcraft', 'Weather, the aurora and reindeer herding.', [
+  D('polar', 'Polar science', 'aurora', 'research', 'Weather, the aurora and reindeer herding.', [
     ['Weather hut', 'A small hut with a wind vane and instruments.'],
     ['Reindeer station', 'A log station with pens and sledges.'],
     ['Aurora observatory', 'A domed observatory on stilts.'],
@@ -180,19 +180,19 @@ export const INSTITUTES: InstituteDef[] = [
     ['Community kitchen', 'A large kitchen hall with a dining hall and a pantry.'],
     ['Food bank and kitchen', 'A kitchen, dining hall and a food bank warehouse.'],
   ], 'wheat'),
-  D('clinic', 'Clinic', null, 'gardening', 'Care for the sick: a clinic that grows into a hospital.', [
+  D('clinic', 'Clinic', null, 'medicine', 'Care for the sick: a clinic that grows into a hospital.', [
     ['First-aid post', 'A small post with a bed and a medicine cupboard.'],
     ['Clinic', 'A clinic with a waiting room and treatment rooms.'],
     ['Health centre', 'A health centre with wards and a pharmacy.'],
     ['Hospital', 'A hospital of wards, a garden courtyard and an entrance for carts and vehicles.'],
   ], 'herbs'),
-  D('school', 'School', null, 'calligraphy', 'Learning for children and grown-ups alike — from a tent school to a university.', [
+  D('school', 'School', null, 'teaching', 'Learning for children and grown-ups alike — from a tent school to a university.', [
     ['Tent school', 'An open tent with a board, mats and cushions.'],
     ['School', 'A schoolhouse with classrooms and a yard.'],
     ['Madrasa / college', 'A courtyard college of classrooms, a library and a hall.'],
     ['University', 'A campus of halls, a library and a quadrangle.'],
   ], 'hanji'),
-  D('library', 'Library', null, 'calligraphy', 'Books for everyone: knowledge kept and shared.', [
+  D('library', 'Library', null, 'research', 'Books for everyone: knowledge kept and shared.', [
     ['Reading corner', 'A small kiosk of shelves and benches.'],
     ['Library', 'A library room with tall shelves and reading tables.'],
     ['Great library', 'A domed reading hall with galleries.'],

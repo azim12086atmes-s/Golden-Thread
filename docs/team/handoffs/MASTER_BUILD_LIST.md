@@ -28,7 +28,7 @@ sections C1–C7) and `3D_BUILDS_HANDOFF.md` (3D work, sections 2a and 3.x). Tic
 - [ ] Teaching as a service; interning; doing a course (fee in coins or goods, certificate)
 - [x] Research under professors (assist for pay; scientific and magic theses → degree, invention, purse)
 - [x] Service jobs: two employers in every land (a shift a day; Apprentice → Master, pay rising with skill) and a daily freelance board — remote software, hardware builds with parts, and every land's trades (Work panel, U)
-- [ ] Institutes and experts to use the new skills (clinics → medicine, schools → teaching, tech → software/hardware, research → research)
+- [x] Institutes and experts use the new skills: clinics, Chinese medicine, Ayurveda, Siddha → medicine; schools → teaching; libraries, the Islamic sciences, star lore, polar science → research; New Yonder tech → software; radio → hardware; irrigation → building
 
 ## D. Economy of services, agriculture and supply (C5)
 - [ ] Services economy: health care, tech, logistics, supply, agriculture, research, manufacturing, inventions

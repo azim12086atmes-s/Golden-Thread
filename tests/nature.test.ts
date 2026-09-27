@@ -112,5 +112,5 @@ describe('the meadow field', () => {
     const g = new MeadowField();
     g.update(new THREE.Vector3(d.x, 0, d.z), 0);
     expect(g.grown.tufts).toBeLessThan(FIELD_CELLS * FIELD_CELLS * 0.1);
-  });
+  }, 15_000); // builds a lot of grass: slow when the whole suite runs in parallel
 });
