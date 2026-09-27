@@ -120,6 +120,20 @@ traditional kits and the research sources. Keep the south door area clear, keep 
   Chinese moon bridge, Japanese red arched bridge, rope/suspension, marble.
 - **Water lotus ponds** in India, Mughal gardens, China, Japan, Indonesia (see `lotusSpots` in `Water.ts`), glowing softly at night.
 
+### 3.2a The Sky Isles need care (owner: "very little trees and very little texturing")
+
+- **Trees**: the land plants only 60 trees (`treeCount` in `src/world/RegionBuilder.ts`: `isSky ? 60 : …340`), never giants,
+  and its flora (`regions.ts` skyisles: `cloud`, `crystal`, `candy`, `glowtree`) are mostly non-branching shapes. Raise the
+  count to match other lands, allow giants, and give the isles their own branching fantasy species in `src/world/trees.ts`
+  `HABITS` (e.g. pastel blossom trees, silver-barked moon trees, trailing wisteria-like cloud willows, crystal-fruit trees)
+  with leaf-image crowns like every other land; keep glowing fruit small.
+- **Texturing**: the ground is near-white (`ground: '#f4f4ff'`, `groundAlt: '#e6e8ff'`) and reads flat. Add ground
+  patterning in `src/world/Meadow.ts` `patternGround` (soft cloud-stone paving, star-dust veins, moss, flower meadows) and
+  grass/flower rings like the other lands; give buildings more surfaces than marble and glazed tile (`LAND_SURFACES.skyisles`
+  in `src/world/surfaces.ts`: moonstone ashlar, pearl tiles, silver filigree, cloud-plaster).
+- **Structure**: floating islands with waterfalls pouring off their edges, bridges between isles, cloud banks below,
+  moonstone spires and arched glowing windows (see the Sky Isles row of the monuments table).
+
 ### 3.3 City lighting (owner asked — NOT yet built beyond lamp posts)
 
 Existing: each land has its own lantern design (`src/world/lanterns.ts`), used for sky lanterns and on street lamp posts
