@@ -66,6 +66,10 @@ export interface GameState {
   van: Record<VanSlot, string>;
   /** How each home you own is furnished inside (by plot id), slot by slot like the van. */
   homes: Record<string, Record<VanSlot, string>>;
+  /** People you sponsor (charity/charity.ts): their paid days, wellbeing and the home they live in. */
+  sponsored: Array<{ id: string; since: number; paidUntil: number; wellbeing: number; home?: string; at: number }>;
+  /** Floors added to homes you own (by plot id), and a floor under construction. */
+  homeFloors: Record<string, { floors: number; buildingUntil?: number }>;
   vehicles: string[];
   discovered: string[];
   lanterns: string[];
@@ -104,6 +108,8 @@ export function newGame(): GameState {
     plots: {},
     van: { rug: 'plain', curtains: 'plain', quilt: 'plain', lights: 'none', plant: 'none', art: 'none', lamp: 'none', cushions: 'plain' },
     homes: {},
+    sponsored: [],
+    homeFloors: {},
     vehicles: ['walk', 'fly', 'van'],
     discovered: ['meadow'],
     lanterns: [],
