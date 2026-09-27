@@ -74,6 +74,16 @@ export class GeoBuilder {
     return this.stack[this.stack.length - 1];
   }
 
+  /** Run `fn` drawing in another builder's frame (`top`), so pieces in several builders line up exactly. */
+  withTop(top: THREE.Matrix4, fn: () => void): void {
+    this.stack.push(top.clone());
+    try {
+      fn();
+    } finally {
+      this.stack.pop();
+    }
+  }
+
   add(geo: THREE.BufferGeometry, color: THREE.ColorRepresentation, local?: THREE.Matrix4): this {
     const leaf = this.leafy && geo.type !== 'CylinderGeometry' ? 1 : 0;
     let g = geo.index ? geo.toNonIndexed() : geo;

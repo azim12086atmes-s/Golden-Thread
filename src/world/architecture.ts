@@ -1,4 +1,5 @@
 import * as THREE from 'three';
+import { fountainJet, waterBasin, waterChannel, waterPool } from './flowWater';
 import type { Rng } from '../core/rng';
 import {
   GeoBuilder, M, archPanel, box, cone, cyl, dome, gable, hip, onion, sphere, sweptRoof, tent, tree,
@@ -23,6 +24,8 @@ export interface Ctx {
   glow: GeoBuilder;
   rng: Rng;
   s: RegionSpec;
+  /** Built water that flows (flowWater.ts); where it is missing, water falls back to `glow`. */
+  water?: GeoBuilder;
 }
 
 export interface Footprint {
@@ -700,11 +703,7 @@ export function streetProp(c: Ctx, x: number, y: number, z: number, ry: number):
       case 'islamic':
       case 'mughal': {
         const stone = id === 'mughal' ? '#fbf7ee' : id === 'islamic' ? '#3a9a9a' : '#d9d0c0';
-        cyl(c.g, 2.4, 2.6, 0.7, stone, 0, 0, 0, id === 'islamic' ? 8 : 14);
-        cyl(c.g, 2.1, 2.1, 0.1, '#5ab4e0', 0, 0.62, 0, 14);
-        cyl(c.g, 0.3, 0.4, 1.6, stone, 0, 0, 0, 8);
-        cyl(c.g, 0.9, 0.5, 0.3, stone, 0, 1.6, 0, 10);
-        sphere(c.glow, 0.2, '#bfe8ff', 0, 2, 0, 5);
+        waterBasin(c, 0, 0, 0, 2.1, { stone, kerb: 0.7, seg: id === 'islamic' ? 8 : 18, tiers: true });
         break;
       }
       case 'middleeast':
@@ -723,8 +722,7 @@ export function streetProp(c: Ctx, x: number, y: number, z: number, ry: number):
         for (const zz of [-1.4, 1.4]) for (const xx of [-0.95, 0.95]) cyl(c.g, 0.4, 0.4, 0.25, '#1f1f24', xx, 0.2, zz, 8);
         break;
       case 'meadow':
-        box(c.g, 1.6, 0.9, 1.6, '#a8703f');
-        cyl(c.g, 0.7, 0.7, 0.1, '#5ab4e0', 0, 0.9, 0, 10);
+        waterBasin(c, 0, 0, 0, 0.62, { stone: '#a8703f', kerb: 0.95, seg: 12, jets: 0, speed: 0.15 });
         for (const xx of [-0.7, 0.7]) box(c.g, 0.12, 2.2, 0.12, '#6b4a2a', xx, 0, 0);
         gable(c.g, 1.9, 1.6, 0.8, '#e07a5f', 0, 2.2, 0);
         break;
@@ -1001,9 +999,10 @@ const landmarks: Record<RegionId, LandmarkFn> = {
       box(c.g, w, 7, d, white, x, 0, z);
     }
     for (let i = 0; i < 12; i++) archPanel(c.g, 3.4, 5.4, blue, -30 + i * 5.4, 0, 35.02, 0, 0.1, true);
-    // Reflecting pool.
-    box(c.g, 12, 0.5, 30, '#3a9a9a', 0, 0, 16);
-    box(c.g, 11, 0.1, 29, '#7fd0e8', 0, 0.5, 16);
+    // Reflecting pool (as in the Court of the Myrtles): still water between marble kerbs, a
+    // low fountain bubbling at each end.
+    waterPool(c, 0, 0, 16, 11, 29, 0, { stone: '#e8dcc6', kerb: 0.5, speed: 0.06 });
+    for (const z of [3, 29]) fountainJet(c, 0, 0.38, z, 0.7);
     // Prayer hall.
     box(c.g, 48, 14, 26, white, 0, 0, -12);
     for (let i = 0; i < 9; i++) archPanel(c.glow, 3, 7, c.s.glow, -20 + i * 5, 1, 1.02, 0, 0.08, true);
@@ -1139,11 +1138,17 @@ const landmarks: Record<RegionId, LandmarkFn> = {
       c.g.add(barrel, '#e2b43a');
     });
     for (let i = 0; i < 5; i++) cone(c.g, 0.4, 2.2, '#e2b43a', -w / 2 + w * (i + 0.5) / 5, y + d * 0.55, 0, 6);
-    // Temple tank.
+    // Temple tank: stone steps rising on all four sides to a kerbed pool of slowly turning water.
     c.g.frame(0, 0, 40, 0, 1, () => {
-      box(c.g, 24, 0.6, 24, '#c9bfa8');
-      box(c.g, 20, 0.2, 20, '#3a9ac0', 0, 0.5, 0);
+      for (let k = 0; k < 3; k++) {
+        const outer = 13.6 - k * 0.8, inner = 10.4, hgt = 0.2 * (k + 1), wd = outer - inner;
+        for (const sgn of [-1, 1]) {
+          box(c.g, outer * 2, hgt, wd, '#c9bfa8', 0, 0, sgn * (inner + wd / 2));
+          box(c.g, wd, hgt, inner * 2, '#c9bfa8', sgn * (inner + wd / 2), 0, 0);
+        }
+      }
     });
+    waterPool(c, 0, 0, 40, 20, 20, 0, { stone: '#bdb39c', kerb: 0.75, speed: 0.1 });
     o.colliders.push({ x: 0, z: 0, r: 12, h: y + 4 });
     o.height = y + 6;
   },
@@ -1173,13 +1178,20 @@ const landmarks: Record<RegionId, LandmarkFn> = {
         o.colliders.push({ x, z: z - 30, r: 2.2, h: 40 });
       }
     }));
-    // Charbagh — four-fold garden with water channels and cypress avenues.
-    box(c.g, 4, 0.3, 90, '#7fc8e0', 0, 0, 44);
-    box(c.g, 90, 0.3, 4, '#7fc8e0', 0, 0, 44);
-    for (let i = 0; i < 12; i++) {
-      for (const x of [-5, 5]) tree(c.g, 'cypress', x, 0, 4 + i * 7, 1.2, () => c.rng.next());
+    // Charbagh — the four-fold garden: a raised marble tank (al-Kawthar) where the axes cross, and
+    // four channels flowing out from it between marble kerbs, the long one down to the gate lined
+    // with fountain jets, as at the Taj.
+    waterPool(c, 0, 0, 44, 11, 11, 0, { stone: white, kerb: 0.9, speed: 0.12, jets: 1, jetHeight: 2.4 });
+    for (const [x, z, len, ry, jets] of [[0, 20.5, 36, 0, 3], [0, 68.5, 38, Math.PI, 3], [27, 44, 43, -Math.PI / 2, 0], [-27, 44, 43, Math.PI / 2, 0]] as const) {
+      waterChannel(c, x, 0, z, len, 3.2, ry, { stone: white, flow: [0, -1], speed: 0.55, jets, jetHeight: 1.2 });
     }
-    for (let i = 0; i < 5; i++) sphere(c.glow, 0.3, '#fff0c0', 0, 0.6, 12 + i * 14, 5);
+    for (let i = 0; i < 12; i++) {
+      const z = 4 + i * 7;
+      if (Math.abs(z - 44) < 8) continue; // the central tank
+      for (const x of [-5, 5]) tree(c.g, 'cypress', x, 0, z, 1.2, () => c.rng.next());
+    }
+    // Lamps floating on the long channel.
+    for (const z of [12, 26, 58, 72]) sphere(c.glow, 0.3, '#fff0c0', 0, 0.55, z, 5);
     c.g.frame(0, 0, 96, 0, 1, () => {
       box(c.g, 34, 20, 10, red);
       archPanel(c.g, 10, 15, white, 0, 0, 5.02, 0, 0.15, true);

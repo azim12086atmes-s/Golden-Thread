@@ -1,4 +1,5 @@
 import * as THREE from 'three';
+import { waterBasin } from './flowWater';
 import { Rng } from '../core/rng';
 import { GeoBuilder, archPanel, box, cone, cyl, dome, flowers, sphere } from './kit';
 import { LOCALES, type Artifact } from './locale';
@@ -32,13 +33,13 @@ export const STRING_AT = [110, 150, 190];
 export class TownDressing {
   private towns = new Map<string, { group: THREE.Group; lights: THREE.PointLight[] }>();
 
-  constructor(private scene: THREE.Scene, private solid: THREE.Material, private glowMat: THREE.Material) {}
+  constructor(private scene: THREE.Scene, private solid: THREE.Material, private glowMat: THREE.Material, private waterMat?: THREE.Material) {}
 
   onRegionLoaded(inst: RegionInstance): void {
     const id = inst.spec.id;
     const L = LOCALES[id];
     const c = regionCenter(inst.spec);
-    const g = new GeoBuilder(), glow = new GeoBuilder();
+    const g = new GeoBuilder(), glow = new GeoBuilder(), water = this.waterMat ? new GeoBuilder() : undefined;
     const rng = new Rng(`dressing:${id}`);
     const H = (x: number, z: number) => surfaceAt(c.x + x, c.z + z, 1e9);
     const light = (i: number) => L.lights[i % L.lights.length];
@@ -47,7 +48,7 @@ export class TownDressing {
     const arts = L.artifacts;
     artifactSpots(arts.length).forEach((s, i) => {
       g.frame(c.x + s.x, H(s.x, s.z), c.z + s.z, s.face, 1, () => glow.frame(c.x + s.x, H(s.x, s.z), c.z + s.z, s.face, 1, () => {
-        build(arts[i % arts.length], g, glow, light(i), light(i + 1), rng);
+        build(arts[i % arts.length], g, glow, light(i), light(i + 1), rng, water);
       }));
     });
 
@@ -69,6 +70,8 @@ export class TownDressing {
     const m = g.build(this.solid), gm = glow.build(this.glowMat);
     if (m) { m.castShadow = true; m.receiveShadow = true; group.add(m); }
     if (gm) group.add(gm);
+    const wm = water && this.waterMat ? water.build(this.waterMat) : null;
+    if (wm) { wm.renderOrder = 1; group.add(wm); }
     // Warm light over the plaza and the market that rises at dusk.
     const lights: THREE.PointLight[] = [];
     for (const [x, z, i] of [[0, 30, 0], [0, -30, 1], [30, 0, 2], [0, 80, 0]] as const) {
@@ -99,7 +102,7 @@ export class TownDressing {
 }
 
 /** One artifact, in local space facing +z. `a`/`b` are the land's light colours. */
-function build(kind: Artifact, g: GeoBuilder, glow: GeoBuilder, a: string, b: string, rng: Rng): void {
+function build(kind: Artifact, g: GeoBuilder, glow: GeoBuilder, a: string, b: string, rng: Rng, water?: GeoBuilder): void {
   const r = () => rng.next();
   switch (kind) {
     case 'toro': // Japanese stone lantern
@@ -118,11 +121,8 @@ function build(kind: Artifact, g: GeoBuilder, glow: GeoBuilder, a: string, b: st
       }
       break;
     case 'fountain':
-      cyl(g, 2.4, 2.6, 0.6, '#e8dcc6', 0, 0, 0, 16);
-      cyl(glow, 2.1, 2.1, 0.62, '#8fd3ff', 0, 0.01, 0, 16);
-      cyl(g, 0.3, 0.4, 1.6, '#e8dcc6', 0, 0.6, 0, 8);
-      cyl(g, 1, 0.8, 0.3, '#e8dcc6', 0, 2.2, 0, 12);
-      sphere(glow, 0.4, '#bfe8ff', 0, 2.8, 0, 8, 1.4);
+      // A tiered fountain in a kerbed basin, its water turning and glowing (flowWater.ts).
+      waterBasin({ g, glow, water }, 0, 0, 0, 2.2, { stone: '#e8dcc6', kerb: 0.65, tiers: true, jetHeight: 1.1 });
       break;
     case 'obelisk':
       box(g, 1.6, 0.6, 1.6, '#d4b070', 0, 0, 0);

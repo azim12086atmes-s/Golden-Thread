@@ -6,7 +6,8 @@ import type { RegionId } from './regions';
  * Fairytale water. The sea, the lakes, the ponds and the rivers share one surface: clear
  * turquoise by day with drifting light-nets (caustics), slow rings and bright glints; after dusk
  * it glows from within in the land's own lantern colour, with a lattice of light that breathes.
- * Round every shore a band of foam laps in and out, glowing softly at night.
+ * Round every shore a band of foam laps in and out, glowing — softly by day, brightly at night. The
+ * sea and lakes drift on a slow current, and every river visibly runs downstream (riverFlowGeometry).
  */
 
 const WATER_VERT = /* glsl */ `
@@ -38,7 +39,8 @@ const WATER_FRAG = /* glsl */ `
     return d2 - d1;
   }
   void main() {
-    vec2 p = vW.xz;
+    // Everything drifts on a slow current, so even the sea and the lakes are seen to move.
+    vec2 p = vW.xz - vec2(0.55, 0.32) * t;
     float c1 = cells(p * 0.16), c2 = cells(p * 0.37 + 11.0);
     float caustic = pow(1.0 - smoothstep(0.0, 0.14, c1), 2.0) * 0.6 + pow(1.0 - smoothstep(0.0, 0.1, c2), 2.0) * 0.35;
     // Slow rings spreading from points on a lattice, as if something just touched the water.
@@ -87,8 +89,12 @@ const FOAM_FRAG = /* glsl */ `
     float lace = smoothstep(0.45, 0.8, sn(vW.xz * 1.8 + vec2(t * 0.3, -t * 0.2)));
     float edge = smoothstep(0.0, 0.25, vUv.y) * (1.0 - smoothstep(0.75, 1.0, vUv.y));
     float a = clamp(band * 0.8 + lace * 0.35 * band + 0.15 * smoothstep(0.55, 0.95, vUv.y), 0.0, 1.0) * edge;
-    vec3 col = mix(vec3(1.0), glow * 1.4 + 0.2, night * 0.7);
-    gl_FragColor = vec4(col, a * 0.85);
+    // The foam glows: bright white by day, lit from within in the land's lantern colour at night,
+    // brightest along its lacy crests — just over the bloom threshold (1.0), so it glows softly
+    // rather than flaring.
+    float crest = band * (0.6 + lace * 0.8);
+    vec3 col = mix(vec3(0.98, 1.0, 1.02), glow * 1.1 + 0.2, night * 0.8) * (1.0 + crest * (0.06 + night * 0.28));
+    gl_FragColor = vec4(col, clamp(a * (0.85 + night * 0.1), 0.0, 1.0));
     #include <fog_fragment>
   }`;
 
@@ -178,3 +184,61 @@ export function lotusSpots(land: RegionId): Array<{ x: number; z: number; flower
   return out;
 }
 
+
+const FLOW_FRAG = /* glsl */ `
+  #include <fog_pars_fragment>
+  uniform float t; uniform float night; uniform vec3 glow;
+  varying vec2 vUv; varying vec3 vW;
+  float n(vec2 p) { return fract(sin(dot(floor(p), vec2(12.9898, 78.233))) * 43758.5453); }
+  float sn(vec2 p) { vec2 i = floor(p), f = fract(p); f = f * f * (3.0 - 2.0 * f);
+    return mix(mix(n(i), n(i + vec2(1, 0)), f.x), mix(n(i + vec2(0, 1)), n(i + vec2(1, 1)), f.x), f.y); }
+  void main() {
+    // vUv.x: metres downstream; vUv.y: 0..1 across. Streaks of light run downstream, faster mid-stream.
+    float mid = 1.0 - abs(vUv.y * 2.0 - 1.0);
+    float speed = 1.2 + mid * 1.6;
+    float s1 = sn(vec2(vUv.x * 0.35 - t * speed, vUv.y * 9.0));
+    float s2 = sn(vec2(vUv.x * 0.9 - t * speed * 1.7, vUv.y * 16.0) + 5.0);
+    float streak = smoothstep(0.62, 0.95, s1 * 0.6 + s2 * 0.5);
+    float edge = smoothstep(0.0, 0.2, vUv.y) * (1.0 - smoothstep(0.8, 1.0, vUv.y));
+    vec3 col = mix(vec3(1.0), glow * 1.15 + 0.2, night * 0.8);
+    gl_FragColor = vec4(col, streak * edge * (0.34 + night * 0.12));
+    #include <fog_fragment>
+  }`;
+
+/** The streaks of a river's current (drawn over the water, along each land's river). */
+export function riverFlowMaterial(): THREE.ShaderMaterial {
+  return new THREE.ShaderMaterial({
+    uniforms: THREE.UniformsUtils.merge([THREE.UniformsLib.fog, { t: { value: 0 }, night: { value: 0 }, glow: { value: new THREE.Color('#7affe0') } }]),
+    vertexShader: FOAM_VERT, fragmentShader: FLOW_FRAG, transparent: true, fog: true, depthWrite: false, side: THREE.DoubleSide,
+    polygonOffset: true, polygonOffsetFactor: -3,
+  });
+}
+
+/** A ribbon down the middle of each river in a land (uv.x: metres downstream, uv.y: across), just above the water. */
+export function riverFlowGeometry(land: RegionId, waterY: number): THREE.BufferGeometry | null {
+  const pos: number[] = [], uv: number[] = [], idx: number[] = [];
+  for (const b of WATERS) {
+    if (b.land !== land || b.kind !== 'river') continue;
+    const base = pos.length / 3, half = b.w * 0.42;
+    let run = 0;
+    b.pts.forEach((p, i) => {
+      const q = b.pts[Math.min(b.pts.length - 1, i + 1)], o = b.pts[Math.max(0, i - 1)];
+      const dx = q[0] - o[0], dz = q[1] - o[1], L = Math.hypot(dx, dz) || 1;
+      const nx = -dz / L, nz = dx / L;
+      if (i > 0) run += Math.hypot(p[0] - b.pts[i - 1][0], p[1] - b.pts[i - 1][1]);
+      pos.push(p[0] - nx * half, waterY + 0.05, p[1] - nz * half, p[0] + nx * half, waterY + 0.05, p[1] + nz * half);
+      uv.push(run, 0, run, 1);
+    });
+    for (let i = 0; i < b.pts.length - 1; i++) {
+      const a = base + i * 2, c = base + (i + 1) * 2;
+      idx.push(a, c, a + 1, a + 1, c, c + 1);
+    }
+  }
+  if (!pos.length) return null;
+  const g = new THREE.BufferGeometry();
+  g.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3));
+  g.setAttribute('uv', new THREE.Float32BufferAttribute(uv, 2));
+  g.setIndex(idx);
+  g.computeBoundingSphere();
+  return g;
+}

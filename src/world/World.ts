@@ -8,7 +8,8 @@ import { buildRegion, type Collider, type Door, type RegionInstance, type Resour
 import { REGIONS, REGION_SIZE, regionCenter, type RegionSpec } from './regions';
 import { CHUNK, WATER_Y, addPlatform, buildTerrainChunk, terrainHeight } from './terrain';
 import { GRASS_UNIFORMS, MeadowField, patternGround } from './Meadow';
-import { foamMaterial, shoreGeometry, waterMaterial } from './Water';
+import { foamMaterial, riverFlowGeometry, riverFlowMaterial, shoreGeometry, waterMaterial } from './Water';
+import { builtWaterMaterial } from './flowWater';
 import { swayMaterial } from './wind';
 import { LOCALES } from './locale';
 
@@ -24,6 +25,11 @@ export class World {
   readonly terrainMat = new THREE.MeshStandardMaterial({ vertexColors: true, roughness: 1 });
   private waterMat = waterMaterial();
   private foamMat = foamMaterial();
+  /** Built water in the towns and monuments (channels, pools, fountains) — flowing, glowing at night. */
+  readonly builtWater = builtWaterMaterial();
+  /** Streaks running downstream along each land's river. */
+  private flowMat = riverFlowMaterial();
+  private flows = new Map<string, THREE.Mesh>();
   private foams = new Map<string, THREE.Mesh>();
   /** The dense meadow of grass and flowers round the travellers. */
   readonly meadow = new MeadowField();
@@ -52,10 +58,10 @@ export class World {
   private buildLandmarks(): void {
     for (const r of REGIONS) {
       const c = regionCenter(r);
-      const g = new GeoBuilder(), glow = new GeoBuilder();
+      const g = new GeoBuilder(), glow = new GeoBuilder(), water = new GeoBuilder();
       g.cards = [];
       g.surfaces = surfacesByColour(r);
-      const out = buildLandmark({ g, glow, rng: new Rng(`landmark:${r.id}`), s: r });
+      const out = buildLandmark({ g, glow, water, rng: new Rng(`landmark:${r.id}`), s: r });
       const grp = new THREE.Group();
       grp.position.set(c.x, 0, c.z);
       const leaves = g.buildLeaves(blobMaterial()), cards = leafCardMesh(g.cards);
@@ -64,6 +70,8 @@ export class World {
       const m = g.build(this.solid), gm = glow.build(this.glow);
       if (m) { m.castShadow = true; m.receiveShadow = true; grp.add(m); }
       if (gm) grp.add(gm);
+      const wm = water.build(this.builtWater);
+      if (wm) { wm.renderOrder = 1; grp.add(wm); }
       this.group.add(grp);
       for (const col of out.colliders) this.landmarkColliders.push({ x: c.x + col.x, z: c.z + col.z, r: col.r, h: col.h });
       for (const p of out.platforms) addPlatform({ x: c.x + p.x, z: c.z + p.z, r: p.r, y: p.y });
@@ -76,7 +84,7 @@ export class World {
   /** The water's look: the hour, and the land's own lantern colour that it glows with at night. */
   setWaterLook(t: number, night: number, land: keyof typeof LOCALES): void {
     const glow = LOCALES[land].lights[0];
-    for (const m of [this.waterMat, this.foamMat]) {
+    for (const m of [this.waterMat, this.foamMat, this.builtWater, this.flowMat]) {
       m.uniforms.t.value = t;
       m.uniforms.night.value = night;
       (m.uniforms.glow.value as THREE.Color).lerp(new THREE.Color(glow), 0.02);
@@ -132,6 +140,8 @@ export class World {
         this.regions.delete(r.id);
         const foam = this.foams.get(r.id);
         if (foam) { this.group.remove(foam); foam.geometry.dispose(); this.foams.delete(r.id); }
+        const flow = this.flows.get(r.id);
+        if (flow) { this.group.remove(flow); flow.geometry.dispose(); this.flows.delete(r.id); }
         this.onRegionUnloaded?.(loaded);
       }
     }
@@ -139,12 +149,15 @@ export class World {
       this.pending.sort((a, b) => dist(focus, a) - dist(focus, b));
       const next = this.pending.shift()!;
       if (!this.regions.has(next.id)) {
-        const inst = buildRegion(next, this.solid, this.glow);
+        const inst = buildRegion(next, this.solid, this.glow, this.builtWater);
         this.regions.set(next.id, inst);
         this.group.add(inst.group);
         // Foam round the land's lakes, ponds and river.
         const fg = shoreGeometry(next.id, WATER_Y);
         if (fg) { const fm = new THREE.Mesh(fg, this.foamMat); fm.renderOrder = 1; this.foams.set(next.id, fm); this.group.add(fm); }
+        // The river's current, running downstream.
+        const rg = riverFlowGeometry(next.id, WATER_Y);
+        if (rg) { const rm = new THREE.Mesh(rg, this.flowMat); rm.renderOrder = 1; this.flows.set(next.id, rm); this.group.add(rm); }
         this.onRegionLoaded?.(inst);
       }
     }

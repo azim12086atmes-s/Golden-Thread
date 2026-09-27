@@ -699,6 +699,21 @@ inverted V), the snow igloo's entrance tunnel (was upside down), the Nubian barr
 Bengal-style roofs on jharokhas and Mughal pavilions (faced forward). Check other rotated half-cylinders and arcs you
 write: a `CylinderGeometry` half (thetaLength π) must be turned so its curve faces up.
 
+**Built water flows — use the helpers, never flat blue boxes** (`src/world/flowWater.ts`):
+- **The helpers:**
+  - `waterChannel(c, x, y, z, len, w, ry, { stone, flow, speed, jets })` for garden canals;
+  - `waterPool(...)` for reflecting pools and tanks;
+  - `waterBasin(c, x, y, z, r, { tiers })` for fountains;
+  - `fountainJet(...)` for single jets.
+- **What they give you:** each piece is banked like a fountain, with a raised stone kerb, a glowing foam line where the
+  water meets the stone, and the water on one shared material that runs in its `flow` direction (red/blue of the vertex
+  colour = direction, green = speed) and glows at night.
+- **Frames:** they draw in `c.g`'s current frame, so they line up inside any frame. The water goes to `c.water` when the
+  context has one (monuments, towns, town dressing), else to `c.glow`.
+- **Where they're used today:** the Taj's charbagh (a central tank, four channels flowing outward, jets down the long
+  canal), the Alhambra's reflecting pool, the temple tank, plaza, courtyard and town fountains, and the Meadow's well.
+- **Use them** for every new pool, channel, tank, ghat or fountain (lotus ponds, §6; the castle's fountain, §19).
+
 **Frames must include the glow.** `c.g.frame(...)` moves only the solid builder. Anything drawn into `c.glow` inside
 it lands at the unmoved origin unless you wrap the glow too: `c.g.frame(x, y, z, ry, s, () => c.glow.frame(x, y, z,
 ry, s, () => { … }))`. Three landmarks had this slip, and it is fixed now:

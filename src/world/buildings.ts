@@ -1,4 +1,5 @@
 import type { Ctx, Footprint } from './architecture';
+import { waterBasin } from './flowWater';
 import { archPanel, box, cone, cyl, dome, gable, hip, onion, sphere, sweptRoof, tree } from './kit';
 import type { RegionId } from './regions';
 
@@ -228,9 +229,7 @@ const BUILD: Record<Archetype, Builder> = {
     for (const x of [-3.6, 3.6]) archPanel(c.g, 1.6, 2.2, trim, x, 0.3, s / 2 + 0.02, 0, 0.1, st.arch === 'pointed');
     // In the court: a tree and a little fountain with glowing water.
     tree(c.g, pick(c, c.s.flora), 1.8, 0, 0.5, 0.9, () => c.rng.next());
-    cyl(c.g, 1.1, 1.2, 0.5, '#e8dcc6', -1.6, 0, 1.2, 12);
-    cyl(c.glow, 0.95, 0.95, 0.06, '#8ad8ff', -1.6, 0.5, 1.2, 12);
-    cyl(c.g, 0.12, 0.15, 0.9, '#e8dcc6', -1.6, 0.5, 1.2, 6);
+    waterBasin(c, -1.6, 0, 1.2, 0.95, { stone: '#e8dcc6', kerb: 0.5, seg: 12, jetHeight: 0.8 });
     frieze(c, st, s, h * 2 - 1.6, -s / 2 + 3.22);
     frieze(c, st, 9.4, h - 1.1, s / 2 + 0.01);
     let rh = 0;

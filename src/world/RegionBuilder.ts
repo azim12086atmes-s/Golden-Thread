@@ -115,15 +115,15 @@ function nodeMesh(item: string): THREE.Object3D {
   return g;
 }
 
-export function buildRegion(spec: RegionSpec, solid: THREE.Material, glowMat: THREE.Material): RegionInstance {
+export function buildRegion(spec: RegionSpec, solid: THREE.Material, glowMat: THREE.Material, waterMat?: THREE.Material): RegionInstance {
   const c = regionCenter(spec);
   const rng = new Rng(`region:${spec.id}`);
-  const g = new GeoBuilder(), glow = new GeoBuilder();
+  const g = new GeoBuilder(), glow = new GeoBuilder(), water = waterMat ? new GeoBuilder() : undefined;
   // Collect leaf cards for the tree crowns (one instanced draw for the land).
   g.cards = [];
   // What this land's walls, roofs and roads are made of (drawn by the shader).
   g.surfaces = surfacesByColour(spec);
-  const ctx: Ctx = { g, glow, rng, s: spec };
+  const ctx: Ctx = { g, glow, rng, s: spec, water };
   const colliders: Collider[] = [];
   const spots: Array<{ x: number; z: number }> = [];
   const doors: Door[] = [];
@@ -339,6 +339,8 @@ export function buildRegion(spec: RegionSpec, solid: THREE.Material, glowMat: TH
     group.add(solidMesh);
   }
   if (glowMesh) group.add(glowMesh);
+  const waterMesh = water && waterMat ? water.build(waterMat) : null;
+  if (waterMesh) { waterMesh.renderOrder = 1; group.add(waterMesh); }
 
   // Resource nodes: individual objects so they can be gathered and regrow.
   const nodes: ResourceNode[] = [];

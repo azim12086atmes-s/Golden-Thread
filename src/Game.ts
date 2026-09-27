@@ -204,7 +204,7 @@ export class Game {
     this.housing = new Housing(this.st, this.bus);
     this.npcs = new Npcs(this.scene);
     this.townsfolk = new Townsfolk(this.scene);
-    this.dressing = new TownDressing(this.scene, this.world.solid, this.world.glow);
+    this.dressing = new TownDressing(this.scene, this.world.solid, this.world.glow, this.world.builtWater);
     this.animals = new Animals(this.scene, this.st);
     this.housingView = new HousingView(this.scene, this.st, this.world);
     this.institutesView = new InstitutesView(this.scene, this.st, this.world);
