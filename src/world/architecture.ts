@@ -4,6 +4,7 @@ import {
   GeoBuilder, M, archPanel, box, cone, cyl, dome, gable, hip, onion, sphere, sweptRoof, tent, tree,
 } from './kit';
 import { houseDecor } from './houseDecor';
+import { FACADES, compose } from './facade';
 import { LAND_LANTERN, lanternGeometry } from './lanterns';
 import type { RegionId, RegionSpec } from './regions';
 
@@ -35,18 +36,6 @@ const pick = <T>(c: Ctx, a: readonly T[]) => c.rng.pick(a);
 function win(c: Ctx, x: number, y: number, z: number, w = 0.9, h = 1.1, ry = 0, arched = false): void {
   if (arched) archPanel(c.glow, w, h, c.s.glow, x, y, z, ry, 0.08);
   else box(c.glow, w, h, 0.1, c.s.glow, x, y, z, ry);
-}
-
-function windowGrid(c: Ctx, w: number, d: number, floors: number, floorH: number, perRow: number, arched = false, y0 = 0.9): void {
-  for (let f = 0; f < floors; f++) {
-    for (let i = 0; i < perRow; i++) {
-      const x = -w / 2 + (w / perRow) * (i + 0.5);
-      win(c, x, y0 + f * floorH, d / 2 + 0.02, 0.8, 1.1, 0, arched);
-    }
-    // side windows
-    win(c, w / 2 + 0.02, y0 + f * floorH, 0, 0.8, 1.1, Math.PI / 2, arched);
-    win(c, -w / 2 - 0.02, y0 + f * floorH, 0, 0.8, 1.1, -Math.PI / 2, arched);
-  }
 }
 
 function door(c: Ctx, w: number, d: number, arched = false, col = DOOR): void {
@@ -125,46 +114,18 @@ const houses: Record<RegionId, HouseFn> = {
   },
 
   norway(c) {
-    const wall = pick(c, c.s.walls), roof = pick(c, c.s.roofs);
-    const w = 5 + c.rng.range(0, 1.5), d = 6, h = 5 + c.rng.range(0, 2);
-    box(c.g, w, h, d, wall);
-    gable(c.g, w + 0.6, d + 0.8, 3.4, roof, 0, h, 0, Math.PI / 2);
-    for (const x of [-w / 2, w / 2]) box(c.g, 0.2, h, 0.2, '#ffffff', x, 0, d / 2);
-    windowGrid(c, w, d, Math.floor(h / 2.6), 2.4, 2);
-    door(c, w, d);
-    return { r: Math.max(w, d) / 2 + 0.6, h: h + 3.4 };
+    // Norwegian wood, after Bryggen.
+    return compose(c, FACADES.norway, '#3a2a22');
   },
 
   switzerland(c) {
-    const wood = pick(c, ['#8a5a36', '#a8703f', '#6e4a30']);
-    box(c.g, 8, 2.6, 7, '#b8b0a4');
-    box(c.g, 8, 3, 7, wood, 0, 2.6, 0);
-    gable(c.g, 10.5, 9.5, 3, pick(c, c.s.roofs), 0, 5.6, 0, Math.PI / 2);
-    box(c.g, 7, 0.2, 1.4, wood, 0, 3.2, 4.1);
-    for (let i = 0; i < 8; i++) box(c.g, 0.1, 1, 0.1, '#5a3a26', -3.4 + i, 3.4, 4.75);
-    for (let i = 0; i < 6; i++) sphere(c.g, 0.22, i % 2 ? '#e8364a' : '#ff6b8b', -2.5 + i, 4.5, 4.6, 4);
-    windowGrid(c, 8, 7, 2, 2.8, 3);
-    door(c, 8, 7);
-    return { r: 5, h: 8.6 };
+    // A Swiss chalet.
+    return compose(c, FACADES.switzerland, '#5a3a26');
   },
 
   london(c) {
-    // A short terrace of three houses.
-    const roof = pick(c, c.s.roofs), trim = '#f2efe6';
-    const floors = c.rng.int(3, 4), fh = 3;
-    for (let i = -1; i <= 1; i++) {
-      const wall = pick(c, c.s.walls), x = i * 5.2;
-      c.g.frame(x, 0, 0, 0, 1, () => {
-        box(c.g, 5.2, floors * fh, 8, wall);
-        box(c.g, 5.3, 0.3, 8.1, trim, 0, fh, 0);
-        windowGrid(c, 5.2, 8, floors, fh, 2);
-        box(c.g, 1.2, 2.3, 0.15, pick(c, ['#1f3a5a', '#1f1f24', '#8a1f2a', '#2f5a3a']), 1.2, 0, 4.02);
-        box(c.g, 0.8, 1.6, 0.8, '#7a3a30', -1.5, floors * fh + 1.4, 0);
-      });
-    }
-    gable(c.g, 15.6, 8.4, 3, roof, 0, floors * fh, 0);
-    for (let i = 0; i < 8; i++) box(c.g, 0.08, 1, 0.08, '#1f1f24', -7.5 + i * 2.1, 0, 5.2);
-    return { r: 8.5, h: floors * fh + 3 };
+    // Georgian and Victorian terraces (docs/ARCHITECTURE_RESEARCH.md).
+    return compose(c, FACADES.london, pick(c, ['#1f1f24', '#2f4a3a', '#7a1f24', '#1f2f5a']));
   },
 
   newyork(c) {
@@ -177,31 +138,13 @@ const houses: Record<RegionId, HouseFn> = {
   },
 
   renaissance(c) {
-    const wall = pick(c, c.s.walls), floors = c.rng.int(2, 3), fh = 3.4;
-    const w = 9, d = 8;
-    box(c.g, w, floors * fh, d, wall);
-    box(c.g, w + 0.2, 0.4, d + 0.2, '#fbf3e0', 0, fh, 0);
-    for (let f = 0; f < floors; f++) for (let i = 0; i < 3; i++) win(c, -3 + i * 3, 0.8 + f * fh, d / 2 + 0.02, 1, 1.5, 0, true);
-    win(c, w / 2 + 0.02, 1, 0, 1, 1.5, Math.PI / 2, true);
-    win(c, -w / 2 - 0.02, 1, 0, 1, 1.5, -Math.PI / 2, true);
-    hip(c.g, w + 1.4, d + 1.4, 2, pick(c, c.s.roofs), 0, floors * fh, 0);
-    archPanel(c.g, 1.6, 2.6, DOOR, 0, 0, d / 2 + 0.03);
-    return { r: 6, h: floors * fh + 2 };
+    // An Italian palazzo.
+    return compose(c, FACADES.renaissance, '#5a3a26');
   },
 
   vintage(c) {
-    const wall = pick(c, c.s.walls), awn = pick(c, ['#e07a5f', '#5a8ab5', '#6ab58a', '#d9467a']);
-    const w = 8, d = 7, h = c.rng.chance(0.5) ? 4.2 : 7.4;
-    box(c.g, w, h, d, wall);
-    box(c.g, w + 0.3, 0.8, d + 0.3, '#ffffff', 0, h, 0);
-    box(c.glow, w - 2, 2.2, 0.1, c.s.glow, 0, 0.6, d / 2 + 0.02);
-    for (let i = 0; i < 8; i++) {
-      const geo = { w: w / 8 };
-      box(c.g, geo.w, 0.1, 1.8, i % 2 ? '#ffffff' : awn, -w / 2 + geo.w * (i + 0.5), 3, d / 2 + 0.8);
-    }
-    box(c.g, w * 0.6, 0.9, 0.2, awn, 0, 3.4, d / 2 + 0.05);
-    if (h > 5) windowGrid(c, w, d, 1, 3, 3, false, 4.6);
-    return { r: 5.3, h: h + 0.8 };
+    // A Queen Anne "Painted Lady".
+    return compose(c, FACADES.vintage, pick(c, ['#5a8ab5', '#e07a5f', '#6ab58a', '#d9467a']));
   },
 
   islamic(c) {
@@ -469,34 +412,21 @@ function nyGlassTower(c: Ctx): Footprint {
   return { r: Math.max(w, d) * 0.62, h: h + 6 };
 }
 
-/** Brownstone row house: stoop, bay window, iron fire escapes, cornice, rooftop greenhouse. */
+/** Brownstone row house (composed from the facade kit), grown solarpunk: iron fire escapes, a green wall, a rooftop greenhouse and solar panels. */
 function nyBrownstone(c: Ctx): Footprint {
-  const floors = c.rng.int(4, 6), fh = 3.4, w = 10, d = 12, H = floors * fh;
-  const stone = c.rng.chance(0.5) ? NY.brownstone : NY.brick;
-  box(c.g, w, H, d, stone);
-  windowGrid(c, w, d, floors, fh, 3, false, 1.2);
-  // Stoop: steps up to a raised door, with iron railings.
-  for (let i = 0; i < 5; i++) box(c.g, 2.4, 0.3 * (i + 1), 0.5, NY.limestone, 0, 0, d / 2 + 2.6 - i * 0.5);
-  for (const x of [-1.25, 1.25]) box(c.g, 0.06, 1, 2.6, IRON, x, 1.4, d / 2 + 1.4);
-  box(c.g, 1.3, 2.3, 0.12, DOOR, 0, 1.5, d / 2 + 0.02);
-  // Bay window on the second floor.
-  box(c.g, 3.6, fh * 1.6, 1.2, stone, -2.4, fh, d / 2 + 0.6);
-  win(c, -2.4, fh + 0.9, d / 2 + 1.22, 2.4, 1.6);
-  // Fire escapes: platforms, rails and ladders down the front.
-  for (let f = 1; f < floors; f++) {
-    box(c.g, 4.2, 0.08, 1.2, IRON, 2.4, f * fh, d / 2 + 0.6);
-    box(c.g, 4.2, 0.9, 0.05, IRON, 2.4, f * fh + 0.1, d / 2 + 1.2);
-    c.g.add(new THREE.BoxGeometry(0.5, fh * 1.1, 0.05).translate(0, fh * 0.55, 0), IRON, M(3.6, f * fh - fh, d / 2 + 0.9, 0, 1, 1, 1, 0, 0.35));
+  const fp = compose(c, FACADES.brownstone, '#3a2418');
+  const top = fp.top ?? fp.h - 3;
+  // Fire escapes down one side of the front.
+  const w = FACADES.brownstone.bayW * 3 + 0.6, d = 12.5;
+  for (let y = 3.4; y < top - 1; y += 3.4) {
+    box(c.g, 2.4, 0.08, 1.1, IRON, -w / 2 + 1.5, y, d / 2 + 0.55);
+    box(c.g, 2.4, 0.9, 0.05, IRON, -w / 2 + 1.5, y + 0.1, d / 2 + 1.1);
   }
-  // Cornice.
-  box(c.g, w + 0.8, 0.6, d + 0.8, NY.limestone, 0, H, 0);
-  box(c.g, w + 1.2, 0.25, d + 1.2, NY.limestone, 0, H + 0.6, 0);
-  // Rooftop greenhouse and solar panels.
-  box(c.g, 4, 2.4, 4, '#dfe8e0', -2, H + 0.85, -2);
-  box(c.glow, 3.9, 2.2, 3.9, '#d8ffe8', -2, H + 0.95, -2);
-  solarField(c, 5, 8, H + 0.85);
-  greenWall(c, w * 0.6, d / 2, H * 0.4, H);
-  return { r: 7.2, h: H + 3.5 };
+  greenWall(c, w * 0.5, d / 2, top * 0.45, top);
+  box(c.g, 3.6, 2.2, 3.6, '#dfe8e0', 1.6, top + 0.6, -2);
+  box(c.glow, 3.5, 2.0, 3.5, '#d8ffe8', 1.6, top + 0.7, -2);
+  solarField(c, 3.5, 6, top + 0.6);
+  return fp;
 }
 
 /** Cast-iron loft (SoHo): tall windows between iron columns, and a solar-skinned water tower. */
