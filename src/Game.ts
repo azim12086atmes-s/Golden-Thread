@@ -38,6 +38,7 @@ import { VEHICLES, setVehicleEnvironment, type VehicleId } from './vehicles/vehi
 import { Traffic } from './traffic/Traffic';
 import { PERSON_BY_ID, floorBuilding, floorsOf, residentsOf, tickCharity } from './charity/charity';
 import { InstitutesView } from './institutions/InstitutesView';
+import { CAVE_LANDS, caveMouth, type Cave } from './world/caves';
 import { instituteAt, landScience, siteAt, tickInstitutes } from './institutions/institutions';
 import { INSTITUTE_BY_KIND } from './institutions/catalogue';
 import { Ambience } from './world/Ambience';
@@ -72,7 +73,8 @@ export type Interactable =
   | { kind: 'market'; walker: Walker; label: string }
   | { kind: 'stray'; pet: PetDef; label: string }
   | { kind: 'bed'; plotId: string; decorId: string; label: string }
-  | { kind: 'institute'; site: string; label: string };
+  | { kind: 'institute'; site: string; label: string }
+  | { kind: 'cave'; cave: Cave; label: string };
 
 /** A scripted scene that takes the camera (and optionally renders its own scene). */
 export interface Cutscene {
@@ -514,6 +516,11 @@ export class Game {
     if (pal) cands.push([1.2, { kind: 'companion', id: pal.id, label: pal.kind === 'pet' ? `Pet ${pal.name}` : `Chat with ${pal.name}` }]);
     const ride = onFoot ? this.celebration.label(p) : null;
     if (ride) cands.push([0.5, { kind: 'chariot', label: ride }]);
+    // Caves: explore once a day.
+    if (onFoot) for (const r of this.world.loadedRegions()) for (const cv of r.caves) {
+      const m = caveMouth(cv), dd = Math.hypot(m.x - p.x, m.z - p.z);
+      if (dd < 3.2) cands.push([dd + 0.2, { kind: 'cave', cave: cv, label: `🕳️ Explore the ${cv.style === 'ice' ? 'ice cavern' : 'cave'}` }]);
+    }
     // Institute sites: the town's own institute, and open ground to found one.
     if (onFoot) {
       const site = siteAt(p.x, p.z, 4);
@@ -557,6 +564,7 @@ export class Game {
       case 'folk': return this.talkFolk(t.walker);
       case 'door': return this.enterHouse(t.door);
       case 'institute': return this.ui.openInstitute(t.site);
+      case 'cave': return this.toast(this.exploreCave(t.cave), 'reward');
       case 'stray': return this.toast(this.caravan.adopt(t.pet), 'story');
       case 'market': this.townsfolk.turnTo(t.walker, this.trav.gPos); return this.ui.openMarket(t.walker.land);
       case 'npc': return this.talk(t.npc);
@@ -810,6 +818,17 @@ export class Game {
     const residents = plot ? residentsOf(this.st, plot).map((r) => PERSON_BY_ID[r.id]).filter((p) => !!p) : [];
     this.house.enter(d, this.sky.night, this.houseGathered(d), plot ? this.homeDecor(plot) : undefined, residents);
     this.ui.openHouse(d);
+  }
+
+  /** Explore a cave (once a day): bring out two of what it holds. */
+  exploreCave(cv: Cave): string {
+    const key = `cave:${cv.id}`, last = this.st.gathered[key];
+    if (last !== undefined && this.st.minutes - last < DAY_MINUTES) return 'You explored this cave today — its echoes will have new things tomorrow.';
+    const finds = CAVE_LANDS[cv.land]?.finds ?? ['cavecrystal'], day = Math.floor(this.st.minutes / DAY_MINUTES);
+    const got = [finds[(day + cv.id.length) % finds.length], finds[(day + 1) % finds.length]];
+    for (const id of got) { addItem(this.st, id, 1); this.bus.emit('item:gained', { id, qty: 1 }); }
+    this.st.gathered[key] = this.st.minutes;
+    return `${cv.style === 'ice' ? 'Blue light glimmers through the ice.' : 'Your lantern finds the glint of the cave walls.'} You bring out ${got.map((id) => `${ITEMS[id].icon} ${ITEMS[id].name}`).join(' and ')}.`;
   }
 
   /** The front doors of the homes you own (a home stands on the plot once you buy it). */

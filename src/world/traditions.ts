@@ -303,7 +303,7 @@ function nubian(c: Ctx): Footprint {
   surf(c, SURF.adobe, () => {
     box(c.g, w, h, d, wall);
     // Barrel vaults running front to back, and a dome.
-    c.g.add(new THREE.CylinderGeometry(w * 0.2, w * 0.2, d - 0.6, 12, 1, false, 0, Math.PI), wall, M(-w * 0.24, h, 0, 0, 1, 1, 1, Math.PI / 2, -Math.PI / 2));
+    c.g.add(new THREE.CylinderGeometry(w * 0.2, w * 0.2, d - 0.6, 12, 1, false, Math.PI / 2, Math.PI), wall, M(-w * 0.24, h, 0, 0, 1, 1, 1, Math.PI / 2, 0));
     dome(c.g, Math.min(w, d) * 0.22, wall, w * 0.22, h, -d * 0.1, 12);
   });
   box(c.g, w + 0.1, 0.8, 0.2, wall, 0, h, d / 2 - 0.1);
@@ -377,7 +377,7 @@ function jharokha(c: Ctx, x: number, y: number, z: number, w: number, col: strin
   lattice(c, x, y + 0.12, z + 0.9, w - 0.25, 0.5, col, 'jali');
   box(c.g, w + 0.2, 0.12, 1.05, col, x, y + 1.4, z + 0.47);
   if (kind === 'dome') onion(c.g, w * 0.36, roof, x, y + 1.52, z + 0.47, '#e2b43a');
-  else c.g.add(new THREE.CylinderGeometry(0.55, 0.55, w + 0.2, 10, 1, false, -Math.PI / 2, Math.PI), roof, M(x, y + 1.52, z + 0.47, 0, 1, 0.55, 1, 0, Math.PI / 2));
+  else c.g.add(new THREE.CylinderGeometry(0.55, 0.55, w + 0.2, 10, 1, false, 0, Math.PI), roof, M(x, y + 1.52, z + 0.47, 0, 0.55, 1, 1, 0, Math.PI / 2));
 }
 
 function chhatriKiosk(c: Ctx, x: number, y: number, z: number, r: number, col: string, domeCol: string): void {
@@ -463,7 +463,7 @@ function mughalPavilion(c: Ctx): Footprint {
   for (const s of [-1, 1]) { cyl(c.g, 0.2, 0.22, h + 1.8, white, s * 2.1, 0, d / 2 + 0.6, 8); onion(c.g, 0.32, white, s * 2.1, h + 1.8, d / 2 + 0.6, '#d4af37'); }
   if (c.rng.chance(0.5)) {
     // A bangaldar roof: the curved Bengal hut roof, in marble.
-    c.g.add(new THREE.CylinderGeometry(1, 1, w * 0.5, 14, 1, false, -Math.PI / 2, Math.PI), white, M(0, h, -d * 0.1, 0, 1.5, 1.0, d * 0.28, 0, Math.PI / 2));
+    c.g.add(new THREE.CylinderGeometry(1, 1, w * 0.5, 14, 1, false, 0, Math.PI), white, M(0, h, -d * 0.1, 0, 1.5, 1.0, d * 0.28, 0, Math.PI / 2));
     for (const s of [-1, 1]) sphere(c.g, 0.2, '#d4af37', s * w * 0.18, h + 1.0, -d * 0.1, 6);
   } else {
     cyl(c.g, 1.8, 1.8, 1, white, 0, h, -d * 0.1, 14);
@@ -580,8 +580,8 @@ function glassCabin(c: Ctx): Footprint {
   const w = 5, d = 6;
   box(c.g, w + 0.4, 0.4, d + 0.4, '#8a5a3c');
   // A glass A-frame, its roof open to the sky for watching the aurora.
-  for (const s of [-1, 1]) c.glow.add(new THREE.BoxGeometry(0.04, 4.4, d), '#9fc8ff', M(s * w * 0.25, 0.4 + 1.9, 0, 0, 1, 1, 1, 0, -s * 0.5));
-  for (const z of [-d / 2, 0, d / 2]) for (const s of [-1, 1]) c.g.add(new THREE.BoxGeometry(0.12, 4.5, 0.12), '#3a2a22', M(s * w * 0.25, 0.4 + 1.9, z, 0, 1, 1, 1, 0, -s * 0.5));
+  for (const s of [-1, 1]) c.glow.add(new THREE.BoxGeometry(0.04, 4.4, d), '#9fc8ff', M(s * w * 0.25, 0.4 + 1.9, 0, 0, 1, 1, 1, 0, s * 0.5));
+  for (const z of [-d / 2, 0, d / 2]) for (const s of [-1, 1]) c.g.add(new THREE.BoxGeometry(0.12, 4.5, 0.12), '#3a2a22', M(s * w * 0.25, 0.4 + 1.9, z, 0, 1, 1, 1, 0, s * 0.5));
   const tri = new THREE.Shape([new THREE.Vector2(-w / 2, 0), new THREE.Vector2(w / 2, 0), new THREE.Vector2(0, 4)]);
   c.g.add(new THREE.ExtrudeGeometry(tri, { depth: 0.2, bevelEnabled: false }), '#6b4a2a', M(0, 0.4, -d / 2 - 0.1));
   sphere(c.glow, 0.7, c.s.glow, 0, 1.2, 0, 8, 0.6);
@@ -598,7 +598,7 @@ function igloo(c: Ctx): Footprint {
     c.g.add(new THREE.TorusGeometry(Math.cos(a) * r * 1.005, 0.03, 3, 28).rotateX(Math.PI / 2), '#d6e4f0', M(0, Math.sin(a) * r * 0.85, 0));
   }
   // The tunnel entrance, half a barrel of snow, and a lamp inside.
-  surf(c, SURF.snow, () => c.g.add(new THREE.CylinderGeometry(0.9, 0.9, 2, 12, 1, false, -Math.PI / 2, Math.PI), '#f4f8ff', M(0, 0, r - 0.2, 0, 1, 1.2, 1, Math.PI / 2, -Math.PI / 2)));
+  surf(c, SURF.snow, () => c.g.add(new THREE.CylinderGeometry(0.9, 0.9, 2, 12, 1, true, Math.PI / 2, Math.PI), '#f4f8ff', M(0, 0, r - 0.2, 0, 1, 1, 1, Math.PI / 2, 0)));
   box(c.g, 1.0, 1.3, 0.1, '#3a2a22', 0, 0, r + 0.75);
   c.glow.add(new THREE.BoxGeometry(0.5, 0.35, 0.05), '#ffcf7a', M(r * 0.7, 1.4, r * 0.55, Math.PI / 4));
   sphere(c.glow, 0.5, c.s.glow, 0, 0.9, 0, 8, 0.6);

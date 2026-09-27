@@ -1,4 +1,7 @@
-# Physical models — requirements for ChatGPT (3D side), 2026-09-27
+# Physical models — requirements for Codex / ChatGPT (3D side), 2026-09-27
+
+> **Access**: repository https://github.com/azim12086atmes-s/Golden-Thread — branch `claudes-current-work`
+> (create your own `3d-builds` branch from it). Start by reading `CLAUDE.md`, then this file.
 
 **Division of work.** ChatGPT builds the **physical models** (everything you see). Claude builds the **logic** (game rules,
 state, UI, placement, wiring, tests) and calls the models through the contracts below. Neither side edits the other's
@@ -181,6 +184,54 @@ lotus at water edges, mangroves on warm coasts, alpine flowers above the tree li
   Type 2 split-screen bus (loaf body, V-front panel with the split two-pane windscreen under a peak, two-tone paint with
   a white top, roof rack), the little car, the old truck, the biplane. **Keep every seat position and `SEAT_GAP` exactly**
   (`tests/vehicles.test.ts`), and the van's floor plan (`vanLayout.ts`).
+
+
+## 13. Trees and nature (NEW — owner: small trees, pines and palms never revamped)
+
+Placement is already logic (Claude, `src/world/nature.ts`): every spot is read as a zone (dune, sand, rock, snow, alpine,
+waterside, grass, cloud) and each land lists which species grow there, how thickly, and a size multiplier (deserts ×1.3–1.55,
+Sky Isles ×1.9, the north ×1.15–1.25). **Your part is the trees themselves.** These 12 species still use the old simple
+primitives in `kit.ts` `tree()` and must be rebuilt as real branching trees with leaf-picture crowns (add them to
+`HABITS` in `src/world/trees.ts`, or give them a dedicated grower — palms and bamboo do not fork):
+- **Palm** (date palm): a tall, slightly curved, ringed trunk; a crown of 15–25 long arching pinnate fronds (leaf-card
+  strips along each frond), hanging date clusters, dead fronds skirting below the crown.
+- **Coconut**: a leaning, curved trunk; a looser crown of long drooping fronds; coconut clusters.
+- **Pine** (Scots / stone pine): tall straight trunk, orange-brown upper bark, tiered branches with needle-card clumps;
+  stone pine variant with an umbrella crown (Firenzia).
+- **Snow pine** (spruce/fir): conical, dense tiers of drooping branches to the ground, snow lying on each tier.
+- **Cypress** (Italian): a tall narrow flame-shaped column of dense dark foliage.
+- **Bamboo**: clumps of 10–30 jointed culms with nodes, arching tops, narrow leaf cards.
+- **Banana**: a fleshy pseudostem, huge paddle leaves (some torn), a hanging bunch with a purple flower.
+- **Baobab**: a massive bottle-shaped trunk, short stubby branches like roots at the top, sparse leaves.
+- **Sky Isles fantasy trees** (`cloud`, `crystal`, `candy`, `glowtree`): rebuild as real branching fantasy trees —
+  cloud willows with trailing pale foliage, crystal-fruit trees with glowing gem fruit, candy-blossom trees, glow trees with
+  softly lit leaves; plus new pastel blossom and silver-barked moon trees. Allow giants.
+- Also: desert shrubs, acacias, reeds and lotus at water edges, mangroves on warm coasts, alpine flowers, low scrub on
+  rocky slopes — as small plants in `kit.ts` so the zones can place them (tell Claude the names to add to `nature.ts`).
+
+## 14. Terrain and texturing (NEW)
+
+More texture everywhere, especially the desert, the Arctic and the Sky Isles: ground patterns in `src/world/Meadow.ts`
+`patternGround` (wind ripples and dune crests, rock strata on slopes, snow drifts and sastrugi, cracked clay near oases,
+cloud-stone paving on the isles); richer surfaces (`surfaces.ts`) for tents (woven cloth with stripes), huts (turf, birch
+bark, logs), igloos (snow blocks), rock (strata, sandstone layers). Scatter rocks, boulders and outcrops by zone.
+
+## 15. Caves and caverns (NEW)
+
+Placement, entrances and exploring are logic (Claude, `src/world/caves.ts`: 3–5 caves per land in the desert, the Nile,
+the Gulf hills, the fjords, the Arctic and the Alps; styles `sandstone`, `rock`, `ice`; the mouth faces the town; E at the
+mouth explores it once a day). **Model them**: `buildCave(c, style, r)` in `src/world/models/caves.ts` (placeholder
+exists) — a real rock formation: layered sandstone cliffs and arches with a cave mouth (desert/Nile), dark rock outcrop
+with a jagged mouth (Gulf, fjord sea-cliff caves), blue ice with icicles and a glowing mouth (Arctic, Alps). Mouth ≈ 3 m
+high, 3–4 m wide, facing +z, kept walkable. Later: cavern interiors (stalactites, crystal clusters, an underground pool,
+glowing ice) as a scene to enter — describe the API you want under "Contract requests".
+
+## 16. Fixed already (for your information)
+
+Several traditional roofs were rotated wrongly and have been fixed in `traditions.ts`: the glass cabin's panes (were an
+inverted V), the snow igloo's entrance tunnel (was upside down), the Nubian barrel vaults (faced sideways) and the curved
+Bengal-style roofs on jharokhas and Mughal pavilions (faced forward). Check other rotated half-cylinders and arcs you
+write: a `CylinderGeometry` half (thetaLength π) must be turned so its curve faces up.
 
 ---
 

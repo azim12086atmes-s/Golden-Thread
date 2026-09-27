@@ -5,11 +5,15 @@ import { LAND_STYLE, VARIANT_SHARE, buildVariant } from './buildings';
 import { houseDecor } from './houseDecor';
 import { lotusSpots } from './Water';
 import { TRADITIONS } from './traditions';
+import { NATURE, pickTree, zoneAt } from './nature';
+import { CAVES, type Cave } from './caves';
+import { buildCave } from './models/caves';
+import { waterEdge } from './waters';
 import { INSTITUTE_SITES, SITE_SIZE } from '../institutions/sites';
 import { buildHouse, lampPost, streetProp, type Ctx } from './architecture';
 import { GeoBuilder, box, cone, cyl, flowers, rock, sphere, tree } from './kit';
 import { CITY_RADIUS, REGION_SIZE, regionCenter, type RegionSpec } from './regions';
-import { CASTLE_SITE, WATER_Y, terrainHeight } from './terrain';
+import { CASTLE_SITE, DUNES, WATER_Y, duneShape, terrainHeight } from './terrain';
 import { HABITS, speciesHeight } from './trees';
 import { blobMaterial, leafCardMesh } from './foliage';
 import { surfacesByColour } from './surfaces';
@@ -34,6 +38,8 @@ export interface RegionInstance {
   spots: Array<{ x: number; z: number }>;
   /** Front doors of the town's buildings (world coordinates): step inside with E. */
   doors: Door[];
+  /** Caves of this land (world coordinates): explore them with E. */
+  caves: Cave[];
   wild: Array<{ x: number; z: number }>;
   dispose(): void;
 }
@@ -232,23 +238,37 @@ export function buildRegion(spec: RegionSpec, solid: THREE.Material, glowMat: TH
 
   // Nature beyond the city.
   const half = REGION_SIZE / 2;
-  const treeCount = isSky ? 60 : spec.id === 'desert' ? 90 : 340;
-  for (let i = 0; i < treeCount; i++) {
+  // Trees grow by terrain (nature.ts): the zone of each spot decides what grows there, how thickly,
+  // and each land how large its trees stand.
+  const nature = NATURE[spec.id];
+  const dunesHere = DUNES[spec.id] ?? 0;
+  for (let i = 0; i < nature.count; i++) {
     const x = rng.range(-half, half), z = rng.range(-half, half);
     const d = Math.hypot(x, z);
     if (d < CITY_RADIUS + 10 && !isSky) {
       // Parks: a few trees inside the city between houses.
       if (rng.chance(0.85) || onRoad(x, z, 4) || d < 60) continue;
     }
+    if (isSky && (d < 60 || onRoad(x, z, 4))) continue;
     if (nearPlot(x, z, 2)) continue;
     const y = H(x, z);
     if (y < WATER_Y + 0.3) continue;
-    const kind = rng.pick(spec.flora);
+    const slope = Math.hypot(H(x + 2, z) - H(x - 2, z), H(x, z + 2) - H(x, z - 2)) / 4;
+    const zone = zoneAt(spec, y, slope, waterEdge(c.x + x, c.z + z).d, d > CITY_RADIUS ? dunesHere : 0, duneShape(c.x + x, c.z + z));
+    const kind = pickTree(spec, zone, () => rng.next());
+    if (!kind) continue;
     // Sizes vary; out in the country about one tree in twelve is a giant, as tall as a building.
-    const giant = d > CITY_RADIUS + 30 && !isSky && HABITS[kind] && rng.chance(0.08);
-    const s = giant ? rng.range(18, 26) / speciesHeight(kind) : rng.range(0.7, 1.6) * TREE_SCALE;
+    const giant = d > CITY_RADIUS + 30 && HABITS[kind] && rng.chance(isSky ? 0.12 : 0.08);
+    const s = giant ? rng.range(18, 26) / speciesHeight(kind) : rng.range(0.7, 1.6) * TREE_SCALE * nature.size;
     tree(g, kind, x, y, z, s, () => rng.next());
     if (kind !== 'bamboo' && kind !== 'crystal') colliders.push({ x: c.x + x, z: c.z + z, r: (HABITS[kind]?.r ?? 0.25) * s * 1.1, h: y + 4 * s });
+  }
+  // Caves out in the wild (caves.ts), built by the 3D side's buildCave.
+  const caves = CAVES.filter((cv) => cv.land === spec.id);
+  for (const cv of caves) {
+    const x = cv.x - c.x, z = cv.z - c.z, y = H(x, z);
+    g.frame(x, y - 0.5, z, cv.facing, 1, () => glow.frame(x, y - 0.5, z, cv.facing, 1, () => buildCave({ g, glow, rng, s: spec }, cv.style, cv.r)));
+    colliders.push({ x: cv.x, z: cv.z, r: cv.r * 0.85, h: y + cv.r * 0.8 });
   }
   for (let i = 0; i < 120; i++) {
     const x = rng.range(-half, half), z = rng.range(-half, half);
@@ -355,6 +375,7 @@ export function buildRegion(spec: RegionSpec, solid: THREE.Material, glowMat: TH
     nodes,
     spots,
     doors,
+    caves,
     wild,
     dispose() {
       solidMesh?.geometry.dispose();

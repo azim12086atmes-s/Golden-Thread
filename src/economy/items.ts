@@ -79,6 +79,7 @@ export const ITEMS: Record<string, ItemDef> = Object.fromEntries(
     I('pinecone', 'Pine Cone', '🌰', 'material', 2, 'aurora'),
     I('cloud', 'Cloud Wisp', '🌫️', 'material', 10, 'skyisles'),
     I('stardust', 'Star Dust', '✨', 'material', 12, 'skyisles'),
+    I('cavecrystal', 'Cave Crystal', '💎', 'material', 9),
     // Goods — crafted
     I('scarf', 'Woven Scarf', '🧣', 'good', 14),
     I('rug', 'Little Rug', '🟥', 'good', 24),
