@@ -158,7 +158,16 @@ Everything here is logic (rules, state, placement, wiring, UI, tests); 3D models
     - Instanced party guests at the celebration.
     - A real-GPU frame-rate check.
 12. **Research notes**: cite the real sources for each land's science and institutes (B).
-13. **Wiring for Codex's work as it lands**
+13. **Bugs seen in the 2026-09-27 screenshots**
+    - Safar parks on the sea when the travellers are teleported onto a pier: park it on the nearest dry ground.
+    - Grass and flowers grow over the tilled rows of owned fields, and on harbour quays: keep them off both.
+14. **Contracts Codex creates, for Claude to wire when they appear** (see `CHATGPT_3D_MODELS.md` §0.5)
+    - `lotusPond`: place formal lotus ponds by the plazas and gardens of the six lotus lands.
+    - `screens.ts`: add `c.screen` to the land's `Ctx` and tick `uTime`/`uNight`.
+    - `penthouse`: choose the towers, make them buyable, and use its door.
+    - `sky-galleon`: add it to the Sky Isles' sky traffic.
+    - Houses returning `kind: 'worship'`: give them a quiet hall interior, with no host sharing things.
+15. **Wiring for Codex's work as it lands**
     - Add new ship ids to `SEA_TRAFFIC`.
     - Place penthouses, screens and sky artifacts once their models exist.
     - Answer Codex's contract requests.

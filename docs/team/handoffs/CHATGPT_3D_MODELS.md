@@ -43,6 +43,88 @@ then this file. Master checklist: `docs/team/handoffs/MASTER_BUILD_LIST.md`.
 - **Budgets**: monument ≤ 150 k triangles; house type ≤ 8 k; institute stage ≤ 10 k (stage 3 ≤ 25 k); bridge ≤ 6 k;
   vehicle ≤ 3 k. A land's static world must stay a few draw calls (use the land's `GeoBuilder`s, never separate meshes).
 
+## 0.5 Start here — order of work, what every contract does today, and world facts
+
+### Order of work (suggested; the owner can reorder)
+1. **What the owner flagged first:**
+   - the Sky Isles' trees and ground (§8);
+   - palms and pines rebuilt (§13);
+   - the 12 lands' houses (§9);
+   - the 19 monuments (§1);
+   - each land's lights (§4).
+2. **Things you use every minute:**
+   - Safar and the travellers' vehicles (§12.3);
+   - traffic vehicles (§12.2) and ships (§12.4);
+   - the desert, Nile, Gulf, Arctic and Sky Isles ground (§14).
+3. **New systems that already work with placeholders** (the game runs; they just look plain):
+   - institutes (§2), home storeys (§3), bridges (§5), fields (§21), harbours (§22), caves (§15).
+4. **Scenes and extras:**
+   - interiors (§20), the castle (§19);
+   - sky artifacts (§11), particles (§17), balloons (§10);
+   - New Yonder's screens and penthouses (§7), lotus ponds (§6).
+
+### Every contract and its status
+
+| Contract | File | Called by | Status | § |
+|---|---|---|---|---|
+| `landmarks[land](c, o)` | `world/architecture.ts` | `World.ts` | wired — early builds; rebuild | 1 |
+| house builders (`TRADITIONS`, `FACADES`) | `world/traditions.ts`, `world/facade.ts` | `RegionBuilder.ts` | wired — polish | 9 |
+| `buildInstitute(c, kind, stage)` | `world/models/institutes.ts` | `institutions/InstitutesView.ts` | wired — placeholder hall | 2 |
+| `addStoreys(c, base, floors, scaffold)` | `world/models/homeStoreys.ts` | `housing/HousingView.ts` | wired — placeholder boxes | 3 |
+| `houseLights(c, fp)`, `streetLight(c, x, y, z)` | `world/models/lights.ts` | `RegionBuilder.ts` (every house; every avenue lamp) | wired — does nothing yet | 4 |
+| `buildBridge(c, length, width, deck)` | `world/models/bridges.ts` | `world/BridgesView.ts` (22 bridges) | wired — placeholder arched planks | 5 |
+| `lotusPond(c, r)` | `world/models/ponds.ts` | — | **you create it**; Claude then places it | 6 |
+| screen material + screen faces | `world/models/screens.ts` | — | **you create it**; Claude then adds `c.screen` and ticks its time | 7 |
+| `penthouse(c, w, d)` | `world/models/penthouse.ts` | — | **you create it**; Claude then places it and makes it buyable | 7 |
+| `heldBalloon(colour)`, `balloonCluster(g, …)` | `world/models/balloons.ts` | `CharacterModel.ts`, `HousingView.ts` | wired — placeholder | 10 |
+| sky effects (`SkyKind`) | `world/skies.ts`, `world/SkyFX.ts` | `SkyFX` | existing system — add kinds | 11 |
+| traffic `Design`s and ships | `traffic/designs.ts` | `traffic/Traffic.ts` via `roster.ts` | wired; §12.4 ships sail as soon as their ids exist | 12 |
+| Safar, car, truck, biplane | `vehicles/vehicles.ts` | the travellers | wired — revamp | 12.3 |
+| tree `HABITS` | `world/trees.ts` | `RegionBuilder.ts` via `nature.ts` | wired — 12 species to rebuild | 13 |
+| `groundColor`, `patternGround` | `world/terrain.ts`, `world/Meadow.ts` | the terrain chunks | wired — add looks only | 14, 23 |
+| `buildCave(c, style, r)` | `world/models/caves.ts` | `RegionBuilder.ts` | wired — placeholder boulders | 15 |
+| `buildCastle(solid, glow)` | `event/Castle.ts` | the celebration | wired — revamp | 19 |
+| `buildInterior(spec)` | `world/models/interiors.ts` | `housing/HouseInterior.ts`, `Game.ts` | wired — returns null (standard room) | 20 |
+| `buildField(c, size, look, ground)` | `world/models/fields.ts` | `economy/FieldsView.ts` | wired — placeholder rows and barn | 21 |
+| `buildHarbour(c, pier, ground)` | `world/models/harbour.ts` | `economy/HarboursView.ts` | wired — placeholder quay and pier | 22 |
+
+"Wired" means the game already calls it: replace the body, keep the signature, and your model appears everywhere at once.
+When you create a new contract file, write its signature under Contract requests; Claude wires it and ticks it here.
+
+### World facts (all in metres, y up)
+- **The island:**
+  - 20 lands on a 5 × 4 grid, each 700 × 700 m; a land's centre is `regionCenter(REGION_BY_ID[id])`.
+  - Row 0 is the **north** coast (−z), row 3 the south (+z); column 0 is the west (−x), column 4 the east (+x).
+  - Beyond the grid the ground slopes into the sea; sea and water level is `WATER_Y` = −1.5.
+- **A town** (local to the land's centre):
+  - the flat core has a 240 m radius; the plaza and monument are a 50 m disc at the centre;
+  - four avenues run along ±x and ±z from 56 m to ~280 m (keep 9 m clear either side of the axis);
+  - the ring road is at 140 m radius; houses stand between 62 m and 234 m.
+- **Sites:**
+  - plots are 30 × 30 m at (±150, +150);
+  - institute sites are 40 × 40 m at (−150, −150), (+150, −150) and (±205, −62) (the Sky Isles use ±90/±110);
+  - fields are 40 × 40 m at (±205, +62);
+  - the Meadow's castle is at world (0, −292), radius 72.
+- **Water:** each land has a lake, three ponds and a river 250–340 m out; harbours are on the coast ~350–420 m out
+  (§22), and bridges where a river crosses an avenue line (§5).
+- **People:** about 1.7 m tall (children 0.62×). A game day is 1440 game minutes. The world streams: only the lands
+  near the travellers are built, so everything must build from its data alone.
+
+### Content rules — the full list (in addition to §0)
+- **No faces on anything:** no eyes, nose or mouth on people, animals, statues, carvings, figureheads, sun or moon
+  discs, masks, gargoyles, vehicles' "faces" or balloons. Heads of people and animals float.
+- **Modesty:** clothes are modest; billboards, screens, posters and shop windows show only modest content (nature,
+  abstract art, food, crafts, calligraphy, geometry).
+- **Halal-friendly:**
+  - no alcohol: no bars, pubs, wine bottles, beer signs, wine barrels shown as wine, toddy shops;
+  - no gambling: no casinos, slot machines, betting shops;
+  - no pork shops, no nightclubs.
+  - Cafés, tea houses, juice bars, bakeries and sweet shops are all welcome.
+- **Worship:** mosques, churches and temples appear as architecture, shown respectfully, with no statues or images of
+  worship. Use geometry, calligraphy, flowers and light.
+- **Medical signs:** a green crescent or a herb leaf, not a cross.
+- **Tone:** peaceful: no weapons shown as weapons (a fort's walls are fine), nothing frightening.
+
 ---
 
 ## 1. Monuments — rebuild 19 (only the Great Tree is done)
@@ -78,6 +160,15 @@ and stalls beyond). `tests/world.test.ts` builds every land; `tests/houses.test.
 | `aurora` | Ice hall (ICEHOTEL) | vaulted halls of snow blocks, ice columns, glowing ice sculptures (abstract — no faces), an entrance of carved ice; lavvu around it | 40 × 20 m, 8 m tall | `snow`, ice (glass-like glow) | blue-green glow inside |
 | `skyisles` | Temple of the Great Lantern | floating islands in a spiral linked by bridges, waterfalls off their edges, moonstone spires with arched glowing windows, the Great Lantern at the top | as now | `marble`, moonstone | crystal light |
 
+**Done means**, for each monument:
+- **Screenshots**, by day and at night: from 120 m away (the skyline), from the plaza at 25 m, and at the door at
+  6 m.
+- **Colliders** cover every solid part (walk round it: nothing walks through a wall).
+- **Platforms:** terraces and stairs you can climb have `o.platforms`.
+- **The door** at +z is clear.
+- **Tests:** `tests/world.test.ts` and `tests/houses.test.ts` pass.
+- **Budget:** ≤ 150 k triangles.
+
 ## 2. Institute buildings — 24 kinds × 4 stages (NEW)
 
 Contract: `buildInstitute(c: Ctx, kind: InstituteKind, stage: 0 | 1 | 2 | 3): Footprint` in
@@ -98,6 +189,18 @@ description of what it looks like is in `src/institutions/catalogue.ts` (`INSTIT
 - Stage 3 is a landmark in its own right (a hospital with wards and a courtyard, a university with a quadrangle and a
   library tower, the Meadow's castle school of wizardry with towers, a great hall of floating candles, a library tower
   and an observatory).
+- **Return value:** `{ r, h }`. `r` is the collision radius (the game puts a collider of 0.85 × `r` at the site's
+  centre), and `h` is the top height (flight clears it). Make `r` cover the building, not the whole 40 m site.
+- **Scaffolding:** while a stage is being built, the game draws it around the previous stage
+  (`InstitutesView.ts`); you don't need to.
+- **Which buildings stand where:**
+  - Each land's own institute stands at its established site (local −150, −150) at stage 3.
+  - The travellers' institutes stand at the three open sites, at whatever stage they have reached.
+  - The 24 kinds and their stage names are in `institutions/catalogue.ts`: 20 land sciences plus `kitchen`, `clinic`,
+    `school` and `library`.
+- **Done means:** all 24 kinds × 4 stages screenshotted from ~20 m in one land each (the four found everywhere in three
+  contrasting lands: London, Tents of Rimal, the Sky Isles); ≤ 10 k triangles per stage (stage 3 ≤ 25 k). See §24 for a
+  script that shows any kind at any stage.
 
 ## 3. Homes that grow storeys (NEW)
 
@@ -107,11 +210,28 @@ floor is under construction. Build each storey in the land's style matching the 
 for tents: a second tent level or a larger tent; for igloos: a larger dome beside; for Sky Isles: another spire tier),
 lift the roof to the new top, add an outside stair or balcony where the style has one. Under construction: scaffolding
 poles and planks, ladders, stacked materials. Return the new footprint. (Rules and state: `src/charity/charity.ts`.)
+- **The numbers:**
+  - `floors` is 0–3 (`MAX_FLOORS`); each finished floor adds room for two more people (a home holds 2 + 2 × floors).
+  - Storeys are ~3 m.
+  - `base.r` is the house's collision radius and `base.h` its top height.
+  - Return the new top.
+- **Where you see it:** the homes you own are built by `HousingView.ts` (`buildDecor` for `house-<land>`), which calls
+  `addStoreys` on top.
+- **Budget:** ≤ 3 k triangles per storey.
 
 ## 4. City lighting per land (NEW)
 
 Contracts in `src/world/models/lights.ts`: `houseLights(c, fp)` (around every house) and `streetLight(c, x, y, z)`
 (return `true` if you placed a land-specific light standard, else the land's lamp post is used). Small glow only.
+
+**Wired:**
+- `houseLights` runs for **every house** (~90–140 per land), inside that house's own frame: origin at its base,
+  front door facing +z, `fp` its unscaled footprint. Keep it tiny: ≤ 150 triangles and a few small glow shapes per
+  house.
+- `streetLight` is asked at every avenue lamp position, in the land's frame. Lamps are every 22 m along both sides of
+  all four avenues; Claude places them and their colliders, so you only build the light standard.
+- Lanterns strung *across* streets, and lamps along river banks, need their own placement: ask for it under Contract
+  requests.
 
 | Land | House lights | Street lights |
 |---|---|---|
@@ -123,7 +243,18 @@ Contracts in `src/world/models/lights.ts`: `houseLights(c, fp)` (around every ho
 | Sakura Hollow | a paper chōchin at the door | stone tōrō lanterns |
 | Kaveri Coast | brass nilavilakku oil lamps at doors | tall brass lamps |
 | New Yonder | neon signs | slim solar street lights with light bars |
-| Others | their lantern at the door | their lamp post (existing) |
+| Wanderers' Meadow | fairy lights along eaves, lantern-flowers by the door | curling iron posts with flower-shaped lamps and glowing mushroom lamps along the verges |
+| Hanok Village | blue-and-red silk cheongsachorong lanterns at the gates | stone lanterns (seokdeung) |
+| Fjordhavn | a candle in each window, black iron wall lanterns | black iron harbour lamps |
+| Alpenrose | wrought-iron wall lanterns under the eaves, window candles | iron lanterns with flower baskets |
+| Old London (houses) | also lit fanlights over the doors | (gas lamps, above) |
+| Firenzia | wrought-iron corner lanterns (*lanterne*) and torch-holders (*ferri*) on the palazzi | iron bracket lanterns on stone posts |
+| Maple Row | porch lights, strings of bulbs on the porches | cast-iron double-globe lamps; a lit diner sign |
+| Souq al-Qamar | coloured-glass fanous at the doors | fanous under the souq arches, brass lamps on posts |
+| Nile Crossing | oil lamps in wall niches | tall lamps along the river corniche |
+| Bagh-e-Noor | chiragh oil lamps in niches (chirag-dan) | marble lamp posts; lamps along the water channels |
+| Nusa Rinjani | coconut-shell and bamboo oil lamps, woven palm lanterns | bamboo torches (obor) |
+| The Sky Isles | floating crystal lamps at the doors | glowing moonstone posts |
 
 ## 5. Bridges (NEW)
 
@@ -134,24 +265,59 @@ moon bridge (Jade Terraces), stone slab with dancheong railings (Hanok Village),
 (Nusa Rinjani, Kaveri Coast), iron truss (New Yonder, Maple Row), mud-brick causeway (desert, Nile), cloud-stone (Sky
 Isles). Lengths 10–30 m. Claude places them where paths cross rivers.
 
+**Wired** (`world/bridges.ts`, `world/BridgesView.ts`):
+- **Where:** 22 bridges, one wherever a land's river crosses the line of an avenue, in 17 lands. The Meadow and Maple Row
+  have none, and the Sky Isles have no river.
+- **Size:** 12–17 m long, `width` 4, `deck` 1.2 at the middle.
+- **Walkway:** the game lays one along `deckAt(x)`, so keep the deck within ~0.3 m of y = 0 at both ends, where people
+  step on. The placeholder is an arch that does this.
+- **Budget:** ≤ 6 k triangles.
+- **Styles:** use the land list above. Maple Row's iron truss is for later, if it gets a bridge.
+
 ## 6. Water lotus ponds (NEW)
 
 A lotus pond model: a stone- or brick-edged pond (4–12 m) with steps, lotus leaves and flowers (pink/white) that glow a
 little at night, in the land's style (stepwell edge in Gulabi Nagar, marble in Bagh-e-Noor, granite in Kaveri Coast, a
 stone lantern beside it in Sakura Hollow). Contract to add: `lotusPond(c, r)` in `src/world/models/ponds.ts` (create it).
+- **Already there:** lily pads and lotus flowers float on every land's natural ponds and lakes (`Water.ts`
+  `lotusSpots`); leave them.
+- **What's new:** `lotusPond` is a **formal, built** pond for gardens and plazas.
+- **The contract:**
+  - local frame at the pond's centre; radius `r` 2–6 m;
+  - the water surface at y = 0.1 above the ground;
+  - an edge the travellers can stand on (≤ 0.4 m high);
+  - return nothing.
+- **Where it goes:** Gulabi Nagar, Bagh-e-Noor, Kaveri Coast, Jade Terraces, Sakura Hollow and Nusa Rinjani. Once the
+  file exists, Claude will place them by the plazas and gardens of those lands.
 
 ## 7. New Yonder: screens, cyber/solarpunk artifacts, penthouses (NEW)
 
 - **Large display screens** (Times Square style): huge screens wrapping tower corners, stacked billboards, a ticker
   ribbon round a tower, screens facing the plaza. They need an animated shader material (uniform `uTime`): peaceful
   content — abstract art, nature scenes drawn procedurally, a news-ticker band of glyph blocks (no real text needed).
-  Put them in their own mesh per land (one material) so they can animate; tell Claude the API in your report.
+  Put them in their own mesh per land (one material) so they can animate.
+  - **Contract — create `src/world/models/screens.ts`:**
+    - export `SCREEN_UNIFORMS` (`{ uTime, uNight }`) and `screenMaterial()` (a `ShaderMaterial` using them; the picture
+      is drawn in world or vertex space, not from image files);
+    - Claude will add a third builder, `c.screen` (a `GeoBuilder` built with `screenMaterial()`), to the land's `Ctx`,
+      and tick `uTime` and `uNight` every frame;
+    - you put the screen faces into `c.screen` from your New Yonder builders (landmark, towers, shopfronts).
+  - Write under Contract requests when the file is there.
 - **TV panels**: smaller screens on shopfronts and brownstones.
 - **Artifacts**: neon signs, holographic billboards, vertical farms, solar trees, wind walls, a monorail on pylons along
   an avenue, drone docks on roofs, green sky-bridges between towers.
 - **Penthouses**: luxury rooftop homes on the tallest towers — glass pavilions, terraces with planters and a pool,
   pergolas, glowing interiors. Contract to add: `penthouse(c, w, d)` in `src/world/models/penthouse.ts`, placed on a
   roof; Claude will make them buyable/enterable homes.
+  - **Local frame:** the origin is at the roof's centre, at roof height.
+  - **Size:** fit within `w` × `d` (about 12–20 m each way).
+  - **Door:** the entrance faces +z.
+  - **Return:** `{ door: [x, z] }` in the local frame (Claude places the "step inside" point there), plus the
+    footprint's `h`.
+  - **Where:** Claude chooses the towers (the tallest in New Yonder) and adds the buying and the interior
+    (`buildInterior` `penthouse`, §20).
+- **Content:** everything on screens and billboards follows the full content rules (§0.5): modest, no alcohol or
+  gambling ads.
 
 ## 8. The Sky Isles (NEW)
 
@@ -161,6 +327,11 @@ silver-barked moon trees, cloud willows, crystal-fruit trees — with leaf-pictu
 texture: patterns in `Meadow.ts` `patternGround` for the isles (cloud-stone paving, star-dust veins, moss, flower
 meadows). Richer surfaces for buildings (moonstone ashlar, pearl tiles, silver filigree, cloud plaster). Floating islands
 with waterfalls off their edges and bridges between them.
+- **Walking on them:** floating islands you can walk on need walkable platforms. If they are part of the monument,
+  return them in `o.platforms` (circles `{x, z, r, y}`). Anywhere else, ask under Contract requests and Claude will add
+  them.
+- **Trees used there:** `cloud`, `crystal`, `candy`, `glowtree` (the land's `flora` in `regions.ts`). The count and size
+  are already raised (`nature.ts`).
 
 ## 9. Architecture polish in 12 lands
 
@@ -202,6 +373,21 @@ at ~6 m. Teleport with `game.trav.teleport(centre.x + 14, centre.z + 90)` and tu
 **Also in every land**: corner shops, a market hall or row of stalls, and a neighbourhood place of worship in the land's
 tradition (mosque, church, temple) shown as architecture only — no statues, icons or images of worship.
 
+**How a new house type gets used:**
+- Add it to the land's list in `TRADITIONS` (`traditions.ts`) as `[builder, share]`; the shares of a land should add
+  up to 1. For example, `korea: [[hanok, 0.55], [hanokCourtyard, 0.25], [choga, 0.2]]`.
+- The town builder (`RegionBuilder.ts`) places ~90–140 houses per land, facing the nearest avenue, and picks a type by
+  share. Each house stands in its own frame, front door on +z.
+- **Return `kind`** in the footprint so the right room opens inside:
+  - `'shop'`: a counter and shelves;
+  - `'courtyard'`: a fountain under the open sky;
+  - `'tower'`: a stair;
+  - `'house'`: the family room (the default);
+  - `'worship'`: for mosques, churches and temples. Claude will give these a quiet hall with no host sharing things
+    (to do); until then they open on the standard room.
+- The door is placed automatically on the street face at 0.95 × `r` + 0.6 m, so keep the entrance on +z at the
+  footprint's edge.
+
 **Then**: delete the unused old builders `houses.japan … houses.skyisles` in `architecture.ts` (the lands now build from
 `traditions.ts` and `facade.ts`; `buildHouse` only falls back to them if a land has no tradition).
 
@@ -228,6 +414,15 @@ comets, constellations, hex canopy, floating islands, turning star, balloons, no
 rising (`SkyLanterns.ts`), sky ornaments (`SkyOrnaments.ts`) and the moving sky traffic (`src/traffic/`: airships, planes,
 air taxis, drones, sky ships, flying carpets, the festival dragon, the sun-barque, the vimana, the janggan kite, sky whales,
 sky koi, pegasi, birds).
+
+**How to add one (read `skies.ts` and `SkyFX.ts` first):**
+1. Add the name to `SkyKind` and `SKY_KINDS` in `skies.ts`.
+2. List it in the land's `SKIES[land].effects`, and use its `palette`.
+3. Draw it in `SkyFX.ts`, easing in and out through the existing `want` → `level` pattern: it fades with the land's
+   weight and with `night`.
+
+**Careful:** the Meadow's sky is `[...SKY_KINDS]`, so every new kind also appears over the Meadow (and at the
+celebration, which shows every land's sky). Make each kind cheap, or tell Claude to leave it out of the Meadow.
 
 **Guidelines for every sky artifact:**
 1. **Belongs to the land**: a real tradition of that place (a festival, a craft, a story), or clearly fantasy in the Meadow
@@ -287,6 +482,21 @@ Only the London double-decker, the gondola, the drone, the petit taxi, the kei v
 in screenshots. **Contract**: each design is `Design` (`pieces` of `solid`/`glow` geometry + an `anim` about a `pivot`);
 keep the ids, `realm`, rough `len`, and the animated pieces (`flapL/R`, `spinX/Y/Z`, `swingA/B`, `tail`, `fluke`).
 
+**Frame and fields:**
+- **Local frame:** forward is **+z**; y = 0 is the road surface (road) or the water line (water); sky designs are
+  centred on their flight height.
+- **Size and speed:** `len` (m, along z) sets the spacing and following distance; `speed` is the cruising speed in
+  m/s. Keep both about as they are when you rebuild.
+- **Pieces:** each piece becomes one instanced mesh per land, so keep a design to ≤ 4–5 pieces.
+- **Traffic creatures** (animals pulling carts, flying creatures) follow the creature rules: floating heads, no faces.
+
+**Couriers and ships already ride these designs** (`economy/workers.ts` `COURIER_RIDE`, `traffic/roster.ts`
+`SHIP_LINE`), so these are seen most and are worth detailing first:
+- road: `flower-cart`, `kei-van`, `hatchback`, `tuk-tuk-2`, `pickup`, `post-bus`, `hover-car`, `caleche`,
+  `donkey-cart`, `camel-caravan`, `painted-truck`, `bullock-cart`, `tonga`, `bemo`, `reindeer-sled`;
+- sky: `sky-ship`;
+- water stand-ins at sea: `ferry`, `tall-ship`, `junk`, `dhow`, `kettuvallam`, `fishing-boat`.
+
 ### 12.2 How to detail a vehicle (checklist for every design)
 
 1. **Reference first**: find the real vehicle (the brief names it) and match its proportions — length : height : width,
@@ -313,11 +523,20 @@ keep the ids, `realm`, rough `len`, and the animated pieces (`flapL/R`, `spinX/Y
 
 Today the waters have only boats (lakes 24–34 m across, ponds, rivers 8–11 m wide), plus one small `tall-ship`. Real
 ships need the **sea**: the world is an island and beyond the lands the ground slopes into the sea (`terrain.ts`
-`outside()`). **Logic (Claude)** will add sea lanes round the coast, harbours in the coastal lands (Fjordhavn, Old London
-on its river, New Yonder, Souq al-Qamar, Nile Crossing's delta, Kaveri Coast, Nusa Rinjani) and ships sailing between
-them, docking, and carrying goods for the supply chain. **Your part** is the ships, as `Design`s in `designs.ts` with
-`realm: 'water'` (add ids and tell Claude; the roster and routes are Claude's). Long ships are fine at sea
-(up to ~120 m for liners; use a lower level of detail far away).
+`outside()`). **Logic — done:**
+- **Harbours and lanes:** the 14 coastal lands have harbours and a sea lane along their coast (§22).
+- **Ships:** they sail out and back, ease into the pier head, tie up for 20 s and keep their distance from each other.
+- **Cargo:** chartered shipping lines carry your harvests harbour to harbour.
+- **Which ship sails where:** `traffic/roster.ts` `SEA_TRAFFIC` pairs each wanted ship id with a stand-in; the moment
+  you add an id below to `designs.ts`, it replaces its stand-in.
+- **Nusa Rinjani** is inland on this map, so its ships sail from Jade Terraces and Kaveri Coast.
+
+**Your part** is the ships, as `Design`s in `designs.ts` with `realm: 'water'`, using exactly the ids below:
+- **Size and speed:** the lane is ~640 m long with lanes 24 m apart, so ships up to ~120 m long fit. Use `speed`
+  3–4 m/s.
+- **Waterline:** at y = 0.
+- **Detail:** use a lower level of detail far away.
+- **The `sky-galleon`** (realm `sky`): Claude adds it to the Sky Isles' sky traffic once it exists.
 
 | Ship (`id` to add) | Reference | Must have | Length | Land(s) |
 |---|---|---|---|---|
@@ -404,6 +623,21 @@ divider). Same seat constraints.
   water edges, mangroves on warm coasts, alpine flowers, low scrub on rocky slopes. Add them as kit plants and tell Claude
   their names so the zone tables can place them.
 
+**Which species each land grows** (`regions.ts` `flora`; `nature.ts` also picks by terrain zone). Rebuild the ones
+seen most first:
+
+| Species | Lands |
+|---|---|
+| `palm` | Nusa Rinjani, Madinat an-Nur, Souq al-Qamar, Kaveri Coast, Gulabi Nagar, Nile Crossing, Tents of Rimal (and every oasis) |
+| `coconut` | Nusa Rinjani, Kaveri Coast |
+| `pine` | Fjordhavn, Alpenrose, Hanok Village, Sakura Hollow, Jade Terraces |
+| `snowpine` | Aurora Huts (and snow zones) |
+| `cypress` | Firenzia, Madinat an-Nur, Bagh-e-Noor |
+| `bamboo` | Sakura Hollow, Jade Terraces |
+| `banana` | Nusa Rinjani, Kaveri Coast, Nile Crossing |
+| `baobab`, `dragonblood` | Nile Crossing, Tents of Rimal, Souq al-Qamar |
+| `cloud`, `crystal`, `candy`, `glowtree` | the Sky Isles (`candy` also the Meadow and Maple Row; `glowtree` also Aurora Huts) |
+
 **Done means**: each species screenshotted up close (6 m) and in a stand (40 m), by day and in wind; ≤ 3 k triangles
 per tree and ≤ 40 leaf cards per crown on average; `tests/foliage.test.ts` and `tests/world.test.ts` pass.
 
@@ -451,10 +685,12 @@ ice, …). Colliders are placed by the logic (a circle of 0.85 × the cave radiu
 **Constraints**: size `r` 7–11 m (given); mouth ≈ 3 m high and 3–4 m wide, facing **+z**, floor at y ≈ 0 and walkable to
 ~2 m inside; the mound must enclose the collider circle; ≤ 8 k triangles each; vary each cave (use `c.rng`).
 
-**Later — cavern interiors**: a scene to enter from the mouth (like the house interiors): stalactites and stalagmites,
-crystal clusters that glow, an underground pool, ice columns and frozen waterfalls in the ice caverns, rock paintings
-of abstract patterns (no figures). Propose the API under "Contract requests" (suggestion: `buildCavern(style, seed):
-THREE.Group` with the entrance at +z and the floor at y = 0); Claude will wire entering and leaving.
+**Cavern interiors — wired:**
+- **The contract:** `buildInterior({ kind: 'cavern', ref: style, land, night, seed })` (§20).
+- **What they hold:** stalactites and stalagmites, crystal clusters that glow, an underground pool, ice columns and
+  frozen waterfalls in the ice caverns, rock paintings of abstract patterns (no figures).
+- **When you enter:** as soon as it returns a scene, exploring a cave takes the travellers inside it after they bring
+  out their finds. Until then they stay at the mouth.
 
 ## 16. Fixed already (for your information)
 
@@ -529,6 +765,9 @@ Budget ≤ 200 k triangles; one merged solid + one glow mesh as now.
 **Castle interior** (see §20): the **great hall** (vaulted, stained-glass windows, chandeliers of floating candles,
 a gallery, long tables for the feast — the celebration's dress and banquet can later move inside), a **library tower**
 room, and a **tower-top balcony** room looking out over the Meadow.
+- **The door:** there is no door into the castle yet; Claude adds it (master list L5). Keep a clear doorway at the top of
+  the grand stair, and tell Claude its position under Contract requests.
+- **The scenes:** `buildInterior({ kind: 'castle', ref: 'hall' | 'library' | 'tower' })`; the hall is first.
 
 ## 20. Interiors for these builds
 
@@ -676,6 +915,62 @@ stays unless the owner asks for a change.
 ### 23.4 When you change an existing effect
 Take before-and-after screenshots, by day and by night, in the same place, and put them in your report. If a change
 alters any look in 23.3, don't make it: ask under Contract requests.
+
+---
+
+## 24. Checking your work — scripts, performance and the report
+
+**Run the game in a script** (`scripts/probe/README.md`):
+- Start `npx vite --port 5191 --strictPort`, then run
+  `NODE_PATH=$(npm root -g) CHROME=/opt/pw-browsers/chromium PORT=5191 node scripts/probe/probe.cjs your-script.js`.
+- Software rendering takes seconds per frame, so move time without drawing (`quiet(secs)` in `example.js`) and draw
+  only for screenshots.
+
+Snippets (the script body runs in the page; `game`, `dev`, `RGN` and `shot()` are defined):
+```js
+const quiet = (secs) => { const c = game.composer, r = c.render; c.render = () => {}; dev.step(secs); c.render = r; };
+// Stand at (x, z) and look along (dx, dz): yaw 0 looks south (+z), π looks north (−z). The camera sits `dist` behind
+// you, so keep that spot clear of houses and trees (stand inside the site, or look from the water).
+const look = async (name, x, z, dx, dz, pitch, dist, hour) => {
+  game.trav.teleport(x, z);
+  Object.assign(game.trav, { camYaw: Math.atan2(dx, dz), camPitch: pitch, camDist: dist });
+  game.st.minutes = Math.floor(game.st.minutes / 1440) * 1440 + hour * 60; quiet(3); dev.step(1 / 60); await shot(name);
+};
+const c = RGN.regionCenter(RGN.REGION_BY_ID.london);
+// An institute at any stage: put one on an open site (london-s1 is at local +150, −150), redraw, look from above.
+game.st.institutes.push({ site: 'london-s1', kind: 'clinic', stage: 3, at: game.st.minutes }); game.institutesView.update();
+await look('clinic-3', c.x + 150, c.z - 132, 0, -1, 0.6, 24, 11);
+// A field you own, growing wheat (london-f1 is at local +205, +62).
+game.st.fields['london-f1'] = { store: {}, at: game.st.minutes, crop: { seed: 'seed_wheat', plantedAt: game.st.minutes - 1000 } };
+game.fieldsView.update(); await look('field', c.x + 205, c.z + 70, 0, -1, 0.6, 16, 11);
+// A harbour, from the pier head looking back to the quay (positions come from the data).
+const hb = (await import('/src/world/harbours.ts')).harbourOf('london');
+await look('harbour', hb.headX, hb.headZ, -hb.dir[0], -hb.dir[1], 0.3, 20, 11);
+// A bridge, seen from its bank.
+const br = (await import('/src/world/bridges.ts')).bridgesOf('london')[0];
+await look('bridge', br.x - br.dir[0] * (br.length / 2 + 8), br.z - br.dir[1] * (br.length / 2 + 8), br.dir[0], br.dir[1], 0.3, 12, 11);
+// Inside an institute (your buildInterior scene, or the standard room).
+game.enterInstitute('london-inst'); quiet(1); dev.step(1 / 60); await shot('inside'); game.exitHouse();
+// Performance where you stand: reset the counters (they are not reset each frame), draw one frame, read them.
+game.trav.teleport(c.x + 4, c.z + 30); quiet(2);
+game.renderer.info.reset(); dev.step(1 / 60); return JSON.stringify(game.renderer.info.render);
+```
+
+**Performance budget** (measure with the last lines above, standing on the plaza):
+- **Today's baseline:** measured on 2026-09-27, one frame including the shadow and glow passes costs about 2,450–3,350
+  draw calls and 3.1–4.9 M triangles (London 2,613 / 3.6 M; New Yonder 2,456 / 4.9 M; the Meadow 3,357 / 3.7 M; Sakura
+  Hollow 3,210 / 3.1 M).
+- **Your changes** should not raise a land's numbers by more than ~10% unless the owner agrees. Report before and
+  after, same spot, same hour.
+- **Static world:** a few merged meshes per land (solid, glow, leaves, leaf cards). Never add one mesh per house, lamp
+  or tree; use the land's `GeoBuilder`s or instancing.
+
+**The report** (`docs/team/handoffs/CHATGPT_3D_REPORT.md`, newest at the top), for each push:
+1. what changed, per section of this file, and the files touched;
+2. screenshots before and after, by day and night: small JPEGs (≤ 300 KB) in `docs/team/shots/<date>/`, linked from
+   the report;
+3. what you checked by eye, the `npx vitest run` and `npx tsc --noEmit` results, and the triangle and draw-call numbers;
+4. new ids or contracts for Claude to wire (also under Contract requests), and anything you were unsure of.
 
 ---
 
