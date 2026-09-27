@@ -71,24 +71,13 @@ type HouseFn = (c: Ctx) => Footprint;
 
 const houses: Record<RegionId, HouseFn> = {
   meadow(c) {
-    const wall = pick(c, c.s.walls), roof = pick(c, c.s.roofs);
-    if (c.rng.chance(0.5)) {
-      cyl(c.g, 3, 3.1, 3, wall, 0, 0, 0, 10);
-      cone(c.g, 3.9, 3.4, roof, 0, 3, 0, 10);
-      box(c.g, 0.6, 1.6, 0.6, '#b5654a', 1.4, 4.2, 0.4);
-      box(c.g, 1.1, 2, 0.2, DOOR, 0, 0, 2.95);
-      win(c, 1.8, 1.2, 2.4, 0.7, 0.8, 0.6);
-      win(c, -1.8, 1.2, 2.4, 0.7, 0.8, -0.6);
-      for (let i = 0; i < 5; i++) sphere(c.g, 0.25, pick(c, c.s.flowers), -2.6 + i * 1.3, 0.2, 3.3, 5);
-      return { r: 3.6, h: 6.5 };
-    }
-    box(c.g, 6, 3, 5, wall);
-    gable(c.g, 6.8, 6, 2.6, roof, 0, 3, 0);
-    box(c.g, 0.7, 1.8, 0.7, '#b5654a', -1.8, 4, -0.8);
-    door(c, 6, 5);
-    win(c, -1.8, 1, 2.52);
-    win(c, 1.8, 1, 2.52);
-    return { r: 3.8, h: 5.8 };
+    // Wanderers' Meadow: a storybook land. Five kinds of fantasy house.
+    const k = c.rng.next();
+    if (k < 0.18) return fairyKeep(c);
+    if (k < 0.4) return fairyTower(c);
+    if (k < 0.7) return storyCottage(c);
+    if (k < 0.85) return toadstool(c);
+    return wizardTower(c);
   },
 
   japan(c) {
@@ -528,6 +517,116 @@ function nyLoft(c: Ctx): Footprint {
   greenWall(c, w * 0.7, d / 2, 1, H * 0.5);
   box(c.glow, w * 0.4, 0.8, 0.1, c.rng.pick(NEON), 0, 3.4, d / 2 + 0.45);
   return { r: 10, h: H + 8 };
+}
+
+
+/* ------------------------------------------------------------------------------------------------
+ * Wanderers' Meadow: fairy-tale architecture. Pale cut stone and plaster (their wall colours carry
+ * those surfaces) under steep, bright shingle roofs; turrets and pennants, crooked chimneys,
+ * round doors, toadstools and wizards' towers with floating crystals.
+ * --------------------------------------------------------------------------------------------- */
+const PENNANTS = ['#ff6fb8', '#5ac8ff', '#ffd24a', '#a67bff', '#5affa0'];
+
+/** A round turret: stone drum, a tall cone roof and a pennant on top. */
+function turret(c: Ctx, x: number, z: number, r: number, h: number, y = 0): void {
+  const wall = pick(c, c.s.walls), roof = pick(c, c.s.roofs);
+  cyl(c.g, r, r * 1.04, h, wall, x, y, z, 12);
+  cone(c.g, r * 1.3, r * 2.6, roof, x, y + h, z, 12);
+  cyl(c.g, 0.04, 0.04, 1.4, '#6b5a4a', x, y + h + r * 2.6 - 0.2, z, 4);
+  box(c.g, 0.9, 0.35, 0.03, pick(c, PENNANTS), x + 0.45, y + h + r * 2.6 + 0.8, z);
+  win(c, x, y + h * 0.55, z + r + 0.02, 0.5, 0.9, 0, true);
+}
+
+/** A crenellated parapet round a w × d top at height y. */
+function battlements(c: Ctx, w: number, d: number, y: number, col: string): void {
+  for (let x = -w / 2; x <= w / 2 + 0.01; x += 1.2) for (const z of [-d / 2, d / 2]) box(c.g, 0.6, 0.7, 0.5, col, x, y, z);
+  for (let z = -d / 2 + 1.2; z < d / 2; z += 1.2) for (const x of [-w / 2, w / 2]) box(c.g, 0.5, 0.7, 0.6, col, x, y, z);
+}
+
+/** A little castle keep: battlements, four corner turrets with banners, an arched gate. */
+function fairyKeep(c: Ctx): Footprint {
+  const w = 8, d = 8, h = 7, wall = pick(c, c.s.walls);
+  box(c.g, w, h, d, wall);
+  battlements(c, w, d, h, wall);
+  for (const [x, z] of [[-w / 2, -d / 2], [w / 2, -d / 2], [-w / 2, d / 2], [w / 2, d / 2]]) turret(c, x, z, 1.3, h + 2);
+  archPanel(c.g, 2.2, 3.2, DOOR, 0, 0, d / 2 + 0.02, 0, 0.12, true);
+  for (const x of [-2.3, 2.3]) win(c, x, 3.6, d / 2 + 0.02, 0.8, 1.4, 0, true);
+  // Banners hanging either side of the gate.
+  for (const x of [-1.8, 1.8]) box(c.g, 0.7, 2.2, 0.05, pick(c, PENNANTS), x, 3.8, d / 2 + 0.05);
+  return { r: 6.4, h: h + 9 };
+}
+
+/** A round stone tower with a steep turret roof, a smaller side turret and climbing roses. */
+function fairyTower(c: Ctx): Footprint {
+  const r = 2.8, h = c.rng.range(8, 11), wall = pick(c, c.s.walls), roof = pick(c, c.s.roofs);
+  cyl(c.g, r, r * 1.06, h, wall, 0, 0, 0, 16);
+  box(c.g, r * 2.3, 0.35, 0.35, '#e8e0cc', 0, h - 0.4, r - 0.1);
+  cone(c.g, r * 1.3, r * 2.8, roof, 0, h, 0, 16);
+  cyl(c.g, 0.05, 0.05, 1.8, '#6b5a4a', 0, h + r * 2.8 - 0.3, 0, 4);
+  box(c.g, 1.2, 0.45, 0.03, pick(c, PENNANTS), 0.6, h + r * 2.8 + 1, 0);
+  turret(c, r * 0.95, -r * 0.3, 1.1, h * 0.7);
+  archPanel(c.g, 1.3, 2.3, DOOR, 0, 0, r + 0.03, 0, 0.1, true);
+  for (let f = 1; f < h / 3; f++) win(c, 0, f * 3 + 0.4, r + 0.04, 0.7, 1.2, 0, true);
+  // Climbing roses up one side.
+  for (let i = 0; i < 18; i++) { const a = 0.9 + (i % 5) * 0.12, y = 0.3 + i * (h * 0.045); sphere(c.g, 0.22, i % 3 ? '#4f9a4a' : '#ff5a7a', Math.sin(a) * (r + 0.1), y, Math.cos(a) * (r + 0.1), 5); }
+  return { r: r + 1.6, h: h + r * 2.8 + 2 };
+}
+
+/** A storybook cottage: steep roof, crooked chimney, half-timbering, a round door and a dormer. */
+function storyCottage(c: Ctx): Footprint {
+  const w = 7, d = 6, h = 3.4, wall = pick(c, c.s.walls), roof = pick(c, c.s.roofs), timber = '#5a4030';
+  box(c.g, w, h, d, wall);
+  // Half-timbering on the front.
+  for (const x of [-w / 2 + 0.1, -1.2, 1.2, w / 2 - 0.1]) box(c.g, 0.2, h, 0.08, timber, x, 0, d / 2 + 0.03);
+  box(c.g, w, 0.2, 0.08, timber, 0, h * 0.55, d / 2 + 0.03);
+  for (const s of [-1, 1]) c.g.add(new THREE.BoxGeometry(0.16, 2.2, 0.08).translate(0, 1.1, 0), timber, M(s * 2.4, h * 0.55, d / 2 + 0.04, 0, 1, 1, 1, 0, s * 0.6));
+  gable(c.g, w + 1.2, d + 1.2, 3.8, roof, 0, h, 0);
+  // A dormer with its own little roof.
+  box(c.g, 1.6, 1.3, 1.4, wall, 1.4, h + 0.9, d / 2 - 0.4);
+  gable(c.g, 2, 1.8, 0.9, roof, 1.4, h + 2.2, d / 2 - 0.4, Math.PI / 2);
+  win(c, 1.4, h + 1.1, d / 2 + 0.32, 0.7, 0.7);
+  // A crooked chimney.
+  for (let i = 0; i < 4; i++) box(c.g, 0.8, 0.9, 0.8, '#b5654a', -1.8 + i * 0.12, h + 1.4 + i * 0.9, -0.8);
+  // A round-topped door and round windows.
+  archPanel(c.g, 1.2, 2.1, '#7a4a2a', 0, 0, d / 2 + 0.05, 0, 0.1, true);
+  sphere(c.glow, 0.45, c.s.glow, -2.3, 1.7, d / 2 + 0.02, 10, 1);
+  sphere(c.glow, 0.45, c.s.glow, 2.3, 1.7, d / 2 + 0.02, 10, 1);
+  for (let i = 0; i < 6; i++) sphere(c.g, 0.25, pick(c, c.s.flowers), -2.8 + i * 1.1, 0.2, d / 2 + 0.5, 5);
+  return { r: 4.6, h: h + 5 };
+}
+
+/** A toadstool house: a stout stem with a door and round windows under a spotted cap. */
+function toadstool(c: Ctx): Footprint {
+  const r = c.rng.range(2, 2.6), h = c.rng.range(3, 4), cap = c.rng.pick(['#e0473a', '#e07a5f', '#c38fd9', '#f2c14e']);
+  cyl(c.g, r, r * 1.15, h, '#f4ecd8', 0, 0, 0, 14);
+  dome(c.g, r * 2, cap, 0, h - 0.3, 0, 16, 0.75);
+  cyl(c.g, r * 2.02, r * 1.9, 0.3, '#fff4e0', 0, h - 0.5, 0, 16);
+  for (let i = 0; i < 9; i++) {
+    const a = i * 2.4, e = 0.3 + (i % 3) * 0.3;
+    sphere(c.g, 0.35 + (i % 2) * 0.12, '#fffaf0', Math.cos(a) * r * 2 * Math.cos(e) * 0.95, h - 0.3 + Math.sin(e) * r * 1.5 * 0.95, Math.sin(a) * r * 2 * Math.cos(e) * 0.95, 6, 0.5);
+  }
+  archPanel(c.g, 1, 1.8, '#7a4a2a', 0, 0, r * 1.1 + 0.02, 0, 0.1, true);
+  for (const a of [0.9, -0.9]) sphere(c.glow, 0.32, c.s.glow, Math.sin(a) * r * 1.08, h * 0.55, Math.cos(a) * r * 1.08, 8, 1);
+  return { r: r * 2 + 0.4, h: h + r * 1.5 };
+}
+
+/** A wizard's tower: slender and tall, floating glowing crystals round a pointed hat of a roof. */
+function wizardTower(c: Ctx): Footprint {
+  const r = 1.8, h = c.rng.range(11, 15), wall = pick(c, c.s.walls);
+  cyl(c.g, r * 0.9, r * 1.2, h, wall, 0, 0, 0, 14);
+  for (let y = 2.5; y < h; y += 3) box(c.g, r * 2.2, 0.25, 0.25, '#e8e0cc', 0, y, r * 0.95);
+  // A pointed hat, a little bent.
+  cone(c.g, r * 1.6, 3, '#4a3a8a', 0, h, 0, 14);
+  c.g.add(new THREE.ConeGeometry(r * 0.7, 3, 12).translate(0, 1.5, 0), '#4a3a8a', M(0.2, h + 2.8, 0, 0, 1, 1, 1, 0, -0.35));
+  // Glowing runes spiralling up, and crystals floating round the top.
+  for (let i = 0; i < 12; i++) { const a = i * 0.8, y = 1 + i * (h / 13); box(c.glow, 0.25, 0.4, 0.05, '#9ad8ff', Math.sin(a) * (r * 1.05), y, Math.cos(a) * (r * 1.05), a); }
+  for (let i = 0; i < 5; i++) {
+    const a = (i / 5) * Math.PI * 2;
+    c.glow.add(new THREE.OctahedronGeometry(0.4, 0).scale(1, 1.8, 1), i % 2 ? '#b8a4ff' : '#7affd0', M(Math.cos(a) * 3.2, h - 1 + (i % 2) * 1.2, Math.sin(a) * 3.2));
+  }
+  archPanel(c.g, 1.1, 2, '#3a2a5a', 0, 0, r * 1.18 + 0.02, 0, 0.1, true);
+  win(c, 0, h - 2.5, r * 0.92, 0.7, 1.2, 0, true);
+  return { r: r + 2.2, h: h + 6 };
 }
 
 export function buildHouse(c: Ctx): Footprint {
