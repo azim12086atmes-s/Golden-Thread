@@ -651,7 +651,9 @@ export class CharacterModel {
     if (!this.identity) return;
     const r = DIMS.headR, tall = ['gat', 'wide-hat', 'hijab-hat', 'turban', 'songkok'].includes(this.outfit.head.style);
     const g = new THREE.Group();
-    g.position.y = r * (tall ? 2.35 : 1.6);
+    g.position.y = r * (tall ? 2.5 : 1.85);
+    // Big enough to read from the follow camera: a little wider than the head itself.
+    g.scale.setScalar(1.55);
     const gold = '#e8b84a', girl = this.identity === 'girl';
     const R = r * (girl ? 0.6 : 0.66), H = r * (girl ? 0.2 : 0.3);
     g.add(mesh(new THREE.CylinderGeometry(R, R * 0.96, H, 24, 1, true), gold, 'headwear'));
@@ -770,7 +772,7 @@ export class CharacterModel {
     this.body.position.y = moving ? Math.abs(Math.sin(this.phase)) * 0.03 : 0;
     if (this.crown) {
       this.crown.rotation.y = s.t * 0.5;
-      this.crown.position.y = DIMS.headR * (['gat', 'wide-hat', 'hijab-hat', 'turban', 'songkok'].includes(this.outfit.head.style) ? 2.35 : 1.6) + Math.sin(s.t * 1.6) * 0.012;
+      this.crown.position.y = DIMS.headR * (['gat', 'wide-hat', 'hijab-hat', 'turban', 'songkok'].includes(this.outfit.head.style) ? 2.5 : 1.85) + Math.sin(s.t * 1.6) * 0.012;
     }
     if (this.cape) {
       // The cape flies: it lifts and streams back with speed and in the air, and ripples always.
