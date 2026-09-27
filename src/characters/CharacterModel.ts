@@ -652,16 +652,16 @@ export class CharacterModel {
     const r = DIMS.headR, tall = ['gat', 'wide-hat', 'hijab-hat', 'turban', 'songkok'].includes(this.outfit.head.style);
     const g = new THREE.Group();
     g.position.y = r * (tall ? 2.5 : 1.85);
-    // Big enough to read from the follow camera: a little wider than the head itself.
-    g.scale.setScalar(1.55);
     const gold = '#e8b84a', girl = this.identity === 'girl';
-    const R = r * (girl ? 0.6 : 0.66), H = r * (girl ? 0.2 : 0.3);
+    // Big enough to read from the follow camera: wider than the head itself (hers the larger tiara).
+    g.scale.setScalar(girl ? 2.6 : 1.55);
+    const R = r * (girl ? 0.62 : 0.66), H = r * (girl ? 0.26 : 0.3);
     g.add(mesh(new THREE.CylinderGeometry(R, R * 0.96, H, 24, 1, true), gold, 'headwear'));
     g.add(mesh(new THREE.TorusGeometry(R, r * 0.03, 5, 24).rotateX(Math.PI / 2), gold, 'headwear'));
     const n = girl ? 9 : 6;
     for (let i = 0; i < n; i++) {
       const a = (i / n) * Math.PI * 2, x = Math.sin(a) * R, z = Math.cos(a) * R;
-      const tipH = girl ? r * (0.2 + (i % 2 ? 0 : 0.14) + (i === 0 ? 0.12 : 0)) : r * 0.42;
+      const tipH = girl ? r * (0.26 + (i % 2 ? 0 : 0.18) + (i === 0 ? 0.16 : 0)) : r * 0.42;
       const spike = mesh(new THREE.ConeGeometry(r * (girl ? 0.05 : 0.09), tipH, 4), gold, 'headwear');
       spike.position.set(x, H / 2 + tipH / 2, z);
       g.add(spike);
