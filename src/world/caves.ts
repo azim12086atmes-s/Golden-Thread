@@ -1,4 +1,5 @@
 import { Rng } from '../core/rng';
+import { reservedAt } from './reserved';
 import { PLOTS, PLOT_SIZE } from './plots';
 import { CITY_RADIUS, REGIONS, REGION_SIZE, regionCenter, type RegionId } from './regions';
 import { CASTLE_SITE, terrainHeight, WATER_Y } from './terrain';
@@ -54,6 +55,7 @@ function place(land: RegionId): Cave[] {
     if (PLOTS.some((p) => Math.abs(p.x - x) < PLOT_SIZE / 2 + r + 6 && Math.abs(p.z - z) < PLOT_SIZE / 2 + r + 6)) continue;
     if (INSTITUTE_SITES.some((s) => Math.abs(s.x - x) < SITE_SIZE / 2 + r + 6 && Math.abs(s.z - z) < SITE_SIZE / 2 + r + 6)) continue;
     if (Math.hypot(x - CASTLE_SITE.x, z - CASTLE_SITE.z) < CASTLE_SITE.r + r + 20) continue;
+    if (reservedAt(land, lx, lz, r + 12)) continue; // the pyramids' plateau
     if (out.some((o) => Math.hypot(o.x - x, o.z - z) < o.r + r + 40)) continue;
     // The mouth faces the town.
     out.push({ id: `cave-${land}-${out.length}`, land, x, z, facing: Math.atan2(c.x - x, c.z - z), style: cfg.style, r });

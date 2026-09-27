@@ -369,7 +369,7 @@ export class Game {
     updateWind(this.t, this.region.id, dt);
     FOLIAGE_UNIFORMS.uSunDir.value.copy(this.sky.sunDirection);
     FOLIAGE_UNIFORMS.uLeafNight.value = this.sky.night;
-    this.world.setWaterLook(this.t, this.sky.night, this.region.id);
+    this.world.setWaterLook(this.t, this.sky.night, this.region.id, this.sky.sunDirection);
     this.world.update(this.trav.gPos, this.sky.night);
     this.sky.update(this.hour, this.trav.gPos, this.t, this.region.id);
     this.ambience.setMode(this.region.ambient);

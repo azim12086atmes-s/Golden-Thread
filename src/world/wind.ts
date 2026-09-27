@@ -49,11 +49,23 @@ export function currentWind(): { x: number; z: number; strength: number } {
 /** GLSL: how far a point at world position wp moves, scaled by how free it is to move (0..1). */
 export const WIND_GLSL = /* glsl */ `
   uniform float uWindTime; uniform vec2 uWindDir; uniform float uWindStrength;
+  float wNoise(vec2 p) {
+    vec2 i = floor(p), f = fract(p); f = f * f * (3.0 - 2.0 * f);
+    float a = fract(sin(dot(i, vec2(127.1, 311.7))) * 43758.5453), b = fract(sin(dot(i + vec2(1.0, 0.0), vec2(127.1, 311.7))) * 43758.5453);
+    float c = fract(sin(dot(i + vec2(0.0, 1.0), vec2(127.1, 311.7))) * 43758.5453), d = fract(sin(dot(i + vec2(1.0, 1.0), vec2(127.1, 311.7))) * 43758.5453);
+    return mix(mix(a, b, f.x), mix(c, d, f.x), f.y);
+  }
   vec2 windOffset(vec3 wp, float weight) {
-    float along = dot(wp.xz, uWindDir);
-    float gust = 0.55 + 0.45 * sin(uWindTime * 0.9 - along * 0.045);
-    float wave = sin(uWindTime * 2.3 - along * 0.32) * 0.6 + sin(uWindTime * 4.1 + wp.x * 0.61 + wp.z * 0.37) * 0.25;
-    return uWindDir * (0.35 + wave * 0.5 + 0.35) * gust * uWindStrength * weight;
+    vec2 across = vec2(-uWindDir.y, uWindDir.x);
+    float along = dot(wp.xz, uWindDir), side = dot(wp.xz, across);
+    // Gusts: patches of stronger wind, each its own shape, drifting downwind at an easy pace, with
+    // lulls between them — not one wave sweeping the whole field.
+    float g = wNoise(vec2(along * 0.03 - uWindTime * 0.16, side * 0.045)) * 0.65 + wNoise(vec2(along * 0.08 - uWindTime * 0.27, side * 0.11 + 3.7)) * 0.35;
+    float gust = 0.25 + 0.95 * smoothstep(0.3, 0.8, g);
+    // Sway: slow, every plant a little out of step with its neighbours.
+    float ph = wNoise(wp.xz * 0.6) * 6.2832;
+    float wave = sin(uWindTime * 1.1 - along * 0.15 + ph) * 0.55 + sin(uWindTime * 1.9 + ph * 1.7) * 0.15;
+    return uWindDir * (0.55 + wave * 0.5) * gust * uWindStrength * weight;
   }`;
 
 /** Sun and night for leaves (set once a frame by the game). */

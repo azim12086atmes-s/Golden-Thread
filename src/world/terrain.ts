@@ -82,7 +82,7 @@ function plotBase(id: string, x: number, z: number): number {
 }
 
 /** How much of a land's open country is sand sea (0..1). */
-export const DUNES: Partial<Record<RegionSpec["id"], number>> = { desert: 1, middleeast: 0.6, egypt: 0.5 };
+export const DUNES: Partial<Record<RegionSpec["id"], number>> = { desert: 1, middleeast: 0.6, egypt: 0.5, indianorth: 0.35 };
 
 /**
  * Sand dunes: long crescent ridges across the wind, a gentle windward slope and a steep slip face,

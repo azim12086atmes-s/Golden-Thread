@@ -19,9 +19,10 @@ import { box, cyl, sphere, type GeoBuilder } from './kit';
 
 const VERT = /* glsl */ `
   #include <fog_pars_vertex>
-  varying vec3 vW; varying vec3 vFlow;
+  varying vec3 vW; varying vec3 vFlow; varying vec3 vN;
   void main() {
     vFlow = color;
+    vN = normalize(mat3(modelMatrix) * normal);
     vec4 wp = modelMatrix * vec4(position, 1.0);
     vW = wp.xyz;
     vec4 mvPosition = viewMatrix * wp;
@@ -32,7 +33,7 @@ const VERT = /* glsl */ `
 const FRAG = /* glsl */ `
   #include <fog_pars_fragment>
   uniform float t; uniform float night; uniform vec3 glow;
-  varying vec3 vW; varying vec3 vFlow;
+  varying vec3 vW; varying vec3 vFlow; varying vec3 vN;
   float h(vec2 p) { return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453); }
   float sn(vec2 p) { vec2 i = floor(p), f = fract(p); f = f * f * (3.0 - 2.0 * f);
     return mix(mix(h(i), h(i + vec2(1.0, 0.0)), f.x), mix(h(i + vec2(0.0, 1.0)), h(i + vec2(1.0, 1.0)), f.x), f.y); }
@@ -41,6 +42,13 @@ const FRAG = /* glsl */ `
     float sp = vFlow.y, L = length(d);
     vec2 dir = L > 0.1 ? d / L : vec2(0.0, 1.0), perp = vec2(-dir.y, dir.x);
     vec2 p = vW.xz;
+    // A waterfall (a sheet standing upright): streaks pour straight down it, fast and white.
+    float fall = 1.0 - smoothstep(0.35, 0.6, abs(vN.y));
+    if (fall > 0.5) {
+      vec2 across = normalize(vec2(-vN.z, vN.x) + vec2(1e-4));
+      p = vec2(dot(vW.xz, across), vW.y);
+      dir = vec2(0.0, -1.0); perp = vec2(1.0, 0.0); sp = max(sp, 1.3);
+    }
     float a = dot(p, dir), b = dot(p, perp);
     // Ripples running downstream: long streaks, faster where the water runs faster.
     float n1 = sn(vec2(a * 0.7 - t * sp * 3.2, b * 2.4));
@@ -55,7 +63,8 @@ const FRAG = /* glsl */ `
     col += vec3(1.0, 0.99, 0.94) * rip * 0.38 + sparkle;
     col = mix(col, col * 0.35 + glow * 0.3, night * 0.75);
     col += glow * rip * night * 0.75;
-    gl_FragColor = vec4(col, 0.9);
+    col = mix(col, vec3(0.86, 0.95, 1.0) * (1.0 - night * 0.5) + glow * night * 0.3, fall * (0.3 + rip * 0.4));
+    gl_FragColor = vec4(col, 0.9 - fall * 0.2 * (1.0 - rip));
     #include <fog_fragment>
   }`;
 
@@ -187,5 +196,36 @@ export function waterBasin(c: WaterCtx, x: number, y: number, z: number, r: numb
         cyl(c.glow, 0.03, 0.03, 1.45, '#dff6ff', Math.cos(a) * r * 0.33, wy, Math.sin(a) * r * 0.33, 3);
       }
     } else if (o.jets !== 0) fountainJet(c, 0, wy, 0, o.jetHeight ?? 1.6);
+  });
+}
+
+/**
+ * A waterfall pouring over an edge at (x, y, z), falling towards local +z (turned by `ry`): the
+ * water curls over the lip, drops `drop` metres as a sheet `w` wide, narrowing as it falls, and
+ * ends in a cloud of spray. A pool or stream above can feed it; the drop may end in the air (off a
+ * floating island) or in a pool below.
+ */
+export function waterfall(c: WaterCtx, x: number, y: number, z: number, ry: number, w: number, drop: number, o: { mist?: boolean; stone?: string } = {}): void {
+  inFrame(c, x, y, z, ry, () => {
+    const N = 14, pos: number[] = [], idx: number[] = [];
+    for (let k = 0; k <= N; k++) {
+      const f = k / N;
+      // Over the lip (the first part curls out and down), then straight down, drifting a little outward.
+      const out = 0.9 * Math.sqrt(f) + f * drop * 0.05, fy = k === 0 ? 0.04 : -drop * f * f * 0.35 - drop * f * 0.65;
+      const half = (w / 2) * (1 - 0.3 * f);
+      pos.push(-half, fy, out, half, fy, out);
+    }
+    for (let k = 0; k < N; k++) { const a = k * 2; idx.push(a, a + 2, a + 1, a + 1, a + 2, a + 3); }
+    const geo = new THREE.BufferGeometry();
+    geo.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3));
+    geo.setIndex(idx);
+    geo.computeVertexNormals();
+    addWater(waterOf(c), geo, new THREE.Matrix4(), [0, 1], 1);
+    // Foam along the lip, and spray where it lands (or thins away into the sky).
+    c.glow.add(new THREE.CylinderGeometry(0.07, 0.07, w, 4).rotateZ(Math.PI / 2), FOAM, new THREE.Matrix4().makeTranslation(0, 0.08, 0.15));
+    if (o.mist !== false) {
+      const bz = 0.9 + drop * 0.05;
+      for (let i = 0; i < 5; i++) sphere(c.g, w * (0.22 + 0.06 * i), '#f4fbff', ((i % 3) - 1) * w * 0.25, -drop + i * 0.25, bz + (i % 2) * 0.4, 6);
+    }
   });
 }

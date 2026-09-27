@@ -1,3 +1,4 @@
+import { pavedAt, takeDirty } from './paved';
 import * as THREE from 'three';
 import { LOCALES } from './locale';
 import { PLOTS, PLOT_SIZE } from './plots';
@@ -251,8 +252,9 @@ export function grassy(x: number, z: number, h: number, col: THREE.Color): boole
   const cx = Math.round(x / REGION_SIZE) * REGION_SIZE, cz = Math.round(z / REGION_SIZE) * REGION_SIZE;
   const lx = x - cx, lz = z - cz, d = Math.hypot(lx, lz);
   if (d < 54) return false; // the plaza and landmark
-  if (d < CITY_RADIUS + 48 && (Math.abs(lx) < 12 || Math.abs(lz) < 12)) return false; // avenues
-  if (Math.abs(d - 140) < 8.5) return false; // the ring road
+  if (d < CITY_RADIUS + 48 && (Math.abs(lx) < 13.5 || Math.abs(lz) < 13.5)) return false; // avenues and their pavements
+  if (Math.abs(d - 140) < 10) return false; // the ring road and its tiled borders
+  if (pavedAt(x, z)) return false; // houses, squares, fields, sites, quays (paved.ts)
   // Plots of land are for building and farming: the meadow stops at their fences.
   if (PLOTS.some((p) => Math.abs(x - p.x) < PLOT_SIZE / 2 + 1 && Math.abs(z - p.z) < PLOT_SIZE / 2 + 1)) return false;
   return true;
@@ -301,6 +303,16 @@ class Field {
 
   private lastI = NaN;
   private lastJ = NaN;
+
+  /** Replant the cells inside a world box (its paving changed) next update. */
+  invalidate(x0: number, z0: number, x1: number, z1: number): void {
+    const n = this.cells * this.cells;
+    for (let k = 0; k < n; k++) {
+      const x = this.slot[k * 2] * this.cell, z = this.slot[k * 2 + 1] * this.cell;
+      if (x >= x0 - this.cell && x <= x1 && z >= z0 - this.cell && z <= z1) this.slot[k * 2] = 2 ** 30;
+    }
+    this.lastI = NaN;
+  }
 
   update(fx: number, fz: number): void {
     const G = this.cells, fi = Math.floor(fx / this.cell) - G / 2, fj = Math.floor(fz / this.cell) - G / 2;
@@ -404,6 +416,7 @@ export class MeadowField {
     // High in the air the meadow is too far below to matter.
     this.group.visible = this.enabled && focus.y - ground < 60;
     if (!this.group.visible) return;
+    for (const b of takeDirty()) for (const f of [this.grass, this.flowers, this.midGrass, this.farGrass, this.midFlowers]) f.invalidate(b.x0, b.z0, b.x1, b.z1);
     GRASS_UNIFORMS.uFocus.value.copy(focus);
     GRASS_UNIFORMS.uFieldR.value = Math.min(FIELD_CELL * FIELD_CELLS, FLOWER_CELL * FLOWER_CELLS) / 2 - 1;
     this.grass.update(focus.x, focus.z);
@@ -427,14 +440,33 @@ export function patternGround(mat: THREE.MeshStandardMaterial): void {
     sh.fragmentShader = sh.fragmentShader
       .replace('#include <common>', `#include <common>
         varying vec3 vGW; uniform float uNight; uniform vec2 uWindDir;
-        float gh(vec2 p) { return fract(sin(dot(p, vec2(12.9898, 78.233))) * 43758.5453); }`)
+        float gh(vec2 p) { return fract(sin(dot(p, vec2(12.9898, 78.233))) * 43758.5453); }
+        float vn(vec2 p) { vec2 i = floor(p), f = fract(p); f = f * f * (3.0 - 2.0 * f);
+          return mix(mix(gh(i), gh(i + vec2(1.0, 0.0)), f.x), mix(gh(i + vec2(0.0, 1.0)), gh(i + vec2(1.0, 1.0)), f.x), f.y); }`)
       .replace('#include <color_fragment>', `#include <color_fragment>
         float greenish = smoothstep(0.02, 0.12, diffuseColor.g - max(diffuseColor.r, diffuseColor.b) * 0.92);
         vec2 gp = vGW.xz;
-        // Mown bands, a few metres wide, gently curving.
-        float band = 0.5 + 0.5 * sin((gp.x + sin(gp.y * 0.05) * 6.0) * 0.28);
-        diffuseColor.rgb *= mix(1.0, 0.9 + band * 0.18, greenish);
+        // Patches of light and shade on the grass, of every size — where it lies flatter, grows
+        // thicker, or has been walked — and here and there a sun-dried, golden stretch.
+        float pn = vn(gp * 0.04) * 0.55 + vn(gp * 0.13 + 5.0) * 0.3 + vn(gp * 0.45 + 9.0) * 0.15;
+        diffuseColor.rgb *= mix(1.0, 0.84 + pn * 0.3, greenish);
         diffuseColor.rgb = mix(diffuseColor.rgb, diffuseColor.rgb * vec3(0.95, 1.12, 0.9), greenish * 0.6);
+        float dry = smoothstep(0.6, 0.85, vn(gp * 0.017 + 11.0));
+        diffuseColor.rgb = mix(diffuseColor.rgb, diffuseColor.rgb * vec3(1.14, 1.03, 0.78), greenish * dry * 0.55);
+        // Sand is grainy up close: fine grains of lighter and darker sand, bits of grit and the odd
+        // pebble, and broad drifts of pinker and more ochre sand across the land.
+        {
+          vec3 dc0 = vColor.rgb;
+          float sandish = smoothstep(0.05, 0.18, dc0.r - dc0.b) * (1.0 - greenish) * (1.0 - smoothstep(0.0, 0.08, dc0.g - dc0.r));
+          float near = 1.0 - smoothstep(16.0, 70.0, length(vViewPosition));
+          float grain = (gh(floor(gp * 26.0)) - 0.5) * 0.16 + (gh(floor(gp * 9.0) + 17.0) - 0.5) * 0.1;
+          diffuseColor.rgb *= 1.0 + grain * sandish * near;
+          vec2 pf = fract(gp * 2.6) - 0.5;
+          float peb = step(0.972, gh(floor(gp * 2.6) + 5.0)) * (1.0 - smoothstep(0.1, 0.22, length(pf)));
+          diffuseColor.rgb *= 1.0 - peb * 0.32 * sandish * near;
+          float tint = vn(gp * 0.03 + 21.0);
+          diffuseColor.rgb *= mix(vec3(1.0), mix(vec3(1.05, 0.95, 0.93), vec3(0.97, 1.0, 1.03), tint), sandish);
+        }
         // Blossom speckles.
         vec2 cell = floor(gp * 1.3);
         float s = gh(cell);
@@ -451,22 +483,36 @@ export function patternGround(mat: THREE.MeshStandardMaterial): void {
           // light itself draws them.
           vec3 dc = vColor.rgb;
           float snowy = smoothstep(0.78, 0.9, min(dc.r, min(dc.g, dc.b)));
-          float sandy = smoothstep(0.08, 0.2, dc.r - dc.b) * smoothstep(0.55, 0.7, dc.r) * (1.0 - smoothstep(0.0, 0.08, dc.g - dc.r));
+          float sandy = smoothstep(0.06, 0.18, dc.r - dc.b) * smoothstep(0.3, 0.5, dc.r) * (1.0 - smoothstep(0.0, 0.08, dc.g - dc.r));
           vec2 wd = normalize(uWindDir + vec2(0.0001));
           vec2 wp = vec2(dot(vGW.xz, wd), dot(vGW.xz, vec2(-wd.y, wd.x)));
-          float warp = sin(wp.y * 0.21) * 1.6 + sin(wp.y * 0.07 + wp.x * 0.03) * 3.0;
-          // Ripples: crests across the wind, ~0.9 m apart, sharper on the lee side.
-          float ph = (wp.x + warp) * 7.0;
-          float rip = cos(ph) * 0.5 + 0.5 * cos(ph * 2.0 + 1.2) * 0.35;
-          vec2 gR = wd * rip * 0.22 * sandy;
-          // Sastrugi: long streaks along the wind, of uneven width.
-          float st = sin(wp.y * 1.9 + sin(wp.x * 0.13) * 2.5) * sin(wp.y * 0.53 + 1.7);
-          vec2 gS = vec2(-wd.y, wd.x) * st * 0.18 * snowy;
+          // The crests wander: bent by broad eddies, never quite parallel.
+          float warp = (vn(wp * vec2(0.018, 0.05)) - 0.5) * 16.0 + sin(wp.y * 0.11) * 1.4;
+          // Ripples: crests across the wind, 1.2–2 m apart (tighter in some hollows, wider on the
+          // crests), strong in some patches and faint in others, breaking off and forking here and there.
+          float patchS = smoothstep(0.2, 0.75, vn(vGW.xz * 0.012));
+          float lam = mix(5.2, 3.1, vn(vGW.xz * 0.021 + 3.0));
+          float ph = (wp.x + warp) * lam;
+          float rip = pow(0.5 + 0.5 * cos(ph), 1.7) - 0.4 + 0.2 * cos(ph * 2.0 + 1.2);
+          rip *= 0.35 + 0.65 * smoothstep(0.25, 0.6, vn(vec2(wp.x * 0.28, wp.y * 0.4)));
+          // Megaripples, 8–12 m apart, low and broad.
+          float mega = sin((wp.x + warp * 2.0) * 0.62 + vn(wp * 0.03) * 4.0);
+          vec2 gR = wd * (rip * 0.22 * (0.3 + 0.7 * patchS) + mega * 0.05) * sandy;
+          // Snow: in some places carved into sastrugi (long streaks along the wind, of uneven width
+          // and spacing), elsewhere drifted smooth into soft, low swells.
+          float patchW = smoothstep(0.3, 0.7, vn(vGW.xz * 0.014 + 8.0));
+          float stF = mix(1.1, 2.6, vn(wp * vec2(0.02, 0.06) + 2.0));
+          float st = sin(wp.y * stF + (vn(wp * vec2(0.05, 0.2)) - 0.5) * 6.0) * smoothstep(0.2, 0.7, vn(vec2(wp.x * 0.07, wp.y * 0.5) + 4.0));
+          float drift = vn(wp * vec2(0.04, 0.1) + 6.0) - 0.5;
+          vec2 gS = (vec2(-wd.y, wd.x) * st * 0.17 * patchW + wd * drift * 0.12) * snowy;
           vec3 bw = vec3(gR.x + gS.x, 0.0, gR.y + gS.y);
           normal = normalize(normal - (viewMatrix * vec4(bw, 0.0)).xyz);
-          // Snow glitters where the sun catches single crystals.
-          vec2 sc = floor(vGW.xz * 5.0);
-          float glint = step(0.992, gh(sc + floor(dot(normalize(vViewPosition), vec3(7.0, 3.0, 5.0)) * 4.0))) * snowy;
+          // Snow glitters where the sun catches single crystals: in drifting clusters that shift as
+          // you move, some bright, most faint — never an even sprinkle.
+          vec2 sc = floor(vGW.xz * 6.0);
+          float look = floor(dot(normalize(vViewPosition), vec3(7.0, 3.0, 5.0)) * 3.0);
+          float cluster = smoothstep(0.5, 0.9, vn(vGW.xz * 0.09 + look * 0.37));
+          float glint = step(1.0 - 0.025 * cluster, gh(sc + look)) * snowy * (0.3 + 0.7 * gh(sc + 3.1));
           totalEmissiveRadiance += vec3(1.0, 0.98, 0.92) * glint * 0.9 * (1.0 - uNight * 0.6);
         }`)
       .replace('#include <emissivemap_fragment>', `#include <emissivemap_fragment>

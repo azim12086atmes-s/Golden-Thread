@@ -1,4 +1,5 @@
 import * as THREE from 'three';
+import { floatingIsland } from './islands';
 import { smoothstep } from '../core/rng';
 import { GeoBuilder, cone, cyl, sphere, tree } from './kit';
 import type { SkyKind } from './skies';
@@ -246,17 +247,15 @@ export class SkyOrnaments {
       const x = Math.cos(a) * r, z = Math.sin(a) * r;
       g.frame(x, y, z, a, s * 5, () => {
         // A rocky root hanging beneath, with a ledge of earth under the grass.
-        g.add(new THREE.ConeGeometry(8, 18, 9).rotateX(Math.PI).translate(0, -9.5, 0), '#6a4a7a');
-        g.add(new THREE.ConeGeometry(4.5, 9, 7).rotateX(Math.PI).translate(2.5, -6, 1.5), '#7a5a8a');
-        cyl(g, 8.2, 8.0, 1.5, '#8a6a4a', 0, -1.4, 0, 12);
-        cyl(g, 8.3, 8, 1.2, '#7fcf6a', 0, 0, 0, 12);
-        for (let i = 0; i < 5; i++) tree(g, (['pine', 'sakura', 'oak', 'crystal', 'cloud'] as const)[(i + k) % 5], Math.cos(i * 1.3) * 4.5, 1.2, Math.sin(i * 1.3) * 4.5, 1.1, () => (i * 0.37 + k * 0.21) % 1);
-        cyl(g, 1.4, 1.8, 3, '#f2ecff', 2, 1.2, -2, 6);
-        cone(g, 2.2, 2.4, '#e05a8a', 2, 4.2, -2, 6);
+        let seed = k * 7.31 + 1.7;
+        floatingIsland(g, null, 8, () => (seed = (seed * 9.13 + 0.371) % 1), { grass: '#7fcf6a', earth: '#8a6a4a', rock: '#7a5a8a', rockDark: '#6a4a7a', roots: '#5a4030' });
+        for (let i = 0; i < 5; i++) tree(g, (['pine', 'sakura', 'oak', 'crystal', 'cloud'] as const)[(i + k) % 5], Math.cos(i * 1.3) * 4.5, 0.35, Math.sin(i * 1.3) * 4.5, 1.1, () => (i * 0.37 + k * 0.21) % 1);
+        cyl(g, 1.4, 1.8, 3, '#f2ecff', 2, 0.4, -2, 6);
+        cone(g, 2.2, 2.4, '#e05a8a', 2, 3.4, -2, 6);
         for (let i = 0; i < 4; i++) sphere(glow, 0.7, ['#9ae8ff', '#ffb8f0', '#fff08a', '#b8ffb0'][i], Math.cos(i * 1.7 + 1) * 6, -8 - i * 3, Math.sin(i * 1.7 + 1) * 6, 5);
       });
       // A waterfall pouring off the edge, towards the camera side.
-      const e = new THREE.Vector3(Math.cos(a) * (r - 8.3 * s * 5), y + 2, Math.sin(a) * (r - 8.3 * s * 5));
+      const e = new THREE.Vector3(Math.cos(a) * (r - 8.3 * s * 5), y + 0.3, Math.sin(a) * (r - 8.3 * s * 5));
       const side = new THREE.Vector3(-Math.sin(a), 0, Math.cos(a)).multiplyScalar(7 * s);
       const drop = 160 * s, base = fallPos.length / 3;
       for (const [sx, sy] of [[-1, 0], [1, 0], [-1.6, 1], [1.6, 1]] as const) {

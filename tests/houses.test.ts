@@ -8,7 +8,9 @@ import { landmarkDoor } from '../src/world/World';
 import { Rng } from '../src/core/rng';
 import { PEOPLE_IN_NEED, needSpot } from '../src/charity/charity';
 import { buildRegion } from '../src/world/RegionBuilder';
-import { REGIONS } from '../src/world/regions';
+import { REGIONS, regionCenter } from '../src/world/regions';
+import { reservedAt } from '../src/world/reserved';
+import { waterEdge } from '../src/world/waters';
 import { WATER_Y, terrainHeight } from '../src/world/terrain';
 
 const solid = new THREE.MeshStandardMaterial(), glow = new THREE.MeshBasicMaterial();
@@ -25,6 +27,15 @@ describe('every building can be entered', () => {
         expect(d.y).toBeGreaterThan(WATER_Y);
       }
       for (const n of inst.nodes) for (const h of houses) expect(Math.hypot(n.x - h.x, n.z - h.z), `${n.id}`).toBeGreaterThan(h.r);
+      // Nothing small — trees, lamps, fountains, props — stands inside a building, and no building
+      // stands on a landmark's grounds (the pyramids' plateau, Bagh-e-Noor's garden) or a river bank.
+      const c = regionCenter(r);
+      const small = inst.colliders.filter((q) => q.r <= 2);
+      for (const h of houses) {
+        for (const q of small) expect(Math.hypot(q.x - h.x, q.z - h.z), `${r.id} house at ${h.x},${h.z}`).toBeGreaterThan(h.r + q.r * 0.5);
+        if (Math.hypot(h.x - c.x, h.z - c.z) > 62) expect(reservedAt(r.id, h.x - c.x, h.z - c.z, 0), `${r.id} house on reserved ground`).toBe(false);
+        expect(waterEdge(h.x, h.z).d, `${r.id} house by the water`).toBeGreaterThan(h.r);
+      }
       // The people in need stand in the open, clear of every building, lamp and prop, on dry ground.
       for (const p of PEOPLE_IN_NEED.filter((q) => q.land === r.id)) {
         const at = needSpot(p);

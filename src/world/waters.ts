@@ -1,6 +1,7 @@
 import { Rng, lerp, smoothstep } from '../core/rng';
 import { PLOTS, PLOT_SIZE } from './plots';
 import { CITY_RADIUS, REGIONS, REGION_SIZE, regionCenter, type RegionId } from './regions';
+import { NILE_W, nileX, reservedAt } from './reserved';
 
 /**
  * Lakes, ponds and rivers in every land's countryside — beyond the town, where the roads end.
@@ -34,7 +35,10 @@ function build(): WaterBody[] {
     const c = regionCenter(r), rng = new Rng(`waters:${r.id}`);
     const bad = (x: number, z: number, rad: number) =>
       PLOTS.some((p) => Math.abs(x - p.x) < PLOT_SIZE / 2 + rad + 16 && Math.abs(z - p.z) < PLOT_SIZE / 2 + rad + 16) ||
-      Math.hypot(x - CASTLE_AT.x, z - CASTLE_AT.z) < CASTLE_AT.r + rad + 34;
+      Math.hypot(x - CASTLE_AT.x, z - CASTLE_AT.z) < CASTLE_AT.r + rad + 34 ||
+      // Ground set aside (the pyramids' plateau), and the Nile's corridor past Nile Crossing.
+      reservedAt(r.id, x - c.x, z - c.z, rad + 10) ||
+      (r.id === 'egypt' && Math.abs(x - c.x - nileX(z - c.z)) < NILE_W / 2 + rad + 24);
     // The lake.
     for (let tries = 0; tries < 20; tries++) {
       const a = clearOfAxes(rng.range(0, Math.PI * 2), 0.42), rad = rng.range(24, 34), d = rng.range(ROADS_END + rad + 8, ROADS_END + rad + 40);
@@ -51,6 +55,14 @@ function build(): WaterBody[] {
       if (bad(x, z, rad) || out.some((b) => b.kind !== 'river' && Math.hypot(b.x - x, b.z - z) < b.r + rad + 12)) continue;
       out.push({ kind: 'pond', land: r.id, x, z, r: rad });
       ponds++;
+    }
+    // Nile Crossing's river is the Nile itself: broad, running past the town's east edge from the
+    // north of the land down to the sea.
+    if (r.id === 'egypt') {
+      const nile: Array<[number, number]> = [];
+      for (let z = -335; z <= 440; z += 25) nile.push([c.x + nileX(z), c.z + z]);
+      out.push({ kind: 'river', land: r.id, pts: nile, w: NILE_W });
+      continue;
     }
     // The river: a winding arc round part of the town, beyond the ends of the roads.
     const a0 = rng.range(0, Math.PI * 2), span = rng.range(1.6, 2.4), w = rng.range(8, 11);

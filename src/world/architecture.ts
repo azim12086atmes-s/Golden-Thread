@@ -1,5 +1,6 @@
 import * as THREE from 'three';
-import { fountainJet, waterBasin, waterChannel, waterPool } from './flowWater';
+import { fountainJet, waterBasin, waterChannel, waterfall, waterPool } from './flowWater';
+import { crystalCluster, floatingIsland as craggyIsland } from './islands';
 import type { Rng } from '../core/rng';
 import {
   GeoBuilder, M, archPanel, box, cone, cyl, dome, gable, hip, onion, sphere, sweptRoof, tent, tree,
@@ -12,7 +13,9 @@ import { type Habit, HABITS, growTree } from './trees';
 /** The Meadow's Great Tree: an ancient oak three times any other, forking again and again. */
 const GREAT_TREE: Habit = { ...HABITS.oak!, h: 30, trunk: 0.26, r: 2.6, forks: 5, spread: 0.85, lift: 0.18, limb: 0.42, shrink: 0.66, depth: 3, blob: 0.1, squash: 0.72, gnarl: 0.3 };
 import { LAND_LANTERN, lanternGeometry } from './lanterns';
-import type { RegionId, RegionSpec } from './regions';
+import { regionCenter, type RegionId, type RegionSpec } from './regions';
+import { PYRAMIDS } from './reserved';
+import { terrainHeight } from './terrain';
 
 /**
  * Architecture per land. Every builder works in a local frame: origin at the building's base
@@ -50,6 +53,16 @@ function door(c: Ctx, w: number, d: number, arched = false, col = DOOR): void {
   if (arched) archPanel(c.g, 1.3, 2.3, col, 0, 0, d / 2 + 0.01, 0, 0.1, true);
   else box(c.g, 1.2, 2.1, 0.12, col, 0, 0, d / 2);
   void w;
+}
+
+/** A square pyramid (base 2·half, height h) with flat faces, base centred on the origin. */
+function pyramidGeometry(half: number, h: number): THREE.BufferGeometry {
+  const a = [-half, 0, -half], b = [half, 0, -half], cc = [half, 0, half], d = [-half, 0, half], t = [0, h, 0];
+  const tri = [cc, b, t, b, a, t, a, d, t, d, cc, t, a, b, cc, a, cc, d].flat();
+  const g = new THREE.BufferGeometry();
+  g.setAttribute('position', new THREE.Float32BufferAttribute(tri, 3));
+  g.computeVertexNormals();
+  return g;
 }
 
 function chhatri(c: Ctx, x: number, y: number, z: number, r: number, col: string, domeCol: string): void {
@@ -1083,10 +1096,17 @@ const landmarks: Record<RegionId, LandmarkFn> = {
 
   egypt(c, o) {
     const stone = '#e0c48a';
-    for (const [x, z, s] of [[0, -60, 60], [70, -30, 44], [-60, -50, 34]] as const) {
-      const g = c.g;
-      g.frame(x, 0, z, Math.PI / 4, 1, () => cone(g, s * 0.72, s * 0.64, stone, 0, 0, 0, 4));
-      o.colliders.push({ x, z, r: s * 0.46, h: s * 0.64 });
+    // The pyramids on their plateau west of the town (reserved.ts), as at Giza west of the Nile:
+    // true square pyramids with flat faces (so their stone courses run level), each set on the
+    // lowest ground under it, a gilded capstone on top.
+    const cc = regionCenter(c.s);
+    for (const pyr of PYRAMIDS) {
+      const half = pyr.s * 0.5, h = pyr.s * 0.64;
+      let y = Infinity;
+      for (const [sx, sz] of [[-1, -1], [1, -1], [-1, 1], [1, 1], [0, 0]]) y = Math.min(y, terrainHeight(cc.x + pyr.x + sx * half, cc.z + pyr.z + sz * half));
+      c.g.add(pyramidGeometry(half, h), stone, M(pyr.x, y - 0.6, pyr.z));
+      c.g.add(pyramidGeometry(half * 0.07, h * 0.07), '#d4af37', M(pyr.x, y - 0.6 + h * 0.93, pyr.z));
+      o.colliders.push({ x: pyr.x, z: pyr.z, r: half * 0.95, h: y + h });
     }
     cone(c.g, 1.6, 26, '#d9b070', 0, 1, 26, 4);
     box(c.g, 3, 1, 3, '#c9a060', 0, 0, 26);
@@ -1097,7 +1117,6 @@ const landmarks: Record<RegionId, LandmarkFn> = {
         o.colliders.push({ x, z: 44 + i * 5, r: 1.3, h: 11 });
       }
     }
-    box(c.g, 24, 0.12, 700, '#3a9ac0', -140, 0.1, 0);
     o.colliders.push({ x: 0, z: 26, r: 2, h: 27 });
     o.height = 40;
   },
@@ -1281,15 +1300,30 @@ const landmarks: Record<RegionId, LandmarkFn> = {
 };
 
 function floatingIsland(c: Ctx, x: number, y: number, z: number, size: number): void {
-  c.g.frame(x, y, z, 0, 1, () => {
-    const under = cone0(size);
-    c.g.add(under, '#e0d6f6');
-    cyl(c.g, size, size * 0.96, 0.6, '#c8f0c0', 0, 0, 0, 14);
-    for (let i = 0; i < 3; i++) {
-      const a = c.rng.range(0, Math.PI * 2), r = c.rng.range(0, size * 0.6);
-      tree(c.g, c.rng.chance(0.5) ? 'cloud' : 'crystal', Math.cos(a) * r, 0.6, Math.sin(a) * r, 1, () => c.rng.next());
+  c.g.frame(x, y, z, 0, 1, () => c.glow.frame(x, y, z, 0, 1, () => {
+    const edgeAt = craggyIsland(c.g, c.glow, size, () => c.rng.next());
+    // A crystal meadow on the lawn: clusters round the rim, clear of the middle where you land.
+    const nc = size > 20 ? 14 : 8;
+    for (let i = 0; i < nc; i++) {
+      const a = (i / nc) * Math.PI * 2 + c.rng.range(-0.3, 0.3), r = edgeAt(a) * c.rng.range(0.7, 0.9);
+      crystalCluster(c.g, c.glow, Math.cos(a) * r, 0.05, Math.sin(a) * r, c.rng.range(0.4, 1.3), () => c.rng.next());
     }
-  });
+    // Trees well apart on the lawn.
+    const n = size > 20 ? 0 : 2;
+    for (let i = 0; i < n; i++) {
+      const a = (i / n) * Math.PI * 2 + c.rng.range(-0.4, 0.4), r = edgeAt(a) * c.rng.range(0.55, 0.7);
+      tree(c.g, c.rng.chance(0.5) ? 'cloud' : 'crystal', Math.cos(a) * r, 0.1, Math.sin(a) * r, 0.9, () => c.rng.next());
+    }
+  }));
+  // One island in three has a spring that spills over its edge in a long waterfall into the clouds.
+  if (size < 20 && c.rng.chance(0.4)) {
+    const a = c.rng.range(0, Math.PI * 2), r = size * 0.95;
+    c.g.frame(x, y, z, 0, 1, () => {
+      const edge = r * 0.92, ry = Math.atan2(Math.cos(a), Math.sin(a));
+      waterPool(c, Math.cos(a) * edge * 0.55, 0, Math.sin(a) * edge * 0.55, 2.4, 2.4, ry, { kerb: 0.3, stone: '#e8e0ff' });
+      waterfall(c, Math.cos(a) * edge, 0.02, Math.sin(a) * edge, ry, 1.8, size * 2.2, { mist: false });
+    });
+  }
 }
 
 // Tiny geometry helpers that need raw three.js.
@@ -1304,12 +1338,6 @@ function cylinderBarrel(r: number, len: number): THREE.BufferGeometry {
   const g = new THREE.CylinderGeometry(r, r, len, 10, 1, false, 0, Math.PI);
   g.rotateZ(Math.PI / 2);
   g.rotateX(-Math.PI / 2);
-  return g;
-}
-function cone0(size: number): THREE.BufferGeometry {
-  const g = new THREE.ConeGeometry(size * 0.96, size * 1.4, 9);
-  g.rotateX(Math.PI);
-  g.translate(0, -size * 0.7, 0);
   return g;
 }
 

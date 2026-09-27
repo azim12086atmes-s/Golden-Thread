@@ -115,9 +115,14 @@ export const SURFACE_GLSL = /* glsl */ `
   }
   vec2 surface(float id, vec3 wp, vec3 wn) {
     vec3 an = abs(wn);
-    bool level = an.y > max(an.x, an.z);
-    // Walls: along the wall and up; flat and sloping faces: across the ground.
+    // Level only when the face looks more up than out (compared with its whole horizontal lean, so
+    // a slope facing a diagonal — a pyramid turned 45°, a hipped roof — still counts as a slope).
+    float lean = length(wn.xz);
+    bool level = an.y > lean;
+    // Walls and slopes: along the face and up it, courses always level; flat faces: across the
+    // ground. On a slope the courses are spaced by distance up the slope, not by height.
     vec2 st = level ? wp.xz : (an.x > an.z ? vec2(wp.z, wp.y) : vec2(wp.x, wp.y));
+    if (!level) st.y /= max(lean, 0.35);
     // How many metres one pixel covers here; the pattern fades once its detail nears a pixel.
     float px = max(length(dFdx(st)), length(dFdy(st)));
     float per = surfacePeriod(id);

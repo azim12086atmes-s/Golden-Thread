@@ -51,9 +51,22 @@ const WATER_FRAG = /* glsl */ `
     vec2 q = p * 0.09;
     float lattice = abs(sin(q.x + q.y + t * 0.2)) * abs(sin(q.x - q.y - t * 0.17));
     float stars = pow(1.0 - smoothstep(0.0, 0.08, lattice), 2.0);
-    // Sun glints: tiny sparkles that flicker.
-    vec2 gc = floor(p * 1.7);
-    float glint = step(0.985, h2(gc + floor(t * 3.0)).x) * (1.0 - night);
+    // The sun on the water: swells of different lengths tilt the surface, and where they tilt it to
+    // reflect the sun towards you there is a path of glitter; elsewhere only the odd sparkle.
+    vec2 gr = vec2(0.0);
+    gr += vec2(0.8, 0.6) * 0.34 * 0.07 * cos(dot(vW.xz, vec2(0.8, 0.6)) * 0.34 - t * 0.9);
+    gr += vec2(-0.45, 0.9) * 0.9 * 0.025 * cos(dot(vW.xz, vec2(-0.45, 0.9)) * 0.9 - t * 1.4);
+    gr += vec2(0.95, -0.3) * 2.1 * 0.01 * cos(dot(vW.xz, vec2(0.95, -0.3)) * 2.1 - t * 2.2);
+    vec3 wn = normalize(vec3(-gr.x, 1.0, -gr.y));
+    vec3 rf = reflect(-normalize(cameraPosition - vW), wn);
+    float sunA = max(dot(rf, normalize(sunDir)), 0.0) * step(0.0, sunDir.y);
+    // Calm slicks and wind-roughened patches drifting slowly across the water.
+    float slick = smoothstep(0.25, 0.75, 0.5 + 0.5 * sin(p.x * 0.013 + sin(p.y * 0.021) * 2.0 + t * 0.03) * sin(p.y * 0.011 - p.x * 0.004));
+    caustic *= 0.45 + 0.55 * slick;
+    vec2 gc = floor(p * 2.3);
+    vec2 gk = h2(gc);
+    float glint = step(1.0 - (0.004 + 0.12 * smoothstep(0.55, 0.97, sunA)), h2(gc + floor(t * (1.2 + gk.y * 2.0) + gk.x * 5.0)).x) * (0.4 + 0.6 * gk.y) * (1.0 - night);
+    glint += pow(sunA, 160.0) * 1.6 * (1.0 - night);
     float fres = 0.5 + 0.5 * sin(p.x * 0.05 + t * 0.3) * sin(p.y * 0.043 - t * 0.21);
     vec3 col = mix(deep, shallow, 0.35 + fres * 0.3);
     col += vec3(1.0, 0.98, 0.9) * caustic * (0.35 - night * 0.2);

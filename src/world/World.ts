@@ -82,8 +82,9 @@ export class World {
 
   /** Stream around a point. Call every frame; work is spread across frames. */
   /** The water's look: the hour, and the land's own lantern colour that it glows with at night. */
-  setWaterLook(t: number, night: number, land: keyof typeof LOCALES): void {
+  setWaterLook(t: number, night: number, land: keyof typeof LOCALES, sunDir?: THREE.Vector3): void {
     const glow = LOCALES[land].lights[0];
+    if (sunDir) this.waterMat.uniforms.sunDir.value.copy(sunDir);
     for (const m of [this.waterMat, this.foamMat, this.builtWater, this.flowMat]) {
       m.uniforms.t.value = t;
       m.uniforms.night.value = night;

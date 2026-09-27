@@ -8,10 +8,17 @@ import { TRADITIONS } from './traditions';
 import { NATURE, pickTree, zoneAt } from './nature';
 import { CAVES, type Cave } from './caves';
 import { buildCave } from './models/caves';
+import { buildBanks } from './banks';
+import { crystalCluster } from './islands';
+import { dressGulabi, gateTowers } from './gulabi';
+import { harbours } from './harbours';
+import { clearPaved, setPaved, type Paved } from './paved';
+import { LANDMARK_GROUNDS, RESERVED, reservedAt } from './reserved';
 import { waterEdge } from './waters';
 import { INSTITUTE_SITES, SITE_SIZE } from '../institutions/sites';
 import { buildHouse, lampPost, streetProp, type Ctx } from './architecture';
 import { houseLights, streetLight } from './models/lights';
+import { SQUARE_R, buildSebil, buildSquare, sebilsOf, squaresOf, type Collide } from './landWaters';
 import { GeoBuilder, box, cone, cyl, flowers, rock, sphere, tree } from './kit';
 import { CITY_RADIUS, REGION_SIZE, regionCenter, type RegionSpec } from './regions';
 import { CASTLE_SITE, DUNES, WATER_Y, duneShape, terrainHeight } from './terrain';
@@ -115,6 +122,24 @@ function nodeMesh(item: string): THREE.Object3D {
   return g;
 }
 
+/** The trees planted so far, in a coarse grid, so crowns can be kept from crowding each other. */
+class Grove {
+  private cells = new Map<string, Array<[number, number, number]>>();
+  private key = (x: number, z: number) => `${Math.floor(x / 16)},${Math.floor(z / 16)}`;
+  /** Would a crown of radius `r` at (x, z) overlap one already planted by more than a little? */
+  near(x: number, z: number, r: number): boolean {
+    const cx = Math.floor(x / 16), cz = Math.floor(z / 16);
+    for (let i = -2; i <= 2; i++) for (let j = -2; j <= 2; j++) {
+      for (const [tx, tz, tr] of this.cells.get(`${cx + i},${cz + j}`) ?? []) if (Math.hypot(x - tx, z - tz) < (r + tr) * 0.75) return true;
+    }
+    return false;
+  }
+  add(x: number, z: number, r: number): void {
+    const k = this.key(x, z);
+    (this.cells.get(k) ?? this.cells.set(k, []).get(k)!).push([x, z, r]);
+  }
+}
+
 export function buildRegion(spec: RegionSpec, solid: THREE.Material, glowMat: THREE.Material, waterMat?: THREE.Material): RegionInstance {
   const c = regionCenter(spec);
   const rng = new Rng(`region:${spec.id}`);
@@ -138,7 +163,14 @@ export function buildRegion(spec: RegionSpec, solid: THREE.Material, glowMat: TH
   const sitesHere = INSTITUTE_SITES.filter((s) => s.land === spec.id).map((s) => ({ x: s.x - c.x, z: s.z - c.z }));
   // Farmland (world/plots.ts FIELD_SITES) too.
   const fieldsHere = FIELD_SITES.filter((f) => f.land === spec.id).map((f) => ({ x: f.x - c.x, z: f.z - c.z }));
-  const nearPlot = (x: number, z: number, pad: number) => inCastle(x, z, pad) ||
+  // Each town's four water squares and, in the Islamic lands, the sebils along its streets (landWaters.ts).
+  const squaresHere = squaresOf(spec.id), sebilsHere = sebilsOf(spec.id);
+  // Gulabi Nagar's city gates stand astride its avenues (gulabi.ts).
+  const gatesHere = spec.id === 'indianorth' ? gateTowers() : [];
+  const nearPlot = (x: number, z: number, pad: number) => inCastle(x, z, pad) || reservedAt(spec.id, x, z, pad) ||
+    gatesHere.some((q) => Math.hypot(x - q.x, z - q.z) < q.r + pad) ||
+    squaresHere.some((q) => Math.hypot(x - q.x, z - q.z) < SQUARE_R + pad) ||
+    sebilsHere.some((q) => Math.hypot(x - q.x, z - q.z) < 2 + pad) ||
     fieldsHere.some((p) => Math.abs(x - p.x) < FIELD_SIZE / 2 + pad && Math.abs(z - p.z) < FIELD_SIZE / 2 + pad) ||
     plotsHere.some((p) => Math.abs(x - p.x) < PLOT_SIZE / 2 + pad && Math.abs(z - p.z) < PLOT_SIZE / 2 + pad) ||
     sitesHere.some((p) => Math.abs(x - p.x) < SITE_SIZE / 2 + pad && Math.abs(z - p.z) < SITE_SIZE / 2 + pad);
@@ -186,7 +218,8 @@ export function buildRegion(spec: RegionSpec, solid: THREE.Material, glowMat: TH
   // Houses on a jittered grid inside the city.
   let placed = 0;
   const cells: Array<[number, number]> = [];
-  const step = spec.id === 'newyork' ? 34 : spec.id === 'london' ? 26 : 21;
+  // Bagh-e-Noor is a garden city: its havelis stand well apart among the gardens.
+  const step = spec.id === 'newyork' ? 34 : spec.id === 'london' ? 26 : spec.id === 'mughal' ? 27 : 21;
   for (let x = -CITY_RADIUS; x <= CITY_RADIUS; x += step) for (let z = -CITY_RADIUS; z <= CITY_RADIUS; z += step) cells.push([x, z]);
   // Fill from the plaza outwards (with a little jitter), so every town has a close-built heart
   // and thins out towards the fields rather than scattering thinly over the whole disc.
@@ -200,6 +233,8 @@ export function buildRegion(spec: RegionSpec, solid: THREE.Material, glowMat: TH
     if (onRoad(x, z, spec.id === 'newyork' ? 14 : 9) || nearPlot(x, z, 9)) continue;
     const y = H(x, z);
     if (y < WATER_Y + 0.4) continue;
+    // Never on the banks of a river or lake.
+    if (waterEdge(c.x + x, c.z + z).d < 12) continue;
     // Face the nearest avenue.
     const ry = Math.abs(x) < Math.abs(z) ? (x > 0 ? -Math.PI / 2 : Math.PI / 2) : z > 0 ? Math.PI : 0;
     let fp = { r: 4, h: 6 };
@@ -218,6 +253,20 @@ export function buildRegion(spec: RegionSpec, solid: THREE.Material, glowMat: TH
     }
     placed++;
     if (rng.chance(0.25)) spots.push({ x: x + Math.sin(ry) * (fp.r + 3), z: z + Math.cos(ry) * (fp.r + 3) });
+  }
+
+  // The town's water: a fountain, pool or spring in each square, and sebils along the streets.
+  squaresHere.forEach((q, k) => {
+    const y = H(q.x, q.z);
+    let cols: Collide[] = [];
+    g.frame(q.x, y, q.z, 0, 1, () => glow.frame(q.x, y, q.z, 0, 1, () => { cols = buildSquare(ctx, spec.id, k, 0, 0); }));
+    for (const col of cols) colliders.push({ x: c.x + q.x + col.x, z: c.z + q.z + col.z, r: col.r, h: y + col.h });
+  });
+  for (const sb of sebilsHere) {
+    const y = H(sb.x, sb.z);
+    let col: Collide | null = null;
+    g.frame(0, y, 0, 0, 1, () => glow.frame(0, y, 0, 0, 1, () => { col = buildSebil(ctx, sb.x, sb.z, sb.ry); }));
+    if (col) colliders.push({ x: c.x + sb.x, z: c.z + sb.z, r: (col as Collide).r, h: y + (col as Collide).h });
   }
 
   // Lamps and street props along the avenues.
@@ -241,12 +290,42 @@ export function buildRegion(spec: RegionSpec, solid: THREE.Material, glowMat: TH
     }
   }
 
+  // The Sky Isles are a crystal meadow: clusters of pastel crystals growing all over the land,
+  // thick in drifts and sparse between, a few great spires out in the wild (islands.ts).
+  if (isSky) {
+    const half = REGION_SIZE / 2;
+    for (let i = 0; i < 1700; i++) {
+      const x = rng.range(-half, half), z = rng.range(-half, half), d = Math.hypot(x, z);
+      // Drifts: most clusters grow where a broad, slow pattern says so.
+      const drift = 0.5 + 0.5 * Math.sin(x * 0.021 + Math.sin(z * 0.017) * 2) * Math.sin(z * 0.019 - x * 0.007);
+      if (rng.next() > 0.25 + drift * 0.75) continue;
+      if (d < 56 || onRoad(x, z, 1) || nearPlot(x, z, 1)) continue;
+      if (buildings.some((b) => Math.hypot(x - b.x, z - b.z) < b.r + 1.2)) continue;
+      const y = H(x, z);
+      if (y < WATER_Y + 0.3) continue;
+      const spire = d > CITY_RADIUS && rng.chance(0.04);
+      const size = spire ? rng.range(3.5, 6.5) : rng.range(0.35, 1.5) * (d < CITY_RADIUS ? 0.8 : 1);
+      crystalCluster(g, glow, x, y, z, size, () => rng.next());
+      if (size > 1.2) colliders.push({ x: c.x + x, z: c.z + z, r: size * 0.35, h: y + size * 1.2 });
+    }
+  }
+
+  // Gulabi Nagar in festival season: gates, rangolis, Holi stalls, torans, chhatris (gulabi.ts).
+  if (spec.id === 'indianorth') dressGulabi(ctx, c.x, c.z, H, colliders, doors, (x, z, pad) => onRoad(x, z, pad - 3) || nearPlot(x, z, pad));
+
+  // The banks of the land's waters: quay walls, towpaths with lanterns, ghats, stone-edged ponds (banks.ts).
+  const banks = buildBanks(ctx, spec.id, c.x, c.z, H, WATER_Y);
+  for (const l of banks.lamps) colliders.push({ x: c.x + l.x, z: c.z + l.z, r: 0.4, h: H(l.x, l.z) + 4 });
+  const onTowpath = (x: number, z: number, pad: number) => banks.paths.some((p) => Math.abs(x - p.x) < 2 + pad && Math.abs(z - p.z) < 2 + pad);
+
   // Nature beyond the city.
   const half = REGION_SIZE / 2;
   // Trees grow by terrain (nature.ts): the zone of each spot decides what grows there, how thickly,
   // and each land how large its trees stand.
   const nature = NATURE[spec.id];
   const dunesHere = DUNES[spec.id] ?? 0;
+  const grove = new Grove();
+  const cavesHere = CAVES.filter((cv) => cv.land === spec.id).map((cv) => ({ x: cv.x - c.x, z: cv.z - c.z, r: cv.r }));
   for (let i = 0; i < nature.count; i++) {
     const x = rng.range(-half, half), z = rng.range(-half, half);
     const d = Math.hypot(x, z);
@@ -265,6 +344,13 @@ export function buildRegion(spec: RegionSpec, solid: THREE.Material, glowMat: TH
     // Sizes vary; out in the country about one tree in twelve is a giant, as tall as a building.
     const giant = d > CITY_RADIUS + 30 && HABITS[kind] && rng.chance(isSky ? 0.12 : 0.08);
     const s = giant ? rng.range(18, 26) / speciesHeight(kind) : rng.range(0.7, 1.6) * TREE_SCALE * nature.size;
+    // Crowns stand clear of the buildings and (mostly) of each other: woods, not a tangle.
+    const crown = speciesHeight(kind) * s * 0.28;
+    if (buildings.some((b) => Math.hypot(x - b.x, z - b.z) < b.r + crown * 0.8 + 1)) continue;
+    if (cavesHere.some((cv) => Math.hypot(x - cv.x, z - cv.z) < cv.r + 2)) continue;
+    if (onTowpath(x, z, crown * 0.5)) continue;
+    if (grove.near(x, z, crown)) continue;
+    grove.add(x, z, crown);
     tree(g, kind, x, y, z, s, () => rng.next());
     if (kind !== 'bamboo' && kind !== 'crystal') colliders.push({ x: c.x + x, z: c.z + z, r: (HABITS[kind]?.r ?? 0.25) * s * 1.1, h: y + 4 * s });
   }
@@ -324,6 +410,24 @@ export function buildRegion(spec: RegionSpec, solid: THREE.Material, glowMat: TH
     }
   }
 
+  // Built and paved ground, so the meadow never grows through it (paved.ts).
+  {
+    const paved: Paved[] = [];
+    const W = (x: number, z: number) => ({ x: c.x + x, z: c.z + z });
+    for (const b of buildings) paved.push({ ...W(b.x, b.z), r: b.r + 1.6 });
+    for (const q of squaresHere) paved.push({ ...W(q.x, q.z), r: SQUARE_R + 1 });
+    for (const q of sebilsHere) paved.push({ ...W(q.x, q.z), r: 3 });
+    for (const p of fieldsHere) paved.push({ ...W(p.x, p.z), hw: FIELD_SIZE / 2 + 1, hd: FIELD_SIZE / 2 + 1 });
+    for (const p of sitesHere) paved.push({ ...W(p.x, p.z), hw: SITE_SIZE / 2, hd: SITE_SIZE / 2 });
+    for (const cv of caves) paved.push({ x: cv.x, z: cv.z, r: cv.r + 1 });
+    for (const h of harbours().filter((q) => q.land === spec.id)) paved.push({ x: h.x, z: h.z, r: 16 });
+    const lg = LANDMARK_GROUNDS[spec.id];
+    if (lg) paved.push({ ...W((lg.x0 + lg.x1) / 2, (lg.z0 + lg.z1) / 2), hw: (lg.x1 - lg.x0) / 2, hd: (lg.z1 - lg.z0) / 2 });
+    for (const q of RESERVED[spec.id] ?? []) paved.push({ ...W(q.x, q.z), r: q.r });
+    for (const q of banks.paths) paved.push({ ...W(q.x, q.z), r: 2 });
+    setPaved(spec.id, paved);
+  }
+
   const group = new THREE.Group();
   group.position.set(c.x, 0, c.z);
   // Tree crowns: translucent leafy blobs and the leaf cards that cover them.
@@ -359,6 +463,8 @@ export function buildRegion(spec: RegionSpec, solid: THREE.Material, glowMat: TH
       z = nb.z + ((z - nb.z) / d) * (nb.r + 3);
     }
     if (buildings.some((b) => Math.hypot(x - b.x, z - b.z) < b.r + 2.5) || onRoad(x, z, 1)) continue;
+    // Never inside a cave's mound either.
+    if (caves.some((cv) => Math.hypot(x - (cv.x - c.x), z - (cv.z - c.z)) < cv.r + 2)) continue;
     let y = H(x, z);
     if (isSky) {
       // In the Sky Isles, resources sit on the spiral islands.
@@ -385,6 +491,7 @@ export function buildRegion(spec: RegionSpec, solid: THREE.Material, glowMat: TH
     caves,
     wild,
     dispose() {
+      clearPaved(spec.id);
       solidMesh?.geometry.dispose();
       glowMesh?.geometry.dispose();
       group.traverse((o) => {
