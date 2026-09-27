@@ -38,6 +38,8 @@ import { VEHICLES, setVehicleEnvironment, type VehicleId } from './vehicles/vehi
 import { Traffic } from './traffic/Traffic';
 import { PERSON_BY_ID, floorBuilding, floorsOf, residentsOf, tickCharity } from './charity/charity';
 import { InstitutesView } from './institutions/InstitutesView';
+import { NeedFolkView } from './charity/NeedFolkView';
+import { NEED_LABEL, hasMet, meet, type Person } from './charity/charity';
 import { FieldsView } from './economy/FieldsView';
 import { HarboursView } from './economy/HarboursView';
 import { harbours } from './world/harbours';
@@ -84,7 +86,8 @@ export type Interactable =
   | { kind: 'institute'; site: string; label: string }
   | { kind: 'cave'; cave: Cave; label: string }
   | { kind: 'field'; field: string; label: string }
-  | { kind: 'harbour'; land: RegionId; label: string };
+  | { kind: 'harbour'; land: RegionId; label: string }
+  | { kind: 'need'; person: Person; label: string };
 
 /** A scripted scene that takes the camera (and optionally renders its own scene). */
 export interface Cutscene {
@@ -128,6 +131,7 @@ export class Game {
   readonly fieldsView: FieldsView;
   readonly harboursView: HarboursView;
   readonly bridgesView: BridgesView;
+  readonly needFolk: NeedFolkView;
   readonly trav: Travellers;
   readonly npcs: Npcs;
   readonly townsfolk: Townsfolk;
@@ -211,6 +215,7 @@ export class Game {
     this.fieldsView = new FieldsView(this.scene, this.st, this.world);
     this.harboursView = new HarboursView(this.scene, this.world);
     this.bridgesView = new BridgesView(this.scene, this.world);
+    this.needFolk = new NeedFolkView(this.scene, this.st, this.world);
     this.trav = new Travellers(this.scene, this.world, this.st, OUTFITS[this.st.outfits.girl], OUTFITS[this.st.outfits.boy]);
     this.van = new VanInterior(this.st, OUTFITS[this.st.outfits.girl], OUTFITS[this.st.outfits.boy]);
     this.house = new HouseInterior(OUTFITS[this.st.outfits.girl], OUTFITS[this.st.outfits.boy]);
@@ -395,6 +400,7 @@ export class Game {
     }
     this.sky.moonHidden = this.skyFx.hideMoon;
     this.npcs.update(dt, this.t, this.trav.gPos);
+    this.needFolk.update(dt, this.t);
     this.townsfolk.update(dt, this.t, this.trav.gPos);
     this.dressing.update(this.sky.night);
     this.animals.update(dt, this.t, this.trav.gPos);
@@ -562,6 +568,9 @@ export class Game {
         cands.push([2.4, { kind: 'field', field: fs.id, label }]);
       }
     }
+    // People in need, on their town's pavement: meet them, then care for them.
+    const need = onFoot ? this.needFolk.nearest(p.x, p.z, 2.6) : null;
+    if (need) cands.push([0.9, { kind: 'need', person: need, label: hasMet(this.st, need.id) ? `🤲 Visit ${need.name}` : `🤲 ${need.name} looks as if they need help` }]);
     // Harbours: on the quay or along the pier.
     if (onFoot) for (const hb of harbours()) {
       const [dx, dz] = hb.dir, rx = p.x - hb.x, rz = p.z - hb.z, along = rx * dx + rz * dz, across = Math.abs(rx * dz - rz * dx);
@@ -606,6 +615,10 @@ export class Game {
       case 'institute': return this.ui.openInstitute(t.site);
       case 'field': return this.ui.openField(t.field);
       case 'harbour': return this.ui.openHarbour(t.land);
+      case 'need': {
+        if (meet(this.st, t.person.id)) this.toast(`🤲 ${t.person.name} — ${NEED_LABEL[t.person.kind].name.toLowerCase()}: “${t.person.hope}” They are in your people finder now.`, 'story');
+        return this.ui.openCare();
+      }
       case 'cave': { this.toast(this.exploreCave(t.cave), 'reward'); const d = this.cavernDoor(t.cave); if (d) this.enterHouse(d); return; }
       case 'stray': return this.toast(this.caravan.adopt(t.pet), 'story');
       case 'market': this.townsfolk.turnTo(t.walker, this.trav.gPos); return this.ui.openMarket(t.walker.land);

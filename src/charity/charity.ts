@@ -3,7 +3,7 @@ import { count, removeItems } from '../economy/economy';
 import { ITEMS, type SkillId } from '../economy/items';
 import { PLOT_BY_ID } from '../housing/housing';
 import { folkOf } from '../npc/folk';
-import { REGIONS, type RegionId } from '../world/regions';
+import { REGION_BY_ID, REGIONS, regionCenter, type RegionId } from '../world/regions';
 
 /**
  * Caring for people: the heart of the owner's brief (docs/team/handoffs/NEXT_WORK_2026-09-27.md,
@@ -51,6 +51,28 @@ export const PEOPLE_IN_NEED: Person[] = REGIONS.flatMap((r, ri) => KINDS.map((ki
   return { id: `need-${r.id}-${kind}`, land: r.id, name: folkOf(r.id, 700 + k * 13 + ri, 0).name, kind, hope, learn };
 }));
 export const PERSON_BY_ID: Record<string, Person> = Object.fromEntries(PEOPLE_IN_NEED.map((p) => [p.id, p]));
+
+/**
+ * Where each person in need can be found in their town (world coordinates): on the pavement of one
+ * of the four avenues (a different one for each), clear of the road, the lamps and the houses —
+ * in the Sky Isles, on the islands round the plaza. The people finder shows the way here.
+ */
+export function needSpot(p: Person): { x: number; z: number } {
+  const c = regionCenter(REGION_BY_ID[p.land]), k = KINDS.indexOf(p.kind);
+  if (p.land === 'skyisles') { const a = Math.PI / 4 + (k * Math.PI) / 2; return { x: c.x + Math.cos(a) * 40, z: c.z + Math.sin(a) * 40 }; }
+  const [ax, az] = ([[0, 1], [1, 0], [0, -1], [-1, 0]] as const)[k], d = 118, side = 13;
+  return { x: c.x + ax * d + az * side, z: c.z + az * d - ax * side };
+}
+
+/** You have met them (talked with them in their town), or they are in your care already. */
+export const hasMet = (st: GameState, id: string): boolean => st.met.includes(id) || st.sponsored.some((s) => s.id === id);
+
+/** Meet someone in need: they join the people finder. Returns true the first time. */
+export function meet(st: GameState, id: string): boolean {
+  if (!PERSON_BY_ID[id] || hasMet(st, id)) return false;
+  st.met.push(id);
+  return true;
+}
 
 export type Sponsorship = GameState['sponsored'][number];
 

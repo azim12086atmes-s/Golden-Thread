@@ -6,10 +6,10 @@ import { buildLandmark } from '../src/world/architecture';
 import { GeoBuilder } from '../src/world/kit';
 import { landmarkDoor } from '../src/world/World';
 import { Rng } from '../src/core/rng';
-import { PEOPLE_IN_NEED } from '../src/charity/charity';
+import { PEOPLE_IN_NEED, needSpot } from '../src/charity/charity';
 import { buildRegion } from '../src/world/RegionBuilder';
 import { REGIONS } from '../src/world/regions';
-import { WATER_Y } from '../src/world/terrain';
+import { WATER_Y, terrainHeight } from '../src/world/terrain';
 
 const solid = new THREE.MeshStandardMaterial(), glow = new THREE.MeshBasicMaterial();
 
@@ -25,6 +25,12 @@ describe('every building can be entered', () => {
         expect(d.y).toBeGreaterThan(WATER_Y);
       }
       for (const n of inst.nodes) for (const h of houses) expect(Math.hypot(n.x - h.x, n.z - h.z), `${n.id}`).toBeGreaterThan(h.r);
+      // The people in need stand in the open, clear of every building, lamp and prop, on dry ground.
+      for (const p of PEOPLE_IN_NEED.filter((q) => q.land === r.id)) {
+        const at = needSpot(p);
+        for (const col of inst.colliders) expect(Math.hypot(at.x - col.x, at.z - col.z), `${p.id}`).toBeGreaterThan(col.r + 0.6);
+        expect(terrainHeight(at.x, at.z), p.id).toBeGreaterThan(WATER_Y + 0.3);
+      }
       inst.dispose();
     }, 15_000); // builds a whole land: slow when the whole suite runs in parallel
   }

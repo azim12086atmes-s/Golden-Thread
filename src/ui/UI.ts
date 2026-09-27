@@ -1,7 +1,7 @@
 import { ASSIST_LEVEL, PROFESSORS, THESIS_LEVEL, TOPIC_BY_ID, assist, dayProgress, startThesis, topicsAt, workOnThesis } from '../institutions/research';
 import { INSTITUTE_BY_KIND, institutesOf, type InstituteKind } from '../institutions/catalogue';
 import { isEmployed, SERVE_PER_DAY, pantryOf, servesWith, stockPantry, COURSE_FEE, DAILY_INCOME, EXPERTS, EXPERT_BY_ID, SITE_BY_ID, assignStaff, buildStage, candidates, employ, freelanceFee, hireOf, instituteAt, intern, isBuilding, kindFood, landScience, learnerLevel, standingStage, takeCourse, teachClass, teachLearner, wage, type Staff } from '../institutions/institutions';
-import { DAY_COINS, FLOOR_COST, MAX_FLOORS, NEED_LABEL, PEOPLE_IN_NEED, PERSON_BY_ID, buildFloor, daysLeft, floorBuilding, floorsOf, giftsFor, give, homeCapacity, ownedHomes, residentsOf, sponsorOf, takeHome, type Person } from '../charity/charity';
+import { hasMet, needSpot, DAY_COINS, FLOOR_COST, MAX_FLOORS, NEED_LABEL, PEOPLE_IN_NEED, PERSON_BY_ID, buildFloor, daysLeft, floorBuilding, floorsOf, giftsFor, give, homeCapacity, ownedHomes, residentsOf, sponsorOf, takeHome, type Person } from '../charity/charity';
 import * as THREE from 'three';
 import { FIELD_BY_ID, FIELD_ROWS, barnCount, buyField, fieldGrowTime, fieldGrowth, fieldYield, harvestField, plantField, setHand, takeFromBarn, waterField, type Hand } from '../economy/fields';
 import { addRoute, bestMarkets, destLabel, marketDest, pantryDest, removeRoute, shipmentOf, tripMinutes } from '../economy/supply';
@@ -34,7 +34,7 @@ import { VEHICLES, type VehicleId } from '../vehicles/vehicles';
 import { GRID_COLS, GRID_ROWS, REGIONS, REGION_BY_ID, regionCenter, type RegionId, type RegionSpec } from '../world/regions';
 import type { Game } from '../Game';
 
-type Panel = 'work' | 'harbour' | 'field' | 'institute' | 'care' | 'wardrobe' | 'bag' | 'journal' | 'map' | 'messages' | 'vehicles' | 'dialogue' | 'animal' | 'build' | 'van' | 'house' | 'farm' | 'market' | 'help' | 'homes' | 'property' | null;
+type Panel = 'finder' | 'work' | 'harbour' | 'field' | 'institute' | 'care' | 'wardrobe' | 'bag' | 'journal' | 'map' | 'messages' | 'vehicles' | 'dialogue' | 'animal' | 'build' | 'van' | 'house' | 'farm' | 'market' | 'help' | 'homes' | 'property' | null;
 
 const h = (tag: string, attrs: Record<string, string> = {}, ...kids: Array<Node | string | null | false>) => {
   const el = document.createElement(tag);
@@ -85,6 +85,8 @@ export class UI {
   private vanSlot: VanSlot = 'rug';
   /** The van's menu tucked away (the van stays open), so the room can be seen whole. */
   private vanHidden = false;
+  /** The room's menu tucked away inside someone's house, so the room can be seen whole. */
+  private houseHidden = false;
   private propertySite: PlotSite | null = null;
   private storyOpen = false;
   private mapSel: RegionId | null = null;
@@ -123,7 +125,7 @@ export class UI {
     if (i.hit('p') && !this.modal) this.g.takePhoto();
     if (i.hit('t') && !this.modal) this.g.setTimeOfDay(nextTime(this.g.st.minutes));
     if (i.hit('o') && !this.modal) this.setTrackerHidden(!this.trackerHidden);
-    const keys: Array<[string, Panel]> = [['c', 'wardrobe'], ['i', 'bag'], ['j', 'journal'], ['m', 'map'], ['n', 'messages'], ['v', 'vehicles'], ['h', 'help'], ['l', 'homes'], ['k', 'care'], ['u', 'work']];
+    const keys: Array<[string, Panel]> = [['c', 'wardrobe'], ['i', 'bag'], ['j', 'journal'], ['m', 'map'], ['n', 'messages'], ['v', 'vehicles'], ['h', 'help'], ['l', 'homes'], ['k', 'care'], ['u', 'work'], ['y', 'finder']];
     for (const [k, p] of keys) if (i.hit(k)) return this.toggle(p);
     if (i.hit('b')) {
       if (this.panel === 'build') return this.closePanel();
@@ -462,7 +464,7 @@ export class UI {
   }
 
   private buildDock(): void {
-    const items: Array<[Panel, string, string]> = [['wardrobe', '👗', 'Dressing room (C)'], ['bag', '🎒', 'Bag & crafts (I)'], ['journal', '📖', 'Journal (J)'], ['map', '🗺️', 'Map (M)'], ['messages', '💌', 'Messages (N)'], ['vehicles', '🚐', 'Travel (V)'], ['homes', '🏡', 'Homes & land (L)'], ['care', '🤲', 'Care & sponsorship (K)'], ['work', '💼', 'Work & services (U)'], ['help', '❔', 'Help (H)']];
+    const items: Array<[Panel, string, string]> = [['wardrobe', '👗', 'Dressing room (C)'], ['bag', '🎒', 'Bag & crafts (I)'], ['journal', '📖', 'Journal (J)'], ['map', '🗺️', 'Map (M)'], ['messages', '💌', 'Messages (N)'], ['vehicles', '🚐', 'Travel (V)'], ['homes', '🏡', 'Homes & land (L)'], ['care', '🤲', 'Care & sponsorship (K)'], ['finder', '🔎', 'People finder (Y)'], ['work', '💼', 'Work & services (U)'], ['help', '❔', 'Help (H)']];
     for (const [p, icon, label] of items) {
       const b = btn(icon, () => this.toggle(p), 'dock-btn');
       b.dataset.p = p ?? '';
@@ -570,6 +572,7 @@ export class UI {
   private houseNote = '';
   openHouse(_d: unknown): void {
     this.houseNote = '';
+    this.houseHidden = false;
     this.open('house');
   }
 
@@ -597,13 +600,18 @@ export class UI {
 
   render(): void {
     const body = h('div', { class: 'body' });
-    const titles: Record<string, string> = { wardrobe: 'Dressing room', bag: 'Bag & Crafts', journal: 'Journal', map: 'The World', messages: 'Messages', vehicles: 'Ways to Travel', dialogue: '', animal: '', build: 'Build', van: 'Inside Safar', house: this.g.houseTitle(), farm: 'Farm bed', market: 'Market stall', help: 'How to play', care: 'Care & sponsorship', institute: this.instituteTitle(), field: this.fieldTitle(), work: `Work in ${this.g.region.name}`, harbour: `The harbour of ${REGION_BY_ID[this.harbourLand]?.name ?? ''}`, homes: 'Homes & Land', property: 'Land for sale' };
+    const titles: Record<string, string> = { wardrobe: 'Dressing room', bag: 'Bag & Crafts', journal: 'Journal', map: 'The World', messages: 'Messages', vehicles: 'Ways to Travel', dialogue: '', animal: '', build: 'Build', van: 'Inside Safar', house: this.g.houseTitle(), farm: 'Farm bed', market: 'Market stall', help: 'How to play', care: 'Care & sponsorship', institute: this.instituteTitle(), field: this.fieldTitle(), work: `Work in ${this.g.region.name}`, finder: 'People finder', harbour: `The harbour of ${REGION_BY_ID[this.harbourLand]?.name ?? ''}`, homes: 'Homes & Land', property: 'Land for sale' };
     const head = this.panel === 'van'
       ? h('header', {}, h('h2', {}, titles.van),
         h('span', { class: 'head-acts' },
           btn(this.vanHidden ? '▴ Show' : '▾ Hide', () => { this.vanHidden = !this.vanHidden; this.render(); }, 'small ghost'),
           btn('✕', () => this.g.exitVan(), 'close')))
-      : h('header', {}, h('h2', {}, titles[this.panel ?? ''] ?? ''), btn('✕', () => this.closePanel(), 'close'));
+      : this.panel === 'house'
+        ? h('header', {}, h('h2', {}, titles.house),
+          h('span', { class: 'head-acts' },
+            btn(this.houseHidden ? '▴ Show' : '▾ Hide', () => { this.houseHidden = !this.houseHidden; this.render(); }, 'small ghost'),
+            btn('✕', () => this.g.exitHouse(), 'close')))
+        : h('header', {}, h('h2', {}, titles[this.panel ?? ''] ?? ''), btn('✕', () => this.closePanel(), 'close'));
     switch (this.panel) {
       case 'wardrobe': this.wardrobe(body); break;
       case 'bag': this.bag(body); break;
@@ -625,12 +633,13 @@ export class UI {
       case 'field': this.fieldPanel(body); break;
       case 'harbour': this.harbourPanel(body); break;
       case 'work': this.workPanel(body); break;
+      case 'finder': this.finderPanel(body); break;
       case 'property': this.property(body); break;
       default: return this.closePanel();
     }
     this.panelEl.replaceChildren(head, body);
     const sheet = this.panel === 'wardrobe' || this.panel === 'van' || this.panel === 'house';
-    this.panelEl.className = `panel show p-${this.panel}${sheet ? ' sheet' : ''}${this.panel === 'van' && this.vanHidden ? ' tucked' : ''}`;
+    this.panelEl.className = `panel show p-${this.panel}${sheet ? ' sheet' : ''}${(this.panel === 'van' && this.vanHidden) || (this.panel === 'house' && this.houseHidden) ? ' tucked' : ''}`;
     this.root.classList.toggle('sheet-open', sheet);
   }
 
@@ -753,7 +762,9 @@ export class UI {
       return row;
     };
     body.append(h('p', { class: 'dim' }, `Sponsor people in need with coins (🪙 ${st.coins}) or in kind — meals, blankets, balms, lamps. Cared for, they grow in wellbeing; in your own home, faster. Each has a hope you may one day help them reach.`));
-    body.append(h('h3', {}, `In ${REGION_BY_ID[land].name}`), ...PEOPLE_IN_NEED.filter((p) => p.land === land).map(card));
+    const here = PEOPLE_IN_NEED.filter((p) => p.land === land), known = here.filter((p) => hasMet(st, p.id));
+    body.append(h('h3', {}, `In ${REGION_BY_ID[land].name}`), ...known.map(card));
+    if (known.length < here.length) body.append(h('p', { class: 'dim' }, `${here.length - known.length} more ${here.length - known.length > 1 ? 'people' : 'person'} in need here, not met yet — look along the avenues for someone with a soft rose glow above them, and stop to talk. (🔎 People finder, Y)`));
     const elsewhere = st.sponsored.filter((s) => PERSON_BY_ID[s.id] && PERSON_BY_ID[s.id].land !== land);
     if (elsewhere.length) body.append(h('h3', {}, 'In your care elsewhere'), ...elsewhere.map((s) => card(PERSON_BY_ID[s.id])));
     body.append(h('h3', {}, 'Your homes'));
@@ -880,6 +891,34 @@ export class UI {
           ...(on && from ? dests.map((to) => btn(`→ ${destLabel(st, to).replace(/^the market in /, '🛒 ')} · ${Math.round(tripMinutes(w, from, (to.startsWith('market:') ? to.slice(7) : SITE_BY_ID[to.slice(7)].land) as RegionId) / 60)} h`,
             () => act(() => addRoute(st, w.id, fieldId, to), `${w.name} will carry from this barn to ${destLabel(st, to)}.`), `small ${route?.to === to && route.from === fieldId ? 'on' : 'ghost'}`)) : []),
           route ? btn('Stop the route', () => { removeRoute(st, w.id); this.render(); }, 'small ghost') : null));
+    }
+  }
+
+  openCare(): void {
+    this.open('care');
+  }
+
+  /**
+   * The people finder: everyone in need you have met, land by land — who they are, what they need,
+   * whether they are in your care — with the way to them; and how many are still to be found.
+   */
+  private finderPanel(body: HTMLElement): void {
+    const g = this.g, st = g.st;
+    body.append(h('p', { class: 'dim' }, 'Everyone in need you have met on your travels. In every land four people need someone: stop and talk with whoever has a soft rose glow above them along the avenues.'));
+    for (const r of REGIONS) {
+      const people = PEOPLE_IN_NEED.filter((p) => p.land === r.id), known = people.filter((p) => hasMet(st, p.id));
+      if (!known.length && !st.discovered.includes(r.id)) continue;
+      body.append(h('h3', {}, `${r.name} · ${known.length} of ${people.length} met`));
+      for (const p of known) {
+        const s = sponsorOf(st, p.id), need = NEED_LABEL[p.kind];
+        body.append(h('div', { class: `quest ${s ? 'main' : ''}` }, h('b', {}, `${need.icon} ${p.name}`),
+          h('small', {}, `${need.name} · needs ${need.needs}${s ? ` · in your care${s.home ? ` · lives in your home in ${REGION_BY_ID[PLOT_BY_ID[s.home].region].name}` : ''}` : ' · not yet sponsored'}`),
+          h('p', { class: 'story' }, `“${p.hope}”`)),
+        h('div', { class: 'acts' },
+          btn('📍 Show the way', () => { const at = needSpot(p); g.guide.pin({ title: `Visiting ${p.name}`, text: `${p.name} is on the avenue in ${r.name}`, x: at.x, z: at.z, region: p.land }); this.closePanel(); }, 'small'),
+          btn('🤲 Care for them', () => this.open('care'), 'small ghost', p.land !== g.region.id && !s)));
+      }
+      if (known.length < people.length) body.append(h('p', { class: 'dim' }, `${people.length - known.length} still to meet in ${r.name}.`));
     }
   }
 

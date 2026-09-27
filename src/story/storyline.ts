@@ -4,7 +4,7 @@ import { REGION_BY_ID, type RegionId } from '../world/regions';
 
 /**
  * The story of the game, told as a cinematic over real places in the world. Her new job is how
- * the two of them enter the world — a doorway, not the destination. Through it they learn, build
+ * she and her beloved enter the world — a doorway, not the destination. Through it they learn, build
  * and contribute to the society they join, while their love for each other grows as a couple who
  * intend to marry. They become part of the people they meet: adopting everyone as family, easing
  * hardships, giving opportunities and making new ones, and never stopping learning and helping.
@@ -30,7 +30,7 @@ export interface Shot {
 }
 
 /** Bumped when the story changes, so everyone sees the new opening once. */
-export const STORY_FLAG = 'story-3';
+export const STORY_FLAG = 'story-4';
 
 /** "Rosie and Teo", "Rosie, Teo and Mina". */
 const names = (list: string[]) => list.length <= 1 ? list.join('') : `${list.slice(0, -1).join(', ')} and ${list[list.length - 1]}`;
@@ -56,27 +56,27 @@ export function storyline(st: GameState): Shot[] {
     },
     {
       land: 'meadow', focus: 'castle', hour: 18.6, dur: 10, radius: 110, height: 36, spin: 0.4,
-      lines: [`${girl} has just secured her new job — and with it, the two of them are entering the world.`, 'Through it they will learn, build and contribute to the people around them. It is a proud step, but only a step: the job is not the destination. The life they build together is.'],
+      lines: [`${girl} has just secured her new job — and with it, she and her beloved are entering the world.`, 'Through it, both of you will learn, build and contribute to the people around you. It is a proud step, but only a step: the job is not the destination. The life you build together is.'],
     },
     {
       land: 'meadow', focus: 'travellers', hour: 8.5, dur: 12, radius: 9, height: 2.6, spin: 0.5,
       lines: [
         `${girl} and ${boy} are committed to each other and intend to marry. A golden thread joins them, and their love grows brighter with every kindness they share.`,
-        'Together they will keep learning while they live: making a home of their own, earning by helping, learning new skills in every land and giving back to the society they join.',
+        'Together, both of you will keep learning while you live: making a home of your own, earning by helping, learning new skills in every land and giving back to the society you join.',
       ],
     },
     {
       land: 'islamic', focus: 'landmark', hour: 10.5, dur: 11, radius: 75, height: 26, spin: 0.3,
       lines: [
-        'They will adopt everyone they meet as family: the orphan, the elder, the homeless and the family in need. They will ease hardships and open doors, giving opportunities and making new ones where there were none.',
-        'And as they bond with each other, they bond with everyone else. Each makes the other part of themselves; together, they make everyone they meet part of them both.',
+        'Both of you will adopt everyone you meet as family: the orphan, the elder, the homeless and the family in need. You will ease hardships and open doors, giving opportunities and making new ones where there were none.',
+        'And as you bond with each other, you bond with everyone else. Each of you makes the other part of yourself; together, both of you make everyone you meet part of you both.',
       ],
     },
   ];
   if (kids.length) shots.push({
     land: 'meadow', focus: 'children', hour: 8.7, dur: 10, radius: 4.5, height: 1.6, spin: 0.4,
     lines: [
-      `They do not travel alone. Meet ${names(kids.map((k) => k.name))}, travelling with the caravan with their families' blessing.`,
+      `You do not travel alone. Meet ${names(kids.map((k) => k.name))}, travelling with the caravan with their families' blessing.`,
       kids.map((k) => `${k.name}, off to ${REGION_BY_ID[k.destination].name}, ${k.blurb.charAt(0).toLowerCase()}${k.blurb.slice(1)}`).join(' '),
     ],
   });

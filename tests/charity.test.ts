@@ -46,3 +46,24 @@ describe('caring for people in need', () => {
     expect(st.coins).toBeLessThan(500);
   });
 });
+
+describe('the people finder', () => {
+  it('you meet people in need in their towns; the sponsored count as met; old saves start with none met', async () => {
+    const { hasMet, meet, give } = await import('../src/charity/charity');
+    const { newGame: fresh } = await import('../src/core/state');
+    const { deserialize } = await import('../src/core/save');
+    const st = fresh();
+    const [a, b] = PEOPLE_IN_NEED;
+    expect(hasMet(st, a.id)).toBe(false);
+    expect(meet(st, a.id)).toBe(true);
+    expect(meet(st, a.id)).toBe(false);
+    expect(hasMet(st, a.id)).toBe(true);
+    st.coins = 100;
+    give(st, b.id, { coins: 6 });
+    expect(hasMet(st, b.id)).toBe(true);
+    expect(meet(st, 'nobody')).toBe(false);
+    const old = fresh() as unknown as Record<string, unknown>;
+    delete old.met;
+    expect(deserialize(JSON.stringify(old))!.met).toEqual([]);
+  });
+});
