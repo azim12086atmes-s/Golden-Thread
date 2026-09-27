@@ -871,54 +871,131 @@ const landmarks: Record<RegionId, LandmarkFn> = {
   },
 
   korea(c, o) {
-    box(c.g, 34, 7, 12, '#b8b0a4');
-    for (const x of [-10, 0, 10]) archPanel(c.g, 4.6, 5.4, '#3a2a22', x, 0, 6.01);
-    box(c.g, 30, 5, 9, '#c23b2a', 0, 7, 0);
-    for (let i = 0; i < 9; i++) box(c.glow, 2, 2.6, 0.1, c.s.glow, -13 + i * 3.25, 8, 4.52);
-    sweptRoof(c.g, 44, 16, 4, '#3a3f4a', 0, 12, 0, 0, 0.5);
-    box(c.g, 18, 3, 6, '#c23b2a', 0, 15.5, 0);
-    sweptRoof(c.g, 28, 11, 3.6, '#3a3f4a', 0, 18.5, 0, 0, 0.5);
-    o.colliders.push({ x: -12, z: 0, r: 6, h: 22 }, { x: 12, z: 0, r: 6, h: 22 });
-    o.height = 22;
+    const granite = '#aba9a3', red = '#ae342c', green = '#315d50', blue = '#326376', gold = '#d5b26c';
+    // Geunjeongjeon rises on a two-level granite terrace, with an open central stair.
+    box(c.g, 36, 1.15, 25, granite, 0, 0, 0);
+    box(c.g, 32, 1.15, 22, '#c3bfb5', 0, 1.15, 0);
+    for (let i = 0; i < 6; i++) box(c.g, 5.6, 0.36, 2.1, granite, 0, i * 0.36, 13.7 + i * 1.3);
+    box(c.g, 1.15, 2.25, 7.4, '#c6c0b2', 0, 0, 16.6);
+    for (const z of [-11, 11]) for (let x = -15; x <= 15; x += 3) {
+      if (z > 0 && Math.abs(x) < 4) continue;
+      box(c.g, 0.45, 1.1, 0.45, granite, x, 2.3, z);
+      box(c.g, 3.1, 0.17, 0.23, granite, x + 1.5, 3.05, z);
+    }
+    // Five bays across the front and three down each side, with painted beams.
+    box(c.g, 29, 0.6, 18, '#715344', 0, 2.3, -0.5);
+    for (const z of [-8, 0, 7]) for (const x of [-13, -6.5, 0, 6.5, 13]) {
+      cyl(c.g, 0.38, 0.42, 8, red, x, 2.9, z, 10);
+      cyl(c.g, 0.52, 0.52, 0.22, granite, x, 2.9, z, 10);
+      box(c.g, 1.4, 0.32, 1.1, green, x, 10.3, z);
+      box(c.g, 1.1, 0.2, 1.5, blue, x, 10.55, z);
+      box(c.g, 0.9, 0.15, 1.8, gold, x, 10.75, z);
+    }
+    box(c.g, 28, 0.46, 17, green, 0, 10.9, -0.5);
+    for (const z of [-7.9, 7.1]) for (let x = -12; x <= 12; x += 3) {
+      box(c.g, 0.23, 5.8, 0.25, red, x, 4.6, z);
+      if (Math.abs(x) > 2 || z < 0) box(c.glow, 1.5, 2.5, 0.06, c.s.glow, x + 1.3, 6.1, z + (z > 0 ? 0.11 : -0.11));
+    }
+    sweptRoof(c.g, 39, 27, 3.4, '#333c42', 0, 11.4, -0.5, 0, 0.55);
+    box(c.g, 19, 4.2, 11, red, 0, 14.8, -0.5);
+    for (const x of [-8, 0, 8]) {
+      box(c.g, 0.3, 3.6, 0.4, green, x, 15, 5.1);
+      box(c.g, 2.2, 0.25, 1, blue, x, 17.9, 5.3);
+    }
+    sweptRoof(c.g, 27, 18, 3.4, '#313b43', 0, 19, -0.5, 0, 0.58);
+    // Court wall and gate are split so the +z approach remains open.
+    for (const x of [-24, 24]) box(c.g, 0.9, 4.2, 45, granite, x, 0, 12);
+    for (const x of [-14, 14]) box(c.g, 20, 4.2, 0.9, granite, x, 0, 34);
+    for (const x of [-4.5, 4.5]) cyl(c.g, 0.35, 0.4, 5.6, red, x, 0, 34, 8);
+    sweptRoof(c.g, 13, 6, 2, '#313b43', 0, 5.6, 34, 0, 0.55);
+    for (const x of [-16, 16]) for (const z of [8, 21]) {
+      cyl(c.g, 0.35, 0.44, 1.6, granite, x, 2.3, z, 8);
+      box(c.glow, 0.48, 0.65, 0.48, '#f0d79b', x, 3.95, z);
+      hip(c.g, 1.1, 1.1, 0.6, '#45494b', x, 4.6, z);
+      o.colliders.push({ x, z, r: 0.7, h: 5.2 });
+    }
+    o.colliders.push({ x: -10, z: -1, r: 8.8, h: 24 }, { x: 10, z: -1, r: 8.8, h: 24 });
+    o.platforms.push({ x: 0, z: 0, r: 11, y: 2.3 });
+    o.height = 24;
   },
 
   china(c, o) {
+    const marble = '#eee9dc', red = '#ac292b', blue = '#28529b', gold = '#d7b044';
     let y = 0;
-    for (let i = 0; i < 3; i++) {
-      cyl(c.g, 22 - i * 4, 23 - i * 4, 1.4, '#f4f0e6', 0, y, 0, 24);
-      y += 1.4;
+    for (const r of [20, 17, 14]) {
+      cyl(c.g, r, r + 0.25, 1.25, marble, 0, y, 0, 24);
+      y += 1.25;
+      for (let i = 0; i < 24; i++) {
+        const a = i * Math.PI / 12, px = Math.cos(a) * (r - 0.25), pz = Math.sin(a) * (r - 0.25);
+        if (pz > r * 0.76 && Math.abs(px) < 3.2) continue;
+        cyl(c.g, 0.18, 0.2, 0.9, marble, px, y, pz, 6);
+        sphere(c.g, 0.23, marble, px, y + 0.95, pz, 6);
+      }
     }
-    o.platforms.push({ x: 0, z: 0, r: 14, y });
-    for (let i = 0; i < 3; i++) {
-      const r = 7 - i * 1.8;
-      cyl(c.g, r, r, 4, '#b3262a', 0, y, 0, 16);
-      box(c.glow, r * 2.02, 1.6, r * 0.8, c.s.glow, 0, y + 1.2, 0);
-      y += 4;
-      cone(c.g, r + 2.2, 3.4, '#2a4a9a', 0, y, 0, 16);
-      y += 2.2;
+    for (let i = 0; i < 6; i++) box(c.g, 5, 0.25, 1.7, marble, 0, i * 0.25, 21 + i * 1.15);
+    o.platforms.push({ x: 0, z: 0, r: 13, y });
+    // Circular prayer hall: red lacquer columns, dougong and three blue tile roofs.
+    cyl(c.g, 9.8, 10.3, 10.5, '#b93630', 0, y, 0, 20);
+    for (let i = 0; i < 16; i++) {
+      const a = i * Math.PI / 8, x = Math.cos(a) * 9.4, z = Math.sin(a) * 9.4;
+      cyl(c.g, 0.34, 0.37, 10.2, red, x, y, z, 8);
+      box(c.g, 1.5, 0.3, 1.5, '#2c726f', x, y + 9.2, z, a);
+      box(c.g, 1.2, 0.26, 2, gold, x, y + 9.55, z, a);
+      if (i % 2 === 0) sphere(c.glow, 0.3, '#e9bd64', x * 1.08, y + 8.1, z * 1.08, 6);
     }
-    sphere(c.g, 1, '#e2b43a', 0, y + 1.4, 0, 8);
-    o.colliders.push({ x: 0, z: 0, r: 7.2, h: y + 3 });
+    for (const h of [y + 2.2, y + 5.4]) cyl(c.g, 10.1, 10.1, 0.2, gold, 0, h, 0, 20);
+    y += 10.5;
+    for (let i = 0; i < 3; i++) {
+      const r = 12 - i * 2.2;
+      cone(c.g, r, 5.2, blue, 0, y - 0.8, 0, 20);
+      cyl(c.g, r, r, 0.25, gold, 0, y - 0.3, 0, 20);
+      y += 6;
+      if (i < 2) {
+        cyl(c.g, r - 2.2, r - 2.2, 2.3, red, 0, y - 1, 0, 20);
+        for (let k = 0; k < 12; k++) {
+          const a = k * Math.PI / 6;
+          box(c.glow, 1.15, 1.3, 0.08, c.s.glow, Math.cos(a) * (r - 2), y - 0.25, Math.sin(a) * (r - 2), a);
+        }
+      }
+    }
+    cyl(c.g, 0.22, 0.28, 3.2, gold, 0, y - 0.7, 0, 8);
+    sphere(c.g, 0.55, gold, 0, y + 2.1, 0, 8);
+    o.colliders.push({ x: 0, z: 0, r: 10.8, h: y + 3 });
     o.height = y + 3;
   },
 
   norway(c, o) {
-    const wood = '#3a2a22';
-    box(c.g, 14, 6, 10, wood);
-    let y = 6;
-    for (let i = 0; i < 4; i++) {
-      const s = 1 - i * 0.2;
-      gable(c.g, 16 * s, 12 * s, 5 * s, '#2a1f1a', 0, y, 0);
-      if (i < 3) box(c.g, 10 * s, 2.2, 8 * s, wood, 0, y + 3.5 * s, 0);
-      y += 4.2 * s;
-      for (const s2 of [-1, 1]) {
-        c.g.frame(s2 * 8 * s, y - 1.2, 0, 0, 1, () => cone(c.g, 0.4, 2.4, '#2a1f1a', 0, 0, 0, 5));
-      }
+    const wood = '#342a25', tar = '#211d1b', trim = '#7b6248';
+    // Borgund's open ambulatory wraps a timber nave below nested shingle roofs.
+    box(c.g, 18, 0.65, 22, '#807a70');
+    box(c.g, 11, 7.5, 15, wood, 0, 0.65, -1);
+    for (const x of [-8, 8]) for (const z of [-10, -5, 0, 5, 10]) {
+      cyl(c.g, 0.28, 0.35, 4.1, trim, x, 0.65, z, 7);
+      box(c.g, 0.8, 0.34, 0.9, wood, x, 4.45, z);
     }
-    cone(c.g, 1.6, 8, '#2a1f1a', 0, y, 0, 6);
-    box(c.glow, 2, 3, 0.1, c.s.glow, 0, 0, 5.05);
-    o.colliders.push({ x: 0, z: 0, r: 8, h: y + 8 });
-    o.height = y + 8;
+    for (const z of [-10, 10]) for (const x of [-8, -4, 0, 4, 8]) {
+      if (z > 0 && Math.abs(x) < 3) continue;
+      cyl(c.g, 0.28, 0.35, 4.1, trim, x, 0.65, z, 7);
+      box(c.glow, 0.4, 0.8, 0.08, '#eac77f', x, 2.2, z + (z > 0 ? 0.4 : -0.4));
+    }
+    archPanel(c.g, 2.6, 3.5, '#181513', 0, 0.65, 6.55, 0, 0.15, true);
+    let y = 4.8;
+    for (let i = 0; i < 5; i++) {
+      const w = 21 - i * 3.3, d = 25 - i * 3.9;
+      gable(c.g, w, d, 3.6 - i * 0.35, tar, 0, y, -1);
+      box(c.g, w * 0.52, 1.7, d * 0.53, wood, 0, y + 1.4, -1);
+      for (const x of [-w * 0.45, w * 0.45]) {
+        cone(c.g, 0.55, 1.5, tar, x, y + 1.2, 0, 5);
+        box(c.g, 0.12, 1.3, 0.12, trim, x, y + 2.1, 0);
+      }
+      y += 2.75;
+    }
+    // Small bell cage and pointed cap at the ridge.
+    for (const x of [-1.2, 1.2]) for (const z of [-1.2, 1.2]) cyl(c.g, 0.17, 0.2, 2.1, wood, x, y, z, 6);
+    sphere(c.g, 0.65, '#b79755', 0, y + 0.7, 0, 8);
+    cone(c.g, 2.4, 3.5, tar, 0, y + 2.1, 0, 8);
+    o.colliders.push({ x: 0, z: -1, r: 10.5, h: y + 5.6 });
+    o.height = y + 5.6;
   },
 
   switzerland(c, o) {
