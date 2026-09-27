@@ -1,3 +1,4 @@
+import { ASSIST_LEVEL, PROFESSORS, THESIS_LEVEL, TOPIC_BY_ID, assist, dayProgress, startThesis, topicsAt, workOnThesis } from '../institutions/research';
 import { INSTITUTE_BY_KIND, institutesOf, type InstituteKind } from '../institutions/catalogue';
 import { COURSE_FEE, DAILY_INCOME, EXPERTS, EXPERT_BY_ID, SITE_BY_ID, assignStaff, buildStage, candidates, employ, freelanceFee, hireOf, instituteAt, intern, isBuilding, kindFood, landScience, learnerLevel, standingStage, takeCourse, teachClass, teachLearner, wage, type Staff } from '../institutions/institutions';
 import { DAY_COINS, FLOOR_COST, MAX_FLOORS, NEED_LABEL, PEOPLE_IN_NEED, PERSON_BY_ID, buildFloor, daysLeft, floorBuilding, floorsOf, giftsFor, give, homeCapacity, ownedHomes, residentsOf, sponsorOf, takeHome, type Person } from '../charity/charity';
@@ -791,6 +792,20 @@ export class UI {
           btn(`📚 Pay in kind · 3× ${ITEMS[mat].name}`, () => act(() => takeCourse(st, site.id, 'you', 'kind'), 'A good day’s learning.'), 'ghost'),
           btn('🧑‍🎓 Intern under the masters · +6🪙', () => act(() => intern(st, site.id), 'You learn by working beside the masters.'), 'ghost'),
           btn('🧑‍🏫 Teach a class (level 3)', () => act(() => teachClass(st, site.id), 'Your class goes well — you are paid, and you learn by teaching.'), 'ghost', lvl < 3)));
+      // Research under the professor: assist, then a thesis of your own.
+      body.append(h('h3', {}, `Research under ${PROFESSORS[site.land]}`));
+      body.append(h('div', { class: 'acts' }, btn(`🔬 Assist the professor · +${12 + lvl * 3}🪙 (level ${ASSIST_LEVEL})`, () => act(() => assist(st, site.id), 'A day in the laboratory: paid, and wiser.'), 'ghost', lvl < ASSIST_LEVEL)));
+      if (st.thesis && st.thesis.site === site.id) {
+        const t = TOPIC_BY_ID[st.thesis.topic];
+        body.append(h('div', { class: 'quest main' }, h('b', {}, `${t.magic ? '🪄 Magic thesis' : '🔭 Scientific thesis'}: ${t.title}`), h('small', {}, `${Math.round(st.thesis.progress)}% written · a day's work adds about ${dayProgress(lvl)}% and uses 1× ${ITEMS[mat].name}`),
+          h('div', { class: 'meter' }, h('i', { style: `inline-size:${Math.round(st.thesis.progress)}%` })),
+          btn('📝 Work on the thesis today', () => { const r = workOnThesis(st, site.id); if ('error' in r) g.toast(r.error); else if (r.done) g.toast(`🎓 Thesis complete: “${r.done.title}”. You earn a degree, the institute's purse of 150🪙 — and your invention: ${r.done.invention}!`, 'reward'); else g.toast(`The thesis grows: ${Math.round(r.progress)}%.`, 'reward'); this.render(); }, 'primary')));
+      } else if (st.thesis) {
+        body.append(h('small', { class: 'dim' }, `You are writing “${TOPIC_BY_ID[st.thesis.topic]?.title}” at another institute.`));
+      } else {
+        for (const t of topicsAt(site.id)) body.append(h('div', { class: 'quest' }, h('b', {}, `${t.magic ? '🪄' : '🔭'} ${t.title}`), h('small', {}, st.degrees.includes(t.id) ? `Written — your invention: ${t.invention}` : `Leads to: ${t.invention} · needs level ${THESIS_LEVEL}`),
+          st.degrees.includes(t.id) ? h('span') : btn('Take on this thesis', () => act(() => startThesis(st, site.id, t.id), `The professor agrees to supervise you. Work on it a little each day.`), 'small ghost', lvl < THESIS_LEVEL)));
+      }
       const learners = st.sponsored.filter((s) => PERSON_BY_ID[s.id]);
       if (learners.length) {
         body.append(h('h3', {}, 'Enrol someone you sponsor'));

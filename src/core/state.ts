@@ -79,6 +79,11 @@ export interface GameState {
   hires: Array<{ id: string; since: number; paidUntil: number }>;
   /** Who you taught today (person:skill → day), one lesson a day each. */
   taught: Record<string, number>;
+  /** The thesis you are writing under a professor (institutions/research.ts). */
+  thesis: { topic: string; site: string; progress: number; day: number } | null;
+  /** Theses completed (topic ids) and the inventions they produced. */
+  degrees: string[];
+  inventions: string[];
   vehicles: string[];
   discovered: string[];
   lanterns: string[];
@@ -123,6 +128,9 @@ export function newGame(): GameState {
     learners: {},
     hires: [],
     taught: {},
+    thesis: null,
+    degrees: [],
+    inventions: [],
     vehicles: ['walk', 'fly', 'van'],
     discovered: ['meadow'],
     lanterns: [],

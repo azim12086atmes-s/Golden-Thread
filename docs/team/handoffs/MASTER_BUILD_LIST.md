@@ -26,7 +26,7 @@ sections C1–C7) and `3D_BUILDS_HANDOFF.md` (3D work, sections 2a and 3.x). Tic
 - [ ] Pay in coins or in kind (housing, food, necessities, training)
 - [ ] Skills grow only by doing them; services need a skill level and pay more at higher levels; new skills (teaching, medicine, research, building, software, hardware, logistics)
 - [ ] Teaching as a service; interning; doing a course (fee in coins or goods, certificate)
-- [ ] Research under professors; scientific thesis and magic thesis
+- [x] Research under professors (assist for pay; scientific and magic theses → degree, invention, purse)
 - [ ] Service jobs: company employee, freelance software, hardware building
 
 ## D. Economy of services, agriculture and supply (C5)
@@ -79,7 +79,10 @@ sections C1–C7) and `3D_BUILDS_HANDOFF.md` (3D work, sections 2a and 3.x). Tic
 ## H. Sky, nature and decor (3D; section 3.4)
 - [ ] More land-specific sky artifacts (lantern festivals, koinobori, Diwali lantern strings, penjor, kites, balloon clusters)
 - [ ] Balloons as house decor, children holding balloons, balloons in the skies
-- [ ] Nature by terrain (desert shrubs, reeds and lotus at water, mangroves, alpine flowers, snow-laden conifers)
+- [x] Nature by terrain — logic (zones, species per zone, sizes; `world/nature.ts`)
+- [ ] Nature by terrain — models: shrubs, reeds, lotus, mangroves, alpine flowers; pines, palms and 10 more species rebuilt (3D)
+- [x] Caves — logic (placement, explore once a day; `world/caves.ts`)
+- [ ] Caves and caverns — models (3D)
 
 ## I. Traffic (section 3.5)
 - [x] ~85 designs moving on every land's roads, waters and skies
