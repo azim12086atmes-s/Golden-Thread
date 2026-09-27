@@ -101,6 +101,8 @@ export class VanInterior {
     this.scene.add(this.room, this.crew);
     this.girl = new CharacterModel(girl, '#e3b58f', HERO_SCALE.girl, 1, 'girl');
     this.boy = new CharacterModel(boy, '#c99a74', HERO_SCALE.boy, -1, 'boy');
+    // Wings and a jetpack are left at the door: rooms are too small for them.
+    this.girl.hideBack(); this.boy.hideBack();
     // Facing benches across the table: 2 m apart — together, never touching.
     this.girl.root.position.set(BENCH_SEATS[0][0], 0.5 - DIMS.hip * HERO_SCALE.girl, BENCH_SEATS[0][2]);
     this.girl.root.rotation.y = Math.PI / 2;

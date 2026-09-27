@@ -89,6 +89,8 @@ export class Wardrobe {
     this.boy = new CharacterModel(OUTFITS['b-celebration'], skin.boy, HERO_SCALE.boy, -1, 'boy');
     this.boy.root.position.set(2.5, 0.05, 0.4);
     this.boy.root.rotation.y = -2.2;
+    // A room: the wings and jetpack wait outside it.
+    this.girl.hideBack(); this.boy.hideBack();
     this.scene.add(this.girl.root, this.boy.root);
     this.camera.position.set(0, 2.1, 5.2);
     this.camera.lookAt(0, 1.4, -1.5);

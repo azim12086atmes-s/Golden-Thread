@@ -71,13 +71,14 @@ const DRAW: Record<Pattern, Draw> = {
       });
     }
     // Tiny buds between.
-    for (const [cx, cy] of scatter(S, 40, 14, r)) wrapped(S, cx, cy, 4, (px, py) => { x.fillStyle = r() < 0.5 ? col.a : '#ffffff'; x.beginPath(); x.arc(px, py, 2.2, 0, Math.PI * 2); x.fill(); });
+    for (const [cx, cy] of scatter(S, 40, 14, r)) wrapped(S, cx, cy, 4, (px, py) => { x.fillStyle = r() < 0.85 ? col.a : '#ffffff'; x.beginPath(); x.arc(px, py, 2.2, 0, Math.PI * 2); x.fill(); });
   },
-  stars: (x, S, r, _col) => {
+  stars: (x, S, r, col) => {
     for (const [cx, cy, k] of scatter(S, 30, 26, r)) {
-      const R = 7 * k, gold = r() < 0.6, pts = r() < 0.5 ? 4 : 5;
+      // Most stars in the outfit's own trim colour, some gold, a few white.
+      const R = 7 * k, q = r(), mine = q < 0.68, gold = q < 0.88, pts = r() < 0.5 ? 4 : 5;
       wrapped(S, cx, cy, R * 2, (px, py) => {
-        x.fillStyle = gold ? '#ffe07a' : r() < 0.5 ? '#ffffff' : `hsl(${Math.floor(r() * 360)}, 90%, 75%)`;
+        x.fillStyle = mine ? col.a : gold ? '#ffe07a' : '#ffffff';
         star(x, px, py, R, pts, pts === 4 ? 0.28 : 0.45, r() * 3); x.fill();
       });
     }

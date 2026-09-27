@@ -125,6 +125,8 @@ export class HouseInterior {
     this.scene.add(new THREE.HemisphereLight('#fff4e0', '#5a4a6a', 1.1), this.room);
     this.girl = new CharacterModel(girl, '#e3b58f', HERO_SCALE.girl, 1, 'girl');
     this.boy = new CharacterModel(boy, '#c99a74', HERO_SCALE.boy, -1, 'boy');
+    // Wings and a jetpack are left at the door: rooms are too small for them.
+    this.girl.hideBack(); this.boy.hideBack();
     this.scene.add(this.girl.root, this.boy.root);
     this.mote = new THREE.Mesh(new THREE.OctahedronGeometry(0.14), new THREE.MeshBasicMaterial({ color: new THREE.Color('#fff2a8').multiplyScalar(1.6), toneMapped: false }));
     this.scene.add(this.mote);

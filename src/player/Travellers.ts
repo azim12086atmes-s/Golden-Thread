@@ -1,6 +1,6 @@
 import * as THREE from 'three';
 import { CharacterModel, HERO_SCALE } from '../characters/CharacterModel';
-import { MIN_GAP, enforceGap, followStep } from '../characters/follow';
+import { BODY_RADIUS, MIN_GAP, enforceGap, followStep } from '../characters/follow';
 import type { Outfit } from '../characters/modesty';
 import { Thread } from '../characters/Thread';
 import type { Input } from '../core/Input';
@@ -333,6 +333,12 @@ export class Travellers {
     if (this.grounded) this.world.resolve(this.gPos, 3);
   }
 
+  /** Her wings and his jetpack must never reach each other or him: the gap they need (0 without them). */
+  backGap(): number {
+    const g = this.girl.backReach(), b = this.boy.backReach();
+    return g || b ? g + Math.max(b, BODY_RADIUS) + 0.2 : 0;
+  }
+
   private updateBoy(dt: number): void {
     const def = VEHICLES[this.mode];
     if (def.seats.length) {
@@ -346,11 +352,12 @@ export class Travellers {
     const out = followStep({
       boy: this.bPos, girl: this.gPos, heading: this.heading, speed: this.currentSpeed, dt, airborne,
       groundAt: (x, z) => this.mounted ? Math.max(surfaceAt(x, z, this.gPos.y + 2), WATER_Y) : surfaceAt(x, z, this.gPos.y + 2),
+      gap: this.backGap(),
     });
     this.bPos.set(out.pos.x, out.pos.y, out.pos.z);
     this.world.resolve(this.bPos, this.mounted ? 0.9 : 0.35);
     // Collision can push him — the gap always wins.
-    const gap = this.mounted ? MOUNT_GAP : MIN_GAP;
+    const gap = Math.max(this.mounted ? MOUNT_GAP : MIN_GAP, this.backGap());
     const safe = enforceGap(this.bPos, this.gPos, gap);
     this.bPos.set(safe.x, safe.y, safe.z);
     this.bSpeed = out.speed;
@@ -359,6 +366,9 @@ export class Travellers {
   }
 
   private place(dt: number, t: number): void {
+    // Her wings fold in whenever he is nearer than they reach (never touching him or his pack).
+    const apart = Math.hypot(this.gPos.x - this.bPos.x, this.gPos.z - this.bPos.z);
+    this.girl.setBackRoom(apart - Math.max(this.boy.backReach(), BODY_RADIUS) - 0.2);
     const def = VEHICLES[this.mode];
     const riding = def.seats.length > 0 || def.kind === 'mount';
     const q = new THREE.Quaternion().setFromEuler(new THREE.Euler(this.pitch, this.heading, this.roll, 'YXZ'));

@@ -5,7 +5,8 @@ import { mergeVertices } from 'three/addons/utils/BufferGeometryUtils.js';
 import { HEAD_GAP, type Part } from './anatomy';
 import { fabricMaterial, tileUVs } from './fabric';
 import { Jetpack } from './jetpack';
-import { Wings } from './wings';
+import { JET_REACH } from './jetpack';
+import { WING_REACH, Wings } from './wings';
 import type { Hem, Outfit, TopStyle } from './modesty';
 
 /**
@@ -23,6 +24,14 @@ function mat(color: string, glow = false): THREE.Material {
       : new THREE.MeshStandardMaterial({ color, roughness: 0.85, side: THREE.DoubleSide });
     matCache.set(key, m);
   }
+  return m;
+}
+
+/** A gem that catches the light and shines a little, without a glow round it. */
+function softGem(c: THREE.Color): THREE.Material {
+  const key = `gem:${c.getHexString()}`;
+  let m = matCache.get(key);
+  if (!m) { m = new THREE.MeshStandardMaterial({ color: c, emissive: c, emissiveIntensity: 0.28, roughness: 0.25, metalness: 0.3 }); matCache.set(key, m); }
   return m;
 }
 
@@ -227,6 +236,29 @@ export class CharacterModel {
     this.build();
   }
 
+  /** Whether wings or a jetpack are worn (indoors they are left at the door). */
+  private backShown = true;
+
+  /** Leave the wings or jetpack off (rooms are too small for them). */
+  hideBack(): void {
+    if (!this.backShown) return;
+    this.backShown = false;
+    this.setOutfit(this.outfit);
+  }
+
+  /** Fold the wings in to reach no further than `room` metres (safety whenever the two come close). */
+  setBackRoom(room: number): void {
+    if (!this.wings) return;
+    this.wings.group.scale.setScalar(THREE.MathUtils.clamp(room / (WING_REACH * this.scale), 0.15, 1));
+  }
+
+  /** How far from this person's centre their wings or jetpack reach, in metres (0 without them). */
+  backReach(): number {
+    if (!this.backShown) return 0;
+    const back = this.outfit.detail?.back;
+    return (back === 'wings' ? WING_REACH : back === 'jetpack' ? JET_REACH : 0) * this.scale;
+  }
+
   setOutfit(o: Outfit): void {
     this.outfit = o;
     this.body.clear();
@@ -368,8 +400,8 @@ export class CharacterModel {
     (this.threadHand > 0 ? this.armR : this.armL).add(this.handAnchor);
 
     this.buildOuter(b);
-    if (o.detail?.back === 'wings') { this.wings = new Wings(); b.add(this.wings.group); }
-    if (o.detail?.back === 'jetpack') { this.jetpack = new Jetpack(); b.add(this.jetpack.group); }
+    if (o.detail?.back === 'wings' && this.backShown) { this.wings = new Wings(); b.add(this.wings.group); }
+    if (o.detail?.back === 'jetpack' && this.backShown) { this.jetpack = new Jetpack(); b.add(this.jetpack.group); }
     this.buildHead(b);
     this.buildCrown();
     const shine = o.detail?.glow;
@@ -436,7 +468,8 @@ export class CharacterModel {
         const side = k % 2 ? 1 : -1;
         const tip = at(f + 0.05, a + side * 0.28, 0.014);
         b.add(mesh(new THREE.TubeGeometry(new THREE.LineCurve3(at(f, a), tip), 2, 0.004, 4), col, 'trim', true));
-        this.blossom(b, tip, k % 2 ? '#ffffff' : '#ffd1e3');
+        // Mostly light blue blossoms, some pink, few white.
+        this.blossom(b, tip, k % 5 === 0 ? '#ffffff' : k % 2 ? '#a8d8ff' : '#ffd1e3');
       }
     }
   }
@@ -785,6 +818,13 @@ export class CharacterModel {
         if (merged) g.add(mesh(merged, col, 'headwear', glow === '1'));
       }
     }
+    // Her crown's gems shine gently rather than glow (owner: less glow at her head).
+    if (grand) g.traverse((x) => {
+      const mm = x as THREE.Mesh;
+      if (!mm.isMesh || !(mm.material as THREE.Material & { isMeshBasicMaterial?: boolean }).isMeshBasicMaterial) return;
+      const c = (mm.material as THREE.MeshBasicMaterial).color.clone().multiplyScalar(1 / 1.6);
+      mm.material = softGem(c);
+    });
     this.crown = g;
     this.head.add(g);
   }
@@ -873,8 +913,8 @@ export class CharacterModel {
     if (this.crown) {
       this.crown.position.y = DIMS.headR * (['gat', 'wide-hat', 'hijab-hat', 'turban', 'songkok'].includes(this.outfit.head.style) ? 2.5 : 1.85) + Math.sin(s.t * 1.6) * 0.012;
     }
-    this.wings?.update(s.t, s.airborne, s.riding);
-    this.jetpack?.update(s.t, s.speed, s.airborne, s.riding);
+    this.wings?.update(s.t, dt, s.airborne, s.riding);
+    this.jetpack?.update(s.t, dt, s.speed, s.airborne, s.riding);
     if (this.cape) {
       // The cape flies: it lifts and streams back with speed and in the air, and ripples always.
       // The cape hangs at her back (-z); a positive tilt swings its hem backwards, away from the

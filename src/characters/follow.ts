@@ -28,6 +28,8 @@ export interface FollowInput {
   /** When flying the boy may leave the ground freely. */
   airborne: boolean;
   groundAt?: (x: number, z: number) => number;
+  /** A wider gap to keep (her wings, his jetpack); never less than MIN_GAP. */
+  gap?: number;
 }
 
 export interface FollowOutput {
@@ -41,11 +43,11 @@ export interface FollowOutput {
 const dist = (a: V3, b: V3) => Math.hypot(a.x - b.x, a.y - b.y, a.z - b.z);
 
 /** Where he wants to be: beside her, a half-step behind — walking together, never blocking the view. */
-export function followTarget(girl: V3, heading: number): V3 {
+export function followTarget(girl: V3, heading: number, ideal = IDEAL_GAP): V3 {
   const back = -0.35, side = 1;
   const fx = Math.sin(heading), fz = Math.cos(heading);
   const rx = Math.cos(heading), rz = -Math.sin(heading);
-  const k = IDEAL_GAP / Math.hypot(back, side);
+  const k = ideal / Math.hypot(back, side);
   return { x: girl.x + (fx * back + rx * side) * k, y: girl.y, z: girl.z + (fz * back + rz * side) * k };
 }
 
@@ -62,20 +64,21 @@ export function enforceGap(p: V3, from: V3, gap = MIN_GAP): V3 {
 export function followStep(i: FollowInput): FollowOutput {
   const { boy, girl, dt } = i;
   const d0 = dist(boy, girl);
+  const gap = Math.max(MIN_GAP, i.gap ?? 0), ideal = Math.max(IDEAL_GAP, gap + 0.45);
 
   if (d0 > SNAP) {
-    const t = enforceGap(followTarget(girl, i.heading), girl);
+    const t = enforceGap(followTarget(girl, i.heading, ideal), girl, gap);
     const pos = i.airborne || !i.groundAt ? t : { ...t, y: i.groundAt(t.x, t.z) };
-    return { pos: enforceGap(pos, girl), speed: 0, tension: 0 };
+    return { pos: enforceGap(pos, girl, gap), speed: 0, tension: 0 };
   }
 
-  const target = followTarget(girl, i.heading);
+  const target = followTarget(girl, i.heading, ideal);
   const dx = target.x - boy.x, dz = target.z - boy.z;
   const dh = Math.hypot(dx, dz);
 
   // Match her speed, plus a correction toward his place beside her, so he keeps pace at a walk,
   // in flight and on a unicorn alike without trailing behind.
-  const hurry = d0 > LEASH ? 2.2 : 1;
+  const hurry = d0 > LEASH + ideal - IDEAL_GAP ? 2.2 : 1;
   const want = Math.min(i.speed + dh * 2.4, Math.max(i.speed * 1.5, 5) * hurry);
   const step = Math.min(dh, want * dt);
   let x = boy.x, z = boy.z;
@@ -87,17 +90,17 @@ export function followStep(i: FollowInput): FollowOutput {
   let pos: V3;
   if (i.airborne) {
     const y = boy.y + (target.y - boy.y) * Math.min(1, dt * 3);
-    pos = enforceGap({ x, y, z }, girl);
+    pos = enforceGap({ x, y, z }, girl, gap);
   } else {
     // On the ground the gap is kept horizontally, so it never lifts him off the ground. The 3D
     // distance is always at least the horizontal one, so the invariant still holds.
-    const flat = enforceGap({ x, y: girl.y, z }, girl);
+    const flat = enforceGap({ x, y: girl.y, z }, girl, gap);
     pos = { x: flat.x, y: i.groundAt ? i.groundAt(flat.x, flat.z) : girl.y, z: flat.z };
   }
   const moved = Math.hypot(pos.x - boy.x, pos.z - boy.z);
   return {
     pos,
     speed: dt > 0 ? moved / dt : 0,
-    tension: Math.min(1, Math.max(0, (dist(pos, girl) - IDEAL_GAP) / (LEASH - IDEAL_GAP))),
+    tension: Math.min(1, Math.max(0, (dist(pos, girl) - ideal) / (LEASH - IDEAL_GAP))),
   };
 }

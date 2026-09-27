@@ -176,4 +176,15 @@ The owner's order: **institutional buildings first, then complete the game logic
 - **Markers** (`world/markers.ts`): a badge floating above every institute (gold: the town's own,
   blue: yours) and every person in need (their need's icon; pulsing until met), the same size at any
   distance and drawn over buildings, hidden close up.
+- **Revised (owner, later that night):** the wings are a giant **swallowtail** (pointed forewings high
+  above her, scalloped hindwings with long tails reaching the ground, an eyespot jewel), three times
+  her height. No colour patches: pink at her back flowing outward through the rainbow; thick black
+  leading with gold; glitter twinkling in the glass and drifting off; heavy, wide, curving beats.
+  Because they spread wide the boy keeps further away while she wears them (Travellers `backGap`),
+  and her wings fold in if he is ever nearer; wings and jetpack are left off indoors.
+- **Jetpack revised:** mostly glass; glowing rainbow fuel inside with floating particles; the
+  motherboard etched on the glass in glowing rainbow with gold vias and black chips; minimal gold
+  rings and black caps.
+- **Colours:** her crown's gems shine gently instead of glowing; the Starlight Gown's flowers are
+  light blue (few white); the Midnight Sherwani is light blue with mostly pink stars.
 
