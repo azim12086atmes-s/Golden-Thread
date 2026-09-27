@@ -5,6 +5,10 @@ import {
 } from './kit';
 import { houseDecor } from './houseDecor';
 import { FACADES, compose } from './facade';
+import { type Habit, HABITS, growTree } from './trees';
+
+/** The Meadow's Great Tree: an ancient oak three times any other, forking again and again. */
+const GREAT_TREE: Habit = { ...HABITS.oak!, h: 30, trunk: 0.26, r: 2.6, forks: 5, spread: 0.85, lift: 0.18, limb: 0.42, shrink: 0.66, depth: 3, blob: 0.1, squash: 0.72, gnarl: 0.3 };
 import { LAND_LANTERN, lanternGeometry } from './lanterns';
 import type { RegionId, RegionSpec } from './regions';
 
@@ -768,8 +772,29 @@ function pagoda(c: Ctx, tiers: number, base: number, roofCol: string, bodyCol: s
 
 const landmarks: Record<RegionId, LandmarkFn> = {
   meadow(c, o) {
-    cyl(c.g, 2.2, 3.2, 14, '#7a5a3c', 0, 0, 0, 10);
-    for (const [x, y, z, r] of [[0, 18, 0, 11], [7, 15, 3, 7], [-7, 16, -2, 7.5], [2, 15, -7, 7], [-3, 14, 7, 6.5]] as const) sphere(c.g, r, '#6aab52', x, y, z, 9);
+    // The Great Tree: an ancient giant grown branch by branch (trees.ts) — buttress roots over the
+    // grass, a gnarled trunk forking into great limbs, a crown of leaves, lanterns on ropes, a
+    // swing, and a little door into the trunk.
+    const bark = '#6b4a30';
+    c.g.leafy = true;
+    try { growTree(c.g, GREAT_TREE, 0, 0, 0, 1, () => c.rng.next()); } finally { c.g.leafy = false; }
+    for (let i = 0; i < 9; i++) {
+      const a = (i / 9) * Math.PI * 2 + c.rng.range(-0.2, 0.2), len = c.rng.range(5, 8);
+      // A root: from the trunk's foot, arching out and down into the ground.
+      c.g.add(new THREE.CylinderGeometry(0.25, 1.1, len, 7).translate(0, len / 2, 0), bark, M(Math.cos(a) * 1.6, 1.4, Math.sin(a) * 1.6, -a + Math.PI / 2, 1, 1, 1, 0, 0).multiply(new THREE.Matrix4().makeRotationZ(-1.3)));
+    }
+    // The door into the trunk, with a lit round window above it.
+    archPanel(c.g, 1.3, 2.2, '#4a2e1a', 0, 0, 2.95, 0, 0.12, true);
+    box(c.glow, 0.12, 0.12, 0.05, '#ffd27a', 0.35, 1.1, 3.08);
+    sphere(c.glow, 0.32, c.s.glow, 0, 3.4, 2.9, 10);
+    // A rope swing on a low limb, and lanterns hanging on ropes all round the crown.
+    for (const x of [-0.5, 0.5]) box(c.g, 0.04, 6.5, 0.04, '#d8c8a0', 5.6 + x, 1.2, 1.2);
+    box(c.g, 1.3, 0.1, 0.45, '#8a5a36', 5.6, 1.1, 1.2);
+    for (let i = 0; i < 26; i++) {
+      const a = c.rng.range(0, Math.PI * 2), rr = c.rng.range(5, 14), y = c.rng.range(9, 17), drop = c.rng.range(1, 2.5);
+      box(c.g, 0.03, drop, 0.03, '#d8c8a0', Math.cos(a) * rr, y, Math.sin(a) * rr);
+      c.glow.add(lanternGeometry('fairy').scale(0.9, 0.9, 0.9), c.rng.pick(['#ffe98a', '#ffd6f0', '#c8f0ff', '#fff4c0']), M(Math.cos(a) * rr, y - 0.9, Math.sin(a) * rr));
+    }
     for (let i = 0; i < 40; i++) {
       const a = c.rng.range(0, Math.PI * 2), rr = c.rng.range(3, 12);
       sphere(c.glow, 0.25, c.rng.pick(['#ffe98a', '#ffd6f0', '#c8f0ff']), Math.cos(a) * rr, c.rng.range(10, 24), Math.sin(a) * rr, 5);
@@ -790,8 +815,8 @@ const landmarks: Record<RegionId, LandmarkFn> = {
       }
       box(c.glow, 1, 1.4, 0.1, c.s.glow, 0, 5, 3.25);
     });
-    o.colliders.push({ x: 0, z: 0, r: 3.4, h: 30 }, { x: 18, z: 6, r: 2, h: 3 }, { x: -26, z: -14, r: 3.4, h: 15 });
-    o.height = 30;
+    o.colliders.push({ x: 0, z: 0, r: 3.6, h: 32 }, { x: 18, z: 6, r: 2, h: 3 }, { x: -26, z: -14, r: 3.4, h: 15 });
+    o.height = 32;
   },
 
   japan(c, o) {

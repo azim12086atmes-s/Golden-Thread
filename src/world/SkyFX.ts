@@ -319,8 +319,10 @@ export class SkyFX {
     // Milky Way and nebula.
     {
       const u = this.nightDome.material.uniforms;
-      u.milky.value = L.milkyway * (night + (1 - night) * 0.45);
-      u.nebula.value = L.nebula * (night + (1 - night) * 0.3);
+      // By night each land's own; by day a faint Milky Way and nebula glow through the blue in
+      // every land.
+      u.milky.value = L.milkyway * night + Math.max(L.milkyway, 0.7) * day * 0.5;
+      u.nebula.value = L.nebula * night + Math.max(L.nebula, 0.6) * day * 0.4;
       u.t.value = t;
       u.colA.value.copy(this.pal[0]);
       u.colB.value.copy(this.pal[1]);

@@ -177,7 +177,7 @@ export class Travellers {
   update(dt: number, input: Input, t: number): void {
     // Camera control.
     this.camYaw -= input.dx * 0.005;
-    this.camPitch = clamp(this.camPitch + input.dy * 0.004, -0.25, 1.3);
+    this.camPitch = clamp(this.camPitch + input.dy * 0.004, -1.35, 1.3);
     this.camDist = clamp(this.camDist + input.wheel * 1.2, 4, 40);
 
     const a = input.axis();
@@ -414,7 +414,10 @@ export class Travellers {
     const cp = Math.cos(this.camPitch), sp = Math.sin(this.camPitch);
     const want = target.clone().add(new THREE.Vector3(-Math.sin(this.camYaw) * cp * this.camDist, sp * this.camDist, -Math.cos(this.camYaw) * cp * this.camDist));
     const floor = surfaceAt(want.x, want.z, want.y) + 0.8;
-    if (want.y < floor) want.y = floor;
+    // Below the travellers the camera stops at the ground and tilts up instead, so turning the
+    // view down past them looks up into the sky.
+    let lookY = target.y;
+    if (want.y < floor) { lookY += (floor - want.y) * 2.2; want.y = floor; }
     if (!this.camInit) {
       this.camPos.copy(want);
       this.camInit = true;
@@ -424,7 +427,7 @@ export class Travellers {
       this.camPos.z = damp(this.camPos.z, want.z, 8, dt);
     }
     cam.position.copy(this.camPos);
-    cam.lookAt(target);
+    cam.lookAt(target.x, lookY, target.z);
   }
 
   save(): void {

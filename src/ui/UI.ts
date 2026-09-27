@@ -72,6 +72,8 @@ export class UI {
   private wardrobeGroup: DressGroup = 'all';
   private wardrobeQuery = '';
   private vanSlot: VanSlot = 'rug';
+  /** The van's menu tucked away (the van stays open), so the room can be seen whole. */
+  private vanHidden = false;
   private propertySite: PlotSite | null = null;
   private storyOpen = false;
   private mapSel: RegionId | null = null;
@@ -476,7 +478,7 @@ export class UI {
 
   closePanel(): void {
     if (this.panel === 'build') this.g.exitBuild();
-    if (this.panel === 'van') this.g.inVan = false;
+    if (this.panel === 'van') { this.g.inVan = false; this.vanHidden = false; }
     if (this.panel === 'house') this.g.inHouse = false;
     this.panel = null;
     this.dialogueNpc = null;
@@ -577,7 +579,12 @@ export class UI {
   render(): void {
     const body = h('div', { class: 'body' });
     const titles: Record<string, string> = { wardrobe: 'Dressing room', bag: 'Bag & Crafts', journal: 'Journal', map: 'The World', messages: 'Messages', vehicles: 'Ways to Travel', dialogue: '', animal: '', build: 'Build', van: 'Inside Safar', house: this.g.houseTitle(), farm: 'Farm bed', market: 'Market stall', help: 'How to play', homes: 'Homes & Land', property: 'Land for sale' };
-    const head = h('header', {}, h('h2', {}, titles[this.panel ?? ''] ?? ''), btn('✕', () => this.closePanel(), 'close'));
+    const head = this.panel === 'van'
+      ? h('header', {}, h('h2', {}, titles.van),
+        h('span', { class: 'head-acts' },
+          btn(this.vanHidden ? '▴ Show' : '▾ Hide', () => { this.vanHidden = !this.vanHidden; this.render(); }, 'small ghost'),
+          btn('✕', () => this.g.exitVan(), 'close')))
+      : h('header', {}, h('h2', {}, titles[this.panel ?? ''] ?? ''), btn('✕', () => this.closePanel(), 'close'));
     switch (this.panel) {
       case 'wardrobe': this.wardrobe(body); break;
       case 'bag': this.bag(body); break;
@@ -599,7 +606,7 @@ export class UI {
     }
     this.panelEl.replaceChildren(head, body);
     const sheet = this.panel === 'wardrobe' || this.panel === 'van' || this.panel === 'house';
-    this.panelEl.className = `panel show p-${this.panel}${sheet ? ' sheet' : ''}`;
+    this.panelEl.className = `panel show p-${this.panel}${sheet ? ' sheet' : ''}${this.panel === 'van' && this.vanHidden ? ' tucked' : ''}`;
     this.root.classList.toggle('sheet-open', sheet);
   }
 
@@ -932,7 +939,7 @@ export class UI {
       card.addEventListener('click', () => { const e = g.setVanSlot(slot, o.id); if (e) g.toast(e); this.render(); });
       shelf.append(card);
     }
-    body.append(shelf, h('p', { class: 'dim fine' }, 'Decorate with things you have made — each piece uses up the item. Esc to step outside.'));
+    body.append(shelf, h('p', { class: 'dim fine' }, 'Each piece uses up the item. ✕ or Esc to step outside.'));
   }
 
 

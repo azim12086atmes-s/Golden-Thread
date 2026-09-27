@@ -251,9 +251,9 @@ export class Sky {
     this.sunDisc.visible = this.sunDir.y > -0.05;
     this.moon.position.copy(this.sunDir).multiplyScalar(-3300);
     this.moon.visible = this.sunDir.y < 0.1 && !this.moonHidden;
-    // A fairy-tale sky: the stars stay out by day too, bright points against the blue.
-    this.stars.material.opacity = this.night + (1 - this.night) * 0.6;
-    this.stars.material.color.setScalar(1 + (1 - this.night) * 0.9);
+    // A fairy-tale sky: the stars stay out by day too, faint points against the blue.
+    this.stars.material.opacity = this.night + (1 - this.night) * 0.36;
+    this.stars.material.color.setScalar(1 + (1 - this.night) * 0.4);
     this.stars.rotation.y = t * 0.002;
 
     // Aurora: at night, strongest over its own land. The group follows the player, so auroras

@@ -273,7 +273,9 @@ body.cinematic #ui > .feed { opacity: 0; }
 .cinema .skip { position: absolute; inset-block-end: calc(11vh - 42px); inset-inline-end: 18px; pointer-events: auto; color: #fff4dc; }
 
 /* Bottom sheet: dressing room and van. The world stays visible above it. */
-.panel.sheet { inset-block: auto 84px; inset-inline: 12px; inline-size: auto; max-inline-size: 1100px; margin-inline: auto; max-block-size: min(42vh, 380px); transform: translateY(130%); border-radius: 20px; }
+.panel.sheet { inset-block: auto 84px; inset-inline: 12px; inline-size: auto; max-inline-size: 1100px; margin-inline: auto; max-block-size: min(42vh, 380px); transform: translateY(calc(100% + 120px)); border-radius: 20px; }
+/* A closed panel is gone: nothing peeks above the dock or catches a click. */
+.panel:not(.show) { visibility: hidden; pointer-events: none; transition: transform 0.3s cubic-bezier(0.2, 0.8, 0.2, 1), visibility 0s 0.3s; }
 .panel.sheet.show { transform: none; }
 .panel.sheet header { padding: 10px 16px 2px; }
 .panel.sheet h2 { font-size: 18px; }
@@ -298,7 +300,17 @@ body.cinematic #ui > .feed { opacity: 0; }
 .shelf { align-items: start; }
 .shelf .outfit { scroll-snap-align: start; align-content: start; padding: 8px 10px; }
 .shelf .outfit.dim { opacity: 0.55; }
-.van-shelf { grid-template-rows: auto; grid-auto-columns: 170px; }
+/* The van's menu: one short row, and it tucks down to just its title bar. */
+.van-shelf { grid-template-rows: auto; grid-auto-columns: 132px; gap: 6px; padding-block-end: 4px; }
+.van-shelf .outfit { padding: 6px 8px; }
+.panel.sheet.p-van { max-inline-size: 760px; max-block-size: min(30vh, 230px); }
+.panel.sheet.p-van header { padding: 6px 12px 0; }
+.panel.sheet.p-van h2 { font-size: 15px; }
+.panel.sheet.p-van .body { padding: 2px 12px 8px; gap: 6px; }
+.panel.sheet.p-van .chips .small { padding: 3px 9px; font-size: 12px; }
+.panel.sheet.p-van.tucked { max-block-size: none; }
+.panel.sheet.p-van.tucked .body { display: none; }
+.panel header .head-acts { display: flex; gap: 6px; align-items: center; }
 .panel .fine { font-size: 11px; }
 @media (max-height: 640px) { .shelf { grid-template-rows: auto; } .panel.sheet .fine { display: none; } }
 @media (max-width: 720px) {
