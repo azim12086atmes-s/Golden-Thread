@@ -172,7 +172,7 @@ export function fabricMaterial(pattern: Pattern, base: string, trim: string, glo
   if (glow > 0) {
     m.emissive = new THREE.Color('#ffffff');
     m.emissiveMap = pattern === 'none' ? map : paint(true);
-    m.emissiveIntensity = pattern === 'none' ? glow : 1.1;
+    m.emissiveIntensity = pattern === 'none' ? glow : 0.7;
   }
   cache.set(key, m);
   return m;

@@ -149,9 +149,9 @@ export function wingTexture(): THREE.Texture | null {
     }
     const edge = Math.sqrt(b2) - Math.sqrt(b1);
     // Thick leading, uneven in width: black, with gold down its middle.
-    const lw = 3.6 + n1(x / 34, y / 34) * 3.2;
+    const lw = 5 + n1(x / 34, y / 34) * 4;
     let c: number[];
-    if (edge < lw * 0.36) c = [238, 196, 88, 255];
+    if (edge < lw * 0.22) c = [238, 196, 88, 255];
     else if (edge < lw) c = [8, 6, 10, 255];
     else { const g = 238 + n1(x / 60 + 3, y / 60 + 7) * 17; c = [g, g, g, 150]; } // glass: white, a gentle ripple
     d[o * 4] = c[0]; d[o * 4 + 1] = c[1]; d[o * 4 + 2] = c[2]; d[o * 4 + 3] = c[3];
@@ -165,7 +165,7 @@ export function wingTexture(): THREE.Texture | null {
   const root: [number, number] = [px(0.01), py(0.3)];
   const stroke = (path: Path2D, w: number) => {
     ctx.strokeStyle = '#08060a'; ctx.lineWidth = w; ctx.stroke(path);
-    ctx.strokeStyle = '#f0c95e'; ctx.lineWidth = w * 0.38; ctx.stroke(path);
+    ctx.strokeStyle = '#f0c95e'; ctx.lineWidth = w * 0.24; ctx.stroke(path);
   };
   // Veins to the edge all round, from the leading edge over the apex to the tail.
   const from = 30, to = 21 * 10;
@@ -178,7 +178,7 @@ export function wingTexture(): THREE.Texture | null {
     const p = new Path2D();
     p.moveTo(...root);
     p.quadraticCurveTo(mx + (nx / nl) * bow, my + (ny / nl) * bow, ...end);
-    stroke(p, 13 + r() * 5);
+    stroke(p, 18 + r() * 6);
   }
   for (let i = 0; i < 8; i++) {
     const p = new Path2D(), a = r() * Math.PI, x0 = r() * W * 0.8 + W * 0.1, y0 = r() * H;
@@ -189,8 +189,8 @@ export function wingTexture(): THREE.Texture | null {
   ctx.restore();
   // The rim: thick black with gold inside it, and gold beads along the edge.
   ctx.lineJoin = 'round';
-  ctx.strokeStyle = '#08060a'; ctx.lineWidth = 18; ctx.stroke(shape);
-  ctx.strokeStyle = '#f2cf6a'; ctx.lineWidth = 6; ctx.stroke(shape);
+  ctx.strokeStyle = '#08060a'; ctx.lineWidth = 24; ctx.stroke(shape);
+  ctx.strokeStyle = '#f2cf6a'; ctx.lineWidth = 5; ctx.stroke(shape);
   ctx.fillStyle = '#ffe49a';
   for (let i = 4; i < OUTLINE.length - 4; i += 7) {
     const [u, v] = OUTLINE[i];
@@ -265,12 +265,12 @@ const FRAG = /* glsl */ `
       float r = length((vUv - vec2(0.0, 0.3)) * vec2(1.0, 2.0));
       float t = smoothstep(0.08, 1.6, r);
       float h = mod(330.0 + 310.0 * t, 360.0) / 360.0;
-      col = hsl(h, 0.85, mix(0.72, 0.58, t)) * c.r;
+      col = hsl(h, 1.0, mix(0.6, 0.5, t)) * c.r;
       // Glitter twinkling in the glass.
       vec2 cell = floor(vUv * vec2(70.0, 160.0));
       float g = hash(cell), tw = pow(max(0.0, sin(uTime * 2.6 + g * 40.0)), 18.0) * step(0.9, g);
       col += vec3(1.0, 0.85, 0.95) * tw * 1.3;
-      a = 0.55;
+      a = 0.68;
     } else {
       col = c.rgb;
       a = 1.0;
@@ -278,11 +278,11 @@ const FRAG = /* glsl */ `
     // A soft light slides slowly across.
     float band = fract(vUv.x * 0.5 + vUv.y * 0.8 - uTime * 0.06);
     col += col * smoothstep(0.1, 0.0, abs(band - 0.5)) * 0.35;
-    gl_FragColor = vec4(col * vShade * 1.12, a);
+    gl_FragColor = vec4(col * vShade, a);
   }
 `;
 
-const GLITTER = 220;
+const GLITTER = 150;
 
 /** The pair of wings, hinged at her back, with glitter drifting off them. Call `update` every frame. */
 export class Wings {
@@ -314,7 +314,7 @@ export class Wings {
     }
     // Glitter: pink, gold and white sparks shed from the glass, drifting down and away.
     const pos = new Float32Array(GLITTER * 3), col = new Float32Array(GLITTER * 3);
-    const tints = [[1, 0.55, 0.8], [1, 0.85, 0.45], [1, 1, 1], [0.9, 0.6, 1]];
+    const tints = [[0.8, 0.35, 0.6], [0.8, 0.65, 0.3], [0.75, 0.75, 0.75], [0.65, 0.4, 0.8]];
     const r = rng(501);
     for (let i = 0; i < GLITTER; i++) {
       const tnt = tints[i % tints.length];
@@ -325,7 +325,7 @@ export class Wings {
     pg.setAttribute('position', new THREE.BufferAttribute(pos, 3));
     pg.setAttribute('color', new THREE.BufferAttribute(col, 3));
     const spark = sparkTexture();
-    this.glitter = new THREE.Points(pg, new THREE.PointsMaterial({ size: 0.09, map: spark, vertexColors: true, transparent: true, depthWrite: false, blending: THREE.AdditiveBlending, sizeAttenuation: true }));
+    this.glitter = new THREE.Points(pg, new THREE.PointsMaterial({ size: 0.065, map: spark, vertexColors: true, transparent: true, depthWrite: false, blending: THREE.AdditiveBlending, sizeAttenuation: true }));
     this.glitter.userData.part = 'wing';
     this.glitter.frustumCulled = false;
     this.group.add(this.glitter);
@@ -335,7 +335,7 @@ export class Wings {
   private rnd = rng(733);
   private newGrain(r: () => number, age = 0) {
     let u = 0.5, v = 0.6;
-    for (let k = 0; k < 20; k++) { u = r(); v = r(); if (onWing(u, v)) break; }
+    for (let k = 0; k < 30; k++) { u = 0.3 + r() * 0.7; v = r(); if (onWing(u, v)) break; }
     return { x: u * WING_W, y: v * WING_H, side: r() < 0.5 ? 1 : -1, age, life: 2 + r() * 2.5, vy: -0.15 - r() * 0.3, vo: 0.05 + r() * 0.15 };
   }
 
