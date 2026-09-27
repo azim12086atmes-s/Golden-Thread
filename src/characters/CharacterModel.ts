@@ -27,14 +27,6 @@ function mat(color: string, glow = false): THREE.Material {
   return m;
 }
 
-/** A gem that catches the light and shines a little, without a glow round it. */
-function softGem(c: THREE.Color): THREE.Material {
-  const key = `gem:${c.getHexString()}`;
-  let m = matCache.get(key);
-  if (!m) { m = new THREE.MeshStandardMaterial({ color: c, emissive: c, emissiveIntensity: 0.28, roughness: 0.25, metalness: 0.3 }); matCache.set(key, m); }
-  return m;
-}
-
 /** Fabric that glows softly from within (for a gown that should shine at night). */
 function glowingFabric(color: string, k: number): THREE.Material {
   const key = `${color}:e${k}`;
@@ -818,13 +810,6 @@ export class CharacterModel {
         if (merged) g.add(mesh(merged, col, 'headwear', glow === '1'));
       }
     }
-    // Her crown's gems shine gently rather than glow (owner: less glow at her head).
-    if (grand) g.traverse((x) => {
-      const mm = x as THREE.Mesh;
-      if (!mm.isMesh || !(mm.material as THREE.Material & { isMeshBasicMaterial?: boolean }).isMeshBasicMaterial) return;
-      const c = (mm.material as THREE.MeshBasicMaterial).color.clone().multiplyScalar(1 / 1.6);
-      mm.material = softGem(c);
-    });
     this.crown = g;
     this.head.add(g);
   }

@@ -437,7 +437,8 @@ export class Game {
 
     this.trav.updateCamera(this.camera, dt);
     this.cutscene?.update(dt, this.camera);
-    const glow = 0.25 + this.sky.night * 2.6;
+    // A soft light round each of them after dark (owner: gentle — not radiating from them).
+    const glow = 0.1 + this.sky.night * 0.9;
     [this.trav.girl, this.trav.boy].forEach((m, i) => {
       this.auras[i].position.copy(m.root.position).add(new THREE.Vector3(0, 1.3, 0));
       this.auras[i].intensity = glow;
