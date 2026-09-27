@@ -1,7 +1,9 @@
 # Physical models — requirements for Codex / ChatGPT (3D side), 2026-09-27
 
-> **Access**: repository https://github.com/azim12086atmes-s/Golden-Thread — branch `claudes-current-work`
-> (create your own `3d-builds` branch from it). Start by reading `CLAUDE.md`, then this file.
+> **Access**: repository https://github.com/azim12086atmes-s/Golden-Thread. The source is on branch
+> `claudes-current-work` (set it as the repository's default branch so Codex opens it; `gh-pages` is only the compiled
+> website). Work on your own branch and open a pull request into `claudes-current-work`. Start by reading `CLAUDE.md`,
+> then this file. Setup script for the environment: `npm ci`.
 
 **Division of work.** ChatGPT builds the **physical models** (everything you see). Claude builds the **logic** (game rules,
 state, UI, placement, wiring, tests) and calls the models through the contracts below. Neither side edits the other's
@@ -13,8 +15,9 @@ then this file. Master checklist: `docs/team/handoffs/MASTER_BUILD_LIST.md`.
 
 ## 0. Working agreement
 
-- **Branch**: work on `3d-builds`, created from `claudes-current-work`; merge `claudes-current-work` into it often. The
-  owner decides when it is merged back. Never rewrite history, never force-push.
+- **Branch**: work on your own branch (e.g. `3d-builds`, which already exists) created from `claudes-current-work`; merge
+  `claudes-current-work` into it often; open a pull request into `claudes-current-work` — Claude reviews and merges. Never
+  rewrite history, never force-push.
 - **Files you own** (edit freely): `src/world/architecture.ts` (landmark and house builders, `lampPost`, street props),
   `src/world/traditions.ts`, `src/world/facade.ts`, `src/world/kit.ts` (add primitives; never change existing ones'
   behaviour), `src/world/trees.ts` (species habits), `src/world/lanterns.ts`, `src/world/SkyOrnaments.ts`,
@@ -232,6 +235,24 @@ Several traditional roofs were rotated wrongly and have been fixed in `tradition
 inverted V), the snow igloo's entrance tunnel (was upside down), the Nubian barrel vaults (faced sideways) and the curved
 Bengal-style roofs on jharokhas and Mughal pavilions (faced forward). Check other rotated half-cylinders and arcs you
 write: a `CylinderGeometry` half (thetaLength π) must be turned so its curve faces up.
+
+## 17. Particles and sky effects (NEW)
+
+Particle and sky systems live in `src/world/Weather.ts`, `Ambience.ts`, `RegionFX.ts`, `SkyFX.ts`, `SkyOrnaments.ts`,
+`SkyLanterns.ts` (you may edit these; keep their public methods). Keep particle counts modest (a few hundred per effect).
+- **Flames and embers** for the new lighting (§4): flickering flames on diyas, oil lamps, torches and tent lamps, rising
+  embers from fires; small, additive, brighter at night.
+- **Waterfall mist and spray** where water pours off the Sky Isles' floating islands (§8) and at river weirs.
+- **Caves** (§15): drifting dust and occasional drips at sandstone and rock cave mouths; frost sparkle and cold mist at ice
+  caverns.
+- **Lantern festival** over Jade Terraces: hundreds of kongming lanterns rising and drifting at dusk (`SkyLanterns.ts`).
+- **Koinobori** carp streamers on poles in Sakura Hollow; **Diwali lantern strings** over Gulabi Nagar's streets; **penjor**
+  arches in Nusa Rinjani; **kites** over Bagh-e-Noor; **balloon clusters** drifting in every sky (§10).
+- **Wind in cloth**: robes, headscarves and dupattas swaying with the wind (`wind.ts` `currentWind`) — capes already
+  ripple; keep every garment modest and never detach it. (Characters are shared ground: coordinate under Contract
+  requests before editing `CharacterModel.ts`.)
+- Time-of-day behaviour of sky traffic (kites and balloons by day, lantern boats at dusk, quieter nights) and aircraft
+  landing at airfields are **logic** (Claude) — tell Claude if a design needs extra pieces for them.
 
 ---
 
