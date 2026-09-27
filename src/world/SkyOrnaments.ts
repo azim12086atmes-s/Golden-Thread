@@ -364,12 +364,12 @@ export class SkyOrnaments {
     }
     // Rainbow arcs round the horizon: full colour by day, pale moonbows at night.
     {
-      const s = L.rainbowArcs * (day * (1 - dusk * 0.5) + night * 0.45);
+      const s = L.rainbowArcs * (day * (1 - dusk * 0.5) + night * 0.8);
       const base = Math.atan2(-sunDir.z, -sunDir.x);
       this.arcs.forEach((m, i) => {
         m.visible = s > 0.01;
         m.material.uniforms.strength.value = s * (i === 0 ? 1 : 0.75);
-        m.material.uniforms.pale.value = night * 0.8;
+        m.material.uniforms.pale.value = night;
         const a = base + [1.25, 2.6, -1.4][i], d = [1250, 1350, 1150][i];
         m.position.set(Math.cos(a) * d, focus.y - 70, Math.sin(a) * d);
         m.rotation.set(0, Math.atan2(-Math.cos(a), -Math.sin(a)), 0);

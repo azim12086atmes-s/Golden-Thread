@@ -231,7 +231,8 @@ export class AnimalModel {
     }
     // The head: detached. Direction of detachment is along the neck (or forward).
     const dir = s.neck ? new THREE.Vector3(0, Math.cos(0.55), Math.sin(0.55)) : new THREE.Vector3(0, 0.35, 1).normalize();
-    this.headBase.copy(headAnchor).addScaledVector(dir, ANIMAL_HEAD_GAP + s.headR);
+    // Floating clear of the neck, with air under the jaw.
+    this.headBase.copy(headAnchor).addScaledVector(dir, ANIMAL_HEAD_GAP + s.headR * 1.45).add(new THREE.Vector3(0, s.headR * 0.25, 0));
     this.head.position.copy(this.headBase);
     body.add(this.head);
 

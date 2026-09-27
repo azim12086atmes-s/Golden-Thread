@@ -302,7 +302,7 @@ export class Festivities {
       a.material.uniforms.t.value = t;
       a.material.uniforms.strength.value = L * Math.max(0.35, night);
     }
-    for (const r of this.rainbows) r.material.uniforms.strength.value = L * 0.85;
+    for (const r of this.rainbows) { r.material.uniforms.strength.value = L * 0.85; r.material.uniforms.pale.value = night; }
     {
       const col = this.glitter.geometry.attributes.color as THREE.BufferAttribute, b = this.glitterBase;
       for (let i = 0; i < col.count; i++) {

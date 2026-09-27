@@ -410,13 +410,15 @@ export class SkyFX {
 
     // Rainbows stand opposite the sun.
     {
-      const s = L.rainbow * day * (1 - dusk * 0.6) * (sunDir.y > 0 ? 1 : 0);
-      const h = tmpP.set(-sunDir.x, 0, -sunDir.z);
+      // Rainbows stand opposite the sun by day; moonbows opposite the moon by night.
+      const s = L.rainbow * (day * (1 - dusk * 0.6) * (sunDir.y > 0 ? 1 : 0) + night * 0.75);
+      const h = night > 0.5 ? tmpP.set(sunDir.x, 0, sunDir.z) : tmpP.set(-sunDir.x, 0, -sunDir.z);
       if (h.lengthSq() < 1e-4) h.set(0, 0, -1);
       h.normalize();
       for (const r of this.rainbows) {
         r.visible = s > 0.01;
         r.material.uniforms.strength.value = s;
+        r.material.uniforms.pale.value = night;
         r.position.set(h.x * 1150, focus.y - 90, h.z * 1150);
         r.rotation.set(0, Math.atan2(-h.x, -h.z), 0);
       }

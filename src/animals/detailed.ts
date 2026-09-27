@@ -224,7 +224,8 @@ export function buildDetailed(
   }
   const anchor = new THREE.Vector3(0, neckLen, 0).applyEuler(neck.rotation).add(neck.position);
   const dir = new THREE.Vector3(0, Math.cos(tilt), Math.sin(tilt));
-  const headBase = anchor.clone().addScaledVector(dir, ANIMAL_HEAD_GAP + headR);
+  // The head floats clear of the neck: out along it and lifted a little, so there is air under the jaw too.
+  const headBase = anchor.clone().addScaledVector(dir, ANIMAL_HEAD_GAP + headR * 1.45).add(new THREE.Vector3(0, headR * 0.25, 0));
 
   buildHead(pf, id, part, head, headR, c, accent, light, dims.snout ?? 0.12);
 
@@ -558,7 +559,7 @@ export function buildBird(
   neck.rotation.x = tilt;
   body.add(neck);
   const anchor = new THREE.Vector3(0, neckLen, 0).applyEuler(neck.rotation).add(neck.position);
-  const headBase = anchor.addScaledVector(new THREE.Vector3(0, Math.cos(tilt), Math.sin(tilt)), ANIMAL_HEAD_GAP + headR);
+  const headBase = anchor.addScaledVector(new THREE.Vector3(0, Math.cos(tilt), Math.sin(tilt)), ANIMAL_HEAD_GAP + headR * 1.45).add(new THREE.Vector3(0, headR * 0.25, 0));
   const skull = part(new THREE.SphereGeometry(headR, 10, 8), id === 'peacock' ? '#1f5a9a' : c, 'head', glow);
   skull.scale.set(0.9, 1, 1.1);
   head.add(skull);

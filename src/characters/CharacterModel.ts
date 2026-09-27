@@ -14,7 +14,7 @@ function mat(color: string, glow = false): THREE.Material {
   if (!m) {
     m = glow
       ? new THREE.MeshBasicMaterial({ color: new THREE.Color(color).multiplyScalar(1.6), toneMapped: false })
-      : new THREE.MeshStandardMaterial({ color, flatShading: true, roughness: 0.85, side: THREE.DoubleSide });
+      : new THREE.MeshStandardMaterial({ color, roughness: 0.85, side: THREE.DoubleSide });
     matCache.set(key, m);
   }
   return m;
@@ -25,7 +25,7 @@ function glowingFabric(color: string, k: number): THREE.Material {
   const key = `${color}:e${k}`;
   let m = matCache.get(key);
   if (!m) {
-    m = new THREE.MeshStandardMaterial({ color, flatShading: true, roughness: 0.6, side: THREE.DoubleSide, emissive: new THREE.Color(color), emissiveIntensity: k });
+    m = new THREE.MeshStandardMaterial({ color, roughness: 0.6, side: THREE.DoubleSide, emissive: new THREE.Color(color), emissiveIntensity: k });
     matCache.set(key, m);
   }
   return m;
@@ -39,6 +39,24 @@ function mesh(geo: THREE.BufferGeometry, color: string, part: Part, glow = false
 }
 
 const SKIRTS: string[] = ['skirt', 'straight-skirt', 'hakama', 'wrap'];
+
+/** A turned shape from (radius, y) pairs, bottom to top. */
+const lathe = (prof: number[][], seg = 12) => new THREE.LatheGeometry(prof.map(([r, y]) => new THREE.Vector2(r, y)), seg);
+
+/**
+ * A trouser leg shaped like a leg inside loose cloth: full through the thigh, easing in at the
+ * knee, a rounded calf and a narrow ankle (salwar stays full to a gathered cuff). Top at y = 0.
+ */
+function trouserLeg(hip: number, loose: boolean): THREE.BufferGeometry {
+  return lathe(loose
+    ? [[0.058, -hip], [0.07, -hip + 0.05], [0.108, -hip + 0.26], [0.118, -hip * 0.45], [0.112, -0.1], [0.104, 0]]
+    : [[0.056, -hip], [0.06, -hip + 0.07], [0.072, -hip + 0.26], [0.066, -hip * 0.52], [0.082, -hip * 0.34], [0.094, -0.08], [0.09, 0]]);
+}
+
+/** A fitted sleeve that follows the arm: shoulder, upper arm, elbow, forearm, wrist. Top at y = 0. */
+function fittedSleeve(len: number): THREE.BufferGeometry {
+  return lathe([[0.047, -len], [0.052, -len + 0.08], [0.06, -len * 0.62], [0.058, -len * 0.5], [0.07, -len * 0.3], [0.077, -0.06], [0.068, 0]], 10);
+}
 const RAINBOW = ['#ff6b8b', '#ffb347', '#fff27a', '#7dffa8', '#6bc8ff', '#b99bff'];
 
 /** A trouser leg that is looser through the thigh and opens below the knee. Top at y = 0. */
@@ -152,13 +170,15 @@ export class CharacterModel {
     b.scale.setScalar(this.scale);
 
     // Legs — always covered to the ankle (modesty invariant): trousers are the base layer.
-    const legGeo = o.detail?.legs ? flaredLeg(o.detail.legs, D.hip) : new THREE.CylinderGeometry(o.lower === 'salwar' ? 0.1 : 0.075, o.lower === 'salwar' ? 0.06 : 0.07, D.hip, 7);
-    if (!o.detail?.legs) legGeo.translate(0, -D.hip / 2, 0);
+    const legGeo = o.detail?.legs ? flaredLeg(o.detail.legs, D.hip) : trouserLeg(D.hip, o.lower === 'salwar');
     for (const [leg, x] of [[this.legL, -0.1], [this.legR, 0.1]] as const) {
       leg.position.set(x, D.hip, 0);
       leg.add(mesh(legGeo.clone(), o.underTrousers, 'leg'));
-      const foot = mesh(new THREE.BoxGeometry(0.11, 0.07, 0.2), '#3a2a22', 'foot');
-      foot.position.set(0, -D.hip + 0.035, 0.04);
+      // A rounded shoe: toe cap and heel.
+      const shoe = new THREE.SphereGeometry(0.06, 10, 6);
+      shoe.scale(0.95, 0.62, 1.9);
+      const foot = mesh(shoe, '#3a2a22', 'foot');
+      foot.position.set(0, -D.hip + 0.036, 0.045);
       leg.add(foot);
       b.add(leg);
     }
@@ -177,8 +197,10 @@ export class CharacterModel {
     }
 
     // Torso, and the long body of the top if it has one.
-    const torso = new THREE.CylinderGeometry(0.19, 0.17, D.shoulder - D.waist + 0.06, 10);
-    torso.translate(0, (D.shoulder + D.waist) / 2, 0);
+    // A body shape under the cloth: waist, ribs, a fuller chest and rounded shoulders, oval in section.
+    const w = D.waist, sh = D.shoulder;
+    const torso = lathe([[0.168, w - 0.03], [0.16, w + 0.05], [0.172, w + 0.18], [0.19, sh - 0.14], [0.196, sh - 0.06], [0.175, sh + 0.01], [0.1, sh + 0.05]], 14);
+    torso.scale(1, 1, 0.8);
     b.add(mesh(torso, o.topColor, 'torso'));
     const shoulders = new THREE.SphereGeometry(0.2, 10, 6, 0, Math.PI * 2, 0, Math.PI / 2);
     shoulders.scale(1.1, 0.35, 0.8);
@@ -229,8 +251,9 @@ export class CharacterModel {
       arm.position.set(s * 0.24, D.shoulder - 0.02, 0);
       const len = 0.58;
       const rEnd = o.sleeveShape === 'wide' ? 0.17 : o.sleeveShape === 'bell' ? 0.12 : 0.065;
-      const sleeve = new THREE.CylinderGeometry(0.075, rEnd, len, 8, 1, o.sleeveShape !== 'fitted');
-      sleeve.translate(0, -len / 2, 0);
+      let sleeve: THREE.BufferGeometry;
+      if (o.sleeveShape === 'fitted') sleeve = fittedSleeve(len);
+      else { sleeve = new THREE.CylinderGeometry(0.075, rEnd, len, 10, 1, true); sleeve.translate(0, -len / 2, 0); }
       const outerColor = o.merged.includes('full sleeves') ? o.topColor : o.topColor;
       arm.add(mesh(sleeve, outerColor, 'sleeve'));
       if (o.merged.includes('full sleeves')) {
@@ -254,9 +277,16 @@ export class CharacterModel {
           arm.add(bt);
         }
       }
-      const hand = mesh(new THREE.SphereGeometry(0.05, 6, 5), this.skin, 'hand');
-      hand.position.y = -len - 0.03;
+      // A hand: a flattened palm with the fingers together, and a thumb.
+      const palm = new THREE.SphereGeometry(0.05, 10, 8);
+      palm.scale(0.78, 1.45, 0.5);
+      const hand = mesh(palm, this.skin, 'hand');
+      hand.position.y = -len - 0.05;
       arm.add(hand);
+      const thumb = mesh(new THREE.SphereGeometry(0.018, 8, 6).scale(1, 1.8, 1), this.skin, 'hand');
+      thumb.position.set(-s * 0.012, -len - 0.035, 0.03);
+      thumb.rotation.x = 0.5;
+      arm.add(thumb);
       arm.rotation.z = s * 0.12;
       b.add(arm);
     }

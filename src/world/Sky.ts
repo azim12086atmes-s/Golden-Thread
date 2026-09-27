@@ -272,8 +272,10 @@ export class Sky {
     const mc = regionCenter(REGION_BY_ID.meadow);
     const mNear = 1 - smoothstep(400, 1100, Math.hypot(focus.x - mc.x, focus.z - mc.z));
     for (const r of this.rainbows) {
-      r.material.uniforms.strength.value = (1 - this.night) * mNear;
-      r.visible = mNear > 0.01 && this.night < 0.9;
+      // By day rainbows; after dark they glow on as moonbows.
+      r.material.uniforms.strength.value = Math.max(1 - this.night, 0.75) * mNear;
+      r.material.uniforms.pale.value = this.night;
+      r.visible = mNear > 0.01;
       r.position.x = r.userData.wx ?? (r.userData.wx = r.position.x);
       r.position.z = r.userData.wz ?? (r.userData.wz = r.position.z);
       r.position.x -= focus.x;
@@ -365,8 +367,9 @@ export function rainbowMaterial(opts: { k?: number; flip?: number } = {}): THREE
         float rays = 0.62 + 0.38 * vn(x * 110.0 + t * 0.5) * (0.6 + 0.4 * vn(x * 27.0 - t * 0.2 + 5.0));
         float drift = 0.72 + 0.28 * sin(x * 14.0 - t * 0.3);
         float ends = smoothstep(0.0, 0.2, x) * smoothstep(1.0, 0.8, x);
-        c = mix(c, vec3(0.82, 0.88, 1.0), pale * 0.8);
-        float a = (body * rays * drift + sup * c01) * ends * strength * k;
+        // Moonbows: a touch silvery, and glowing against the dark sky.
+        c = mix(c, vec3(0.82, 0.88, 1.0), pale * 0.45) * (1.0 + pale * 0.9);
+        float a = (body * rays * drift + sup * c01) * ends * strength * k * (1.0 + pale * 0.5);
         gl_FragColor = vec4(c * 1.35 + vec3(0.06), min(1.0, a * 0.95));
       }`,
   });
