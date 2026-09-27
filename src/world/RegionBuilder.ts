@@ -186,7 +186,8 @@ export function buildRegion(spec: RegionSpec, solid: THREE.Material, glowMat: TH
     const ry = Math.abs(x) < Math.abs(z) ? (x > 0 ? -Math.PI / 2 : Math.PI / 2) : z > 0 ? Math.PI : 0;
     let fp = { r: 4, h: 6 };
     const hs = houseScale(spec.id);
-    const variant = LAND_STYLE[spec.id].kinds.length > 0 && spec.id !== 'desert' && spec.id !== 'aurora' && spec.id !== 'skyisles' && rng.chance(VARIANT_SHARE);
+    // New Yonder builds only its own solarpunk New York types; other lands mix in generic variants.
+    const variant = LAND_STYLE[spec.id].kinds.length > 0 && spec.id !== 'desert' && spec.id !== 'aurora' && spec.id !== 'skyisles' && spec.id !== 'newyork' && rng.chance(VARIANT_SHARE);
     g.frame(x, y, z, ry, hs, () => glow.frame(x, y, z, ry, hs, () => { fp = variant ? buildVariant(ctx) : buildHouse(ctx); if (variant) houseDecor(ctx, fp); }));
     const kind = (fp as { kind?: string }).kind ?? 'house';
     fp = { r: fp.r * hs, h: fp.h * hs };

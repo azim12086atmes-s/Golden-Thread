@@ -78,11 +78,7 @@ export const SURFACE_GLSL = /* glsl */ `
     }
     return vec2(sh1(best), d2 - d1);
   }
-  vec2 surface(float id, vec3 wp, vec3 wn) {
-    vec3 an = abs(wn);
-    bool level = an.y > max(an.x, an.z);
-    // Walls: along the wall and up; flat and sloping faces: across the ground.
-    vec2 st = level ? wp.xz : (an.x > an.z ? vec2(wp.z, wp.y) : vec2(wp.x, wp.y));
+  vec2 surfaceRaw(float id, vec2 st) {
     float n = sfbm(st * 3.0);
     if (id < 0.5) return vec2(1.0, 0.0);
     if (id < 1.5) { vec2 b = courses(st, vec2(0.24, 0.075), 0.5, 0.012, 0.3); return vec2(b.x * (0.94 + n * 0.1), b.y); }        // brick
@@ -108,4 +104,24 @@ export const SURFACE_GLSL = /* glsl */ `
     if (id < 17.5) { float w = step(0.5, fract(st.x * 25.0)) * step(0.5, fract(st.y * 25.0)) + step(fract(st.x * 25.0), 0.5) * step(fract(st.y * 25.0), 0.5); float stripe = step(0.82, fract(st.y / 0.45));
       return vec2((0.9 + w * 0.1) * (1.0 - stripe * 0.35), 0.0); } // woven cloth with stripes
     vec2 b = courses(st, vec2(0.55, 0.32), 0.5, 0.02, 0.06); return vec2(b.x, b.y * 0.5); // snow blocks
+  }
+  // The size of each surface's smallest repeating detail (metres), for fading it out before it aliases.
+  float surfacePeriod(float id) {
+    if (id < 1.5) return 0.075; if (id < 2.5) return 0.31; if (id < 3.5) return 0.19; if (id < 4.5) return 0.1;
+    if (id < 5.5) return 0.17; if (id < 6.5) return 0.19; if (id < 7.5) return 0.05; if (id < 8.5) return 0.19;
+    if (id < 9.5) return 0.19; if (id < 10.5) return 0.6; if (id < 11.5) return 1.2; if (id < 12.5) return 0.05;
+    if (id < 13.5) return 0.5; if (id < 14.5) return 0.2; if (id < 15.5) return 0.44; if (id < 16.5) return 0.15;
+    if (id < 17.5) return 0.04; return 0.32;
+  }
+  vec2 surface(float id, vec3 wp, vec3 wn) {
+    vec3 an = abs(wn);
+    bool level = an.y > max(an.x, an.z);
+    // Walls: along the wall and up; flat and sloping faces: across the ground.
+    vec2 st = level ? wp.xz : (an.x > an.z ? vec2(wp.z, wp.y) : vec2(wp.x, wp.y));
+    // How many metres one pixel covers here; the pattern fades once its detail nears a pixel.
+    float px = max(length(dFdx(st)), length(dFdy(st)));
+    float per = surfacePeriod(id);
+    float aa = 1.0 - smoothstep(per * 0.12, per * 0.4, px);
+    if (aa < 0.01) return vec2(1.0, 0.0);
+    return mix(vec2(1.0, 0.0), surfaceRaw(id, st), aa);
   }`;

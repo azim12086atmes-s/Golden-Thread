@@ -178,24 +178,12 @@ const houses: Record<RegionId, HouseFn> = {
   },
 
   newyork(c) {
-    const wall = pick(c, c.s.walls);
-    const w = c.rng.range(12, 20), d = c.rng.range(12, 20);
-    const h = c.rng.chance(0.3) ? c.rng.range(70, 130) : c.rng.range(22, 60);
-    box(c.g, w, h, d, wall);
-    for (let y = 4; y < h - 2; y += 3.4) box(c.glow, w + 0.08, 0.7, d + 0.08, NY_WINDOW, 0, y, 0);
-    box(c.g, w + 0.6, 0.6, d + 0.6, '#3a3a44', 0, h, 0);
-    if (h > 60) {
-      box(c.g, w * 0.7, h * 0.12, d * 0.7, wall, 0, h, 0);
-      for (let y = h + 2; y < h * 1.12 - 1; y += 3.4) box(c.glow, w * 0.7 + 0.08, 0.7, d * 0.7 + 0.08, NY_WINDOW, 0, y, 0);
-    } else if (c.rng.chance(0.6)) {
-      for (const [x, z] of [[-w / 4, -d / 4], [w / 5, d / 5]]) {
-        for (const [a, b] of [[-0.8, -0.8], [0.8, -0.8], [-0.8, 0.8], [0.8, 0.8]]) cyl(c.g, 0.1, 0.1, 2, '#3a3a3a', x + a, h, z + b, 4);
-        cyl(c.g, 1.4, 1.4, 2.4, '#8a5a3a', x, h + 2, z, 10);
-        cone(c.g, 1.5, 1, '#5a3a2a', x, h + 4.4, z, 10);
-      }
-    }
-    box(c.glow, w * 0.5, 3, 0.1, '#fff6d8', 0, 0, d / 2 + 0.05);
-    return { r: Math.max(w, d) * 0.6, h: h > 60 ? h * 1.12 : h + 4 };
+    // New Yonder: New York grown solarpunk. Four kinds of building, each after a real type.
+    const k = c.rng.next();
+    if (k < 0.3) return nyDecoTower(c);
+    if (k < 0.55) return nyGlassTower(c);
+    if (k < 0.8) return nyBrownstone(c);
+    return nyLoft(c);
   },
 
   renaissance(c) {
@@ -382,6 +370,165 @@ const houses: Record<RegionId, HouseFn> = {
     return { r: 3.8, h: 7.2 };
   },
 };
+
+
+/* ------------------------------------------------------------------------------------------------
+ * New Yonder: cyber-solarpunk New York. Limestone, brownstone, brick, steel and glass (their wall
+ * colours carry those surfaces), dressed with the things a green city of the future would add:
+ * solar skins and crowns, vertical gardens, sky gardens with real trees, wind turbines, neon.
+ * --------------------------------------------------------------------------------------------- */
+const NY = { limestone: '#b8b2a6', brownstone: '#8a7a6a', steel: '#c9c2b5', glass: '#6a7a8a', brick: '#a0522d' };
+const NEON = ['#3ae8ff', '#ff3ad8', '#7aff9a', '#ffd23a'];
+const SOLAR = '#1d3566', SOLAR_FRAME = '#c9ccd6', IRON = '#1f1f24', LEAF = '#4f9a4a';
+
+/** A field of tilted solar panels on a roof (w × d, at height y). */
+function solarField(c: Ctx, w: number, d: number, y: number): void {
+  for (let x = -w / 2 + 1; x < w / 2 - 0.8; x += 1.9) {
+    for (let z = -d / 2 + 1; z < d / 2 - 0.8; z += 1.5) {
+      c.g.add(new THREE.BoxGeometry(1.7, 0.06, 1.1).translate(0, 0.35, 0), SOLAR, M(x, y, z, 0, 1, 1, 1, -0.45));
+      box(c.g, 0.06, 0.4, 0.06, SOLAR_FRAME, x, y, z + 0.35);
+    }
+  }
+}
+
+/** Green walls: climbers hanging down a face (+z face of a w-wide wall, from y0 up to y1). */
+function greenWall(c: Ctx, w: number, zFace: number, y0: number, y1: number): void {
+  for (let x = -w / 2 + 0.6; x < w / 2 - 0.4; x += 1.1 + c.rng.next() * 0.8) {
+    const len = (y1 - y0) * (0.4 + c.rng.next() * 0.6);
+    box(c.g, 0.5, len, 0.12, c.rng.chance(0.5) ? LEAF : '#5cae52', x, y1 - len, zFace + 0.07);
+  }
+  box(c.g, w, 0.4, 0.6, '#6b5a4a', 0, y1 - 0.4, zFace + 0.3); // the planter they grow from
+}
+
+/** A garden terrace: planters and small real trees along a roof edge. */
+function skyGarden(c: Ctx, w: number, d: number, y: number): void {
+  box(c.g, w, 0.5, 1.2, '#6b5a4a', 0, y, d / 2 - 0.6);
+  for (let x = -w / 2 + 1.5; x < w / 2 - 1; x += 3.2) tree(c.g, c.rng.pick(['oak', 'maple', 'birch'] as const), x, y + 0.5, d / 2 - 0.6, 0.45 + c.rng.next() * 0.2, () => c.rng.next());
+}
+
+/** Neon trim round a setback's edge. */
+function neonEdge(c: Ctx, w: number, d: number, y: number, col: string): void {
+  box(c.glow, w + 0.12, 0.12, 0.12, col, 0, y, d / 2 + 0.06);
+  box(c.glow, w + 0.12, 0.12, 0.12, col, 0, y, -d / 2 - 0.06);
+  box(c.glow, 0.12, 0.12, d + 0.12, col, w / 2 + 0.06, y, 0);
+  box(c.glow, 0.12, 0.12, d + 0.12, col, -w / 2 - 0.06, y, 0);
+}
+
+/** A vertical-axis wind turbine on a roof. */
+function turbine(c: Ctx, x: number, y: number, z: number, h: number): void {
+  cyl(c.g, 0.08, 0.1, h, SOLAR_FRAME, x, y, z, 5);
+  for (let i = 0; i < 3; i++) {
+    const a = (i / 3) * Math.PI * 2;
+    c.g.add(new THREE.BoxGeometry(0.08, h * 0.5, 0.5).translate(0, h * 0.25, 0), '#e8eaf0', M(x + Math.cos(a) * 0.55, y + h * 0.45, z + Math.sin(a) * 0.55, -a, 1, 1, 1, 0, 0.25));
+  }
+}
+
+/** Glowing window bands on all four faces. */
+function bands(c: Ctx, w: number, d: number, y0: number, y1: number, step = 3.4): void {
+  for (let y = y0 + 3; y < y1 - 1.5; y += step) box(c.glow, w + 0.08, 0.6, d + 0.08, NY_WINDOW, 0, y, 0);
+}
+
+/** Art-deco setback tower (after the Chrysler and Empire State): limestone and glass tiers. */
+function nyDecoTower(c: Ctx): Footprint {
+  let w = c.rng.range(16, 22), d = w * c.rng.range(0.8, 1), y = 0;
+  const tiers = c.rng.int(3, 5), neon = c.rng.pick(NEON);
+  const base = w;
+  for (let t = 0; t < tiers; t++) {
+    const h = c.rng.range(14, 26) * (1 - t * 0.12);
+    box(c.g, w, h, d, t % 2 ? NY.glass : NY.limestone, 0, y, 0);
+    // Deco piers up the front.
+    for (let x = -w / 2 + 1; x <= w / 2 - 1; x += w / 5) box(c.g, 0.5, h, 0.5, NY.limestone, x, y, d / 2 + 0.2);
+    bands(c, w, d, y, y + h);
+    y += h;
+    box(c.g, w + 0.6, 0.5, d + 0.6, NY.steel, 0, y - 0.5, 0);
+    neonEdge(c, w, d, y - 0.2, neon);
+    const nw = w * 0.74, nd = d * 0.74;
+    if (t < tiers - 1) {
+      skyGarden(c, w, d, y);
+      solarField(c, (w - nw) / 2 - 0.5, d * 0.7, y);
+    }
+    w = nw; d = nd;
+  }
+  // A crown of solar fins and a spire.
+  for (let i = 0; i < 8; i++) c.g.frame(0, y, 0, (i / 8) * Math.PI * 2, 1, () => box(c.g, 0.25, 6, w * 0.5, SOLAR, 0, 0, w * 0.25));
+  cone(c.g, 1.2, 16, '#e0e0ea', 0, y, 0, 8);
+  box(c.glow, 0.3, 0.3, 0.3, '#ff3a3a', 0, y + 16, 0);
+  box(c.glow, base * 0.5, 3, 0.1, '#fff6d8', 0, 0, base * 0.45 + 0.4);
+  return { r: base * 0.62, h: y + 16 };
+}
+
+/** Glass tower with steel diagonal bracing, sky gardens, turbines and a holographic billboard. */
+function nyGlassTower(c: Ctx): Footprint {
+  const w = c.rng.range(14, 20), d = c.rng.range(14, 20), h = c.rng.range(60, 120);
+  box(c.g, w, h, d, NY.glass);
+  bands(c, w, d, 0, h, 6.8);
+  // Diagonal bracing on the long faces.
+  for (let y = 0; y < h - 12; y += 12) for (const s of [-1, 1]) {
+    c.g.add(new THREE.BoxGeometry(0.35, Math.hypot(w, 12), 0.35).translate(0, Math.hypot(w, 12) / 2, 0), NY.steel, M(-s * w / 2, y, d / 2 + 0.2, 0, 1, 1, 1, 0, -s * Math.atan2(w, 12)));
+  }
+  // Sky gardens every ten floors: a recessed floor with trees.
+  for (let y = 30; y < h - 10; y += 34) {
+    box(c.g, w - 1.2, 3.4, d - 1.2, '#2a3a30', 0, y, 0);
+    for (const [x, z] of [[-w / 3, d / 3], [w / 4, d / 3], [0, -d / 3]]) tree(c.g, 'oak', x, y, z, 0.5, () => c.rng.next());
+  }
+  box(c.g, w + 0.4, 0.6, d + 0.4, NY.steel, 0, h, 0);
+  for (const [x, z] of [[-w / 3, -d / 3], [w / 3, -d / 3], [0, d / 4]]) turbine(c, x, h + 0.6, z, 5);
+  greenWall(c, w * 0.8, d / 2, 0.5, 14);
+  // A holographic billboard on the corner.
+  box(c.glow, 0.1, 8, 6, c.rng.pick(NEON), w / 2 + 0.3, h * 0.35, d / 4);
+  return { r: Math.max(w, d) * 0.62, h: h + 6 };
+}
+
+/** Brownstone row house: stoop, bay window, iron fire escapes, cornice, rooftop greenhouse. */
+function nyBrownstone(c: Ctx): Footprint {
+  const floors = c.rng.int(4, 6), fh = 3.4, w = 10, d = 12, H = floors * fh;
+  const stone = c.rng.chance(0.5) ? NY.brownstone : NY.brick;
+  box(c.g, w, H, d, stone);
+  windowGrid(c, w, d, floors, fh, 3, false, 1.2);
+  // Stoop: steps up to a raised door, with iron railings.
+  for (let i = 0; i < 5; i++) box(c.g, 2.4, 0.3 * (i + 1), 0.5, NY.limestone, 0, 0, d / 2 + 2.6 - i * 0.5);
+  for (const x of [-1.25, 1.25]) box(c.g, 0.06, 1, 2.6, IRON, x, 1.4, d / 2 + 1.4);
+  box(c.g, 1.3, 2.3, 0.12, DOOR, 0, 1.5, d / 2 + 0.02);
+  // Bay window on the second floor.
+  box(c.g, 3.6, fh * 1.6, 1.2, stone, -2.4, fh, d / 2 + 0.6);
+  win(c, -2.4, fh + 0.9, d / 2 + 1.22, 2.4, 1.6);
+  // Fire escapes: platforms, rails and ladders down the front.
+  for (let f = 1; f < floors; f++) {
+    box(c.g, 4.2, 0.08, 1.2, IRON, 2.4, f * fh, d / 2 + 0.6);
+    box(c.g, 4.2, 0.9, 0.05, IRON, 2.4, f * fh + 0.1, d / 2 + 1.2);
+    c.g.add(new THREE.BoxGeometry(0.5, fh * 1.1, 0.05).translate(0, fh * 0.55, 0), IRON, M(3.6, f * fh - fh, d / 2 + 0.9, 0, 1, 1, 1, 0, 0.35));
+  }
+  // Cornice.
+  box(c.g, w + 0.8, 0.6, d + 0.8, NY.limestone, 0, H, 0);
+  box(c.g, w + 1.2, 0.25, d + 1.2, NY.limestone, 0, H + 0.6, 0);
+  // Rooftop greenhouse and solar panels.
+  box(c.g, 4, 2.4, 4, '#dfe8e0', -2, H + 0.85, -2);
+  box(c.glow, 3.9, 2.2, 3.9, '#d8ffe8', -2, H + 0.95, -2);
+  solarField(c, 5, 8, H + 0.85);
+  greenWall(c, w * 0.6, d / 2, H * 0.4, H);
+  return { r: 7.2, h: H + 3.5 };
+}
+
+/** Cast-iron loft (SoHo): tall windows between iron columns, and a solar-skinned water tower. */
+function nyLoft(c: Ctx): Footprint {
+  const floors = c.rng.int(5, 8), fh = 4.2, w = 14, d = 14, H = floors * fh;
+  box(c.g, w, H, d, c.rng.chance(0.5) ? NY.steel : NY.brick);
+  for (let f = 0; f < floors; f++) {
+    for (let i = 0; i < 4; i++) win(c, -w / 2 + 1.75 + i * 3.5, 1 + f * fh, d / 2 + 0.03, 2.2, 2.8, 0, true);
+    box(c.g, w + 0.3, 0.4, 0.4, IRON, 0, f * fh, d / 2 + 0.2);
+  }
+  for (let i = 0; i <= 4; i++) box(c.g, 0.4, H, 0.4, IRON, -w / 2 + i * 3.5, 0, d / 2 + 0.25);
+  box(c.g, w + 1, 0.8, d + 1, IRON, 0, H, 0);
+  // The water tower, wrapped in a solar skin.
+  for (const [a, b] of [[-0.9, -0.9], [0.9, -0.9], [-0.9, 0.9], [0.9, 0.9]]) cyl(c.g, 0.12, 0.12, 2.4, IRON, a + 2, H + 0.8, b - 2, 4);
+  cyl(c.g, 1.6, 1.6, 3.4, '#8a5a3a', 2, H + 3.2, -2, 12);
+  for (let i = 0; i < 6; i++) c.g.frame(2, H + 3.6, -2, (i / 6) * Math.PI * 2, 1, () => box(c.g, 0.9, 2.4, 0.06, SOLAR, 0, 0, 1.62));
+  cone(c.g, 1.7, 1.3, '#5a3a2a', 2, H + 6.6, -2, 12);
+  solarField(c, 6, 6, H + 0.8);
+  greenWall(c, w * 0.7, d / 2, 1, H * 0.5);
+  box(c.glow, w * 0.4, 0.8, 0.1, c.rng.pick(NEON), 0, 3.4, d / 2 + 0.45);
+  return { r: 10, h: H + 8 };
+}
 
 export function buildHouse(c: Ctx): Footprint {
   const fp = houses[c.s.id](c);
