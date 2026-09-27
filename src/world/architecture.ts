@@ -1376,22 +1376,32 @@ const landmarks: Record<RegionId, LandmarkFn> = {
   },
 
   indianorth(c, o) {
-    const pink = '#e8917a', white = '#ffffff';
-    const rows = 9;
-    for (let r = 0; r < rows; r++) {
-      const w = 60 - r * 5.2, y = r * 4.2;
-      box(c.g, w, 4.2, 10 - r * 0.6, pink, 0, y, 0);
-      const n = Math.floor(w / 3.4);
-      for (let i = 0; i < n; i++) {
-        const x = -w / 2 + 1.7 + i * 3.4;
-        box(c.g, 2.4, 3, 1.4, pink, x, y + 0.6, 5 - r * 0.3 + 0.6);
-        box(c.glow, 1.2, 1.6, 0.1, c.s.glow, x, y + 1.2, 5 - r * 0.3 + 1.32);
-        dome(c.g, 0.9, white, x, y + 3.6, 5 - r * 0.3 + 0.6, 6);
+    const pink = '#e8917a', cream = '#ffe4c4', shadow = '#834a3b';
+    // Five terraced storeys of Hawa Mahal, each filled with small jharokha bays.
+    for (let floor = 0; floor < 5; floor++) {
+      const width = 62 - floor * 7, y = floor * 6.2, depth = 11 - floor * 0.7;
+      box(c.g, width, 6.2, depth, pink, 0, y, 0);
+      box(c.g, width + 0.5, 0.4, depth + 0.8, cream, 0, y + 5.8, 0);
+      const count = Math.floor(width / 4.2);
+      for (let i = 0; i < count; i++) {
+        const x = (i - (count - 1) / 2) * 4.2, front = depth / 2;
+        box(c.g, 3.2, 0.65, 1.2, cream, x, y + 0.8, front + 0.55);
+        box(c.g, 3.2, 0.4, 1.3, cream, x, y + 4.6, front + 0.6);
+        archPanel(c.g, 2.5, 3.5, shadow, x, y + 1.35, front + 1.18, 0, 0.12, true);
+        archPanel(c.glow, 1.5, 2.3, c.s.glow, x, y + 1.65, front + 1.28, 0, 0.09, true);
+        dome(c.g, 1.65, pink, x, y + 5.1, front + 0.6, 8, 0.45);
+        box(c.g, 0.18, 2.4, 0.16, cream, x, y + 1.5, front + 1.35);
       }
+      for (const x of [-width / 2 + 1.2, width / 2 - 1.2]) box(c.g, 1.5, 1.3, 1.5, pink, x, y + 6.2, 0);
     }
-    chhatri(c, 0, rows * 4.2, 0, 2, pink, white);
-    o.colliders.push({ x: -18, z: 0, r: 8, h: 20 }, { x: 0, z: 0, r: 8, h: 40 }, { x: 18, z: 0, r: 8, h: 20 }, { x: -26, z: 0, r: 5, h: 10 }, { x: 26, z: 0, r: 5, h: 10 });
-    o.height = 44;
+    for (const x of [-18, -9, 0, 9, 18]) chhatri(c, x, 31, -1, x === 0 ? 2.3 : 1.6, pink, cream);
+    for (const x of [-28, 28]) {
+      box(c.g, 4, 22, 10, pink, x, 0, -1);
+      chhatri(c, x, 22, -1, 2.1, pink, cream);
+    }
+    box(c.g, 66, 0.5, 14, '#c99275', 0, -0.5, 2);
+    o.colliders.push({ x: -20, z: 0, r: 10, h: 32 }, { x: 0, z: 0, r: 10, h: 38 }, { x: 20, z: 0, r: 10, h: 32 }, { x: -28, z: -1, r: 3.2, h: 28 }, { x: 28, z: -1, r: 3.2, h: 28 });
+    o.height = 39;
   },
 
   indiasouth(c, o) {
@@ -1416,6 +1426,33 @@ const landmarks: Record<RegionId, LandmarkFn> = {
       box(c.g, 24, 0.6, 24, '#c9bfa8');
       box(c.g, 20, 0.2, 20, '#3a9ac0', 0, 0.5, 0);
     });
+    // Richly patterned gateway tiers and a stepped temple tank.
+    let trimY = 8, trimW = 24, trimD = 16;
+    for (let level = 0; level < tiers.length; level++) {
+      const n = Math.max(3, Math.round(trimW / 3));
+      for (let i = 0; i < n; i++) {
+        const x = (i - (n - 1) / 2) * trimW / n;
+        dome(c.g, 0.53, level % 2 ? '#e4cb94' : '#f1e2c3', x, trimY + 1.4, trimD / 2 + 0.35, 6, 0.7);
+        box(c.g, 0.65, 0.8, 0.55, '#f2d898', x, trimY + 0.3, trimD / 2 + 0.35);
+      }
+      box(c.g, trimW + 0.5, 0.35, trimD + 0.5, '#f0d797', 0, trimY + 2.9, 0);
+      trimY += 3.2; trimW *= 0.87; trimD *= 0.86;
+    }
+    for (let step = 0; step < 4; step++) {
+      const size = 32 - step * 2.5;
+      box(c.g, size, 0.35, size, '#d9c5a3', 0, -step * 0.35, 40);
+    }
+    for (const x of [-9, 9]) for (const z of [31, 49]) {
+      cyl(c.g, 0.4, 0.45, 4.5, '#d0b784', x, 0, z, 7);
+      sphere(c.glow, 0.45, '#ffd078', x, 4.7, z, 7);
+    }
+    // A pillared mandapa behind the gopuram.
+    c.g.frame(0, 0, -27, 0, 1, () => {
+      box(c.g, 22, 1, 18, '#d9d0b8');
+      for (const x of [-9, 9]) for (const z of [-7, 7]) cyl(c.g, 0.8, 0.9, 8, '#d0b784', x, 1, z, 8);
+      hip(c.g, 23, 19, 5, '#b85b3b', 0, 9, 0);
+    });
+    o.colliders.push({ x: 0, z: -27, r: 12, h: 14 });
     o.colliders.push({ x: 0, z: 0, r: 12, h: y + 4 });
     o.height = y + 6;
   },
@@ -1454,6 +1491,18 @@ const landmarks: Record<RegionId, LandmarkFn> = {
       archPanel(c.g, 8, 13, '#3a2a22', 0, 0, 5.1, 0, 0.1, true);
       for (const x of [-15, 15]) chhatri(c, x, 20, 0, 2, red, white);
     });
+    // Floral pietra dura and calligraphic bands decorate the main pishtaq.
+    for (const x of [-14, 14]) for (const y of [7, 12, 17]) {
+      sphere(c.g, 0.3, '#3f7d73', x, y, -12.12, 7);
+      sphere(c.g, 0.16, '#b5552e', x + 0.4, y + 0.4, -12.15, 6);
+    }
+    for (const y of [5, 18]) box(c.g, 31, 0.45, 0.28, red, 0, y, -12.1);
+    for (const x of [-23, 23]) for (const z of [16, 40, 64]) {
+      box(c.g, 5, 0.35, 5, '#e1d6bf', x, 0.05, z);
+      cyl(c.g, 0.5, 0.55, 2.4, white, x, 0.4, z, 8);
+      sphere(c.glow, 0.28, '#ffe8ac', x, 2.9, z, 6);
+    }
+    for (const z of [16, 44, 72]) cyl(c.glow, 0.16, 0.16, 0.9, '#a5e8f5', 0, 0.3, z, 8);
     o.colliders.push({ x: 0, z: -30, r: 18, h: 60 }, { x: -11, z: 96, r: 6, h: 20 }, { x: 11, z: 96, r: 6, h: 20 });
     o.height = 64;
   },
@@ -1487,6 +1536,32 @@ const landmarks: Record<RegionId, LandmarkFn> = {
       const dist = 36 - i * 2.6;
       o.platforms.push({ x: dx * dist, z: dz * dist, r: 2.6, y: i * 2.5 });
     }
+    // Relief bands on the square terraces and a small Balinese pura on the east side.
+    for (let level = 0; level < 5; level++) {
+      const side = 64 - level * 9, base = level * 4;
+      for (let i = 0; i < 8; i++) {
+        const x = -side / 2 + (i + 0.5) * side / 8;
+        box(c.g, side / 10, 1.1, 0.13, i % 2 ? '#b2a999' : '#6c675f', x, base + 1.5, side / 2 + 0.08);
+        box(c.g, side / 10, 1.1, 0.13, i % 2 ? '#b2a999' : '#6c675f', x, base + 1.5, -side / 2 - 0.08);
+      }
+    }
+    c.g.frame(48, 0, 0, 0, 1, () => {
+      box(c.g, 22, 0.8, 20, '#8a8478');
+      // Candi bentar split gate: two facing stone towers keep the centre open.
+      for (const x of [-6, 6]) {
+        box(c.g, 5, 9, 5, stone, x, 0.8, 8);
+        for (let level = 0; level < 4; level++) box(c.g, 5.8 - level * 0.5, 0.65, 5.8 - level * 0.5, '#aaa194', x, 8.8 + level * 2, 8);
+      }
+      for (const x of [-6, 6]) {
+        for (let level = 0; level < 5; level++) {
+          const roof = 8 - level * 1.1;
+          hip(c.g, roof, roof, 2, '#4c3830', x, 4 + level * 2.6, -5);
+        }
+        cyl(c.g, 0.55, 0.55, 4, stone, x, 0, -5, 8);
+      }
+      for (const x of [-10, 10]) for (const z of [-9, 9]) sphere(c.glow, 0.24, '#ffd286', x, 0.9, z, 6);
+    });
+    o.colliders.push({ x: 42, z: 8, r: 3.8, h: 17 }, { x: 54, z: 8, r: 3.8, h: 17 }, { x: 42, z: -5, r: 3.8, h: 19 }, { x: 54, z: -5, r: 3.8, h: 19 });
     o.height = y + 11;
   },
 
@@ -1507,17 +1582,61 @@ const landmarks: Record<RegionId, LandmarkFn> = {
       });
       o.colliders.push({ x: Math.cos(a) * 28, z: Math.sin(a) * 28, r: 3, h: 3 });
     }
+    // An ice-block ceremonial hall, arched entry, and warm lavvu shelters.
+    for (const x of [-14, 14]) {
+      box(c.g, 10, 8, 22, '#bdd7e6', x, 0, -6);
+      for (let y = 1.2; y < 8; y += 1.8) for (let z = -15; z < 4; z += 3.5) box(c.g, 0.18, 0.14, 3.2, '#f2fbff', x + (x < 0 ? -5.05 : 5.05), y, z);
+      for (const z of [-12, -4, 4]) archPanel(c.glow, 2.3, 3, c.s.glow, x, 2.2, z + 5.2, 0, 0.1, true);
+      o.colliders.push({ x, z: -6, r: 11, h: 9 });
+    }
+    archPanel(c.g, 5.5, 8, '#43596a', 0, 0, 9.6, 0, 0.18, true);
+    for (const x of [-5, 5]) cyl(c.g, 0.9, 1, 9, '#e9f7ff', x, 0, 10, 8);
+    dome(c.g, 6.5, '#e9f7ff', 0, 9, 10, 12, 0.65);
+    for (const [x, z] of [[-28, -20], [28, -20], [-28, 20], [28, 20]] as const) {
+      cone(c.g, 5, 8, '#c4a68c', x, 0, z, 10);
+      cyl(c.g, 0.13, 0.13, 2.5, '#8c715c', x, 8, z, 6);
+      sphere(c.glow, 0.8, '#ffc476', x, 1, z, 8);
+      o.colliders.push({ x, z, r: 5, h: 10 });
+    }
+    for (const x of [-20, 20]) for (const z of [-20, 0, 20]) {
+      cyl(c.g, 0.35, 0.5, 3.2, '#bbd7e7', x, 0, z, 7);
+      cone(c.g, 1.3, 2.2, '#e6f7ff', x, 3.2, z, 7);
+    }
     o.colliders.push({ x: 0, z: 0, r: 10, h: 19 });
     o.height = 19;
   },
 
   skyisles(c, o) {
+    const bridges: Array<{ x: number; y: number; z: number }> = [];
+
     // Floating islands rising in a spiral to the Temple of the Great Lantern.
     for (let i = 0; i < 16; i++) {
       const a = i * 0.9, r = 70 - i * 3.2;
       const x = Math.cos(a) * r, z = Math.sin(a) * r, y = 18 + i * 9;
       const size = i === 15 ? 26 : c.rng.range(9, 15);
       floatingIsland(c, x, y, z, size);
+      bridges.push({ x, y, z });
+      if (i > 0) {
+        const prev = bridges[i - 1]!, dx = x - prev.x, dz = z - prev.z;
+        const span = Math.hypot(dx, dz), angle = Math.atan2(-dx, -dz);
+        const segments = Math.max(4, Math.ceil(span / 5));
+        for (let j = 1; j < segments; j++) {
+          const t = j / segments, bx = prev.x + dx * t, bz = prev.z + dz * t;
+          const by = prev.y + (y - prev.y) * t;
+          c.g.frame(bx, by, bz, angle, 1, () => {
+            box(c.g, 3.2, 0.35, span / segments + 0.15, '#e1d7ff');
+            for (const side of [-1, 1]) box(c.g, 0.18, 1.2, span / segments + 0.15, '#a892d5', side * 1.5, 0.35, 0);
+          });
+          o.platforms.push({ x: bx, z: bz, r: 1.6, y: by + 0.35 });
+        }
+      }
+      if (i % 4 === 0) {
+        for (const side of [-1, 1]) {
+          const sx = x + side * size * 0.62;
+          cone(c.g, 0.75, 8, '#aa8fda', sx, y + 0.5, z, 7);
+          sphere(c.glow, 0.5, '#fff0b0', sx, y + 8.7, z, 7);
+        }
+      }
       o.platforms.push({ x, z, r: size - 0.8, y: y + 0.6 });
       if (i === 15) {
         c.g.frame(x, y + 0.6, z, 0, 1, () => c.glow.frame(x, y + 0.6, z, 0, 1, () => {
