@@ -4,6 +4,7 @@ import {
   GeoBuilder, M, archPanel, box, cone, cyl, dome, gable, hip, onion, sphere, sweptRoof, tent, tree,
 } from './kit';
 import { houseDecor } from './houseDecor';
+import { LAND_LANTERN, lanternGeometry } from './lanterns';
 import type { RegionId, RegionSpec } from './regions';
 
 /**
@@ -676,15 +677,55 @@ export function lampPost(c: Ctx, x: number, y: number, z: number): void {
     lanternHanging(c, x + 1, y + 3, z, id === 'china' ? '#ff4a2a' : '#ffd08a');
     return;
   }
-  if (id === 'desert' || id === 'skyisles') {
-    sphere(c.glow, 0.3, c.s.glow, x, y + 0.6, z, 6);
-    cyl(c.g, 0.05, 0.05, 0.6, '#6b4a2a', x, y, z, 4);
-    return;
+  // Every other land lights its streets with its own lantern (lanterns.ts) on a post of its own.
+  const design = LAND_LANTERN[id];
+  const lantern = (lx: number, ly: number, lz: number, k = 1.1) => c.glow.add(lanternGeometry(design).scale(k, k, k), c.s.glow, M(lx, ly, lz));
+  switch (design) {
+    case 'victorian': {
+      const iron = '#1f1f24';
+      cyl(c.g, 0.07, 0.12, 3.4, iron, x, y, z, 8);
+      cyl(c.g, 0.16, 0.2, 0.5, iron, x, y, z, 8);
+      box(c.g, 0.7, 0.06, 0.06, iron, x + 0.3, y + 3.3, z);
+      lantern(x + 0.62, y + 2.6, z, 1);
+      break;
+    }
+    case 'nordic':
+      cyl(c.g, 0.09, 0.11, 2.6, '#5a4030', x, y, z, 6);
+      box(c.g, 0.5, 0.08, 0.08, '#2a2a2e', x + 0.2, y + 2.55, z);
+      lantern(x + 0.42, y + 1.75, z, 0.95);
+      break;
+    case 'moroccan':
+      cyl(c.g, 0.06, 0.08, 2.9, '#8a6a3a', x, y, z, 6);
+      box(c.g, 0.6, 0.05, 0.05, '#8a6a3a', x + 0.25, y + 2.85, z);
+      lantern(x + 0.52, y + 1.85, z, 0.95);
+      break;
+    case 'kandil':
+      cyl(c.g, 0.05, 0.06, 3, '#b89a5a', x, y, z, 5);
+      box(c.g, 0.7, 0.05, 0.05, '#b89a5a', x + 0.3, y + 2.95, z);
+      lantern(x + 0.62, y + 2.1, z, 1);
+      break;
+    case 'crystal':
+      cyl(c.g, 0.25, 0.35, 0.5, '#f4f0ff', x, y, z, 8);
+      lantern(x, y + 1.0, z, 1.1);
+      break;
+    case 'fairy':
+      // A stem that curls over like a flower on its stalk, with the lantern as its bloom.
+      cyl(c.g, 0.05, 0.08, 2.6, '#4f8a4a', x, y, z, 6);
+      c.g.add(new THREE.TorusGeometry(0.35, 0.05, 6, 12, Math.PI), '#4f8a4a', M(x + 0.35, y + 2.6, z));
+      lantern(x + 0.7, y + 1.95, z, 1);
+      break;
+    case 'woven':
+      cyl(c.g, 0.06, 0.07, 3.2, '#b89a5a', x, y, z, 5);
+      c.g.add(new THREE.TorusGeometry(0.5, 0.03, 4, 12, Math.PI * 0.6), '#b89a5a', M(x + 0.45, y + 3.0, z, 0, 1, 1, 1, 0, -0.2));
+      lantern(x + 0.8, y + 2.2, z, 1);
+      break;
+    default: {
+      const dark = '#4a3a2a';
+      cyl(c.g, 0.08, 0.12, 3.6, dark, x, y, z, 6);
+      box(c.glow, 0.45, 0.6, 0.45, c.s.glow, x, y + 3.6, z);
+      cone(c.g, 0.4, 0.4, dark, x, y + 4.2, z, 4);
+    }
   }
-  const dark = id === 'london' || id === 'newyork' || id === 'vintage' ? '#1f1f24' : '#4a3a2a';
-  cyl(c.g, 0.08, 0.12, 3.6, dark, x, y, z, 6);
-  box(c.glow, 0.45, 0.6, 0.45, c.s.glow, x, y + 3.6, z);
-  cone(c.g, 0.4, 0.4, dark, x, y + 4.2, z, 4);
 }
 
 /** Small scene-setting props scattered through a land's streets. */

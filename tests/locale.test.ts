@@ -51,7 +51,7 @@ describe('lanterns in the sky', () => {
     const sl = new SkyLanterns();
     const f = new THREE.Vector3(100, 5, 100);
     sl.update(0.016, 0, f, 'japan', 1);
-    const at = (i: number) => { const m = new THREE.Matrix4(); sl.mesh.getMatrixAt(i, m); return new THREE.Vector3().setFromMatrixPosition(m); };
+    const at = (i: number) => { const m = new THREE.Matrix4(); sl.meshFor('japan').getMatrixAt(i, m); return new THREE.Vector3().setFromMatrixPosition(m); };
     const before = at(3);
     f.x += 10; // the travellers walk on
     sl.update(0.016, 0, f, 'japan', 1);
@@ -59,6 +59,25 @@ describe('lanterns in the sky', () => {
     expect(SKY_LANTERNS).toBeGreaterThanOrEqual(100);
     expect(Math.abs(after.x - before.x)).toBeLessThan(0.5); // anchored in the world, not to the player
     expect(after.y).toBeGreaterThan(before.y); // rising
+  });
+
+  it('each land releases its own design of lantern; the celebration releases them all', async () => {
+    const THREE = await import('three');
+    const { SkyLanterns, SKY_LANTERNS } = await import('../src/world/SkyLanterns');
+    const { LAND_LANTERN, LANTERN_DESIGNS } = await import('../src/world/lanterns');
+    expect(LAND_LANTERN.china).not.toBe(LAND_LANTERN.japan);
+    expect(LAND_LANTERN.islamic).toBe('moroccan');
+    const sl = new SkyLanterns();
+    const f = new THREE.Vector3(0, 5, 0);
+    sl.update(0.016, 0, f, 'japan', 1);
+    expect(sl.meshFor('japan').count).toBe(SKY_LANTERNS);
+    expect(sl.meshFor('china').count).toBe(0);
+    sl.everyLand = true;
+    sl.update(0.016, 0, f, 'meadow', 1);
+    for (const d of LANTERN_DESIGNS) {
+      const land = (Object.keys(LAND_LANTERN) as Array<keyof typeof LAND_LANTERN>).find((l) => LAND_LANTERN[l] === d)!;
+      expect(sl.meshFor(land).count, d).toBeGreaterThan(0);
+    }
   });
 });
 

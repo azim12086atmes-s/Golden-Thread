@@ -1,28 +1,43 @@
 import * as THREE from 'three';
 import { LOCALES } from './locale';
 import { REGIONS, type RegionId } from './regions';
+import { LAND_LANTERN, LANTERN_DESIGNS, LANTERN_INTENSITY, lanternGeometry, type LanternDesign } from './lanterns';
 
 /**
  * Sky lanterns wherever you are: paper lanterns released somewhere nearby drift up into the
- * sky in the land's own colours — softly by day, glowing at night. One instanced mesh, recycled
- * round the travellers.
+ * sky in the land's own colours and the land's own design (lanterns.ts) — softly by day, glowing at
+ * night, each flame flickering. One instanced draw per design, recycled round the travellers.
  */
 export const SKY_LANTERNS = 110;
 const RADIUS = 170, TOP = 170;
 
 export class SkyLanterns {
-  readonly mesh: THREE.InstancedMesh;
+  /** Every design's lanterns (one instanced draw each); only the current land's are shown, except at the celebration. */
+  readonly mesh = new THREE.Group();
+  private meshes = new Map<LanternDesign, THREE.InstancedMesh>();
+  private mat = new THREE.MeshBasicMaterial({ color: '#ffffff', vertexColors: true, toneMapped: false, transparent: true, opacity: 0.9 });
   private state = new Float32Array(SKY_LANTERNS * 5); // x, y, z offsets, speed, phase
   private land: RegionId | 'all' | null = null;
-  /** At the celebration, lanterns rise in every land's colours at once. */
+  private lights: string[] = [];
+  /** At the celebration, lanterns of every land rise in every land's colours at once. */
   everyLand = false;
   private tmp = new THREE.Matrix4();
   private col = new THREE.Color();
 
   constructor() {
-    const geo = new THREE.CylinderGeometry(0.42, 0.3, 0.8, 8);
-    this.mesh = new THREE.InstancedMesh(geo, new THREE.MeshBasicMaterial({ color: '#ffffff', toneMapped: false, transparent: true, opacity: 0.9 }), SKY_LANTERNS);
-    this.mesh.frustumCulled = false;
+    for (const d of LANTERN_DESIGNS) {
+      const im = new THREE.InstancedMesh(lanternGeometry(d), this.mat, SKY_LANTERNS);
+      im.frustumCulled = false;
+      im.count = 0;
+      im.setColorAt(0, this.col.set('#ffffff'));
+      this.meshes.set(d, im);
+      this.mesh.add(im);
+    }
+  }
+
+  /** The instanced lanterns of the design a land releases. */
+  meshFor(land: RegionId): THREE.InstancedMesh {
+    return this.meshes.get(LAND_LANTERN[land])!;
   }
 
   private focus = new THREE.Vector3();
@@ -41,13 +56,13 @@ export class SkyLanterns {
     const key = this.everyLand ? 'all' : land;
     if (key !== this.land) {
       this.land = key;
-      const lights = this.everyLand ? REGIONS.flatMap((r) => LOCALES[r.id].lights) : LOCALES[land].lights;
-      for (let i = 0; i < SKY_LANTERNS; i++) this.mesh.setColorAt(i, this.col.set(lights[i % lights.length]));
-      if (this.mesh.instanceColor) this.mesh.instanceColor.needsUpdate = true;
+      this.lights = this.everyLand ? REGIONS.flatMap((r) => LOCALES[r.id].lights) : LOCALES[land].lights;
     }
-    const m = this.mesh.material as THREE.MeshBasicMaterial;
-    m.color.setScalar(0.55 + night * 1.25);
-    m.opacity = 0.55 + night * 0.4;
+    // Brighter as the night deepens.
+    this.mat.opacity = 0.55 + night * 0.4;
+    const glow = 0.55 + night * 1.25;
+    const counts = new Map<LanternDesign, number>();
+    for (const d of LANTERN_DESIGNS) counts.set(d, 0);
     for (let i = 0; i < SKY_LANTERNS; i++) {
       const s = i * 5;
       this.state[s + 1] += this.state[s + 3] * dt;
@@ -56,8 +71,19 @@ export class SkyLanterns {
       const ph = this.state[s + 4], y = this.state[s + 1];
       const sway = Math.sin(t * 0.4 + ph) * (1 + (y - focus.y) * 0.03);
       this.tmp.makeTranslation(this.state[s] + sway, y, this.state[s + 2] + Math.cos(t * 0.3 + ph) * 0.8);
-      this.mesh.setMatrixAt(i, this.tmp);
+      // Which lantern: the land's own, or at the celebration every land's in turn.
+      const design = this.everyLand ? LANTERN_DESIGNS[i % LANTERN_DESIGNS.length] : LAND_LANTERN[land];
+      const im = this.meshes.get(design)!, k = counts.get(design)!;
+      im.setMatrixAt(k, this.tmp);
+      // Each flame flickers on its own, and each kind shines at its own strength.
+      const flicker = 0.86 + 0.1 * Math.sin(t * 6.3 + ph * 7) + 0.06 * Math.sin(t * 13.7 + ph * 3);
+      im.setColorAt(k, this.col.set(this.lights[i % this.lights.length]).multiplyScalar(glow * flicker * LANTERN_INTENSITY[design]));
+      counts.set(design, k + 1);
     }
-    this.mesh.instanceMatrix.needsUpdate = true;
+    for (const [d, im] of this.meshes) {
+      im.count = counts.get(d)!;
+      im.instanceMatrix.needsUpdate = true;
+      if (im.instanceColor) im.instanceColor.needsUpdate = true;
+    }
   }
 }
