@@ -34,6 +34,8 @@ import { VEHICLES, type VehicleId } from '../vehicles/vehicles';
 import { GRID_COLS, GRID_ROWS, REGIONS, REGION_BY_ID, regionCenter, type RegionId, type RegionSpec } from '../world/regions';
 import { INSTITUTE_SITES } from '../institutions/sites';
 import { certificatesOf, rankCap } from '../institutions/certificates';
+import { BENCH_FEE, PRODUCT_BY_INVENTION, bestMarkets as bestProductMarkets, manufacture, productPrice, sellProduct, workshopAt } from '../economy/manufacture';
+import { SECTORS, businessTitle, dailyNet, growBusiness, openBusiness, staffBusiness, type Sector } from '../economy/business';
 import { courseCost, courseOffer, payWithCourse } from '../institutions/opportunities';
 import { CAVES, CAVE_NAME, caveMouth } from '../world/caves';
 import { FIELD_SITES } from '../world/plots';
@@ -989,6 +991,47 @@ export class UI {
         h('small', {}, `${x.remote && x.land !== land ? `remote · for a client in ${REGION_BY_ID[x.land].name} · ` : ''}${SKILLS[x.skill].name} level ${x.min}+ (yours ${lv}) · ${x.hours} h${parts ? ` · needs ${parts}` : ''}`)),
       h('div', { class: 'acts' }, btn(done ? 'Done ✓' : `🧾 Take it · +${x.pay}🪙`, () => say(doGig(st, x), 'The client is delighted.'), 'small ghost', done || lv < x.min)));
     }
+    this.inventionsSection(body);
+    this.businessSection(body);
+  }
+
+  /** Your inventions: make them at an institute of their science here, and sell them where they are wanted. */
+  private inventionsSection(body: HTMLElement): void {
+    const g = this.g, st = g.st, land = g.region.id;
+    const act = (e: string | null, ok: string) => { g.toast(e ?? ok, e ? 'info' : 'reward'); g.bus.emit('coins:changed', { coins: st.coins }); this.render(); };
+    body.append(h('h3', {}, '💡 Your inventions'));
+    if (!st.inventions.length) { body.append(h('p', { class: 'dim' }, 'Finish a thesis under a professor to invent something of your own — then make it here and sell it.')); return; }
+    const sites = INSTITUTE_SITES.filter((q) => q.land === land);
+    for (const inv of st.inventions) {
+      const p = PRODUCT_BY_INVENTION[inv];
+      if (!p) continue;
+      const site = sites.find((q) => workshopAt(st, inv, q.id));
+      const need = Object.entries(p.needs).map(([k, v]) => `${v}× ${ITEMS[k]?.name ?? k}`).join(', ');
+      const best = bestProductMarkets(st, inv).map((m) => `${REGION_BY_ID[m.land].name} ${m.price}🪙`).join(' · ');
+      const have = st.products[inv] ?? 0;
+      body.append(h('div', { class: 'quest' }, h('b', {}, `💡 ${inv}`),
+        h('small', {}, `${have} made · needs ${need} a piece · best markets: ${best}`),
+        h('div', { class: 'acts' },
+          site ? btn(`🛠️ Make 1${workshopAt(st, inv, site.id) === 'bench' ? ` · bench ${BENCH_FEE}🪙` : ''}`, () => act(manufacture(st, inv, site.id, 1), `You make a ${inv}.`), 'small') : h('small', { class: 'dim' }, 'Made at an institute of its science'),
+          btn(`Sell here · ${productPrice(st, inv, land)}🪙`, () => { const c = sellProduct(st, inv, land); act(c ? null : 'You have none made.', `Sold for ${c} coins.`); }, 'small ghost', have <= 0))));
+    }
+  }
+
+  /** Businesses you run: open one here, grow it, staff it. */
+  private businessSection(body: HTMLElement): void {
+    const g = this.g, st = g.st, land = g.region.id;
+    const act = (e: string | null, ok: string) => { g.toast(e ?? ok, e ? 'info' : 'reward'); g.bus.emit('coins:changed', { coins: st.coins }); this.render(); };
+    body.append(h('h3', {}, '🏢 Your businesses'));
+    for (const b of st.businesses) {
+      const d = SECTORS[b.sector], staffable = EXPERTS.filter((e) => e.skill === d.skill && hireOf(st, e.id) && !st.businesses.some((o) => o.staff.includes(e.id)));
+      body.append(h('div', { class: 'quest main' }, h('b', {}, `${d.icon} ${businessTitle(b)}`),
+        h('small', {}, `level ${b.level} · ${b.staff.length}/${b.level * 2} staff · about ${dailyNet(st, b)}🪙 a day · earned ${b.earned}🪙 · ${d.good}`),
+        h('div', { class: 'acts' },
+          b.level < 4 ? btn(`Grow · ${d.upgrade[b.level - 1]}🪙`, () => act(growBusiness(st, b.id), `It grows into a ${d.ranks[b.level]}.`), 'small') : null,
+          ...staffable.slice(0, 2).map((e) => btn(`+ ${e.name}`, () => act(staffBusiness(st, b.id, e.id), `${e.name} joins.`), 'small ghost')))));
+    }
+    const open = (Object.keys(SECTORS) as Sector[]).filter((sct) => !st.businesses.some((b) => b.sector === sct && b.land === land));
+    if (open.length) body.append(h('div', { class: 'acts' }, ...open.map((sct) => btn(`${SECTORS[sct].icon} Open a ${SECTORS[sct].name.toLowerCase()} here · ${SECTORS[sct].open}🪙`, () => act(openBusiness(st, sct, land), `Your ${SECTORS[sct].name.toLowerCase()} opens.`), 'small ghost'))));
   }
 
   // ───── harbours ─────

@@ -129,7 +129,7 @@ The owner's order: **institutional buildings first, then complete the game logic
 | 10.4 | Canals, pathways and roads follow the terrain | Roads, towpaths and channels laid as strips draped on the ground, not flat boxes; no gaps or chunks where they meet the land. | Open |
 | 10.5 | Bridges larger and fancier, in each land's architecture | Spans high enough for boats to pass under, wide enough for vehicles over; stone, timber, moon, red-lacquer, suspension and marble designs; lit by the land's lanterns, lamps and posts. | Open |
 | 10.6 | Mountains and plateaus by geography | Desert plateaus in mud and ochre (mesas); arctic mountains and ice plateaus in blue-white; highland mountains and plateaus light grey and rocky. | Open |
-| 10.7 | Houses less monotonous | More structural types per land, more colour variety, and textures: grainy plaster, timber, bamboo, stone, brick, thatch. | Open |
+| 10.7 | Houses less monotonous | **House structure design**: structurally different house forms per land (not re-coloured boxes). **Materials on the small parts**: props and small components (lamps, benches, stalls, trims, railings, pots) look like plain plastic — give them materials too (wood grain, metal, stone, clay, fabric, bamboo). | Open |
 | 10.8 | Aurora snow texture | Beyond the ripples: crusted, powdery and windblown patches, footprints of snow, sparkle. | Open |
 | 10.9 | Caves textured and enterable | Rock, ice and crystal surfaces; walk in through the mouth into a cave interior. | Open |
 | 10.10 | Organic town layouts | Houses not on a grid: winding lanes, clusters and gardens. | Open |
@@ -137,3 +137,9 @@ The owner's order: **institutional buildings first, then complete the game logic
 | 10.12 | Roads overlapping and chunking with the land | See 10.4. | Open |
 | 10.13 | Butterfly wings and dress decoration | As §6.2: large, glowing, animated stained-glass wings on the starry dress with intricate curves, hearts, curved strokes and veins, drawn as images; richer patterns on all dresses. | Open |
 | 10.14 | Monuments: external architecture detail and texturing | Each of the 20 landmarks rebuilt with real architectural detail (mouldings, arcades, carving, domes, finials, stairs) and surface textures (stone coursing, marble veining, brick, glazed tile, timber). | Open |
+| 10.15 | New Yonder: screens, solarpunk and cyberpunk artifacts | Screens and holographic billboards; solarpunk (solar trees, vertical farms, green walls) and cyberpunk (neon signs, cables, antennas, drones, holograms) artifacts. | Open |
+| 10.16 | New Yonder building lighting and forms | Lighting not only in horizontal bands: neon in many colours, light patterns other than a grid (diagonals, spirals, outlines, pixel art, chevrons). Towers of different structure: twisted, zig-zag, desert-rose-inspired, windows aligned in varied ways. | Open |
+| 10.17 | Desert roses | Gypsum desert-rose rock formations in the deserts, larger ones too. | Open |
+| 10.18 | Pebbles and rocks as images | A procedural field of pebble and small-rock images round the travellers, like the grass, in the deserts and rocky ground. | Open |
+| 10.19 | Aurora snow | A grainy snow pattern for the ground, and ice crystals scattered on it like grass — colourful, glinting, random (never a grid). | Open |
+| 10.20 | Vehicles by land, air and sea, per location, with animals | Every land's traffic built for its place: road vehicles, boats and ships, aircraft, and the animals that carry people or goods there (camels, reindeer, elephants, horses, oxen…). | Open |

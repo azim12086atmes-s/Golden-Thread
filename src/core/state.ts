@@ -100,6 +100,10 @@ export interface GameState {
   /** Theses completed (topic ids) and the inventions they produced. */
   degrees: string[];
   inventions: string[];
+  /** Products you have made from your inventions and not yet sold (invention → count; economy/manufacture.ts). */
+  products: Record<string, number>;
+  /** Businesses you run (economy/business.ts). */
+  businesses: import('../economy/business').Business[];
   vehicles: string[];
   discovered: string[];
   lanterns: string[];
@@ -160,6 +164,8 @@ export function newGame(): GameState {
     thesis: null,
     degrees: [],
     inventions: [],
+    products: {},
+    businesses: [],
     vehicles: ['walk', 'fly', 'van'],
     discovered: ['meadow'],
     lanterns: [],

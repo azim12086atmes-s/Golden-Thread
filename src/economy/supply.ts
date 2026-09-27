@@ -4,6 +4,7 @@ import { SITE_BY_ID, instituteAt, isEmployed, pantryOf, servesWith } from '../in
 import { hasHarbour } from '../world/harbours';
 import { FIELD_BY_ID } from '../world/plots';
 import { REGION_BY_ID, REGIONS, type RegionId } from '../world/regions';
+import { logisticsBonus } from './business';
 import { removeItems, sellPrice } from './economy';
 import { ITEMS } from './items';
 import { WORKER_BY_ID, type Worker } from './workers';
@@ -148,7 +149,8 @@ export function tickSupply(st: GameState): SupplyNews[] {
     }
     if (!Object.keys(items).length) continue;
     const from = FIELD_BY_ID[r.from].land;
-    st.shipments.push({ route: r.id, courier: r.courier, from: r.from, to: r.to, items, left: st.minutes, arrive: st.minutes + tripMinutes(w, from, land) });
+    // A logistics company of yours speeds every trip (business.ts).
+    st.shipments.push({ route: r.id, courier: r.courier, from: r.from, to: r.to, items, left: st.minutes, arrive: st.minutes + Math.round(tripMinutes(w, from, land) * (1 - logisticsBonus(st))) });
   }
   return out;
 }

@@ -149,9 +149,9 @@ Everything here is logic (rules, state, placement, wiring, UI, tests); 3D models
    institute (`institutions/opportunities.ts`); courses award certificates, which lift your rank
    ceiling at employers and open the demanding gigs (`institutions/certificates.ts`).
 8. **Markets fill up for your own sales too** — Done (`supply.sellHere`).
-9. **Manufacturing and inventions**
-   - Make and sell the inventions from your theses at your institutes.
-   - Healthcare, tech and logistics as businesses you run: the "economy of services" still open in D.
+9. **Manufacturing and inventions** — Done: make your theses' inventions at an institute of their
+   science and sell them where they are wanted (`economy/manufacture.ts`); run healthcare, tech and
+   logistics businesses, staffed and grown with certificates (`economy/business.ts`).
 10. **Children going home** — Done: they go home when the caravan reaches their destination (`caravan.bringHome`).
 11. **Performance**
     - Instanced party guests at the celebration.

@@ -48,6 +48,7 @@ import { harbours } from './world/harbours';
 import { BridgesView } from './world/BridgesView';
 import { FIELD_SITES, FIELD_SIZE, fieldGrowth, tickFields } from './economy/fields';
 import { couriersIn, marketPrice, sellHere, tickSupply } from './economy/supply';
+import { tickBusinesses } from './economy/business';
 import { tickWeavers } from './economy/crews';
 import { CAVE_LANDS, CAVE_NAME, caveMouth, type Cave } from './world/caves';
 import { SITE_BY_ID, instituteAt, landScience, siteAt, standingStage, tickInstitutes } from './institutions/institutions';
@@ -394,6 +395,7 @@ export class Game {
       // Fields tended by farmhands, and couriers carrying their harvest to market.
       for (const n of tickFields(this.st)) this.toast(`🌾 ${n.text}`, 'reward');
       for (const n of tickSupply(this.st)) this.toast(`🚚 ${n.text}`, 'reward');
+      for (const n of tickBusinesses(this.st)) this.toast(n.text, 'reward');
       for (const n of tickWeavers(this.st)) this.toast(`🧶 ${n.text}`, 'reward');
       this.fieldsView.update();
       this.harboursView.update();
