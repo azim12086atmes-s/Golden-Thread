@@ -67,5 +67,6 @@ git add -A
 git -c user.name="$(git -C "$OLDPWD" config user.name || echo deploy)" -c user.email="$(git -C "$OLDPWD" config user.email || echo deploy@local)" commit -q -m "Deploy $SHA"
 git push -q "$REPO" gh-pages
 cd "$OLDPWD"
-git tag -f "play-$SHA" >/dev/null && git push -q "$REPO" "refs/tags/play-$SHA" || true
+git tag -f "play-$SHA" >/dev/null
+if ! git push -q "$REPO" "refs/tags/play-$SHA" 2>/dev/null; then echo "Note: the tag play-$SHA was made locally but could not be pushed."; fi
 echo "Published $SHA (and kept every earlier version under versions/)."
