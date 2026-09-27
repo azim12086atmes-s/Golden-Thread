@@ -1,6 +1,6 @@
 # Master build list — everything still to build (2026-09-27)
 
-One list of every open item. Details, owner's words and specifications are in `NEXT_WORK_2026-09-27.md` (game rules,
+One list of every open item. **Split:** physical models → ChatGPT (`CHATGPT_3D_MODELS.md`); logic → Claude. Details, owner's words and specifications are in `NEXT_WORK_2026-09-27.md` (game rules,
 sections C1–C7) and `3D_BUILDS_HANDOFF.md` (3D work, sections 2a and 3.x). Tick items off here as they ship.
 
 ## A. Charity, sponsorship and homes (rules side; C1)

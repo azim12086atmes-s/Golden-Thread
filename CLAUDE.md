@@ -1,7 +1,7 @@
 # Working on The Golden Thread
 
 Read [docs/GAME_DESIGN.md](docs/GAME_DESIGN.md) first, then [docs/ROADMAP.md](docs/ROADMAP.md), and [docs/REQUIREMENTS_EXPANSION.md](docs/REQUIREMENTS_EXPANSION.md) for the latest owner amendments.
-The master list of everything still to build is `docs/team/handoffs/MASTER_BUILD_LIST.md`. The current handoff and the owner's open requests are in `docs/team/handoffs/NEXT_WORK_2026-09-27.md` and
+The master list of everything still to build is `docs/team/handoffs/MASTER_BUILD_LIST.md`. Work is split: ChatGPT builds the physical models (`docs/team/handoffs/CHATGPT_3D_MODELS.md`, contracts in `src/world/models/`); Claude builds the logic. The current handoff and the owner's open requests are in `docs/team/handoffs/NEXT_WORK_2026-09-27.md` and
 `docs/team/handoffs/CLAUDE_CLOUD_CURRENT_WORK.md`; 3D building work in `docs/team/handoffs/3D_BUILDS_HANDOFF.md`.
 
 ## Non-negotiable content rules
