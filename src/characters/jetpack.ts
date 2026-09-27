@@ -77,10 +77,10 @@ const cache = new Map<string, THREE.Material>();
 const once = <T extends THREE.Material>(k: string, f: () => T): T => (cache.get(k) as T) ?? (cache.set(k, f()), cache.get(k) as T);
 /** Clear glass: a faint cool tint, glossy. */
 const GLASS = () => once('glass', () => new THREE.MeshStandardMaterial({ color: '#dff2ff', transparent: true, opacity: 0.22, roughness: 0.04, metalness: 0.1, depthWrite: false, side: THREE.DoubleSide }));
-/** The etched board on the glass: it glows. */
+/** The etched board on the glass: it glows, and is solid where it is drawn (a cut-out), so it hides what is behind it. */
 const ETCH = () => once('etch', () => {
   const map = boardTexture();
-  return new THREE.MeshBasicMaterial({ map, color: map ? '#ffffff' : '#8ff', transparent: true, opacity: map ? 1 : 0.3, depthWrite: false, toneMapped: false, side: THREE.DoubleSide });
+  return new THREE.MeshBasicMaterial({ map, color: map ? '#ffffff' : '#8ff', alphaTest: 0.2, toneMapped: false, side: THREE.DoubleSide });
 });
 const GOLD = () => once('gold', () => new THREE.MeshStandardMaterial({ color: '#e0b64a', metalness: 1, roughness: 0.25, emissive: '#6b4a10', emissiveIntensity: 0.4 }));
 const BLACK = () => once('black', () => new THREE.MeshStandardMaterial({ color: '#0c0c10', metalness: 0.6, roughness: 0.3 }));
@@ -120,6 +120,19 @@ const FLAME_FRAG = /* glsl */ `
   }
 `;
 
+const _w = new THREE.Vector3();
+/**
+ * See-through parts (glass, fuel, floating particles) are drawn after everything solid, the
+ * farthest part of the pack first and, within a part, the fuel, then its particles, then the glass
+ * round it — re-sorted from the camera every frame (it takes effect the next frame).
+ */
+function sortable(o: THREE.Object3D, layer: number): void {
+  o.onBeforeRender = (_r, _s, camera) => {
+    o.getWorldPosition(_w);
+    o.renderOrder = 10 - Math.min(9, _w.distanceTo(camera.position) / 100) + layer * 0.0001;
+  };
+}
+
 /** Particles floating up through one tank of fuel (box: half sizes). */
 interface Tank { pts: THREE.Points; hx: number; hy: number; hz: number; speeds: Float32Array }
 
@@ -136,7 +149,9 @@ export class Jetpack {
       const mesh = new THREE.Mesh(geo, m);
       mesh.position.set(x, y, z);
       mesh.userData.part = 'accessory';
-      mesh.renderOrder = order;
+      // Fuel (1) and glass (3) are see-through: sorted by distance; the rest is solid.
+      if (order === 1) sortable(mesh, 0);
+      else if (order === 3) sortable(mesh, 2);
       g.add(mesh);
       return mesh;
     };
@@ -160,7 +175,7 @@ export class Jetpack {
       const pts = new THREE.Points(pg, new THREE.PointsMaterial({ size: 0.014, vertexColors: true, transparent: true, depthWrite: false, blending: THREE.AdditiveBlending }));
       pts.position.set(x, y, z);
       pts.userData.part = 'accessory';
-      pts.renderOrder = 4;
+      sortable(pts, 1);
       g.add(pts);
       this.tanks.push({ pts, hx, hy, hz, speeds });
     };
