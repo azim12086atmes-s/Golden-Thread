@@ -174,7 +174,32 @@ function flowerTexture(): THREE.Texture | null {
   return t;
 }
 
-const GEO = { tuft: tuftGeo(), flower: flowerGeo() };
+/** A little cluster of crystal shards (the Sky Isles' crystal meadow): three leaning prisms, 1 m tall at most. */
+function shardsGeo(): THREE.BufferGeometry {
+  const parts: THREE.BufferGeometry[] = [];
+  for (const [h, w, lean, a] of [[1, 0.22, 0.08, 0], [0.62, 0.16, 0.45, 2.1], [0.45, 0.13, 0.55, 4.2]] as const) {
+    const prism = new THREE.CylinderGeometry(w, w, h, 5, 1, true).translate(0, h / 2, 0).toNonIndexed();
+    const tip = new THREE.ConeGeometry(w, w * 2.4, 5, 1, true).translate(0, h + w * 1.2, 0).toNonIndexed();
+    for (const g of [prism, tip]) {
+      g.applyMatrix4(new THREE.Matrix4().makeRotationFromEuler(new THREE.Euler(Math.sin(a) * lean, 0, -Math.cos(a) * lean)));
+      g.translate(Math.cos(a) * w * 0.8, 0, Math.sin(a) * w * 0.8);
+      parts.push(g);
+    }
+  }
+  const n = parts.reduce((k, g) => k + g.getAttribute('position').count, 0), pos = new Float32Array(n * 3);
+  let o = 0;
+  for (const g of parts) { pos.set(g.getAttribute('position').array as Float32Array, o); o += g.getAttribute('position').array.length; g.dispose(); }
+  const geo = new THREE.BufferGeometry();
+  geo.setAttribute('position', new THREE.BufferAttribute(pos, 3));
+  geo.computeVertexNormals();
+  return geo;
+}
+const GEO = { tuft: tuftGeo(), flower: flowerGeo(), shards: shardsGeo() };
+/** The crystal meadow's material: pastel, a little shiny, glowing softly from within after dusk. */
+const CRYSTAL_MAT = new THREE.MeshStandardMaterial({ roughness: 0.18, metalness: 0.05, emissive: new THREE.Color('#6a5aa0'), emissiveIntensity: 0.25, transparent: true, opacity: 0.88 });
+const CRYSTAL_PAL = ['#bfe8ff', '#e0c8ff', '#ffd6f0', '#c8fff0', '#fff4c0', '#d6d8ff', '#ffc8e6'];
+/** Crystal meadow cells: a cluster every 1.7 m or so, out to about 60 m round the travellers. */
+export const CRYSTAL_CELL = 1.7, CRYSTAL_CELLS = 72;
 export const GRASS_UNIFORMS = { uNight: { value: 0 }, uFocus: { value: new THREE.Vector3() }, uFieldR: { value: 40 } };
 
 /**
@@ -347,6 +372,7 @@ export class MeadowField {
   private midGrass: Field;
   private farGrass: Field;
   private midFlowers: Field;
+  private crystals: Field;
   private m = new THREE.Matrix4();
   private q = new THREE.Quaternion();
   private s = new THREE.Vector3();
@@ -363,8 +389,9 @@ export class MeadowField {
     this.midGrass = new Field(GEO.tuft, MATS.midGrass, MID_CELL, MID_CELLS, this.plantGrass(MID_CELL, 1.9));
     this.farGrass = new Field(GEO.tuft, MATS.farGrass, FAR_CELL, FAR_CELLS, this.plantGrass(FAR_CELL, 3.6));
     this.midFlowers = new Field(GEO.flower, MATS.midFlower, MID_FLOWER_CELL, MID_FLOWER_CELLS, this.plantFlower(MID_FLOWER_CELL, 1.5, 0.6));
+    this.crystals = new Field(GEO.shards, CRYSTAL_MAT, CRYSTAL_CELL, CRYSTAL_CELLS, this.plantCrystal());
     for (const f of [this.midGrass, this.farGrass, this.midFlowers]) f.mesh.receiveShadow = false;
-    this.group.add(this.grass.mesh, this.flowers.mesh, this.midGrass.mesh, this.farGrass.mesh, this.midFlowers.mesh);
+    this.group.add(this.grass.mesh, this.flowers.mesh, this.midGrass.mesh, this.farGrass.mesh, this.midFlowers.mesh, this.crystals.mesh);
   }
 
   /** Plant grass tufts in a grid of `cell` metres, `size` times the near field's tufts. */
@@ -381,6 +408,29 @@ export class MeadowField {
       const patch = Math.sin(x * 0.11 + Math.sin(z * 0.07) * 2) * Math.sin(z * 0.09 - x * 0.03);
       this.c.offsetHSL(patch * 0.06 + (cellHash(i, j, 10) - 0.5) * 0.1, 0.18 + cellHash(i, j, 12) * 0.12, 0.1 + (cellHash(i, j, 11) - 0.5) * 0.14);
       im.setColorAt(k, this.c);
+      return true;
+    };
+  }
+
+  /**
+   * The Sky Isles' crystal meadow: clusters of pastel crystals all over the open ground — thick in
+   * drifts, thinner between, never on the roads, the plaza or anything built — in every size
+   * from a finger-high sprinkle to knee-high clumps.
+   */
+  private plantCrystal() {
+    const e = new THREE.Euler();
+    return (im: THREE.InstancedMesh, k: number, i: number, j: number): boolean => {
+      const x = (i + 0.15 + cellHash(i, j, 31) * 0.7) * CRYSTAL_CELL, z = (j + 0.15 + cellHash(i, j, 32) * 0.7) * CRYSTAL_CELL;
+      const drift = 0.5 + 0.5 * Math.sin(x * 0.045 + Math.sin(z * 0.033) * 2) * Math.sin(z * 0.041 - x * 0.013);
+      const lx = x - Math.round(x / REGION_SIZE) * REGION_SIZE, lz = z - Math.round(z / REGION_SIZE) * REGION_SIZE, d = Math.hypot(lx, lz);
+      const ok = cellHash(i, j, 33) < 0.25 + drift * 0.6 && regionAt(x, z).id === 'skyisles' && d > 52 &&
+        !(d < CITY_RADIUS + 48 && (Math.abs(lx) < 11 || Math.abs(lz) < 11)) && Math.abs(d - 140) > 8 && !pavedAt(x, z);
+      const h = ok ? terrainHeight(x, z) : 0;
+      if (!ok || h < WATER_Y + 0.3) { im.setMatrixAt(k, this.zero); return false; }
+      const s = (0.18 + Math.pow(cellHash(i, j, 34), 2.2) * 0.75) * (0.7 + drift * 0.5);
+      this.q.setFromEuler(e.set((cellHash(i, j, 35) - 0.5) * 0.3, cellHash(i, j, 36) * Math.PI * 2, (cellHash(i, j, 37) - 0.5) * 0.3));
+      im.setMatrixAt(k, this.m.compose(this.p.set(x, h - 0.04, z), this.q, this.s.set(s, s * (0.8 + cellHash(i, j, 38) * 0.5), s)));
+      im.setColorAt(k, this.c.set(CRYSTAL_PAL[Math.floor(cellHash(i, j, 39) * CRYSTAL_PAL.length)]));
       return true;
     };
   }
@@ -416,7 +466,7 @@ export class MeadowField {
     // High in the air the meadow is too far below to matter.
     this.group.visible = this.enabled && focus.y - ground < 60;
     if (!this.group.visible) return;
-    for (const b of takeDirty()) for (const f of [this.grass, this.flowers, this.midGrass, this.farGrass, this.midFlowers]) f.invalidate(b.x0, b.z0, b.x1, b.z1);
+    for (const b of takeDirty()) for (const f of [this.grass, this.flowers, this.midGrass, this.farGrass, this.midFlowers, this.crystals]) f.invalidate(b.x0, b.z0, b.x1, b.z1);
     GRASS_UNIFORMS.uFocus.value.copy(focus);
     GRASS_UNIFORMS.uFieldR.value = Math.min(FIELD_CELL * FIELD_CELLS, FLOWER_CELL * FLOWER_CELLS) / 2 - 1;
     this.grass.update(focus.x, focus.z);
@@ -424,6 +474,8 @@ export class MeadowField {
     this.midGrass.update(focus.x, focus.z);
     this.farGrass.update(focus.x, focus.z);
     this.midFlowers.update(focus.x, focus.z);
+    this.crystals.update(focus.x, focus.z);
+    CRYSTAL_MAT.emissiveIntensity = 0.2 + GRASS_UNIFORMS.uNight.value * 0.9;
   }
 }
 

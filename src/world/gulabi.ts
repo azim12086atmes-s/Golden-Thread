@@ -312,7 +312,7 @@ export function dressGulabi(
   // Marigold torans strung across each avenue.
   for (const d of [95, 135, 180, 205]) for (const [ax, az] of [[0, 1], [0, -1], [1, 0], [-1, 0]] as const) {
     const x = ax * d, z = az * d;
-    at(x, z, Math.atan2(ax, az) + Math.PI / 2, () => toran(c, 22));
+    at(x, z, Math.atan2(ax, az), () => toran(c, 22)); // local x runs across the avenue
     for (const s of [-1, 1]) solid(x + az * s * 11, z + ax * s * 11, 0.3, 5.5);
   }
   // Chhatris out on the rises beyond the town.
