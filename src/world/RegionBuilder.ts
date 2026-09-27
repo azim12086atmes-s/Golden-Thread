@@ -11,6 +11,7 @@ import { buildCave } from './models/caves';
 import { waterEdge } from './waters';
 import { INSTITUTE_SITES, SITE_SIZE } from '../institutions/sites';
 import { buildHouse, lampPost, streetProp, type Ctx } from './architecture';
+import { houseLights, streetLight } from './models/lights';
 import { GeoBuilder, box, cone, cyl, flowers, rock, sphere, tree } from './kit';
 import { CITY_RADIUS, REGION_SIZE, regionCenter, type RegionSpec } from './regions';
 import { CASTLE_SITE, DUNES, WATER_Y, duneShape, terrainHeight } from './terrain';
@@ -205,7 +206,7 @@ export function buildRegion(spec: RegionSpec, solid: THREE.Material, glowMat: TH
     const hs = houseScale(spec.id);
     // Lands built from real traditions (facade kit, New Yonder, the Meadow) build only their own kinds; others mix in generic variants.
     const variant = LAND_STYLE[spec.id].kinds.length > 0 && spec.id !== 'desert' && spec.id !== 'aurora' && spec.id !== 'skyisles' && !['newyork', 'meadow', 'london', 'renaissance', 'vintage', 'norway', 'switzerland', ...Object.keys(TRADITIONS)].includes(spec.id) && rng.chance(VARIANT_SHARE);
-    g.frame(x, y, z, ry, hs, () => glow.frame(x, y, z, ry, hs, () => { fp = variant ? buildVariant(ctx) : buildHouse(ctx); if (variant) houseDecor(ctx, fp); }));
+    g.frame(x, y, z, ry, hs, () => glow.frame(x, y, z, ry, hs, () => { fp = variant ? buildVariant(ctx) : buildHouse(ctx); if (variant) houseDecor(ctx, fp); houseLights(ctx, fp); }));
     const kind = (fp as { kind?: string }).kind ?? 'house';
     fp = { r: fp.r * hs, h: fp.h * hs };
     colliders.push({ x: c.x + x, z: c.z + z, r: fp.r * 0.85, h: y + fp.h });
@@ -223,7 +224,8 @@ export function buildRegion(spec: RegionSpec, solid: THREE.Material, glowMat: TH
   if (!isSky) {
     for (let d = 60; d < CITY_RADIUS; d += 22) {
       for (const [x, z] of [[AVENUE + 2, d], [-AVENUE - 2, -d], [d, AVENUE + 2], [-d, -AVENUE - 2]] as const) {
-        lampPost(ctx, x, H(x, z), z);
+        // The land's own street light from the 3D side (world/models/lights.ts), else its lamp post.
+        if (!streetLight(ctx, x, H(x, z), z)) lampPost(ctx, x, H(x, z), z);
         colliders.push({ x: c.x + x, z: c.z + z, r: 0.4, h: H(x, z) + 4 });
       }
       for (const [x, z] of [[-AVENUE - 3, d + 8], [AVENUE + 3, -d - 8], [d + 8, -AVENUE - 3], [-d - 8, AVENUE + 3]] as const) {

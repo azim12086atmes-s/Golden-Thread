@@ -66,10 +66,12 @@ sections C1–C7) and `3D_BUILDS_HANDOFF.md` (3D work, sections 2a and 3.x). Tic
 - [ ] Delete the unused old per-land house builders in `architecture.ts`
 - [ ] Sky Isles: more and larger trees (own branching species, giants), ground texture, richer surfaces, floating islands with bridges and waterfalls
 - [ ] New Yonder: large display screens, TV panels, cyberpunk and solarpunk artifacts, penthouses
-- [ ] Bridges over rivers in each land's style
+- [x] Bridges placed and walkable: 22 bridges wherever a river crosses the line of an avenue (`world/bridges.ts`, `world/BridgesView.ts`)
+- [ ] 3D: bridges in each land's style (`buildBridge`, `CHATGPT_3D_MODELS.md` §5)
 - [ ] Lotus ponds (India, Mughal, China, Japan, Indonesia)
 
 ## G. City lighting (3D; section 3.3)
+- [x] Logic: `houseLights` is called for every house and `streetLight` for every avenue lamp (`world/models/lights.ts`); each land's lights now only need their models
 - [x] Each land's lantern design on street posts and as sky lanterns
 - [ ] Old London gas-lamp street lighting
 - [ ] Madinat an-Nur hanging brass lanterns

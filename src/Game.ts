@@ -41,6 +41,7 @@ import { InstitutesView } from './institutions/InstitutesView';
 import { FieldsView } from './economy/FieldsView';
 import { HarboursView } from './economy/HarboursView';
 import { harbours } from './world/harbours';
+import { BridgesView } from './world/BridgesView';
 import { FIELD_SITES, FIELD_SIZE, fieldGrowth, tickFields } from './economy/fields';
 import { couriersIn, tickSupply } from './economy/supply';
 import { tickWeavers } from './economy/crews';
@@ -126,6 +127,7 @@ export class Game {
   readonly institutesView: InstitutesView;
   readonly fieldsView: FieldsView;
   readonly harboursView: HarboursView;
+  readonly bridgesView: BridgesView;
   readonly trav: Travellers;
   readonly npcs: Npcs;
   readonly townsfolk: Townsfolk;
@@ -208,6 +210,7 @@ export class Game {
     this.institutesView = new InstitutesView(this.scene, this.st, this.world);
     this.fieldsView = new FieldsView(this.scene, this.st, this.world);
     this.harboursView = new HarboursView(this.scene, this.world);
+    this.bridgesView = new BridgesView(this.scene, this.world);
     this.trav = new Travellers(this.scene, this.world, this.st, OUTFITS[this.st.outfits.girl], OUTFITS[this.st.outfits.boy]);
     this.van = new VanInterior(this.st, OUTFITS[this.st.outfits.girl], OUTFITS[this.st.outfits.boy]);
     this.house = new HouseInterior(OUTFITS[this.st.outfits.girl], OUTFITS[this.st.outfits.boy]);
@@ -385,6 +388,7 @@ export class Game {
       for (const n of tickWeavers(this.st)) this.toast(`🧶 ${n.text}`, 'reward');
       this.fieldsView.update();
       this.harboursView.update();
+      this.bridgesView.update();
       // Homes change shape as floors start and finish.
       const sig = Object.keys(this.st.homeFloors).map((id) => `${id}:${floorsOf(this.st, id)}:${floorBuilding(this.st, id) !== null}`).join('|');
       if (sig !== this.floorsSig) { this.floorsSig = sig; this.housingDirty = true; }

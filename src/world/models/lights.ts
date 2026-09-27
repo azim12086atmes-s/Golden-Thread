@@ -7,6 +7,10 @@ import type { Ctx, Footprint } from '../architecture';
  * the tent entrance in the desert and the Aurora …) and along the streets (`streetLight`, a light
  * standard at (x, y, z) — gas lamps in London …). Glow geometry goes in `c.glow`; keep area small.
  *
+ * Wired: `houseLights` runs inside each house's own frame (origin at its base, front door facing +z) right after
+ * it is built; `streetLight` is asked for every avenue lamp (land frame) and the land's lamp post stands there
+ * whenever it returns false.
+ *
  * PLACEHOLDERS: nothing yet (the lamp posts of architecture.ts `lampPost` still line the avenues).
  */
 export function houseLights(c: Ctx, fp: Footprint): void {
