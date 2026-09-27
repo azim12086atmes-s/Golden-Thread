@@ -6,6 +6,7 @@ import type { Anim, Piece } from './creatures';
 import { type Design, makeDesign } from './designs';
 import { harbourOf } from '../world/harbours';
 import { LAND_TRAFFIC, SEA_TRAFFIC, resolveShip } from './roster';
+import { HIGHWAY_TRAFFIC, RING_R, STOP_BACK, activeShare, highwayU, isOut, lights, neighbours, type Light } from './schedule';
 import { hasDesign } from './designs';
 
 /**
@@ -24,6 +25,8 @@ export interface Route {
   realm: Design['realm'];
   /** Sea lanes: where along the route ships stop at the harbour's pier head. */
   dock?: number;
+  /** Road routes through a junction: metres to the next stop line, and whose lights govern it (schedule.ts). */
+  stopAhead?(u: number): { d: number; by: 'avenue' | 'ring' } | null;
 }
 
 /** Lands whose traffic keeps to the left. */
@@ -39,6 +42,14 @@ export function avenueRoute(cx: number, cz: number, ax: number, az: number, d0: 
   lane = R;
   return {
     len, realm: 'road',
+    // Crossing the ring road: stop before it going out, and before it coming back.
+    stopAhead(u) {
+      if (d0 > RING_R || d1 < RING_R) return null;
+      u = ((u % len) + len) % len;
+      if (u < straight) { const a = d0 + u, line = RING_R - STOP_BACK; return a < line ? { d: line - a, by: 'avenue' } : null; }
+      if (u >= straight + turn && u < 2 * straight + turn) { const a = d1 - (u - straight - turn), line = RING_R + STOP_BACK; return a > line ? { d: a - line, by: 'avenue' } : null; }
+      return null;
+    },
     at(u, out) {
       u = ((u % len) + len) % len;
       let a: number, b: number;
@@ -53,7 +64,15 @@ export function avenueRoute(cx: number, cz: number, ax: number, az: number, d0: 
 
 export function circleRoute(cx: number, cz: number, r: number, dir: 1 | -1, realm: Design['realm']): Route {
   const len = Math.PI * 2 * r;
-  return { len, realm, at(u, out) { const a = (u / r) * dir; return out.set(cx + Math.cos(a) * r, 0, cz + Math.sin(a) * r); } };
+  const route: Route = { len, realm, at(u, out) { const a = (u / r) * dir; return out.set(cx + Math.cos(a) * r, 0, cz + Math.sin(a) * r); } };
+  // The ring road meets an avenue every quarter turn: stop before each crossing.
+  if (realm === 'road') route.stopAhead = (u) => {
+    // The crossings lie at every quarter of the way round, whichever way the ring runs.
+    const q = (Math.PI / 2) * r, pos = ((u % len) + len) % len;
+    const toNext = q - (pos % q) - STOP_BACK;
+    return toNext > 0 ? { d: toNext, by: 'ring' } : null;
+  };
+  return route;
 }
 
 /** Along a river and back, keeping to one side each way. */
@@ -91,6 +110,12 @@ interface Mover {
   /** Ships: seconds left tied up at the pier, and whether they have stopped on this pass. */
   wait?: number;
   docked?: boolean;
+  /** Out at this hour (schedule.ts); the rest are parked out of sight. */
+  out?: boolean;
+  /** Its place in its kind's line-up (who stays out at night). */
+  index?: number;
+  /** Highway traffic: placed by the clock, so crossing a border never moves it (schedule.ts). */
+  hw?: { u0: number };
 }
 
 interface Drawn {
@@ -123,8 +148,8 @@ export function landRoutes(land: RegionId): { road: Route[]; water: Array<{ rout
     for (const [ax, az] of [[0, 1], [0, -1], [1, 0], [-1, 0]] as const) {
       // Inner stretch (plaza to the ring road) and outer stretch (the ring road to the fields),
       // turning back before the crossing so nothing meets at the junction.
-      road.push(avenueRoute(c.x, c.z, ax, az, 60, 128, lane));
-      road.push(avenueRoute(c.x, c.z, ax, az, 152, CITY_RADIUS + 34, lane));
+      // From the plaza out to the fields and back, through the ring-road crossing (with lights).
+      road.push(avenueRoute(c.x, c.z, ax, az, 60, CITY_RADIUS + 34, lane));
     }
     const ring = LEFT.includes(land) ? -1 : 1;
     road.push(circleRoute(c.x, c.z, 140 + 2.3, ring as 1 | -1, 'road'), circleRoute(c.x, c.z, 140 - 2.3, (-ring) as 1 | -1, 'road'));
@@ -141,8 +166,12 @@ export function landRoutes(land: RegionId): { road: Route[]; water: Array<{ rout
 /** A courier on the road in this land (economy/supply.ts `couriersIn`): their vehicle, and which side of town their field is. */
 export interface CourierRide { vehicle: string; standIn?: string; side: 1 | -1 }
 
+/** Beyond this, traffic is not drawn (m). */
+const FAR = 520;
+
 export class Traffic {
   readonly group = new THREE.Group();
+  private focus = new THREE.Vector3();
   private sig = '';
   private drawn: Drawn[] = [];
   private solidMat = new THREE.MeshStandardMaterial({ vertexColors: true, roughness: 0.55, metalness: 0.12, side: THREE.DoubleSide, envMapIntensity: 0.35 });
@@ -161,6 +190,45 @@ export class Traffic {
   private clear(): void {
     for (const d of this.drawn) for (const m of [...d.meshes, ...(d.chain ? [d.chain] : [])]) for (const im of [m.solid, m.glow]) if (im) { this.group.remove(im); im.dispose(); }
     this.drawn = [];
+    if (this.lightPosts) { this.group.remove(this.lightPosts); this.lightPosts.traverse((o) => { if ((o as THREE.Mesh).isMesh) (o as THREE.Mesh).geometry.dispose(); }); this.lightPosts = null; }
+  }
+
+  // ───── traffic lights at the ring-road crossings (schedule.ts) ─────
+  private lightPosts: THREE.Group | null = null;
+  private lamp = { avenue: this.lampMats(), ring: this.lampMats() };
+  private lampMats(): Record<Light, THREE.MeshBasicMaterial> {
+    return { red: new THREE.MeshBasicMaterial({ color: '#3a0a0a', toneMapped: false }), amber: new THREE.MeshBasicMaterial({ color: '#3a2a0a', toneMapped: false }), green: new THREE.MeshBasicMaterial({ color: '#0a3a14', toneMapped: false }) };
+  }
+  /** A post with three lamps at each corner of the four crossings: two face the avenue, two the ring road. */
+  private buildLights(cx: number, cz: number): void {
+    const g = new THREE.Group(), pole = new THREE.MeshStandardMaterial({ color: '#3a3a44', roughness: 0.5, metalness: 0.4 });
+    const post = new THREE.CylinderGeometry(0.08, 0.1, 3.4, 6), head = new THREE.BoxGeometry(0.34, 1.05, 0.3), lampG = new THREE.SphereGeometry(0.11, 8, 6);
+    for (const [ax, az] of [[0, 1], [0, -1], [1, 0], [-1, 0]] as const) for (const [sa, sb, faces] of [[-1, -1, 'avenue'], [1, 1, 'avenue'], [-1, 1, 'ring'], [1, -1, 'ring']] as const) {
+      // Corner of the crossing: along the avenue (a) and across it (b).
+      const a = RING_R + sa * 8.5, b = sb * 8.5;
+      const x = cx + ax * a + az * b, z = cz + az * a - ax * b, y = terrainHeight(x, z);
+      const m = new THREE.Mesh(post, pole); m.position.set(x, y + 1.7, z); g.add(m);
+      const h = new THREE.Mesh(head, pole); h.position.set(x, y + 3.2, z);
+      // Face the traffic it governs: along the avenue, or along the ring road.
+      h.rotation.y = faces === 'avenue' ? Math.atan2(ax, az) : Math.atan2(az, -ax);
+      g.add(h);
+      (['red', 'amber', 'green'] as Light[]).forEach((c, i) => {
+        const l = new THREE.Mesh(lampG, this.lamp[faces][c]);
+        l.position.set(0, 0.32 - i * 0.32, 0.16);
+        h.add(l);
+      });
+    }
+    this.lightPosts = g;
+    this.group.add(g);
+  }
+  private setLights(t: number): { avenue: Light; ring: Light } {
+    const now = lights(t);
+    for (const who of ['avenue', 'ring'] as const) for (const c of ['red', 'amber', 'green'] as Light[]) {
+      const on = now[who] === c, m = this.lamp[who][c];
+      m.color.set(on ? (c === 'red' ? '#ff3a2a' : c === 'amber' ? '#ffb02a' : '#3aff6a') : (c === 'red' ? '#3a0a0a' : c === 'amber' ? '#3a2a0a' : '#0a3a14'));
+      if (on) m.color.multiplyScalar(1.6);
+    }
+    return now;
   }
 
   /** Put this land's traffic on its roads, waters and skies. */
@@ -202,7 +270,7 @@ export class Traffic {
       const cr = { ...c0, vehicle: hasDesign(c0.vehicle) ? c0.vehicle : c0.standIn ?? c0.vehicle };
       const d = design(cr.vehicle);
       if (d.realm === 'road' && routes.road.length) {
-        const route = routes.road[cr.side > 0 ? 5 : 7];
+        const route = routes.road[cr.side > 0 ? 2 : 3];
         push(cr.vehicle, { route, u: route.len * (0.25 + 0.37 * i) % route.len, speed: 0, alt: 0 });
       } else if (d.realm === 'water' && routes.sea[0]) {
         const route = routes.sea[0];
@@ -236,6 +304,22 @@ export class Traffic {
       }
     }
 
+    // Highways to the neighbouring lands: intercity buses, lorries and cars, placed by the clock
+    // on a loop that runs from this town's ring road to the next town's (the same loop in both lands).
+    for (const n of neighbours(land)) {
+      const [a, b] = n.dir[0] > 0 || n.dir[1] > 0 ? [land, n.land] : [n.land, land];
+      const ca = regionCenter(REGION_BY_ID[a]), [dx, dz] = n.dir[0] > 0 || n.dir[1] > 0 ? n.dir : [-n.dir[0], -n.dir[1]];
+      const route = avenueRoute(ca.x, ca.z, dx, dz, 152, 700 - 152, LEFT.includes(a) ? -5.6 : 5.6);
+      let k = 0;
+      const key = `${a}~${b}`;
+      for (const [id, count] of HIGHWAY_TRAFFIC) for (let i = 0; i < count; i++, k++) {
+        if (!hasDesign(id)) continue;
+        const u0 = (route.len * (k + ((key.length * 7) % 10) / 10)) / 8;
+        push(id, { route, u: u0, speed: design(id).speed, alt: 0, hw: { u0 } });
+      }
+    }
+    if (land !== 'skyisles') this.buildLights(c.x, c.z);
+
     for (const [id, movers] of add) {
       const d = design(id), members = movers.reduce((n, m) => n + m.members.length, 0);
       const inst = (g: THREE.BufferGeometry | null, mat: THREE.Material, count: number) => {
@@ -258,11 +342,18 @@ export class Traffic {
     }
   }
 
-  update(dt: number, t: number, land: RegionId, travellers: THREE.Vector3, night: number, couriers: CourierRide[] = []): void {
+  update(dt: number, t: number, land: RegionId, travellers: THREE.Vector3, night: number, couriers: CourierRide[] = [], hour = 12): void {
     this.setLand(land, couriers);
     this.glowMat.color.setScalar(0.06 + night * 1.5);
+    this.focus.copy(travellers);
+    const lit = this.lightPosts ? this.setLights(t) : null;
     for (const dr of this.drawn) {
       const d = dr.design;
+      // Who is out at this hour (the same ones every night).
+      const share = activeShare(d.id, d.realm, hour);
+      dr.movers.forEach((m, i) => { m.out = isOut(m.index ?? i, share); });
+      // Highway traffic keeps to the clock.
+      for (const m of dr.movers) if (m.hw) { m.u = highwayU(m.hw.u0, d.speed, t, m.route.len); m.speed = d.speed; }
       // Keep their distance on the road: the one ahead sets the pace.
       if (d.realm === 'road') for (const m of dr.movers) {
         let want = d.speed;
@@ -274,6 +365,12 @@ export class Traffic {
         // Look far enough ahead to stop in time (braking at 8 m/s²).
         const reach = d.len / 2 + 4 + (m.speed * m.speed) / 16 + m.members.length * (d.group?.spacing ?? 0);
         if (ahead > -1 && ahead < reach && side < 2.6 && Math.abs(travellers.y - (terrainHeight(_p.x, _p.z))) < 4) want = 0;
+        // The lights at the ring-road crossing: stop at the line on red (and on amber, if there is room to).
+        const stop = lit ? m.route.stopAhead?.(m.u + d.len / 2) : null;
+        if (stop && lit) {
+          const light = lit[stop.by];
+          if (light !== 'green' && stop.d < 3 + (m.speed * m.speed) / 12 && !(light === 'amber' && stop.d < 3)) want = Math.min(want, stop.d < 0.8 ? 0 : Math.min(want, stop.d * 0.8));
+        }
         for (const o of this.roadMovers()) {
           if (o === m || o.route !== m.route) continue;
           const gap = (((o.u - m.u) % m.route.len) + m.route.len) % m.route.len;
@@ -300,7 +397,7 @@ export class Traffic {
       }
       for (const m of dr.movers) {
         const step = m.speed * dt;
-        m.u += step;
+        if (!m.hw) m.u += step;
         m.odo += step;
       }
       this.draw(dr, t);
@@ -350,6 +447,9 @@ export class Traffic {
     for (const m of dr.movers) {
       for (const [du, across] of m.members) {
         this.place(m, du, across, t, _m);
+        // Parked for the night, or too far away to see: out of sight.
+        _p.setFromMatrixPosition(_m);
+        if (m.out === false || _p.distanceToSquared(this.focus) > FAR * FAR) _m.makeScale(0, 0, 0);
         const stride = d.realm === 'road' ? m.odo * 2.2 : t * 6 + m.phase;
         for (const pm of dr.meshes) {
           animate(pm.piece, t + m.phase + du, stride + du, _a);

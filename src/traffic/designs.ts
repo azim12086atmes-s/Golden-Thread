@@ -825,6 +825,8 @@ export const DESIGNS: Record<string, () => Design> = {
   'kettuvallam': () => rowBoat('kettuvallam', 'kettuvallam houseboat', '#5a3a26', 18, { beam: 3.2, sheer: 0.5, canopy: '#c9a060', canopyTrim: '#6b4a2a', roof: 'thatch', lanterns: WARM }),
   'snake-boat': () => rowBoat('snake-boat', 'chundan vallam snake boat', '#2a1f18', 22, { beam: 1.3, sheer: 2.2, prow: (s) => { s.ball(0.3, '#e2b43a', [0, 3.0, -11.4]); } }),
   'shikara': () => rowBoat('shikara', 'shikara', '#8a4a2a', 9, { beam: 1.8, sheer: 0.4, canopy: '#c23b2a', canopyTrim: '#e2b43a', roof: 'flat', cushions: '#e2b43a', lanterns: WARM }),
+  // A small boat hung with lanterns, out on the water only from dusk (traffic/schedule.ts).
+  'lantern-boat': () => rowBoat('lantern-boat', 'lantern boat', '#5a3422', 6, { beam: 1.5, sheer: 0.35, canopy: '#8a2a2a', canopyTrim: '#f2c14e', roof: 'barrel', lanterns: '#ffb84a' }),
   'ganga-boat': () => rowBoat('ganga-boat', 'wooden river boat', '#6b4a2a', 8, { beam: 2, sheer: 0.3, canopy: '#f2a13a', roof: 'barrel' }),
   'kayak': () => rowBoat('kayak', 'kayak', '#e8342a', 4.5, { beam: 0.7, sheer: 0.1 }),
   'swan-boat': () => swanBoat(),

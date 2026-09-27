@@ -9,6 +9,7 @@ import { NATURE, pickTree, zoneAt } from './nature';
 import { CAVES, type Cave } from './caves';
 import { buildCave } from './models/caves';
 import { buildBanks } from './banks';
+import { neighbours } from '../traffic/schedule';
 import { bridgesOf } from './bridges';
 import { OUTCROPS, outcrop } from './outcrops';
 import { crystalCluster } from './islands';
@@ -183,6 +184,17 @@ export function buildRegion(spec: RegionSpec, solid: THREE.Material, glowMat: TH
     for (let d = 56; d < CITY_RADIUS + 40; d += 12) {
       for (const [x, z, ry] of [[0, d, 0], [0, -d, 0], [d, 0, Math.PI / 2], [-d, 0, Math.PI / 2]] as const) {
         box(g, AVENUE * 1.6, 0.12, 12.4, spec.road, x, H(x, z) - 0.05, z, ry);
+      }
+    }
+    // Highways: where a neighbouring land lies, the avenue runs on to the border to meet its road
+    // (traffic/schedule.ts), laid in short lengths that follow the ground, with a dashed centre line.
+    for (const n of neighbours(spec.id)) {
+      const [ax, az] = n.dir, ry = az !== 0 ? 0 : Math.PI / 2;
+      for (let d = CITY_RADIUS + 40; d < REGION_SIZE / 2 + 4; d += 5) {
+        const x = ax * d, z = az * d, y = H(x, z);
+        if (y < WATER_Y - 0.2) continue; // a bridge carries it over the water
+        box(g, AVENUE * 1.6, 0.14, 5.6, spec.road, x, y - 0.06, z, ry);
+        if (Math.round(d / 5) % 2) box(g, 0.22, 0.02, 2.4, '#f4f0e0', x, y + 0.08, z, ry);
       }
     }
     for (let a = 0; a < Math.PI * 2; a += 0.09) {

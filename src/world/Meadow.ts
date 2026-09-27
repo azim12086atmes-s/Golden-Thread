@@ -2,7 +2,8 @@ import { pavedAt, takeDirty } from './paved';
 import * as THREE from 'three';
 import { LOCALES } from './locale';
 import { PLOTS, PLOT_SIZE } from './plots';
-import { CITY_RADIUS, REGION_SIZE, regionAt } from './regions';
+import { CITY_RADIUS, REGION_SIZE, regionAt, type RegionId } from './regions';
+import { neighbours } from '../traffic/schedule';
 import { WATER_Y, groundColor, terrainHeight } from './terrain';
 import { WIND_GLSL, WIND_UNIFORMS } from './wind';
 
@@ -279,10 +280,23 @@ export function grassy(x: number, z: number, h: number, col: THREE.Color): boole
   if (d < 54) return false; // the plaza and landmark
   if (d < CITY_RADIUS + 48 && (Math.abs(lx) < 13.5 || Math.abs(lz) < 13.5)) return false; // avenues and their pavements
   if (Math.abs(d - 140) < 10) return false; // the ring road and its tiled borders
+  // The highways on to the neighbouring towns (traffic/schedule.ts).
+  if (d >= CITY_RADIUS + 48) {
+    const hw = highwayDirs(regionAt(x, z).id);
+    if ((Math.abs(lx) < 11 && hw.has(`0,${Math.sign(lz)}`)) || (Math.abs(lz) < 11 && hw.has(`${Math.sign(lx)},0`))) return false;
+  }
   if (pavedAt(x, z)) return false; // houses, squares, fields, sites, quays (paved.ts)
   // Plots of land are for building and farming: the meadow stops at their fences.
   if (PLOTS.some((p) => Math.abs(x - p.x) < PLOT_SIZE / 2 + 1 && Math.abs(z - p.z) < PLOT_SIZE / 2 + 1)) return false;
   return true;
+}
+
+const hwCache = new Map<string, Set<string>>();
+/** The directions in which a land's highways leave it ("dx,dz"). */
+function highwayDirs(land: RegionId): Set<string> {
+  let s = hwCache.get(land);
+  if (!s) hwCache.set(land, (s = new Set(neighbours(land).map((n) => `${n.dir[0]},${n.dir[1]}`))));
+  return s;
 }
 
 /** The dense meadow round the travellers: grids of cells that move with them. */

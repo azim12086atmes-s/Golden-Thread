@@ -385,7 +385,7 @@ export class Game {
     this.skyFx.partyAt.copy(this.celebration.festivities.centre);
     this.camera.getWorldDirection(this.skyFx.lookDir);
     this.skyFx.update(dt, this.t, this.trav.gPos, this.region.id, this.sky.night, this.sky.sunDirection);
-    this.traffic.update(dt, this.t, this.region.id, this.trav.gPos, this.sky.night, couriersIn(this.st, this.region.id));
+    this.traffic.update(dt, this.t, this.region.id, this.trav.gPos, this.sky.night, couriersIn(this.st, this.region.id), hourOf(this.st.minutes));
     // The people in your care: news when someone thrives or their paid days run out.
     if ((this.charityClock -= dt) <= 0) {
       this.charityClock = 2;
