@@ -1,6 +1,8 @@
 export type SkillId =
   | 'weaving' | 'carpentry' | 'cooking' | 'pottery'
-  | 'calligraphy' | 'gardening' | 'mechanics' | 'lampcraft';
+  | 'calligraphy' | 'gardening' | 'mechanics' | 'lampcraft'
+  // Service skills (owner's brief — NEXT_WORK C4): grown by doing the work (economy/services.ts).
+  | 'software' | 'hardware' | 'teaching' | 'medicine' | 'building' | 'logistics' | 'research';
 
 export const SKILLS: Record<SkillId, { name: string; icon: string; blurb: string }> = {
   weaving:     { name: 'Weaving',     icon: '🧶', blurb: 'Scarves, rugs and shawls from wool and silk.' },
@@ -11,6 +13,13 @@ export const SKILLS: Record<SkillId, { name: string; icon: string; blurb: string
   gardening:   { name: 'Gardening',   icon: '🌱', blurb: 'Seeds, herbs and growing things.' },
   mechanics:   { name: 'Mechanics',   icon: '⚙️', blurb: 'Fixing engines, clocks and pumps.' },
   lampcraft:   { name: 'Lampcraft',   icon: '🏮', blurb: 'Lanterns and lamps that hold light.' },
+  software:    { name: 'Software',    icon: '💻', blurb: 'Programs, apps and websites for people and shops.' },
+  hardware:    { name: 'Hardware',    icon: '🔌', blurb: 'Building and repairing radios, lamps, pumps and machines.' },
+  teaching:    { name: 'Teaching',    icon: '🧑‍🏫', blurb: 'Helping others learn what you know.' },
+  medicine:    { name: 'Medicine',    icon: '🩺', blurb: 'Caring for the sick, with each land\'s own healing.' },
+  building:    { name: 'Building',    icon: '🧱', blurb: 'Raising and mending homes, walls and roofs.' },
+  logistics:   { name: 'Logistics',   icon: '📦', blurb: 'Getting goods where they are needed, on time.' },
+  research:    { name: 'Research',    icon: '🔬', blurb: 'Asking good questions and finding out.' },
 };
 
 /** XP needed to reach each level. Level 0 is "never tried". */

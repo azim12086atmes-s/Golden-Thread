@@ -7,6 +7,7 @@ import { FIELD_BY_ID, FIELD_ROWS, barnCount, buyField, fieldGrowTime, fieldGrowt
 import { addRoute, bestMarkets, destLabel, marketDest, pantryDest, removeRoute, shipmentOf, tripMinutes } from '../economy/supply';
 import { WORKER_BY_ID, workersOf, type Worker } from '../economy/workers';
 import { hasHarbour } from '../world/harbours';
+import { RANKS, doGig, gigsFor, jobsIn, shiftPay, titleAt, workShift, workedToday } from '../economy/services';
 import { buySeed } from '../housing/housing';
 import type { Animal } from '../animals/Animals';
 import { SPECIES } from '../animals/AnimalModel';
@@ -32,7 +33,7 @@ import { VEHICLES, type VehicleId } from '../vehicles/vehicles';
 import { GRID_COLS, GRID_ROWS, REGIONS, REGION_BY_ID, regionCenter, type RegionId, type RegionSpec } from '../world/regions';
 import type { Game } from '../Game';
 
-type Panel = 'harbour' | 'field' | 'institute' | 'care' | 'wardrobe' | 'bag' | 'journal' | 'map' | 'messages' | 'vehicles' | 'dialogue' | 'animal' | 'build' | 'van' | 'house' | 'farm' | 'market' | 'help' | 'homes' | 'property' | null;
+type Panel = 'work' | 'harbour' | 'field' | 'institute' | 'care' | 'wardrobe' | 'bag' | 'journal' | 'map' | 'messages' | 'vehicles' | 'dialogue' | 'animal' | 'build' | 'van' | 'house' | 'farm' | 'market' | 'help' | 'homes' | 'property' | null;
 
 const h = (tag: string, attrs: Record<string, string> = {}, ...kids: Array<Node | string | null | false>) => {
   const el = document.createElement(tag);
@@ -121,7 +122,7 @@ export class UI {
     if (i.hit('p') && !this.modal) this.g.takePhoto();
     if (i.hit('t') && !this.modal) this.g.setTimeOfDay(nextTime(this.g.st.minutes));
     if (i.hit('o') && !this.modal) this.setTrackerHidden(!this.trackerHidden);
-    const keys: Array<[string, Panel]> = [['c', 'wardrobe'], ['i', 'bag'], ['j', 'journal'], ['m', 'map'], ['n', 'messages'], ['v', 'vehicles'], ['h', 'help'], ['l', 'homes'], ['k', 'care']];
+    const keys: Array<[string, Panel]> = [['c', 'wardrobe'], ['i', 'bag'], ['j', 'journal'], ['m', 'map'], ['n', 'messages'], ['v', 'vehicles'], ['h', 'help'], ['l', 'homes'], ['k', 'care'], ['u', 'work']];
     for (const [k, p] of keys) if (i.hit(k)) return this.toggle(p);
     if (i.hit('b')) {
       if (this.panel === 'build') return this.closePanel();
@@ -460,7 +461,7 @@ export class UI {
   }
 
   private buildDock(): void {
-    const items: Array<[Panel, string, string]> = [['wardrobe', '👗', 'Dressing room (C)'], ['bag', '🎒', 'Bag & crafts (I)'], ['journal', '📖', 'Journal (J)'], ['map', '🗺️', 'Map (M)'], ['messages', '💌', 'Messages (N)'], ['vehicles', '🚐', 'Travel (V)'], ['homes', '🏡', 'Homes & land (L)'], ['care', '🤲', 'Care & sponsorship (K)'], ['help', '❔', 'Help (H)']];
+    const items: Array<[Panel, string, string]> = [['wardrobe', '👗', 'Dressing room (C)'], ['bag', '🎒', 'Bag & crafts (I)'], ['journal', '📖', 'Journal (J)'], ['map', '🗺️', 'Map (M)'], ['messages', '💌', 'Messages (N)'], ['vehicles', '🚐', 'Travel (V)'], ['homes', '🏡', 'Homes & land (L)'], ['care', '🤲', 'Care & sponsorship (K)'], ['work', '💼', 'Work & services (U)'], ['help', '❔', 'Help (H)']];
     for (const [p, icon, label] of items) {
       const b = btn(icon, () => this.toggle(p), 'dock-btn');
       b.dataset.p = p ?? '';
@@ -588,7 +589,7 @@ export class UI {
 
   render(): void {
     const body = h('div', { class: 'body' });
-    const titles: Record<string, string> = { wardrobe: 'Dressing room', bag: 'Bag & Crafts', journal: 'Journal', map: 'The World', messages: 'Messages', vehicles: 'Ways to Travel', dialogue: '', animal: '', build: 'Build', van: 'Inside Safar', house: this.g.houseTitle(), farm: 'Farm bed', market: 'Market stall', help: 'How to play', care: 'Care & sponsorship', institute: this.instituteTitle(), field: this.fieldTitle(), harbour: `The harbour of ${REGION_BY_ID[this.harbourLand]?.name ?? ''}`, homes: 'Homes & Land', property: 'Land for sale' };
+    const titles: Record<string, string> = { wardrobe: 'Dressing room', bag: 'Bag & Crafts', journal: 'Journal', map: 'The World', messages: 'Messages', vehicles: 'Ways to Travel', dialogue: '', animal: '', build: 'Build', van: 'Inside Safar', house: this.g.houseTitle(), farm: 'Farm bed', market: 'Market stall', help: 'How to play', care: 'Care & sponsorship', institute: this.instituteTitle(), field: this.fieldTitle(), work: `Work in ${this.g.region.name}`, harbour: `The harbour of ${REGION_BY_ID[this.harbourLand]?.name ?? ''}`, homes: 'Homes & Land', property: 'Land for sale' };
     const head = this.panel === 'van'
       ? h('header', {}, h('h2', {}, titles.van),
         h('span', { class: 'head-acts' },
@@ -615,6 +616,7 @@ export class UI {
       case 'institute': this.institutePanel(body); break;
       case 'field': this.fieldPanel(body); break;
       case 'harbour': this.harbourPanel(body); break;
+      case 'work': this.workPanel(body); break;
       case 'property': this.property(body); break;
       default: return this.closePanel();
     }
@@ -857,6 +859,43 @@ export class UI {
           ...(on && from ? dests.map((to) => btn(`→ ${destLabel(st, to).replace(/^the market in /, '🛒 ')} · ${Math.round(tripMinutes(w, from, (to.startsWith('market:') ? to.slice(7) : SITE_BY_ID[to.slice(7)].land) as RegionId) / 60)} h`,
             () => act(() => addRoute(st, w.id, fieldId, to), `${w.name} will carry from this barn to ${destLabel(st, to)}.`), `small ${route?.to === to && route.from === fieldId ? 'on' : 'ghost'}`)) : []),
           route ? btn('Stop the route', () => { removeRoute(st, w.id); this.render(); }, 'small ghost') : null));
+    }
+  }
+
+  // ───── work and services ─────
+
+  /**
+   * Service work in the land you are in: a shift a day at its employers (title and pay rise with
+   * your skill), and today's freelance board — this land's gigs, plus software work posted from
+   * anywhere, which can be done remotely. Skills grow only by doing.
+   */
+  private workPanel(body: HTMLElement): void {
+    const g = this.g, st = g.st, land = g.region.id, day = Math.floor(st.minutes / 1440);
+    const say = (r: { error: string } | { pay: number; promoted: string | null }, ok: string) => {
+      if ('error' in r) g.toast(r.error, 'info');
+      else { g.toast(`${ok} +${r.pay}🪙`, 'reward'); if (r.promoted) g.toast(`🎓 You are now ${r.promoted}.`, 'story'); g.bus.emit('coins:changed', { coins: st.coins }); }
+      this.render();
+    };
+    body.append(h('p', { class: 'dim' }, `Everyone starts as an apprentice. Skills grow only by doing: each shift and gig raises yours, and better-skilled work pays more (${RANKS.join(' → ')}).`));
+    const jobs = jobsIn(land);
+    body.append(h('h3', {}, 'Employers here'));
+    if (!jobs.length) body.append(h('p', { class: 'dim' }, 'No one is hiring here.'));
+    for (const j of jobs) {
+      const lv = level(st, j.skill), done = workedToday(st, j.id);
+      body.append(h('div', { class: 'quest' }, h('b', {}, `${SKILLS[j.skill].icon} ${j.employer}`),
+        h('small', {}, `${titleAt(j, lv)} · ${SKILLS[j.skill].name} level ${lv} · ${j.hours} h shift${st.work.worked[j.id] ? ` · ${st.work.worked[j.id]} shifts worked` : ''}`)),
+      h('div', { class: 'acts' }, btn(done ? 'Shift done today' : `💼 Work a shift · +${shiftPay(lv)}🪙`, () => say(workShift(st, j.id), `A good day at ${j.employer}.`), 'small', done)));
+    }
+    // Freelance: this land's board, and remote software work from two other lands.
+    const rest = REGIONS.filter((r) => r.id !== land), others = [rest[(day * 3) % rest.length], rest[(day * 3 + 7) % rest.length]];
+    const board = [...gigsFor(land, day), ...others.flatMap((r) => gigsFor(r.id, day).filter((x) => x.remote))];
+    body.append(h('h3', {}, 'Freelance board · today'));
+    for (const x of board) {
+      const lv = level(st, x.skill), done = st.work.done.includes(x.id);
+      const parts = Object.entries(x.needs).map(([id, n]) => `${n}× ${ITEMS[id]?.name ?? id} (have ${count(st, id)})`).join(', ');
+      body.append(h('div', { class: `quest ${lv < x.min ? 'dim' : ''}` }, h('b', {}, `${SKILLS[x.skill].icon} ${x.title}`),
+        h('small', {}, `${x.remote && x.land !== land ? `remote · for a client in ${REGION_BY_ID[x.land].name} · ` : ''}${SKILLS[x.skill].name} level ${x.min}+ (yours ${lv}) · ${x.hours} h${parts ? ` · needs ${parts}` : ''}`)),
+      h('div', { class: 'acts' }, btn(done ? 'Done ✓' : `🧾 Take it · +${x.pay}🪙`, () => say(doGig(st, x), 'The client is delighted.'), 'small ghost', done || lv < x.min)));
     }
   }
 

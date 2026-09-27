@@ -24,10 +24,11 @@ sections C1–C7) and `3D_BUILDS_HANDOFF.md` (3D work, sections 2a and 3.x). Tic
 - [x] Employ experts (daily wage in coins or food) or pay them freelance for one build; teach someone you sponsor; courses, interning, teaching; skills grow by doing
 - [ ] Hire people as employees or freelancers: teachers, chefs, builders, tent-layers, weavers, doctors, researchers (farmhands and couriers done — `economy/workers.ts`)
 - [ ] Pay in coins or in kind (housing, food, necessities, training)
-- [ ] Skills grow only by doing them; services need a skill level and pay more at higher levels; new skills (teaching, medicine, research, building, software, hardware, logistics)
+- [x] Skills grow only by doing them; services need a skill level and pay more at higher levels; new skills: teaching, medicine, research, building, software, hardware, logistics (`economy/items.ts`, `economy/services.ts`)
 - [ ] Teaching as a service; interning; doing a course (fee in coins or goods, certificate)
 - [x] Research under professors (assist for pay; scientific and magic theses → degree, invention, purse)
-- [ ] Service jobs: company employee, freelance software, hardware building
+- [x] Service jobs: two employers in every land (a shift a day; Apprentice → Master, pay rising with skill) and a daily freelance board — remote software, hardware builds with parts, and every land's trades (Work panel, U)
+- [ ] Institutes and experts to use the new skills (clinics → medicine, schools → teaching, tech → software/hardware, research → research)
 
 ## D. Economy of services, agriculture and supply (C5)
 - [ ] Services economy: health care, tech, logistics, supply, agriculture, research, manufacturing, inventions

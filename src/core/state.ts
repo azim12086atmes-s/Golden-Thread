@@ -89,6 +89,8 @@ export interface GameState {
   shipments: Array<{ route: string; courier: string; from: string; to: string; items: Record<string, number>; left: number; arrive: number }>;
   /** How much of each good your couriers sold into each land lately (land → item → units, when) — markets fill up. */
   glut: Record<string, Record<string, { n: number; at: number }>>;
+  /** Service work (economy/services.ts): the day of each job's last shift, shifts worked, freelance gigs done. */
+  work: { shifts: Record<string, number>; worked: Record<string, number>; done: string[] };
   /** Who you taught today (person:skill → day), one lesson a day each. */
   taught: Record<string, number>;
   /** The thesis you are writing under a professor (institutions/research.ts). */
@@ -126,6 +128,7 @@ export function newGame(): GameState {
     skills: {
       weaving: 0, carpentry: 0, cooking: 0, pottery: 0,
       calligraphy: 0, gardening: 0, mechanics: 0, lampcraft: 0,
+      software: 0, hardware: 0, teaching: 0, medicine: 0, building: 0, logistics: 0, research: 0,
     },
     quests: {},
     friends: {},
@@ -145,6 +148,7 @@ export function newGame(): GameState {
     routes: [],
     shipments: [],
     glut: {},
+    work: { shifts: {}, worked: {}, done: [] },
     taught: {},
     thesis: null,
     degrees: [],
