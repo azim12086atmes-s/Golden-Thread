@@ -9,8 +9,8 @@ sections C1–C7) and `3D_BUILDS_HANDOFF.md` (3D work, sections 2a and 3.x). Tic
 - [x] Call `tickCharity` in the game loop and show its news (thriving / days run out) as toasts and letters
 - [x] Residents shown inside your home (more rooms per floor still to model)
 - [x] Homes grow a storey per floor, scaffolding while building (logic wired; placeholder model — 3D side to replace `addStoreys`)
-- [ ] Soup kitchens: supply ingredients, hire a chef, queues of people fed
-- [ ] Charity employment paid in housing, food, necessities and opportunities
+- [x] Soup kitchens and clinics: stock the pantry, staff them; they serve meals (days of care for those you sponsor) and treat the sick (`tickInstitutes`)
+- [x] Charity employment paid in coins, food or a place in your home (`employ(…, 'home')`)
 
 ## B. Institutions (C2, C7)
 - [x] Own institutes by building them on your land, in stages, each stage a real building (e.g. watch boutique → workshop → manufacture → school)

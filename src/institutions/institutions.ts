@@ -1,7 +1,7 @@
 import { DAY_MINUTES, type GameState } from '../core/state';
 import { addItem, count, level, removeItems } from '../economy/economy';
 import { ITEMS, LEVEL_XP, SKILLS, skillLevel, type SkillId } from '../economy/items';
-import { PERSON_BY_ID, sponsorOf } from '../charity/charity';
+import { PERSON_BY_ID, homeCapacity, occupantsOf, ownsHome, sponsorOf } from '../charity/charity';
 import { folkOf } from '../npc/folk';
 import { REGIONS, REGION_BY_ID, type RegionId } from '../world/regions';
 import { INSTITUTE_BY_KIND, INSTITUTES, institutesOf, type InstituteKind, type Stage } from './catalogue';
@@ -97,17 +97,63 @@ export function candidates(st: GameState, land: RegionId, skill: SkillId): Array
 }
 
 /** Employ an expert: pay `days` of wages up front (coins, or food as their keep: one food a day). */
-export function employ(st: GameState, expertId: string, days: number, how: 'coins' | 'kind' = 'coins'): string | null {
+/**
+ * Employ an expert for `days`: paid in coins (their wage), in kind (their keep: one food a day), or
+ * with a home — they live in a home you own (it needs room; build floors for more), which is their pay.
+ */
+export function employ(st: GameState, expertId: string, days: number, how: 'coins' | 'kind' | 'home' = 'coins', plotId?: string): string | null {
   const e = EXPERT_BY_ID[expertId];
   if (!e) return 'No one by that name.';
-  if (how === 'coins') {
+  let h = hireOf(st, e.id);
+  if (how === 'home') {
+    if (!plotId || !ownsHome(st, plotId)) return 'You need a home to offer them.';
+    if (h?.home !== plotId && occupantsOf(st, plotId) >= homeCapacity(st, plotId)) return 'Your home is full — build another floor to make room.';
+  } else if (how === 'coins') {
     if (st.coins < wage(e) * days) return `You need ${wage(e) * days} coins.`;
     st.coins -= wage(e) * days;
   } else if (!takeFood(st, days)) return `You need ${days} food for their keep.`;
-  let h = hireOf(st, e.id);
   if (!h) { h = { id: e.id, since: st.minutes, paidUntil: st.minutes }; st.hires.push(h); }
   h.paidUntil = Math.max(h.paidUntil, st.minutes) + days * DAY_MINUTES;
+  if (how === 'home') h.home = plotId;
   return null;
+}
+
+// ───────────────────────── kitchens and clinics that serve ─────────────────────────
+
+/** What a kitchen cooks from (any food or crop) and a clinic treats with (herbal medicines). */
+export const CLINIC_SUPPLIES = ['balm', 'herbs', 'attar', 'ginseng', 'saffron', 'jasmine'];
+export function servesWith(kind: InstituteKind, itemId: string): boolean {
+  if (kind === 'kitchen') return ITEMS[itemId]?.kind === 'food' || ITEMS[itemId]?.kind === 'crop';
+  if (kind === 'clinic') return CLINIC_SUPPLIES.includes(itemId);
+  return false;
+}
+/** People a kitchen feeds (or a clinic treats) a day, by stage. */
+export const SERVE_PER_DAY = [4, 8, 16, 30];
+
+export const pantryOf = (st: GameState, siteId: string): Record<string, number> => (st.pantry[siteId] ??= {});
+export const pantryCount = (st: GameState, siteId: string): number => Object.values(st.pantry[siteId] ?? {}).reduce((a, b) => a + b, 0);
+
+/** Stock your kitchen or clinic with `n` of an item you carry. */
+export function stockPantry(st: GameState, siteId: string, itemId: string, n = 1): string | null {
+  const inst = instituteAt(st, siteId);
+  if (!inst || (inst.kind !== 'kitchen' && inst.kind !== 'clinic')) return 'Only your kitchens and clinics keep a pantry.';
+  if (!servesWith(inst.kind, itemId)) return inst.kind === 'kitchen' ? 'A kitchen cooks food and crops.' : 'A clinic needs herbal medicines — balms, herbs, ginseng.';
+  if (!removeItems(st, { [itemId]: n })) return 'You do not have that many.';
+  const p = pantryOf(st, siteId);
+  p[itemId] = (p[itemId] ?? 0) + n;
+  return null;
+}
+
+function takeFromPantry(st: GameState, siteId: string, n: number): number {
+  const p = pantryOf(st, siteId);
+  let got = 0;
+  for (const id of Object.keys(p).sort((a, b) => p[b] - p[a])) {
+    const t = Math.min(n - got, p[id]);
+    p[id] -= t; got += t;
+    if (!p[id]) delete p[id];
+    if (got >= n) break;
+  }
+  return got;
 }
 
 function takeFood(st: GameState, n: number): boolean {
@@ -234,8 +280,23 @@ export function tickInstitutes(st: GameState): InstituteNews[] {
     st.coins += DAILY_INCOME[stage] * days;
     if (inst.staff?.who === 'you') addXp(st, def.skill, 4 * days);
     if (inst.staff?.who === 'learner') addLearnerXp(st, inst.staff.id, def.skill, 6 * days);
-    if (inst.kind === 'kitchen' || inst.kind === 'clinic') for (const s of st.sponsored) {
-      if (PERSON_BY_ID[s.id]?.land === site.land) s.wellbeing = Math.min(100, s.wellbeing + (3 + stage * 2) * days);
+    if (inst.kind === 'kitchen' || inst.kind === 'clinic') {
+      const mine = st.sponsored.filter((s) => PERSON_BY_ID[s.id]?.land === site.land);
+      for (const s of mine) s.wellbeing = Math.min(100, s.wellbeing + (3 + stage * 2) * days);
+      // Serving from the pantry: the chef cooks for the people you sponsor first (each meal is a
+      // day of their care), then for anyone who comes hungry; the clinic treats the sick.
+      const n = takeFromPantry(st, inst.site, SERVE_PER_DAY[stage] * days);
+      if (n > 0) {
+        if (inst.kind === 'kitchen') {
+          for (let i = 0; i < n && mine.length; i++) { const s = mine[i % mine.length]; s.paidUntil = Math.max(s.paidUntil, st.minutes) + (i < mine.length * days ? DAY_MINUTES : 0); }
+          st.served.meals += n;
+          out.push({ site: inst.site, text: `Your ${def.stages[stage].name.toLowerCase()} in ${REGION_BY_ID[site.land].name} served ${n} meal${n > 1 ? 's' : ''}.` });
+        } else {
+          for (const s of mine) s.wellbeing = Math.min(100, s.wellbeing + Math.min(n, 3) * 4);
+          st.served.treated += n;
+          out.push({ site: inst.site, text: `Your ${def.stages[stage].name.toLowerCase()} in ${REGION_BY_ID[site.land].name} treated ${n} ${n > 1 ? 'people' : 'person'}.` });
+        }
+      }
     }
   }
   return out;

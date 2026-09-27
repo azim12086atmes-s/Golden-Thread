@@ -86,3 +86,37 @@ describe('founding and growing an institute', () => {
     expect(INSTITUTE_BY_KIND.watchmaking.stages[0].name).toBe('Watch boutique');
   });
 });
+
+describe('charity work: kitchens that feed, clinics that heal, staff paid with a home', () => {
+  it('a staffed soup kitchen cooks from its pantry, giving those you sponsor days of care, and feeds others', async () => {
+    const { stockPantry, SERVE_PER_DAY } = await import('../src/institutions/institutions');
+    const { daysLeft, sponsorOf } = await import('../src/charity/charity');
+    const st = newGame();
+    st.coins = 5000; st.inventory = { wood: 100, wheat: 40, bread: 30 };
+    const chef = EXPERTS.find((e) => e.land === 'meadow' && e.skill === 'cooking')!;
+    expect(employ(st, chef.id, 10)).toBeNull();
+    expect(buildStage(st, 'meadow-s1', 'kitchen', 'coins', { who: 'hire', id: chef.id })).toBeNull();
+    st.minutes += DAY_MINUTES; tickInstitutes(st);
+    const p = PEOPLE_IN_NEED.find((x) => x.land === 'meadow')!;
+    give(st, p.id, { coins: 6 });
+    expect(stockPantry(st, 'meadow-s1', 'wood', 1)).not.toBeNull();
+    expect(stockPantry(st, 'meadow-s1', 'bread', 20)).toBeNull();
+    const before = daysLeft(st, sponsorOf(st, p.id)!);
+    st.minutes += DAY_MINUTES;
+    const news = tickInstitutes(st);
+    expect(st.served.meals).toBe(SERVE_PER_DAY[0]);
+    expect(news.some((n) => n.text.includes('served'))).toBe(true);
+    expect(daysLeft(st, sponsorOf(st, p.id)!)).toBeGreaterThan(before - 1);
+  });
+
+  it('an expert can be paid with a place in your home, which takes a place like anyone living there', async () => {
+    const { occupantsOf } = await import('../src/charity/charity');
+    const st = newGame();
+    st.plots['meadow-a'] = { decor: [{ id: 'h', kind: 'house-meadow', x: 0, z: -5, rot: 0 }] };
+    const e = EXPERTS.find((x) => x.land === 'meadow')!;
+    expect(employ(st, e.id, 5, 'home')).not.toBeNull();
+    expect(employ(st, e.id, 5, 'home', 'meadow-a')).toBeNull();
+    expect(occupantsOf(st, 'meadow-a')).toBe(1);
+    expect(st.coins).toBe(40);
+  });
+});

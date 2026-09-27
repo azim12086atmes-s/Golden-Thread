@@ -1,6 +1,6 @@
 import { ASSIST_LEVEL, PROFESSORS, THESIS_LEVEL, TOPIC_BY_ID, assist, dayProgress, startThesis, topicsAt, workOnThesis } from '../institutions/research';
 import { INSTITUTE_BY_KIND, institutesOf, type InstituteKind } from '../institutions/catalogue';
-import { COURSE_FEE, DAILY_INCOME, EXPERTS, EXPERT_BY_ID, SITE_BY_ID, assignStaff, buildStage, candidates, employ, freelanceFee, hireOf, instituteAt, intern, isBuilding, kindFood, landScience, learnerLevel, standingStage, takeCourse, teachClass, teachLearner, wage, type Staff } from '../institutions/institutions';
+import { SERVE_PER_DAY, pantryOf, servesWith, stockPantry, COURSE_FEE, DAILY_INCOME, EXPERTS, EXPERT_BY_ID, SITE_BY_ID, assignStaff, buildStage, candidates, employ, freelanceFee, hireOf, instituteAt, intern, isBuilding, kindFood, landScience, learnerLevel, standingStage, takeCourse, teachClass, teachLearner, wage, type Staff } from '../institutions/institutions';
 import { DAY_COINS, FLOOR_COST, MAX_FLOORS, NEED_LABEL, PEOPLE_IN_NEED, PERSON_BY_ID, buildFloor, daysLeft, floorBuilding, floorsOf, giftsFor, give, homeCapacity, ownedHomes, residentsOf, sponsorOf, takeHome, type Person } from '../charity/charity';
 import * as THREE from 'three';
 import type { Animal } from '../animals/Animals';
@@ -832,6 +832,13 @@ export class UI {
         }
       }
       if (stage >= 0) body.append(h('h3', {}, 'Who runs it'), staffButtons(def.skill, def.stages[stage].level, (sf) => act(() => assignStaff(st, site.id, sf), 'They take charge.'), false));
+      if (stage >= 0 && (inst.kind === 'kitchen' || inst.kind === 'clinic')) {
+        const pantry = pantryOf(st, site.id), stocked = Object.entries(pantry);
+        body.append(h('h3', {}, inst.kind === 'kitchen' ? 'The pantry' : 'Medicines'),
+          h('p', { class: 'dim' }, `${inst.kind === 'kitchen' ? `Serves up to ${SERVE_PER_DAY[stage]} meals a day — first to the people you sponsor in this land (each meal a day of their care), then to anyone hungry. Served so far: ${st.served.meals}.` : `Treats up to ${SERVE_PER_DAY[stage]} people a day. Treated so far: ${st.served.treated}.`} In stock: ${stocked.length ? stocked.map(([k, n]) => `${n}× ${ITEMS[k]?.icon ?? ''} ${ITEMS[k]?.name ?? k}`).join(', ') : 'nothing yet'}.`),
+          h('div', { class: 'acts' }, ...Object.keys(st.inventory).filter((k) => count(st, k) > 0 && servesWith(inst.kind, k)).slice(0, 8).map((k) =>
+            btn(`${ITEMS[k].icon} ${ITEMS[k].name} ×${Math.min(5, count(st, k))}`, () => act(() => stockPantry(st, site.id, k, Math.min(5, count(st, k))), `Stocked with ${ITEMS[k].name.toLowerCase()}.`), 'small ghost'))));
+      }
     } else {
       body.append(h('p', { class: 'dim' }, 'Found an institute here. Each begins small and grows in four stages, each its own building. Choose what it will be:'));
       body.append(h('div', { class: 'chips' }, ...institutesOf(site.land).map((d) => btn(`${d.land ? '✨ ' : ''}${d.name}`, () => { this.instKind = d.kind; this.render(); }, `small ${this.instKind === d.kind ? 'on' : 'ghost'}`))));
@@ -852,7 +859,8 @@ export class UI {
         h('small', {}, on ? `Employed · paid ${((hr!.paidUntil - st.minutes) / 1440).toFixed(1)} more days` : `Wage ${wage(e)}🪙 a day, or their keep in food · freelance from ${freelanceFee(e, 0)}🪙 a build`),
         h('div', { class: 'acts' },
           btn(`Employ 3 days · ${wage(e) * 3}🪙`, () => act(() => employ(st, e.id, 3), `${e.name} joins you.`), 'small ghost', st.coins < wage(e) * 3),
-          btn('Employ 3 days · 3 food', () => act(() => employ(st, e.id, 3, 'kind'), `${e.name} joins you, fed from your stores.`), 'small ghost'))));
+          btn('Employ 3 days · 3 food', () => act(() => employ(st, e.id, 3, 'kind'), `${e.name} joins you, fed from your stores.`), 'small ghost'),
+          ...ownedHomes(st).map((hid) => btn(`Employ 5 days · a home in ${REGION_BY_ID[PLOT_BY_ID[hid].region].name}`, () => act(() => employ(st, e.id, 5, 'home', hid), `${e.name} moves into your home as their pay.`), 'small ghost')))));
     }
   }
 

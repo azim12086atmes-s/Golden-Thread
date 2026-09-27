@@ -76,7 +76,11 @@ export interface GameState {
   /** What the people you sponsor have learned (skill xp), by person. */
   learners: Record<string, Partial<Record<SkillId, number>>>;
   /** Experts you employ and until when their wages are paid. */
-  hires: Array<{ id: string; since: number; paidUntil: number }>;
+  hires: Array<{ id: string; since: number; paidUntil: number; home?: string }>;
+  /** What you have stocked in your kitchens and clinics (site id → item → count). */
+  pantry: Record<string, Record<string, number>>;
+  /** Meals your kitchens have served and people your clinics have treated. */
+  served: { meals: number; treated: number };
   /** Who you taught today (person:skill → day), one lesson a day each. */
   taught: Record<string, number>;
   /** The thesis you are writing under a professor (institutions/research.ts). */
@@ -127,6 +131,8 @@ export function newGame(): GameState {
     institutes: [],
     learners: {},
     hires: [],
+    pantry: {},
+    served: { meals: 0, treated: 0 },
     taught: {},
     thesis: null,
     degrees: [],

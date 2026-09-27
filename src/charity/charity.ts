@@ -202,6 +202,8 @@ export function buildFloor(st: GameState, plotId: string, how: 'coins' | 'kind')
 }
 
 export const residentsOf = (st: GameState, plotId: string): Sponsorship[] => st.sponsored.filter((s) => s.home === plotId);
+/** Everyone living in a home: the people you sponsor there and the staff you house there. */
+export const occupantsOf = (st: GameState, plotId: string): number => residentsOf(st, plotId).length + st.hires.filter((h) => h.home === plotId && st.minutes < h.paidUntil).length;
 
 /** Invite someone you sponsor to live in a home you own (if it has room). */
 export function takeHome(st: GameState, personId: string, plotId: string): string | null {
@@ -209,7 +211,7 @@ export function takeHome(st: GameState, personId: string, plotId: string): strin
   if (!s) return 'Sponsor them first.';
   if (!ownsHome(st, plotId)) return 'You need a home first.';
   if (s.home === plotId) return null;
-  if (residentsOf(st, plotId).length >= homeCapacity(st, plotId)) return 'Your home is full — build another floor to make room.';
+  if (occupantsOf(st, plotId) >= homeCapacity(st, plotId)) return 'Your home is full — build another floor to make room.';
   settle(st, s);
   s.home = plotId;
   return null;
