@@ -58,7 +58,7 @@ const STOREY = 3.2, DOOR_H = 2.2;
 const pick = <T>(c: Ctx, a: readonly T[]) => c.rng.pick(a);
 
 /** A window in the land's shape, on the front face at z (or any face via ry). */
-function win(c: Ctx, st: LandStyle, x: number, y: number, z: number, ry = 0, w = 0.95, h = 1.35): void {
+export function win(c: Ctx, st: LandStyle, x: number, y: number, z: number, ry = 0, w = 0.95, h = 1.35): void {
   if (st.arch === 'square') {
     box(c.glow, w, h, 0.1, c.s.glow, x, y, z, ry);
     box(c.g, w + 0.24, 0.12, 0.2, '#f7f1e3', x, y + h, z, ry); // lintel
@@ -72,7 +72,7 @@ function shutters(c: Ctx, x: number, y: number, z: number, col: string): void {
 }
 
 /** A patterned frieze band across a face (width w, at height y, on the plane z). */
-function frieze(c: Ctx, st: LandStyle, w: number, y: number, z: number, ry = 0): void {
+export function frieze(c: Ctx, st: LandStyle, w: number, y: number, z: number, ry = 0): void {
   const n = Math.max(4, Math.round(w / 0.6)), cw = w / n, [a, b] = st.frieze;
   box(c.g, w + 0.1, 0.5, 0.12, b, 0, y, z - 0.02, ry);
   for (let i = 0; i < n; i++) {
@@ -91,7 +91,7 @@ function frieze(c: Ctx, st: LandStyle, w: number, y: number, z: number, ry = 0):
 }
 
 /** The land's roof over a w × d block standing at height y. */
-function roof(c: Ctx, st: LandStyle, w: number, d: number, y: number, col: string): number {
+export function landRoof(c: Ctx, st: LandStyle, w: number, d: number, y: number, col: string): number {
   switch (st.roof) {
     case 'gable': gable(c.g, w + 0.8, d + 0.8, Math.min(w, d) * 0.45, col, 0, y, 0); return Math.min(w, d) * 0.45;
     case 'hip': hip(c.g, w + 0.6, d + 0.6, Math.min(w, d) * 0.35, col, 0, y, 0); return Math.min(w, d) * 0.35;
@@ -108,7 +108,7 @@ function roof(c: Ctx, st: LandStyle, w: number, d: number, y: number, col: strin
   }
 }
 
-function doorway(c: Ctx, st: LandStyle, x: number, z: number, col: string): void {
+export function doorway(c: Ctx, st: LandStyle, x: number, z: number, col: string): void {
   if (st.arch === 'square') {
     box(c.g, 1.3, DOOR_H, 0.14, '#4a3426', x, 0, z);
     box(c.g, 1.7, 0.2, 0.25, col, x, DOOR_H, z);
@@ -141,7 +141,7 @@ const BUILD: Record<Archetype, Builder> = {
     box(c.g, 3.2, 0.08, 0.08, trim, 0, STOREY + 1.0, d / 2 + 1.05);
     for (let i = 0; i < 9; i++) box(c.g, 0.05, 1.0, 0.05, trim, -1.5 + i * 0.375, STOREY + 0.1, d / 2 + 1.05);
     frieze(c, st, w, h - 0.7, d / 2 + 0.02);
-    const rh = roof(c, st, w, d, h, pick(c, c.s.roofs));
+    const rh = landRoof(c, st, w, d, h, pick(c, c.s.roofs));
     if (st.roof === 'gable' || st.roof === 'hip') box(c.g, 0.7, 1.8, 0.7, '#b5654a', 1.6, h + rh * 0.3, -1.2); // chimney
     return { r: 4.6, h: h + rh };
   },
@@ -171,7 +171,7 @@ const BUILD: Record<Archetype, Builder> = {
     }
     for (const x of [-1.5, 1.5]) win(c, st, x, STOREY + 0.9, d / 2 + 0.03);
     frieze(c, st, w, h - 0.7, d / 2 + 0.02);
-    const rh = roof(c, st, w, d, h, pick(c, c.s.roofs));
+    const rh = landRoof(c, st, w, d, h, pick(c, c.s.roofs));
     return { r: 4.8, h: h + rh };
   },
 
@@ -189,7 +189,7 @@ const BUILD: Record<Archetype, Builder> = {
     // A balcony ring near the top, with posts.
     cyl(c.g, r + 0.9, r + 0.9, 0.2, trim, 0, h - STOREY + 0.2, 0, 14);
     for (let i = 0; i < 16; i++) { const a = (i / 16) * Math.PI * 2; box(c.g, 0.06, 0.9, 0.06, trim, Math.cos(a) * (r + 0.85), h - STOREY + 0.4, Math.sin(a) * (r + 0.85)); }
-    const rh = roof(c, st, r * 2, r * 2, h, pick(c, c.s.roofs));
+    const rh = landRoof(c, st, r * 2, r * 2, h, pick(c, c.s.roofs));
     sphere(c.glow, 0.3, c.s.glow, 0, h + rh + 0.3, 0, 6);
     return { r: r + 1.2, h: h + rh + 0.6 };
   },
@@ -212,7 +212,7 @@ const BUILD: Record<Archetype, Builder> = {
     box(c.g, w * 3, 0.06, 0.06, '#2a2a30', 0, 0.9, d / 2 + 1.2);
     for (let i = 0; i < 24; i++) box(c.g, 0.04, 0.9, 0.04, '#2a2a30', -w * 1.5 + i * 0.52, 0, d / 2 + 1.2);
     frieze(c, st, w * 3, h - 0.7, d / 2 + 0.02);
-    const rh = roof(c, st, w * 3, d, h, pick(c, c.s.roofs));
+    const rh = landRoof(c, st, w * 3, d, h, pick(c, c.s.roofs));
     return { r: 6.4, h: h + rh };
   },
 
@@ -228,12 +228,12 @@ const BUILD: Record<Archetype, Builder> = {
     doorway(c, st, 0, s / 2 - 0.05, trim);
     for (const x of [-3.6, 3.6]) archPanel(c.g, 1.6, 2.2, trim, x, 0.3, s / 2 + 0.02, 0, 0.1, st.arch === 'pointed');
     // In the court: a tree and a little fountain with glowing water.
-    tree(c.g, pick(c, c.s.flora), 1.8, 0, 0.5, 0.9, () => c.rng.next());
+    tree(c.g, pick(c, c.s.flora), 1.8, 0, 0.5, 0.62, () => c.rng.next());
     waterBasin(c, -1.6, 0, 1.2, 0.95, { stone: '#e8dcc6', kerb: 0.5, seg: 12, jetHeight: 0.8 });
     frieze(c, st, s, h * 2 - 1.6, -s / 2 + 3.22);
     frieze(c, st, 9.4, h - 1.1, s / 2 + 0.01);
     let rh = 0;
-    c.g.frame(0, 0, -s / 2 + 1.6, 0, 1, () => { rh = roof(c, st, s, 3.2, h * 2 - 1, pick(c, c.s.roofs)); });
+    c.g.frame(0, 0, -s / 2 + 1.6, 0, 1, () => { rh = landRoof(c, st, s, 3.2, h * 2 - 1, pick(c, c.s.roofs)); });
     return { r: 6.8, h: h * 2 - 1 + rh };
   },
 };

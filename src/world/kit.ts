@@ -1,5 +1,6 @@
 import * as THREE from 'three';
 import { rockGeometry } from './rocks';
+import { bamboo, banana, baobab, conifer, crystalFruitTree, palm } from './species';
 import { mergeGeometries } from 'three/addons/utils/BufferGeometryUtils.js';
 import { HABITS, growTree } from './trees';
 
@@ -285,16 +286,24 @@ export type Flora =
 export function tree(g: GeoBuilder, kind: Flora, x: number, y: number, z: number, s: number, rng: () => number): void {
   const m = g.mark();
   // Crowns, fronds and blossoms are leaves (crystals and cloud-puffs are not); trunks are wood.
-  g.leafy = kind !== 'crystal' && kind !== 'cloud';
+  g.leafy = true;
   const habit = HABITS[kind];
   try {
     // Species with a habit are grown branch by branch (trees.ts); the rest keep their shapes.
     if (habit) growTree(g, habit, x, y, z, s, rng);
+    else if (kind === 'palm' || kind === 'coconut') palm(g, x, y, z, s, rng, kind === 'coconut');
+    else if (kind === 'pine') conifer(g, x, y, z, s, rng, 'pine');
+    else if (kind === 'snowpine') conifer(g, x, y, z, s, rng, 'spruce', true);
+    else if (kind === 'cypress') conifer(g, x, y, z, s, rng, 'cypress');
+    else if (kind === 'bamboo') bamboo(g, x, y, z, s, rng);
+    else if (kind === 'banana') banana(g, x, y, z, s, rng);
+    else if (kind === 'baobab') baobab(g, x, y, z, s, rng);
+    else if (kind === 'crystal') crystalFruitTree(g, x, y, z, s, rng);
     else treeParts(g, kind, x, y, z, s, rng);
   } finally { g.leafy = false; }
   // Crowns move in the wind; trunks stand firm. Palms and bamboo bend the most.
   const tall = habit ? habit.h : kind === 'palm' || kind === 'coconut' || kind === 'bamboo' ? 6 : 4.5;
-  g.sway(m, y, tall * s, kind === 'crystal' ? 0 : kind === 'bamboo' || kind === 'willow' ? 1.3 : 1);
+  g.sway(m, y, tall * s, kind === 'bamboo' || kind === 'willow' || kind === 'palm' || kind === 'coconut' ? 1.3 : 1);
 }
 
 function treeParts(g: GeoBuilder, kind: Flora, x: number, y: number, z: number, s: number, rng: () => number): void {

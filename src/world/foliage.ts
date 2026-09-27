@@ -13,13 +13,13 @@ import { FOLIAGE_UNIFORMS, WIND_GLSL, WIND_UNIFORMS, swayMaterial } from './wind
 /** Numbers per card in GeoBuilder.cards: position, outward normal, size, colour, kind, sway, roll, tilt. */
 export const CARD_STRIDE = 14;
 
-/** The leaf pictures: broad leaves, small leaves, needles, blossom (2 × 2 atlas cells). */
-export const LeafKind = { Broad: 0, Small: 1, Needles: 2, Blossom: 3 } as const;
+/** The leaf pictures (4 × 2 atlas cells): broad, small, needles, blossom; palm frond, bamboo, banana, crystal. */
+export const LeafKind = { Broad: 0, Small: 1, Needles: 2, Blossom: 3, Frond: 4, Bamboo: 5, Banana: 6, Crystal: 7 } as const;
 
 function leafAtlas(): THREE.Texture | null {
   if (typeof document === 'undefined') return null;
   const C = 256, c = document.createElement('canvas');
-  c.width = C * 2; c.height = C * 2;
+  c.width = C * 4; c.height = C * 2;
   const x = c.getContext('2d')!;
   let seed = 17;
   const r = () => ((seed = (seed * 16807) % 2147483647) / 2147483647);
@@ -41,8 +41,8 @@ function leafAtlas(): THREE.Texture | null {
     x.restore();
   };
   const cell = (i: number, draw: (cx: number, cy: number) => void) => {
-    x.save(); x.beginPath(); x.rect((i % 2) * C + 4, Math.floor(i / 2) * C + 4, C - 8, C - 8); x.clip();
-    draw((i % 2) * C + C / 2, Math.floor(i / 2) * C + C / 2); x.restore();
+    x.save(); x.beginPath(); x.rect((i % 4) * C + 4, Math.floor(i / 4) * C + 4, C - 8, C - 8); x.clip();
+    draw((i % 4) * C + C / 2, Math.floor(i / 4) * C + C / 2); x.restore();
   };
   // Broad leaves: a full spray of large ovate and lobed leaves, filling the card.
   cell(0, (cx, cy) => {
@@ -84,6 +84,51 @@ function leafAtlas(): THREE.Texture | null {
       x.fillStyle = 'rgb(246,200,80)'; x.beginPath(); x.arc(fx, fy, pr * 0.28, 0, Math.PI * 2); x.fill();
     }
   });
+  // Palm frond: a rib up the middle, narrow leaflets angled forward along both sides.
+  cell(4, (cx, cy) => {
+    x.strokeStyle = grey(200); x.lineWidth = 3;
+    x.beginPath(); x.moveTo(cx, cy + 124); x.lineTo(cx, cy - 124); x.stroke();
+    for (let i = 0; i < 22; i++) {
+      const yy = cy + 118 - i * 11;
+      for (const sd of [-1, 1]) leaf(cx, yy, 64 + r() * 34 - i * 1.2, 5 + r() * 2, sd < 0 ? Math.PI + 0.55 + (r() - 0.5) * 0.2 : -0.55 + (r() - 0.5) * 0.2, 150 + r() * 80);
+    }
+  });
+  // Bamboo: long narrow lance leaves in fans from a twig.
+  cell(5, (cx, cy) => {
+    x.strokeStyle = 'rgb(150,150,110)'; x.lineWidth = 2;
+    x.beginPath(); x.moveTo(cx - 100, cy + 100); x.lineTo(cx + 60, cy - 60); x.stroke();
+    for (let i = 0; i < 16; i++) {
+      const t = i / 16, bx = cx - 100 + t * 160, by = cy + 100 - t * 160;
+      leaf(bx, by, 90 + r() * 30, 9 + r() * 3, -0.8 + (i % 2 ? 1 : -1) * (0.5 + r() * 0.5), 150 + r() * 90);
+    }
+  });
+  // Banana: one great paddle leaf, parallel veins from the midrib, torn at the edges.
+  cell(6, (cx, cy) => {
+    x.fillStyle = grey(190);
+    x.beginPath(); x.moveTo(cx, cy + 126); x.bezierCurveTo(cx - 118, cy + 60, cx - 118, cy - 70, cx, cy - 126); x.bezierCurveTo(cx + 118, cy - 70, cx + 118, cy + 60, cx, cy + 126); x.fill();
+    x.strokeStyle = grey(235); x.lineWidth = 4; x.beginPath(); x.moveTo(cx, cy + 126); x.lineTo(cx, cy - 126); x.stroke();
+    x.strokeStyle = grey(160); x.lineWidth = 1.2;
+    for (let i = 0; i < 26; i++) { const yy = cy + 110 - i * 9; for (const sd of [-1, 1]) { x.beginPath(); x.moveTo(cx, yy); x.lineTo(cx + sd * 110, yy - 34); x.stroke(); } }
+    // Tears: wedges cut in from the edge, along the veins.
+    x.globalCompositeOperation = 'destination-out';
+    for (let i = 0; i < 7; i++) {
+      const yy = cy + 90 - i * 28 - r() * 10, sd = r() < 0.5 ? -1 : 1;
+      x.beginPath(); x.moveTo(cx + sd * 120, yy - 30); x.lineTo(cx + sd * (20 + r() * 30), yy - 4); x.lineTo(cx + sd * 120, yy - 26); x.fill();
+    }
+    x.globalCompositeOperation = 'source-over';
+  });
+  // Crystal leaves: faceted gem leaves, pale, with bright facet edges.
+  cell(7, (cx, cy) => {
+    for (let i = 0; i < 14; i++) {
+      const a = r() * Math.PI * 2, d = r() * 80, px = cx + Math.cos(a) * d, py = cy + Math.sin(a) * d, len = 34 + r() * 26, wd = 10 + r() * 6;
+      x.save(); x.translate(px, py); x.rotate(a + (r() - 0.5));
+      x.fillStyle = grey(200 + r() * 55);
+      x.beginPath(); x.moveTo(0, 0); x.lineTo(len * 0.4, -wd); x.lineTo(len, 0); x.lineTo(len * 0.4, wd); x.closePath(); x.fill();
+      x.strokeStyle = 'rgb(255,255,255)'; x.lineWidth = 1.5;
+      x.beginPath(); x.moveTo(0, 0); x.lineTo(len, 0); x.moveTo(len * 0.4, -wd); x.lineTo(len * 0.4, wd); x.stroke();
+      x.restore();
+    }
+  });
   const t = new THREE.CanvasTexture(c);
   t.colorSpace = THREE.SRGBColorSpace;
   t.anisotropy = 8;
@@ -91,9 +136,9 @@ function leafAtlas(): THREE.Texture | null {
 }
 
 let blobMat: THREE.MeshStandardMaterial | null = null;
-/** The crown blobs: leaf-shaded, lit through by the sun, and a little see-through. */
+/** The crown clumps: painted as masses of leaves, lit through by the sun, open at their edges. */
 export function blobMaterial(): THREE.MeshStandardMaterial {
-  return (blobMat ??= swayMaterial(new THREE.MeshStandardMaterial({ vertexColors: true, roughness: 1, transparent: true, opacity: 0.86 }), 0.45, true));
+  return (blobMat ??= swayMaterial(new THREE.MeshStandardMaterial({ vertexColors: true, roughness: 1 }), 0.45, true));
 }
 
 let cardMat: THREE.MeshLambertMaterial | null = null;
@@ -108,7 +153,7 @@ export function cardMaterial(): THREE.MeshLambertMaterial {
         attribute float aKind; attribute float aSway; varying float vKind; varying vec3 vCW;
         ${WIND_GLSL}`)
       .replace('#include <uv_vertex>', `#include <uv_vertex>
-        vMapUv = (clamp(vMapUv, 0.02, 0.98) + vec2(mod(aKind, 2.0), floor(aKind / 2.0))) * 0.5;`)
+        vMapUv = (clamp(vMapUv, 0.02, 0.98) + vec2(mod(aKind, 4.0), floor(aKind / 4.0))) * vec2(0.25, 0.5);`)
       .replace('#include <project_vertex>', `
         vKind = aKind;
         vec4 wpC = modelMatrix * instanceMatrix * vec4(transformed, 1.0);

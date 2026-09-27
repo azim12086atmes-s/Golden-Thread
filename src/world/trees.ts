@@ -1,4 +1,6 @@
 import * as THREE from 'three';
+import { mergeVertices } from 'three/examples/jsm/utils/BufferGeometryUtils.js';
+import { fbm3 } from './rocks';
 import type { Flora, GeoBuilder } from './kit';
 import { LeafKind } from './foliage';
 
@@ -91,6 +93,10 @@ export const HABITS: Partial<Record<Flora, Habit>> = {
   willow: H({ h: 5.8, trunk: 0.3, r: 0.31, forks: 5, spread: 0.72, lift: -0.12, limb: 0.42, shrink: 0.7, blob: 0.14, squash: 1.9, weep: true, bark: '#6b5a44', leaves: ['#9cc56a', '#a8d078', '#8ab85c'], card: LeafKind.Small }),
   rainbowgum: H({ h: 9.5, trunk: 0.55, r: 0.34, leader: true, tiers: 3, forks: 3, spread: 0.8, lift: 0.3, limb: 0.24, shrink: 0.6, blob: 0.12, squash: 0.8, bark: '#5aa05a', leaves: ['#4f9a4a', '#62ae52'], card: LeafKind.Small, bands: ['#5aa05a', '#ff9a4a', '#4a7ad0', '#9a3a5a', '#e8d05a'] }),
   dragonblood: H({ h: 4.8, trunk: 0.44, r: 0.24, forks: 3, spread: 0.5, lift: 0.1, limb: 0.26, shrink: 0.8, depth: 3, blob: 0.13, squash: 0.36, bark: '#8a7a6a', leaves: ['#3f6a3a', '#4a7a42'], card: LeafKind.Needles }),
+  // The Sky Isles: cloud willows trailing pale foliage, candy-blossom trees, glow trees.
+  cloud: H({ h: 6.2, trunk: 0.32, r: 0.22, forks: 5, spread: 0.8, lift: -0.1, limb: 0.42, shrink: 0.7, blob: 0.15, squash: 1.8, gnarl: 0.4, weep: true, bark: '#e8e4f4', leaves: ['#f4f4ff', '#e8f0ff', '#fff4fa'], card: LeafKind.Small }),
+  candy: H({ h: 5, trunk: 0.26, r: 0.22, forks: 5, spread: 1, lift: 0.08, limb: 0.46, shrink: 0.68, blob: 0.18, squash: 0.7, gnarl: 0.3, bark: '#e8d0e8', leaves: ['#ffb8d8', '#b8d8ff', '#d8b8ff', '#fff0a8', '#b8ffd8'], card: LeafKind.Blossom }),
+  glowtree: H({ h: 5.6, trunk: 0.3, r: 0.2, leader: true, tiers: 4, forks: 3, spread: 0.85, lift: 0.2, limb: 0.34, shrink: 0.62, blob: 0.16, squash: 0.8, bark: '#4a4a6a', leaves: ['#7affd0', '#9ad8ff', '#c8a8ff'], card: LeafKind.Crystal }),
   wisteria: H({ h: 4.6, trunk: 0.34, r: 0.2, forks: 4, spread: 0.9, lift: -0.05, limb: 0.4, shrink: 0.7, blob: 0.15, squash: 1.5, gnarl: 0.7, weep: true, bark: '#6b5040', leaves: ['#b58ae0', '#d9b8ff', '#a47ad6'], card: LeafKind.Blossom }),
 };
 
@@ -209,17 +215,47 @@ export function growTree(g: GeoBuilder, hb: Habit, x: number, y: number, z: numb
     const leafCol = hb.leaves[Math.floor(rng() * hb.leaves.length)];
     const c = t.p.clone();
     if (hb.weep) c.y -= t.r * hb.squash * 0.55;
-    const geo = new THREE.SphereGeometry(t.r, 8, 6);
-    g.add(geo, col.set(leafCol).multiplyScalar(0.82), tmpM.compose(c, tmpQ.identity(), new THREE.Vector3(1, hb.squash, 1)).clone());
+    const geo = clumpGeometry(Math.floor(rng() * CLUMPS));
+    g.add(geo, col.set(leafCol).multiplyScalar(0.86), tmpM.compose(c, tmpQ.setFromAxisAngle(UP, rng() * Math.PI * 2), new THREE.Vector3(t.r, t.r * hb.squash, t.r)).clone());
     leafCards(g, hb, c, t.r, leafCol, y, h, rng);
   }
+}
+
+/**
+ * A clump of foliage, 1 m across: a lumpy mass of smaller bulges (like a real crown's leaf
+ * clusters), not a smooth ball. A few shapes are made once and reused, turned and scaled.
+ */
+const CLUMPS = 8;
+const clumpCache: THREE.BufferGeometry[] = [];
+function clumpGeometry(k: number): THREE.BufferGeometry {
+  if (!clumpCache[k]) {
+    const base = new THREE.IcosahedronGeometry(1, 1);
+    base.deleteAttribute('normal'); base.deleteAttribute('uv');
+    const geo = mergeVertices(base);
+    base.dispose();
+    const pos = geo.getAttribute('position') as THREE.BufferAttribute, v = new THREE.Vector3();
+    for (let i = 0; i < pos.count; i++) {
+      v.fromBufferAttribute(pos, i);
+      const d = 1 + fbm3(v.x * 1.6, v.y * 1.6, v.z * 1.6, 40 + k, 3) * 0.55 + fbm3(v.x * 3.4, v.y * 3.4, v.z * 3.4, 60 + k, 2) * 0.22;
+      v.multiplyScalar(d);
+      if (v.y < -0.55) v.y = -0.55 + (v.y + 0.55) * 0.5; // a flatter underside
+      pos.setXYZ(i, v.x, v.y, v.z);
+    }
+    geo.computeVertexNormals();
+    clumpCache[k] = geo;
+  }
+  return clumpCache[k].clone();
 }
 
 /** Cover one foliage blob with overlapping leaf cards, facing outwards. */
 function leafCards(g: GeoBuilder, hb: Habit, c: THREE.Vector3, r: number, leafCol: string, baseY: number, h: number, rng: () => number): void {
   if (!g.cards) return;
   const size = Math.min(3, Math.max(0.6, r * 0.62));
-  const n = Math.max(10, Math.min(34, Math.round((4 * Math.PI * r * r * (0.6 + hb.squash * 0.4)) / (size * size * 0.5))));
+  const n = Math.max(14, Math.min(52, Math.round((4 * Math.PI * r * r * (0.6 + hb.squash * 0.4)) / (size * size * 0.38))));
+  // Colourful crowns (autumn, blossom, fantasy) mix neighbouring hues leaf by leaf.
+  const base = new THREE.Color(leafCol), hsl = { h: 0, s: 0, l: 0 };
+  base.getHSL(hsl);
+  const hueSpread = hsl.s > 0.35 && !(hsl.h > 0.2 && hsl.h < 0.42) ? 0.07 : 0.03;
   const col = new THREE.Color();
   // How freely this part of the tree moves: the crown more than the lower branches.
   const k = Math.min(1, Math.max(0, (c.y - baseY - h * 0.3) / (h * 0.7)));
@@ -234,7 +270,7 @@ function leafCards(g: GeoBuilder, hb: Habit, c: THREE.Vector3, r: number, leafCo
     // The outward normal of the (squashed) blob.
     const nx = dx / r, ny = yk / (r * hb.squash), nz = dz / r, nl = Math.hypot(nx, ny, nz);
     const flower = hb.flowers && rng() < 0.35;
-    col.set(flower ? hb.flowers![Math.floor(rng() * hb.flowers!.length)] : leafCol).offsetHSL((rng() - 0.5) * 0.03, 0, (rng() - 0.5) * 0.1);
+    col.set(flower ? hb.flowers![Math.floor(rng() * hb.flowers!.length)] : leafCol).offsetHSL((rng() - 0.5) * hueSpread * 2, (rng() - 0.5) * 0.1, (rng() - 0.5) * 0.14);
     g.card(px, py, pz, nx / nl, ny / nl, nz / nl, size * (0.8 + rng() * 0.4), col, flower ? LeafKind.Blossom : hb.card, sway, rng() * Math.PI * 2, (rng() - 0.5) * 1.1);
   }
 }

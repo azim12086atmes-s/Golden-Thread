@@ -81,9 +81,34 @@ export const FOLIAGE_UNIFORMS = {
  */
 const LEAF_FRAG = /* glsl */ `
   if (vLeaf > 0.5) {
-    vec3 q = vLW * 1.7;
-    float dapple = fract(sin(dot(floor(q), vec3(12.9898, 78.233, 37.719))) * 43758.5453);
-    diffuseColor.rgb *= 0.78 + dapple * 0.16;
+    // The crown painted as a mass of overlapping leaves (projected from the side it faces): in
+    // each small cell a leaf at its own angle and shade, the top-most one showing, dark gaps
+    // between them. On colourful trees every leaf takes its own hue.
+    vec3 an = abs(normalize(vLN));
+    vec2 uvL = (an.y > max(an.x, an.z) ? vLW.xz : (an.x > an.z ? vLW.zy : vLW.xy)) * 3.4;
+    vec2 ci = floor(uvL);
+    float best = 0.0, shade = 0.5, hue = 0.5;
+    for (int yy = -1; yy <= 1; yy++) for (int xx = -1; xx <= 1; xx++) {
+      vec2 cc = ci + vec2(float(xx), float(yy));
+      float hA = fract(sin(dot(cc, vec2(12.9898, 78.233))) * 43758.5453);
+      float hB = fract(sin(dot(cc, vec2(39.3468, 11.135))) * 43758.5453);
+      vec2 d = uvL - (cc + 0.5 + (vec2(hA, hB) - 0.5) * 0.8);
+      float a = hA * 6.2832;
+      d = mat2(cos(a), -sin(a), sin(a), cos(a)) * d;
+      float leafv = 1.0 - smoothstep(0.42, 0.6, length(d * vec2(1.0, 2.1)));
+      float z = leafv * (0.4 + hB);
+      if (z > best) { best = z; shade = hB * 0.6 + 0.4 + d.x * 0.35; hue = hA; }
+    }
+    float onLeaf = smoothstep(0.02, 0.12, best);
+    vec3 base = diffuseColor.rgb;
+    float sat = max(base.r, max(base.g, base.b)) - min(base.r, min(base.g, base.b));
+    float colourful = smoothstep(0.05, 0.25, sat) * (1.0 - smoothstep(0.0, 0.08, base.g - max(base.r, base.b)));
+    vec3 tint = hue < 0.5 ? vec3(1.14, 0.94, 0.9) : vec3(0.92, 0.98, 1.14);
+    vec3 leafCol = base * mix(vec3(1.0), tint, colourful * abs(hue - 0.5) * 1.6) * (0.8 + shade * 0.35);
+    diffuseColor.rgb = mix(base * 0.5, leafCol, onLeaf);
+    // At the crown's edge the gaps between the leaves are open sky: a leafy outline, not a ball.
+    float rim = 1.0 - abs(dot(normalize(vLN), normalize(cameraPosition - vLW)));
+    if (rim > 0.5 && onLeaf < 0.5) discard;
     vLeafGlow = 1.0;
   }`;
 

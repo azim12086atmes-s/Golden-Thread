@@ -2,6 +2,7 @@ import type { Ctx, Footprint } from '../architecture';
 import { archPanel, box, gable } from '../kit';
 import type { InstituteKind } from '../../institutions/catalogue';
 import { INSTITUTE_BY_KIND } from '../../institutions/catalogue';
+import { CARE_KINDS, buildCareInstitute, type CareKind } from '../institutes3d';
 
 /**
  * MODEL CONTRACT (3D side — see docs/team/handoffs/CHATGPT_3D_MODELS.md §2):
@@ -14,6 +15,8 @@ import { INSTITUTE_BY_KIND } from '../../institutions/catalogue';
  * stage, with a door and a sign. Replace its body; keep the signature.
  */
 export function buildInstitute(c: Ctx, kind: InstituteKind, stage: 0 | 1 | 2 | 3): Footprint {
+  // The care-and-learning institutes are built for real by Claude (institutes3d.ts).
+  if ((CARE_KINDS as string[]).includes(kind)) return buildCareInstitute(c, kind as CareKind, stage);
   const st = INSTITUTE_BY_KIND[kind].stages[stage], r = st.radius, w = r * 1.3, d = r * 1.1, h = 3 + stage * 2.4;
   const wall = c.rng.pick(c.s.walls), roof = c.rng.pick(c.s.roofs);
   box(c.g, w, h, d, wall);
