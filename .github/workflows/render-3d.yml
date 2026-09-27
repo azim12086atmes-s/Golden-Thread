@@ -5,6 +5,7 @@ on:
     branches: [codex/3d-model-renders]
     paths:
       - .github/workflows/render-3d.yml
+      - scripts/probe/probe.cjs
   workflow_dispatch:
 
 permissions:
