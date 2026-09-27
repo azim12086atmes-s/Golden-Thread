@@ -1130,6 +1130,25 @@ const landmarks: Record<RegionId, LandmarkFn> = {
       for (let i = 0; i < 4; i++) c.glow.frame(26, 60, 30, (i * Math.PI) / 2, 1, () => archPanel(c.glow, 2, 5, c.s.glow, 0, 0, 4.05));
       hip(c.g, 8.4, 8.4, 5, red, 0, 70, 0);
     });
+    // Florence's polychrome marble façade, rose window, and bronze doors.
+    for (const x of [-7.5, 0, 7.5]) {
+      archPanel(c.g, x === 0 ? 5 : 3.6, 8, '#496555', x, 0, 48.08, 0, 0.12, true);
+      archPanel(c.g, x === 0 ? 4.1 : 2.8, 7.1, '#9c573f', x, 0.5, 48.2, 0, 0.1, true);
+      box(c.g, 0.45, 18, 0.2, '#496555', x - 3.1, 0, 48.22);
+    }
+    for (const y of [7, 13, 19]) box(c.g, 20.5, 0.45, 0.25, '#496555', 0, y, 48.3);
+    cyl(c.g, 3.1, 3.1, 0.2, '#fbf3e0', 0, 15, 48.35, 16);
+    for (let i = 0; i < 12; i++) {
+      const a = i * Math.PI / 6;
+      sphere(c.g, 0.24, '#496555', Math.cos(a) * 2.5, 15 + Math.sin(a) * 2.5, 48.6, 5);
+    }
+    // Alternating stone ribs around the octagonal drum and dome.
+    for (let i = 0; i < 8; i++) {
+      const a = i * Math.PI / 4;
+      box(c.g, 0.8, 9.5, 0.8, i % 2 ? '#fbf3e0' : '#496555', Math.sin(a) * 11.5, 16, -16 + Math.cos(a) * 11.5, a);
+      sphere(c.g, 0.35, '#fbf3e0', Math.sin(a) * 8.2, 34, -16 + Math.cos(a) * 8.2, 6);
+    }
+    for (const y of [15, 30, 45, 60]) for (const side of [-1, 1]) archPanel(c.g, 1.8, 3.8, '#496555', 26 + side * 4.1, y, 34.1, 0, 0.08, true);
     o.colliders.push({ x: 0, z: 18, r: 14, h: 29 }, { x: 0, z: 40, r: 11, h: 29 }, { x: 0, z: -16, r: 14.5, h: 50 }, { x: 26, z: 30, r: 5.6, h: 75 });
     o.height = 75;
   },
@@ -1210,6 +1229,21 @@ const landmarks: Record<RegionId, LandmarkFn> = {
       cyl(c.g, 0.1, 0.1, 2, gold, x, 51, z, 4);
       o.colliders.push({ x, z, r: 2.4, h: 53 });
     }
+    // Court of Lions: slender columns, arcades, carved capitals, and a central fountain.
+    for (const z of [8, 24, 32]) for (let i = -5; i <= 5; i++) {
+      const x = i * 5.2;
+      cyl(c.g, 0.35, 0.4, 5.6, white, x, 0, z, 8);
+      box(c.g, 1.1, 0.65, 1.1, gold, x, 5.6, z);
+      if (i < 5) archPanel(c.g, 4.3, 3.5, '#e9d7b9', x + 2.6, 5.5, z, 0, 0.12, true);
+    }
+    cyl(c.g, 3.5, 3.8, 0.8, white, 0, 0, 15, 12);
+    for (let i = 0; i < 12; i++) {
+      const a = i * Math.PI / 6;
+      cyl(c.g, 0.4, 0.5, 1.5, white, Math.cos(a) * 2.6, 0.8, 15 + Math.sin(a) * 2.6, 6);
+    }
+    cyl(c.glow, 0.3, 0.5, 1.8, '#a8e9ff', 0, 1, 15, 8);
+    for (const z of [3, 35]) for (let x = -28; x <= 28; x += 7) box(c.g, 3.2, 0.18, 0.18, blue, x, 6.8, z);
+    for (let i = 0; i < 12; i++) sphere(c.g, 0.22, gold, -30 + i * 5.4, 6.7, 35.25, 5);
     o.colliders.push({ x: -14, z: -12, r: 13, h: 15 }, { x: 14, z: -12, r: 13, h: 15 }, { x: 0, z: -12, r: 12, h: 42 });
     o.height = 53;
   },
@@ -1242,6 +1276,23 @@ const landmarks: Record<RegionId, LandmarkFn> = {
       o.colliders.push({ x, z, r: 2.8, h: 22 });
     }
     for (let i = 0; i < 16; i++) lanternHanging(c, -20 + (i % 8) * 5.6, 8 - Math.floor(i / 8) * 2, i < 8 ? 22 : -22);
+    // Coral-stone gate, recessed entrance, and a covered souq beyond the courtyard.
+    for (const x of [-5, 5]) {
+      box(c.g, 3, 12, 3.5, mud, x, 0, 26);
+      box(c.g, 0.5, 9, 0.2, '#f0dbc0', x > 0 ? x - 1.5 : x + 1.5, 0, 27.9);
+    }
+    archPanel(c.g, 6, 9, '#4a3426', 0, 0, 27.6, 0, 0.2, true);
+    for (const x of [-18, -9, 0, 9, 18]) {
+      box(c.g, 7, 7, 12, '#c8aa7c', x, 0, -9);
+      archPanel(c.g, 4.6, 5.5, '#654631', x, 0.3, -2.9, 0, 0.16, true);
+      box(c.g, 7.5, 0.5, 14, '#815e42', x, 7, -9);
+      for (const dz of [-14, -9, -4]) box(c.g, 0.6, 0.6, 13, '#a67a50', x + dz / 3, 7.5, -9);
+    }
+    for (const x of [-20, 20]) for (const z of [-17, 2, 17]) {
+      archPanel(c.g, 3.4, 5, '#654631', x, 1, z, x < 0 ? Math.PI / 2 : -Math.PI / 2, 0.1, true);
+      box(c.g, 2.4, 0.3, 2.4, '#b48a58', x, 5.5, z);
+    }
+    o.colliders.push({ x: -5, z: 26, r: 2.5, h: 12 }, { x: 5, z: 26, r: 2.5, h: 12 });
     o.height = 22;
   },
 
@@ -1261,6 +1312,22 @@ const landmarks: Record<RegionId, LandmarkFn> = {
       const a = (i / 10) * Math.PI * 2;
       cone(c.glow, 0.6, 1.3, '#ff8a2a', Math.cos(a) * 32, 0, Math.sin(a) * 32, 5);
     }
+    // A majlis laid out with woven rugs, cushions, low tables, and a well.
+    for (const z of [-43, -36, -29]) {
+      box(c.g, 15, 0.08, 4.6, z % 2 ? '#a45a3e' : '#d7a657', 0, 0.12, z);
+      for (const x of [-6.4, 6.4]) for (let j = 0; j < 3; j++) box(c.g, 1.6, 0.5, 1.2, j % 2 ? '#e0bc80' : '#9f4c38', x, 0.25, z - 1.2 + j * 1.2);
+    }
+    for (const z of [-39, -32]) {
+      cyl(c.g, 1.5, 1.5, 0.45, '#806244', 0, 0.35, z, 10);
+      cyl(c.g, 0.15, 0.15, 1.6, '#d4af62', 0, 0.8, z, 6);
+      sphere(c.glow, 0.35, '#ffcf78', 0, 2.5, z, 6);
+    }
+    for (const x of [-10, 10]) cyl(c.g, 0.24, 0.3, 9, '#624937', x, 0, -40, 8);
+    cyl(c.g, 2.1, 2.1, 1.3, '#cdb58a', 30, 0, -27, 12);
+    cyl(c.g, 1.45, 1.45, 0.15, '#3988a0', 30, 1.3, -27, 12);
+    for (const x of [27.9, 32.1]) cyl(c.g, 0.16, 0.16, 3.5, '#644932', x, 1.3, -27, 6);
+    box(c.g, 5, 0.3, 0.3, '#644932', 30, 4.7, -27);
+    o.colliders.push({ x: 30, z: -27, r: 2.3, h: 5 });
     o.colliders.push({ x: 0, z: -40, r: 9, h: 9 });
     o.height = 10;
   },
@@ -1282,6 +1349,28 @@ const landmarks: Record<RegionId, LandmarkFn> = {
       }
     }
     box(c.g, 24, 0.12, 700, '#3a9ac0', -140, 0.1, 0);
+    // Twin pylons and a raised lintel frame the open central approach.
+    for (const x of [-14, 14]) {
+      box(c.g, 18, 25, 12, stone, x, 0, 2);
+      box(c.g, 17, 1, 12.4, '#b88f58', x, 25, 2);
+      for (const y of [7, 14, 21]) box(c.g, 12, 0.32, 0.2, '#9d7652', x, y, 8.1);
+      o.colliders.push({ x, z: 2, r: 10, h: 26 });
+    }
+    box(c.g, 11, 4, 12, stone, 0, 21, 2);
+    for (const x of [-5, 5]) cone(c.g, 1.1, 18, '#d9b070', x, 0.5, 20, 4);
+    // Hypostyle hall: papyrus columns, painted capitals, and clerestory light.
+    for (const z of [-20, -10, 0]) for (const x of [-16, -8, 8, 16]) {
+      cyl(c.g, 1.1, 1.4, 11, stone, x, 0, z, 10);
+      cyl(c.g, 2.2, 1.2, 2, '#3e9b8c', x, 11, z, 10);
+      box(c.g, 4.2, 0.8, 4.2, '#cba66e', x, 13, z);
+      o.colliders.push({ x, z, r: 1.5, h: 14 });
+    }
+    for (const x of [-12, 12]) box(c.g, 10, 1.3, 36, stone, x, 14, -10);
+    box(c.g, 24, 1.3, 6, stone, 0, 14, -24);
+    for (const x of [-24, 24]) for (const z of [20, 38]) {
+      cyl(c.g, 0.55, 0.55, 2, '#9f7050', x, 0, z, 8);
+      cone(c.glow, 0.7, 1.5, '#ffac43', x, 2, z, 6);
+    }
     o.colliders.push({ x: 0, z: 26, r: 2, h: 27 });
     o.height = 40;
   },
