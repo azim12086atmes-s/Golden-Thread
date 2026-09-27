@@ -158,11 +158,50 @@ with waterfalls off their edges and bridges between them.
 
 ## 9. Architecture polish in 12 lands
 
-Screenshot houses by day and night in: Hanok Village, Jade Terraces, Fjordhavn, Alpenrose, Maple Row, Souq al-Qamar,
-Nile Crossing, Tents of Rimal, Kaveri Coast, Bagh-e-Noor, Nusa Rinjani, the Sky Isles. Fix proportions, scale (people
-are ~1.7 m; doors 2.1–2.4 m; storeys ~3 m), colours and anything reading as a blob. Add 2–3 more house types per land
-(corner shop, market hall, courtyard house, neighbourhood mosque/church/temple with no cult images). Then delete the
-unused old builders `houses.japan … houses.skyisles` in `architecture.ts`.
+These 12 lands' houses are built from real architecture but have only been checked by tests, never looked at. For each
+land: screenshot it, fix what reads wrong against the "Must read as" column, and add the new house types listed. Sources
+for every feature are in `docs/ARCHITECTURE_RESEARCH.md`.
+
+**How to look.** For each land take four screenshots with `scripts/probe/` (see `scripts/probe/example.js`): street level
+at ~12 m by day, the same at night, an aerial view at ~40 m over a street by day, and one close-up of a single house front
+at ~6 m. Teleport with `game.trav.teleport(centre.x + 14, centre.z + 90)` and turn the camera with `camYaw` /
+`camPitch` / `camDist`. Save them in your report (`CHATGPT_3D_REPORT.md`), before and after.
+
+**What "reads wrong" means (fix every one):**
+- **Scale**: people are ~1.7 m; doors 2.1–2.4 m high and ~1.1 m wide; storeys ~3 m (2.6–3.6); window sills ~0.9 m above
+  the floor; steps ~0.17 m. Houses must look lived-in at human scale — not dolls' houses and not warehouses.
+- **Blobs**: any building that reads as a plain box, sphere or cone from 12 m. Every front needs depth (reveals, frames,
+  projecting eaves, balconies, brackets, plinths) — at least three depths in its face.
+- **Roofs**: every roof must sit on its walls with eaves or a parapet, never float or sink; curved roofs face up (see §16).
+- **Colour**: walls, roofs and trims use the land's palette (`regions.ts` `walls`, `roofs`, `trims`) and its surfaces
+  (`LAND_SURFACES` in `surfaces.ts`); no flat pure colours; night windows glow warm but small.
+- **Streets**: houses face their street (+z), doors are on the street side, and nothing blocks the door (tests check).
+- **Variety**: no two neighbouring houses identical — vary width, storeys, roof, colour and one feature per house.
+
+| Land (`id`) | Builders now | Must read as | Check / likely fixes | New types to add (2–3) |
+|---|---|---|---|---|
+| Hanok Village (`korea`) | `hanok`, `choga` in `traditions.ts` | Hanok: stone plinth, timber posts on cornerstones, white plaster panels in a timber grid, hanji lattice doors, maru verandah, giwa roof with strongly up-curved eaves and a heavy ridge. Choga: rounded straw roof roped down, mud walls | roof curve strong enough; eaves deep (≥1 m); grid spacing even; choga roof not a sphere | L-shaped hanok round a courtyard (madang) with a gate (daemun); a hanok shop with a front counter; a stone wall with a tiled coping between houses |
+| Jade Terraces (`china`) | `chineseHall`, `shophouse` | Halls: white stone base, red columns, dougong brackets, painted beams (blue-green-gold), deep swept eaves, glazed ridge ornaments; shophouses: two storeys, galleries, lattice doors, red lanterns | dougong visible under eaves; ridge ends lift; lanterns under eaves not floating | siheyuan courtyard house (grey brick walls, a moon gate); a tea house with a gallery over water; a pailou memorial archway at street ends |
+| Fjordhavn (`norway`) | `FACADES.norway` via `compose` | Bryggen: narrow gable-fronted timber houses in rows, horizontal clapboard in red/ochre/white, white window frames, galleries, steep roofs | clapboard surface shows; gables face the street; rows touch like Bryggen; turf roofs on some | boathouse (naust) on the water edge; turf-roofed farmhouse; a harbour warehouse with a hoist beam |
+| Alpenrose (`switzerland`) | `FACADES.switzerland` | Chalet: stone ground storey, timber above, low front gable, very deep eaves on big brackets, carved balconies on every floor with flat cut-out balusters, flower boxes, shutters | eaves deep enough (≥1.5 m); balconies on each floor; shutters on every window | a hay barn (stadel) on stone stilts; a village inn with a painted facade; a chapel with an onion-free pointed spire |
+| Maple Row (`vintage`) | `FACADES.vintage` | Painted Ladies (Queen Anne): steep multi-gabled roofs, corner turrets, canted bay windows, gingerbread brackets, porches, 3–5 pastel colours per house | each house several colours; turret on ~half; porch posts turned; no plain boxes | a corner soda shop with an awning; an Italianate row house with a flat bracketed cornice; a stick-style house |
+| Souq al-Qamar (`middleeast`) | `gulfHouse` | Gulf coral-stone: barjeel wind towers, recessed wall panels, parapet merlons, mashrabiya boxes, studded doors, palm-log beam ends | wind tower open on four sides; mashrabiya projecting; beam ends visible | a covered souq shop row with arches; a courtyard house with a majlis room; a small neighbourhood mosque with a square minaret (no images) |
+| Nile Crossing (`egypt`) | `nubian` | Nubian: barrel vaults and domes behind parapets, walls painted blue/yellow/pink/white with geometric patterns round the door, palm-log beams, benches (mastaba) | vaults face up (fixed); paint patterns visible; domes not too big | a dovecote tower (pigeon house); a village house with a courtyard and a bread oven; a riverside shop with a reed awning |
+| Tents of Rimal (`desert`) | `bedouinTent`, `roundTent` | Black goat-hair tents low and long on rows of poles, guy ropes, one side open, the qata curtain, rugs and cushions; round white tents | tents not inverted; ropes reach the sand; rugs inside the open side | a larger sheikh's majlis tent; a stone well with troughs and camels' shade; a palm-frond barasti hut |
+| Kaveri Coast (`indiasouth`) | `keralaHome` | Kerala: steep clay-tile roofs with deep eaves, gable vents (mukhappu), verandah on turned pillars, laterite base, a brass lamp | roof steep (≥40°); gable vents at both ends; verandah deep | nalukettu courtyard house (four wings round an open court); Chettinad mansion with a pillared front; a toddy-free tea shop by the backwaters |
+| Bagh-e-Noor (`mughal`) | `mughalPavilion` | Red sandstone outlined in white marble, pishtaq portal, jali screens, chhatris, onion dome or bangaldar roof | bangaldar faces up (fixed); pishtaq frames a deep arch; jali visible | a baradari (twelve-door garden pavilion); a haveli townhouse with a courtyard; a small mosque with three domes and minarets (no images) |
+| Nusa Rinjani (`indonesia`) | `bale`, `tongkonan` | Bale: carved stone base, painted posts, steep alang-alang thatch; tongkonan: raised on piles, huge boat-shaped saddle roof, carved panels in red/black/yellow/white | saddle roof sweeps up at both ends; thatch reads as thatch; piles visible | a Balinese family compound with a split gate (candi bentar) and a wall; a rice barn (lumbung) on piles; a warung stall |
+| The Sky Isles (`skyisles`) | `skySpire`, `skyPavilion` | Moonstone spires with arched glowing windows, domed pavilions, floating crystals, balconies; everything light, pale and graceful | spires slender (height ≥ 3× width); windows glow softly; not all white — pale blues, lilacs, pearl | a floating cottage on its own small island; a moonstone observatory; a bridge-house spanning two islands |
+
+**Also in every land**: corner shops, a market hall or row of stalls, and a neighbourhood place of worship in the land's
+tradition (mosque, church, temple) shown as architecture only — no statues, icons or images of worship.
+
+**Then**: delete the unused old builders `houses.japan … houses.skyisles` in `architecture.ts` (the lands now build from
+`traditions.ts` and `facade.ts`; `buildHouse` only falls back to them if a land has no tradition).
+
+**Done means**: all four screenshots per land look right against the table; `npx vitest run` passes (the door and
+colliders tests in `tests/houses.test.ts` build every land); triangle budget ≤ 8 k per house type; the report lists
+what changed per land with before/after screenshots.
 
 ## 10. Balloons (NEW)
 
