@@ -643,8 +643,8 @@ export class CharacterModel {
 
   /**
    * The two travellers each wear a designer crown that floats above the head (never touching
-   * it or the headwear) and turns slowly: hers a fine gold tiara of pearls round a rose gem, his a
-   * bolder gold crown of points set with sapphires under a star.
+   * it or the headwear) and turns slowly: hers the grand arched gold crown set with rose and ruby
+   * gems under a star, the larger of the two; his a fine gold tiara of pearls round a sapphire.
    */
   crown: THREE.Group | null = null;
   private buildCrown(): void {
@@ -653,32 +653,34 @@ export class CharacterModel {
     const g = new THREE.Group();
     g.position.y = r * (tall ? 2.5 : 1.85);
     const gold = '#e8b84a', girl = this.identity === 'girl';
-    // Big enough to read from the follow camera: wider than the head itself (hers the larger tiara).
-    g.scale.setScalar(girl ? 2.6 : 1.55);
-    const R = r * (girl ? 0.62 : 0.66), H = r * (girl ? 0.26 : 0.3);
+    // Hers is the grand arched crown, the larger of the two; his is the fine pearl tiara.
+    const grand = girl;
+    const gemA = girl ? '#ff6fa8' : '#3a7aff', gemB = girl ? '#e8342a' : '#3a7aff';
+    g.scale.setScalar(girl ? 2.1 : 1.35);
+    const R = r * (grand ? 0.66 : 0.6), H = r * (grand ? 0.3 : 0.2);
     g.add(mesh(new THREE.CylinderGeometry(R, R * 0.96, H, 24, 1, true), gold, 'headwear'));
     g.add(mesh(new THREE.TorusGeometry(R, r * 0.03, 5, 24).rotateX(Math.PI / 2), gold, 'headwear'));
-    const n = girl ? 9 : 6;
+    const n = grand ? 6 : 9;
     for (let i = 0; i < n; i++) {
       const a = (i / n) * Math.PI * 2, x = Math.sin(a) * R, z = Math.cos(a) * R;
-      const tipH = girl ? r * (0.26 + (i % 2 ? 0 : 0.18) + (i === 0 ? 0.16 : 0)) : r * 0.42;
-      const spike = mesh(new THREE.ConeGeometry(r * (girl ? 0.05 : 0.09), tipH, 4), gold, 'headwear');
+      const tipH = grand ? r * 0.42 : r * (0.2 + (i % 2 ? 0 : 0.14) + (i === 0 ? 0.12 : 0));
+      const spike = mesh(new THREE.ConeGeometry(r * (grand ? 0.09 : 0.05), tipH, 4), gold, 'headwear');
       spike.position.set(x, H / 2 + tipH / 2, z);
       g.add(spike);
-      const bead = mesh(new THREE.SphereGeometry(r * (girl ? 0.05 : 0.07), 8, 6), girl ? '#fff4f0' : '#3a7aff', 'headwear', !girl);
+      const bead = mesh(new THREE.SphereGeometry(r * (grand ? 0.07 : 0.05), 8, 6), grand ? gemA : '#fff4f0', 'headwear', grand);
       bead.position.set(x, H / 2 + tipH + r * 0.03, z);
       g.add(bead);
-      if (!girl) {
-        const gem = mesh(new THREE.OctahedronGeometry(r * 0.07), i % 2 ? '#3a7aff' : '#e8342a', 'headwear', true);
+      if (grand) {
+        const gem = mesh(new THREE.OctahedronGeometry(r * 0.07), i % 2 ? gemA : gemB, 'headwear', true);
         gem.position.set(x * 1.02, 0, z * 1.02);
         g.add(gem);
       }
     }
-    // The centrepiece at the front: a rose gem for her, and a star crowning his arches.
-    const front = mesh(new THREE.OctahedronGeometry(r * (girl ? 0.11 : 0.09)).scale(1, 1.3, 0.6), girl ? '#ff6fa8' : '#3a7aff', 'headwear', true);
-    front.position.set(0, girl ? H / 2 + r * 0.16 : 0, R * 1.03);
+    // The centrepiece at the front, and on the grand crown two arches meeting under a star.
+    const front = mesh(new THREE.OctahedronGeometry(r * (grand ? 0.09 : 0.11)).scale(1, 1.3, 0.6), gemA, 'headwear', true);
+    front.position.set(0, grand ? 0 : H / 2 + r * 0.16, R * 1.03);
     g.add(front);
-    if (!girl) {
+    if (grand) {
       for (const ry of [0, Math.PI / 2]) {
         const arch = mesh(new THREE.TorusGeometry(R * 0.95, r * 0.035, 5, 16, Math.PI), gold, 'headwear');
         arch.rotation.y = ry;
