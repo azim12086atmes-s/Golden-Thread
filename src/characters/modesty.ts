@@ -69,6 +69,8 @@ export interface Detail {
   glow?: number;
   /** Rainbow branches with little blossoms winding down the skirt. */
   vines?: boolean;
+  /** Worn on the back: her stained-glass butterfly wings, or his jetpack (characters/wings.ts, jetpack.ts). */
+  back?: 'wings' | 'jetpack';
 }
 
 /** The covering outfit the game renders. */

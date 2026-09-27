@@ -7,6 +7,8 @@ import { buildInstitute } from '../world/models/institutes';
 import { REGION_BY_ID } from '../world/regions';
 import { surfaceAt } from '../world/terrain';
 import type { World } from '../world/World';
+import { SKILLS } from '../economy/items';
+import { markerSprite, tendMarker } from '../world/markers';
 import { INSTITUTE_BY_KIND } from './catalogue';
 import { INSTITUTE_SITES, instituteAt, isBuilding, landScience, standingStage } from './institutions';
 
@@ -17,12 +19,14 @@ import { INSTITUTE_SITES, instituteAt, isBuilding, landScience, standingStage } 
  * The buildings themselves come from the 3D side's `buildInstitute` (world/models/institutes.ts).
  */
 export class InstitutesView {
-  private groups = new Map<string, { grp: THREE.Group; sig: string }>();
+  private groups = new Map<string, { grp: THREE.Group; sig: string; marker?: THREE.Sprite }>();
 
   constructor(private scene: THREE.Scene, private st: GameState, private world: World) {}
 
   /** Rebuild any site whose look has changed (cheap to call often). */
-  update(): void {
+  update(from?: THREE.Vector3, t = 0): void {
+    // Markers high above each institute, so they can be found from across the town.
+    if (from) for (const g of this.groups.values()) if (g.marker) tendMarker(g.marker, from, t, false, 30, 900);
     for (const site of INSTITUTE_SITES) {
       const loaded = this.world.isLoaded(site.land);
       const inst = instituteAt(this.st, site.id);
@@ -31,6 +35,7 @@ export class InstitutesView {
       if (have && have.sig === sig) continue;
       if (have) {
         this.scene.remove(have.grp);
+        if (have.marker) this.scene.remove(have.marker);
         have.grp.traverse((o) => { if ((o as THREE.Mesh).isMesh) (o as THREE.Mesh).geometry.dispose(); });
         this.groups.delete(site.id);
         this.world.setColliders(`inst:${site.id}`, []);
@@ -64,7 +69,15 @@ export class InstitutesView {
       if (m2) grp.add(m2);
       grp.position.set(site.x, y, site.z);
       this.scene.add(grp);
-      this.groups.set(site.id, { grp, sig });
+      // A marker over every standing institute: the icon of its science, gold for the town's own, blue for yours.
+      let marker: THREE.Sprite | undefined;
+      const kind = site.established ? landScience(site.land) : inst?.kind;
+      if (kind && h > 0) {
+        marker = markerSprite(SKILLS[INSTITUTE_BY_KIND[kind].skill].icon, site.established ? '#e0b43c' : '#4f8fe8');
+        marker.position.set(site.x, y + h + 8, site.z);
+        this.scene.add(marker);
+      }
+      this.groups.set(site.id, { grp, sig, marker });
       if (r > 0) this.world.setColliders(`inst:${site.id}`, [{ x: site.x, z: site.z, r: r * 0.85, h: y + h }]);
     }
   }

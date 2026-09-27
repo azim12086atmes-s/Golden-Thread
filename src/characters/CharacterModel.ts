@@ -3,6 +3,9 @@ import { heldBalloon } from '../world/models/balloons';
 import { mergeGeometries } from 'three/addons/utils/BufferGeometryUtils.js';
 import { mergeVertices } from 'three/addons/utils/BufferGeometryUtils.js';
 import { HEAD_GAP, type Part } from './anatomy';
+import { fabricMaterial, tileUVs } from './fabric';
+import { Jetpack } from './jetpack';
+import { Wings } from './wings';
 import type { Hem, Outfit, TopStyle } from './modesty';
 
 /**
@@ -196,6 +199,9 @@ export class CharacterModel {
   private body = new THREE.Group();
   readonly head = new THREE.Group();
   private cape?: THREE.Object3D;
+  /** Her stained-glass wings, or his jetpack, when the outfit has them. */
+  private wings?: Wings;
+  private jetpack?: Jetpack;
   private phase = 0;
   /** World-space anchor for the golden thread (the hand). */
   readonly handAnchor = new THREE.Object3D();
@@ -227,6 +233,8 @@ export class CharacterModel {
     this.legL.clear(); this.legR.clear(); this.armL.clear(); this.armR.clear(); this.head.clear();
     this.cape = undefined;
     this.capeCloth = undefined;
+    this.wings = undefined;
+    this.jetpack = undefined;
     this.build();
   }
 
@@ -360,10 +368,26 @@ export class CharacterModel {
     (this.threadHand > 0 ? this.armR : this.armL).add(this.handAnchor);
 
     this.buildOuter(b);
+    if (o.detail?.back === 'wings') { this.wings = new Wings(); b.add(this.wings.group); }
+    if (o.detail?.back === 'jetpack') { this.jetpack = new Jetpack(); b.add(this.jetpack.group); }
     this.buildHead(b);
     this.buildCrown();
     const shine = o.detail?.glow;
-    if (shine) b.traverse((x) => {
+    if (typeof document !== 'undefined') {
+      // The cloth as a picture: the outfit's pattern painted in its colours, glowing where it should.
+      const glow = shine ?? (o.pattern === 'glow' ? 0.35 : o.pattern === 'stars' ? 0.12 : 0);
+      b.traverse((x) => {
+        const mm = x as THREE.Mesh, part = mm.userData.part;
+        if (!mm.isMesh || !['garment', 'torso', 'sleeve', 'cape', 'leg'].includes(part)) return;
+        const c = (mm.material as THREE.MeshStandardMaterial).color;
+        if (!c) return;
+        const hex = `#${c.getHexString()}`;
+        const m = fabricMaterial(part === 'leg' ? 'none' : o.pattern, hex, o.trim, part === 'leg' ? 0 : glow);
+        if (!m) return;
+        tileUVs(mm.geometry, 0.34, o.pattern === 'bands' && part !== 'leg');
+        mm.material = m;
+      });
+    } else if (shine) b.traverse((x) => {
       const mm = x as THREE.Mesh;
       if (!mm.isMesh || !['garment', 'torso', 'sleeve'].includes(mm.userData.part)) return;
       const c = (mm.material as THREE.MeshStandardMaterial).color;
@@ -460,6 +484,8 @@ export class CharacterModel {
   private decorate(b: THREE.Group, rb: number, y0: number, y1: number, base: string): void {
     const p = this.outfit.pattern;
     if (p === 'none' || p === 'bands' || p === 'glow') return;
+    // Where the cloth can be painted (fabric.ts) the motifs are in the picture instead.
+    if (typeof document !== 'undefined') return;
     const n = (p === 'stars' ? 14 : 10) + (this.outfit.detail?.vines ? 12 : 0);
     for (let i = 0; i < n; i++) {
       const a = (i / n) * Math.PI * 2 + (i % 2) * 0.3;
@@ -847,6 +873,8 @@ export class CharacterModel {
     if (this.crown) {
       this.crown.position.y = DIMS.headR * (['gat', 'wide-hat', 'hijab-hat', 'turban', 'songkok'].includes(this.outfit.head.style) ? 2.5 : 1.85) + Math.sin(s.t * 1.6) * 0.012;
     }
+    this.wings?.update(s.t, s.airborne, s.riding);
+    this.jetpack?.update(s.t, s.speed, s.airborne, s.riding);
     if (this.cape) {
       // The cape flies: it lifts and streams back with speed and in the air, and ripples always.
       // The cape hangs at her back (-z); a positive tilt swings its hem backwards, away from the

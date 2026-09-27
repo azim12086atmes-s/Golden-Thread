@@ -392,7 +392,7 @@ export class Game {
       this.charityClock = 2;
       for (const n of tickCharity(this.st)) this.toast(`🤲 ${n.text}`, 'story');
       for (const n of tickInstitutes(this.st)) this.toast(`🏛️ ${n.text}`, 'reward');
-      this.institutesView.update();
+      this.institutesView.update(this.camera.position, this.t);
       // Fields tended by farmhands, and couriers carrying their harvest to market.
       for (const n of tickFields(this.st)) this.toast(`🌾 ${n.text}`, 'reward');
       for (const n of tickSupply(this.st)) this.toast(`🚚 ${n.text}`, 'reward');
@@ -408,7 +408,7 @@ export class Game {
     }
     this.sky.moonHidden = this.skyFx.hideMoon;
     this.npcs.update(dt, this.t, this.trav.gPos);
-    this.needFolk.update(dt, this.t);
+    this.needFolk.update(dt, this.t, this.camera.position);
     this.plotsView.update(dt, this.t, this.sky.night, this.housing.plotAt(this.trav.gPos.x, this.trav.gPos.z)?.id ?? null);
     this.townsfolk.update(dt, this.t, this.trav.gPos);
     this.dressing.update(this.sky.night);

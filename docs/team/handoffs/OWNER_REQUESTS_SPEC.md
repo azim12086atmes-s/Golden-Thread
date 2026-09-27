@@ -75,8 +75,8 @@ or herb leaf for medicine, never a cross).
 
 | # | Request | Specification | Status |
 |---|---------|---------------|--------|
-| 6.1 | More colour and pattern on all dresses | Patterned fabrics (prints, borders, embroidery motifs) from textures, per outfit. | Open |
-| 6.2 | Starry dress: large glowing butterfly wings | **Owner's exact brief:** stained (tinted) glass wings on Syeda Fathima's starry dress, **heart-shaped**, each pair **twice the girl's height**. They **flap slowly** (they are large) and **curve/bend while flapping**. The pattern is an intricate, delicate stained-glass mosaic: **small and large, geometric and fragmented, uneven**, with **uneven straight and curved lines**, **curved strokes**, colourful **mosaic panes with even patches of colour**, all **partitioned by veins and strokes** (the leading between the panes). Shining and glowing, drawn as images (canvas textures). Modest: they attach at the back over the dress; they never touch the boy. | Open (after the institutes and game logic, as the owner ordered) |
+| 6.1 | More colour and pattern on all dresses | Patterned fabrics (prints, borders, embroidery motifs) from textures, per outfit. | Done — painted fabric pictures per outfit with woven grain; glowing outfits glow from their motifs (`characters/fabric.ts`) |
+| 6.2 | Starry dress: large glowing butterfly wings | **Owner's exact brief:** stained (tinted) glass wings on Syeda Fathima's starry dress, **heart-shaped**, each pair **twice the girl's height**. They **flap slowly** (they are large) and **curve/bend while flapping**. The pattern is an intricate, delicate stained-glass mosaic: **small and large, geometric and fragmented, uneven**, with **uneven straight and curved lines**, **curved strokes**, colourful **mosaic panes with even patches of colour**, all **partitioned by veins and strokes** (the leading between the panes). Shining and glowing, drawn as images (canvas textures). Modest: they attach at the back over the dress; they never touch the boy. Owner adds: black and gold accents, mostly colourful, a slight rainbow gradient. | Done (`characters/wings.ts`): on Starlight Gown, Starlight Cloak, Petal Robe, Nova Suit |
 
 ## 7. Building, institutes and monuments
 
@@ -160,4 +160,20 @@ The owner's order: **institutional buildings first, then complete the game logic
   floors go up faster, theses go faster, charity goes further, businesses draw more clients.
   Code: `economy/business.ts`, `economy/inventions.ts`; tests `business.test.ts`, `inventions.test.ts`.
 - Still to do: show installed inventions in 3D at homes and fields (lanterns, solar skins, pumps).
+- **Manufacturing and energy (owner, later — not built yet):** manufacturing too begins with manual
+  labour, then outsourcing, then automation by buying machines or hiring people. Large machines need
+  skilled people at scale to build; machines can be automated and sold. Machines that make machines
+  start with a team's labour; then machines make machines. Machines need energy: how energy is
+  harvested and how much one harvester yields must be designed.
+
+## 12. Jetpack, wings, fabrics and markers (owner, 2026-09-27, night) — Done
+
+- **His jetpack** (`characters/jetpack.ts`): two thrusters, swept aerodynamic wings and fins, black
+  with gold outlining, a rainbow motherboard picture (traces, vias, chips) over honeycomb hexagons,
+  rainbow fire (small walking, roaring in flight). On Midnight Sherwani, Nova Coat, Moon Cloak.
+- **Her wings** — see 6.2. The wings sweep back and the jetpack's wings are short, so the two never
+  reach each other at the closest the two may come (`tests/wings.test.ts`).
+- **Markers** (`world/markers.ts`): a badge floating above every institute (gold: the town's own,
+  blue: yours) and every person in need (their need's icon; pulsing until met), the same size at any
+  distance and drawn over buildings, hidden close up.
 
