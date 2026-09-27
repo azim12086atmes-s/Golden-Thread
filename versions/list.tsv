@@ -1,0 +1,2 @@
+acbaee3	2026-09-26	Published before versions were kept
+fc01261	2026-09-27	Deploy script keeps every published version (versions/<commit>/ on gh-pages, newest at the root), never force-pushes, and tags each publishe
