@@ -757,19 +757,38 @@ export interface LandmarkOut {
 type LandmarkFn = (c: Ctx, out: LandmarkOut) => void;
 
 function pagoda(c: Ctx, tiers: number, base: number, roofCol: string, bodyCol: string): number {
-  let y = 0;
-  box(c.g, base + 3, 1, base + 3, '#9a948a');
-  y = 1;
+  const stone = '#a9a39a', timber = '#4a2923', vermilion = '#ad3027', bronze = '#bd9a50';
+  box(c.g, base + 4, 0.9, base + 4, stone);
+  // Broad stone steps keep the south (+z) entrance readable.
+  for (let i = 0; i < 3; i++) box(c.g, 3.4 + i * 0.5, 0.3 * (3 - i), 1.1, stone, 0, 0, base / 2 + 1 + i * 0.95);
+  let y = 0.9;
   for (let i = 0; i < tiers; i++) {
-    const s = base * (1 - i * 0.12);
-    box(c.g, s, 3.4, s, bodyCol, 0, y, 0);
-    box(c.glow, s * 0.4, 1.6, s + 0.1, c.s.glow, 0, y + 0.8, 0);
-    sweptRoof(c.g, s * 1.7, s * 1.7, 1.8, roofCol, 0, y + 3.2, 0, 0, 0.4);
-    y += 4.4;
+    const s = base * (1 - i * 0.11), floorH = 4.6;
+    box(c.g, s, floorH, s, bodyCol, 0, y, 0);
+    // Visible posts, lintels and bracket blocks support each deep swept roof.
+    for (const side of [-1, 1]) for (const x of [-s * 0.38, 0, s * 0.38]) {
+      box(c.g, 0.22, floorH - 0.25, 0.25, vermilion, x, y, side * s / 2);
+      box(c.g, 0.85, 0.24, 0.7, timber, x, y + floorH - 0.65, side * (s / 2 + 0.3));
+      box(c.g, 0.55, 0.24, 1.05, bronze, x, y + floorH - 0.36, side * (s / 2 + 0.48));
+    }
+    for (const side of [-1, 1]) for (const z of [-s * 0.38, s * 0.38]) {
+      box(c.g, 0.25, floorH - 0.25, 0.22, vermilion, side * s / 2, y, z);
+      box(c.g, 0.7, 0.24, 0.85, timber, side * (s / 2 + 0.3), y + floorH - 0.65, z);
+    }
+    for (const side of [-1, 1]) {
+      box(c.g, s + 0.7, 0.16, 0.16, timber, 0, y + 3.03, side * (s / 2 + 0.35));
+      for (let k = -2; k <= 2; k++) box(c.g, 0.1, 0.65, 0.1, timber, k * s * 0.18, y + 3.03, side * (s / 2 + 0.35));
+      box(c.glow, s * 0.32, 0.85, 0.07, c.s.glow, 0, y + 1.55, side * (s / 2 + 0.04));
+    }
+    sweptRoof(c.g, s + 4.2, s + 4.2, 1.65, roofCol, 0, y + floorH - 0.2, 0, 0, 0.52);
+    box(c.g, s + 3.6, 0.14, s + 3.6, '#26242b', 0, y + floorH - 0.16, 0);
+    y += floorH + 0.72;
   }
-  cyl(c.g, 0.2, 0.25, 7, '#c9a86a', 0, y - 0.6, 0, 6);
-  for (let i = 0; i < 5; i++) cyl(c.g, 0.55, 0.55, 0.15, '#c9a86a', 0, y + i * 1.1, 0, 8);
-  return y + 6;
+  // Bronze sorin with the traditional nine rings above the fifth roof.
+  cyl(c.g, 0.13, 0.17, 5.8, bronze, 0, y - 0.2, 0, 8);
+  for (let i = 0; i < 9; i++) cyl(c.g, 0.45 - i * 0.025, 0.45 - i * 0.025, 0.12, bronze, 0, y + 0.35 + i * 0.47, 0, 10);
+  sphere(c.g, 0.28, bronze, 0, y + 5.65, 0, 8);
+  return y + 5.95;
 }
 
 const landmarks: Record<RegionId, LandmarkFn> = {
@@ -822,13 +841,33 @@ const landmarks: Record<RegionId, LandmarkFn> = {
   },
 
   japan(c, o) {
-    o.height = pagoda(c, 5, 8, '#3a3a4a', '#8a3a2a');
-    c.g.frame(0, 0, 26, 0, 1, () => {
-      for (const x of [-4, 4]) cyl(c.g, 0.45, 0.55, 8, '#d42a2a', x, 0, 0, 10);
-      box(c.g, 11, 0.7, 0.8, '#d42a2a', 0, 6.4, 0);
-      box(c.g, 13, 0.7, 1.1, '#2a2a2a', 0, 7.8, 0);
-    });
-    o.colliders.push({ x: 0, z: 0, r: 7, h: o.height }, { x: -4, z: 26, r: 0.8, h: 8 }, { x: 4, z: 26, r: 0.8, h: 8 });
+    o.height = pagoda(c, 5, 8, '#363a44', '#855036');
+    // Entrance frame and timber door sit beneath the first roof.
+    box(c.g, 2.5, 3.2, 0.16, '#3d2623', 0, 0.9, 4.08);
+    box(c.g, 0.13, 3.3, 0.2, '#bd9a50', -1.3, 0.9, 4.16);
+    box(c.g, 0.13, 3.3, 0.2, '#bd9a50', 1.3, 0.9, 4.16);
+    box(c.g, 2.8, 0.2, 0.2, '#bd9a50', 0, 4.1, 4.16);
+    // Torii on the approach: its open centre preserves the path to the door.
+    for (const x of [-4.2, 4.2]) {
+      cyl(c.g, 0.33, 0.42, 7.4, '#b53228', x, 0, 25, 10);
+      cyl(c.g, 0.5, 0.5, 0.35, '#77716c', x, 0, 25, 10);
+      o.colliders.push({ x, z: 25, r: 0.5, h: 7.4 });
+    }
+    box(c.g, 10.4, 0.44, 0.55, '#b53228', 0, 5.8, 25);
+    box(c.g, 12, 0.5, 0.7, '#282932', 0, 7.1, 25);
+    for (const x of [-3.2, 3.2]) box(c.g, 0.17, 0.95, 0.2, '#b53228', x, 6.1, 25);
+    // Stone toro lanterns flank the approach with small night light panels.
+    for (const z of [10, 18, 30]) for (const x of [-7.5, 7.5]) {
+      cyl(c.g, 0.55, 0.75, 0.45, '#99948b', x, 0, z, 8);
+      cyl(c.g, 0.2, 0.25, 1.55, '#aaa49a', x, 0.45, z, 8);
+      box(c.g, 1.2, 0.22, 1.2, '#99948b', x, 2, z);
+      box(c.g, 0.9, 0.76, 0.9, '#77736d', x, 2.2, z);
+      for (const face of [-1, 1]) box(c.glow, 0.48, 0.42, 0.05, '#f5cb7a', x, 2.36, z + face * 0.47);
+      hip(c.g, 1.65, 1.65, 0.55, '#68666b', x, 3, z);
+      o.colliders.push({ x, z, r: 0.8, h: 3.6 });
+    }
+    o.colliders.push({ x: 0, z: 0, r: 8.6, h: o.height });
+    o.platforms.push({ x: 0, z: 7.4, r: 1.5, y: 0.3 });
   },
 
   korea(c, o) {
