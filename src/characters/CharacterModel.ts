@@ -1,4 +1,5 @@
 import * as THREE from 'three';
+import { mergeVertices } from 'three/addons/utils/BufferGeometryUtils.js';
 import { HEAD_GAP, type Part } from './anatomy';
 import type { Hem, Outfit, TopStyle } from './modesty';
 
@@ -52,6 +53,64 @@ function trouserLeg(hip: number, loose: boolean): THREE.BufferGeometry {
     ? [[0.058, -hip], [0.07, -hip + 0.05], [0.108, -hip + 0.26], [0.118, -hip * 0.45], [0.112, -0.1], [0.104, 0]]
     : [[0.056, -hip], [0.06, -hip + 0.07], [0.072, -hip + 0.26], [0.066, -hip * 0.52], [0.082, -hip * 0.34], [0.094, -0.08], [0.09, 0]]);
 }
+
+/**
+ * A head with a real shape rather than a ball: the crown and the back of the skull flatter, meeting
+ * in a rounded curve; the lower face narrowing into a jaw and a chin that comes a little forward
+ * (squarer for him). Built from a sphere by moving its points, so it stays smooth. Front is +z.
+ * `grow` makes a slightly larger shell of the same shape (hair, scarf, beard), `keep` drops the
+ * triangles whose sphere direction it rejects (to open a face in a scarf, or cut a beard).
+ */
+export function headGeometry(r: number, square: boolean, grow = 1, keep?: (nx: number, ny: number, nz: number) => boolean, seg: [number, number] = [28, 20]): THREE.BufferGeometry {
+  const g = new THREE.SphereGeometry(r * grow, seg[0], seg[1]).toNonIndexed();
+  const p = g.getAttribute('position');
+  const dirs = new Float32Array(p.count * 3);
+  for (let i = 0; i < p.count; i++) {
+    const R = r * grow;
+    let nx = p.getX(i) / R, ny = p.getY(i) / R, nz = p.getZ(i) / R;
+    dirs[i * 3] = nx; dirs[i * 3 + 1] = ny; dirs[i * 3 + 2] = nz;
+    let x = nx, y = ny, z = nz;
+    // A flatter crown and a flatter back of the head, with a rounded meeting between them.
+    if (y > 0.5) y = 0.5 + (y - 0.5) * 0.62;
+    if (z < -0.45) z = -0.45 + (z + 0.45) * 0.55;
+    // The lower face: narrower towards the chin, a little longer, the chin forward.
+    if (ny < 0) {
+      const k = -ny;
+      const taper = square ? 1 - 0.2 * Math.pow(k, 2.2) : 1 - 0.3 * Math.pow(k, 1.5);
+      x *= taper;
+      y *= 1 + 0.14 * k;
+      if (nz > 0) z += 0.1 * k * nz;
+      // The jaw's corner: a squarer line under the ears for him.
+      if (square && nz < 0.4 && nz > -0.3) x *= 1 + 0.06 * k;
+    }
+    p.setXYZ(i, x * R, y * R, z * R);
+  }
+  if (keep) {
+    const pos: number[] = [];
+    for (let t = 0; t < p.count; t += 3) {
+      let ok = true;
+      for (let k = 0; k < 3 && ok; k++) ok = keep(dirs[(t + k) * 3], dirs[(t + k) * 3 + 1], dirs[(t + k) * 3 + 2]);
+      if (ok) for (let k = 0; k < 3; k++) pos.push(p.getX(t + k), p.getY(t + k), p.getZ(t + k));
+    }
+    const out = new THREE.BufferGeometry();
+    out.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3));
+    out.computeVertexNormals();
+    return out;
+  }
+  g.deleteAttribute('normal');
+  const merged = mergeVertices(g);
+  merged.computeVertexNormals();
+  return merged;
+}
+
+/** Hair: over the crown, down the back to the nape and over the ears, a hairline above the brow. */
+const inHair = (nx: number, ny: number, nz: number) =>
+  nz > 0.3 ? ny > 0.52 : nz < -0.2 ? ny > -0.62 : Math.abs(nx) > 0.6 ? ny > -0.08 : ny > 0.2;
+/** A beard: jaw, chin and the lower cheeks, round to below the ears. */
+const inBeard = (_nx: number, ny: number, nz: number) => nz > -0.35 && ny < (nz > 0.55 ? -0.3 : -0.14);
+
+/** The face: an oval from the brow down to just under the chin, inside a scarf's opening. */
+const inFace = (nx: number, ny: number, nz: number) => nz > 0.15 && (nx / 0.7) ** 2 + ((ny + 0.12) / 0.74) ** 2 < 1;
 
 /** A fitted sleeve that follows the arm: shoulder, upper arm, elbow, forearm, wrist. Top at y = 0. */
 function fittedSleeve(len: number): THREE.BufferGeometry {
@@ -501,8 +560,9 @@ export class CharacterModel {
     const o = this.outfit, D = DIMS, r = D.headR;
     this.head.position.y = D.neck + HEAD_GAP + r;
     b.add(this.head);
-    const skin = mesh(new THREE.SphereGeometry(r, 14, 10), this.skin, 'head');
-    skin.scale.set(1, 1.08, 1);
+    const square = this.identity === 'boy' || this.outfit.who === 'boy';
+    const skin = mesh(headGeometry(r, square), this.skin, 'head');
+    skin.scale.set(1, 1.06, 1);
     this.head.add(skin);
 
     const hc = o.head.color, style = o.head.style;
@@ -519,7 +579,9 @@ export class CharacterModel {
     };
 
     if (style === 'hijab' || style === 'hijab-wrap' || style === 'hijab-hat' || style === 'ghutra') {
-      add(openShell(r * 1.14, 0.95)).scale.set(1, 1.1, 1.05);
+      // The scarf follows the head and wraps beneath the chin: its opening frames the face down to
+      // the chin line.
+      add(headGeometry(r, false, 1.12, (x, y, z) => !inFace(x, y, z))).scale.set(1, 1.08, 1.02);
       // The drape falls from the head but stays attached to the head only — a gap remains above
       // the shoulders so the head still floats.
       const drape = new THREE.CylinderGeometry(r * 1.05, r * 1.5, r * 0.8, 14, 1, true);
@@ -550,7 +612,7 @@ export class CharacterModel {
       drape.translate(0, -r * 1.0, -0.01);
       add(drape);
     } else if (style === 'hair') {
-      add(openShell(r * 1.05, 1.15, Math.PI * 0.62)).scale.set(1.02, 1.12, 1.04);
+      add(headGeometry(r, this.identity === 'boy' || this.outfit.who === 'boy', 1.07, inHair)).scale.set(1, 1.06, 1);
     } else if (style === 'kufi' || style === 'songkok') {
       add(new THREE.CylinderGeometry(r * 0.98, r * 1.02, r * (style === 'songkok' ? 0.75 : 0.55), 14), hc, r * 0.62);
       add(openShell(r * 1.04, 1.15, Math.PI * 0.55), '#1a1410');
@@ -596,18 +658,16 @@ export class CharacterModel {
     this.head.add(bridge);
     if (this.identity !== 'boy') return;
 
-    // Angular jaw silhouette with a pointed chin. No nose, mouth, pupils or lenses painted as eyes.
-    const beard = new THREE.BufferGeometry();
-    beard.setAttribute('position', new THREE.Float32BufferAttribute([
-      -0.125,-0.038,0.08, -0.08,-0.12,0.145, 0,-0.205,0.115,
-      -0.125,-0.038,0.08, 0,-0.205,0.115, 0,-0.066,0.152,
-      0,-0.066,0.152, 0,-0.205,0.115, 0.125,-0.038,0.08,
-      0.125,-0.038,0.08, 0,-0.205,0.115, 0.08,-0.12,0.145,
-      -0.125,-0.038,0.08, -0.13,-0.07,-0.015, 0,-0.205,0.115,
-      0.125,-0.038,0.08, 0,-0.205,0.115, 0.13,-0.07,-0.015,
-    ], 3));
-    beard.computeVertexNormals();
-    this.head.add(mesh(beard, '#30251f', 'beard'));
+    // An angular beard along the jaw and chin, cut in facets. No nose, mouth, pupils or lenses painted as eyes.
+    const beard = mesh(headGeometry(DIMS.headR, true, 1.05, inBeard, [12, 10]), '#30251f', 'beard');
+    beard.scale.set(1, 1.06, 1);
+    this.head.add(beard);
+    if (this.outfit.head.style === 'none') {
+      // Bareheaded: a full head of hair.
+      const hair = mesh(headGeometry(DIMS.headR, true, 1.07, inHair), '#30251f', 'hair');
+      hair.scale.set(1, 1.06, 1);
+      this.head.add(hair);
+    }
 
     // Hats cover the quiff rather than letting it intersect the headwear.
     if (this.outfit.head.style === 'hair' || this.outfit.head.style === 'none') {

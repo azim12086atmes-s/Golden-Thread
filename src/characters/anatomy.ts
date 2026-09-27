@@ -13,6 +13,11 @@
 export const HEAD_GAP = 0.16;
 /** Animals are wider; their floating gap is measured horizontally from the chest as well. */
 export const ANIMAL_HEAD_GAP = 0.12;
+/**
+ * How far an animal's head floats from its neck, by the size of the head: a kitten's head just
+ * clear of its neck, an elephant's well clear. Never less than the 4 cm the anatomy test asks for.
+ */
+export const animalHeadGap = (headR: number): number => 0.03 + headR * 0.4;
 
 export const ALLOWED_PARTS = [
   'head', 'headwear', 'torso', 'garment', 'sleeve', 'hand', 'leg', 'foot', 'trim',

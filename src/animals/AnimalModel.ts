@@ -1,5 +1,5 @@
 import * as THREE from 'three';
-import { ANIMAL_HEAD_GAP, type Part } from '../characters/anatomy';
+import { animalHeadGap, type Part } from '../characters/anatomy';
 import { BIRDS, DETAILED, buildBird, buildDetailed, type BirdId, type DetailedId } from './detailed';
 
 /**
@@ -232,7 +232,7 @@ export class AnimalModel {
     // The head: detached. Direction of detachment is along the neck (or forward).
     const dir = s.neck ? new THREE.Vector3(0, Math.cos(0.55), Math.sin(0.55)) : new THREE.Vector3(0, 0.35, 1).normalize();
     // Floating clear of the neck, with air under the jaw.
-    this.headBase.copy(headAnchor).addScaledVector(dir, ANIMAL_HEAD_GAP + s.headR * 1.45).add(new THREE.Vector3(0, s.headR * 0.25, 0));
+    this.headBase.copy(headAnchor).addScaledVector(dir, animalHeadGap(s.headR) + s.headR).add(new THREE.Vector3(0, s.headR * 0.15, 0));
     this.head.position.copy(this.headBase);
     body.add(this.head);
 

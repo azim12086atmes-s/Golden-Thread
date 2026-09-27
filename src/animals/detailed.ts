@@ -1,5 +1,5 @@
 import * as THREE from 'three';
-import { ANIMAL_HEAD_GAP, type Part } from '../characters/anatomy';
+import { animalHeadGap, type Part } from '../characters/anatomy';
 
 /**
  * Real structure for every animal, not blobs: a chest, a barrel and hindquarters; legs that are
@@ -10,7 +10,7 @@ import { ANIMAL_HEAD_GAP, type Part } from '../characters/anatomy';
  * tail and jointed legs.
  *
  * The rules hold: no eyes or facial features, and every head floats clear of its neck
- * (ANIMAL_HEAD_GAP) — tests/anatomy.test.ts measures the gap on every species.
+ * (animalHeadGap: in proportion to the head) — tests/anatomy.test.ts measures the gap on every species.
  */
 
 export type DetailedId =
@@ -225,7 +225,7 @@ export function buildDetailed(
   const anchor = new THREE.Vector3(0, neckLen, 0).applyEuler(neck.rotation).add(neck.position);
   const dir = new THREE.Vector3(0, Math.cos(tilt), Math.sin(tilt));
   // The head floats clear of the neck: out along it and lifted a little, so there is air under the jaw too.
-  const headBase = anchor.clone().addScaledVector(dir, ANIMAL_HEAD_GAP + headR * 1.45).add(new THREE.Vector3(0, headR * 0.25, 0));
+  const headBase = anchor.clone().addScaledVector(dir, animalHeadGap(headR) + headR).add(new THREE.Vector3(0, headR * 0.15, 0));
 
   buildHead(pf, id, part, head, headR, c, accent, light, dims.snout ?? 0.12);
 
@@ -559,7 +559,7 @@ export function buildBird(
   neck.rotation.x = tilt;
   body.add(neck);
   const anchor = new THREE.Vector3(0, neckLen, 0).applyEuler(neck.rotation).add(neck.position);
-  const headBase = anchor.addScaledVector(new THREE.Vector3(0, Math.cos(tilt), Math.sin(tilt)), ANIMAL_HEAD_GAP + headR * 1.45).add(new THREE.Vector3(0, headR * 0.25, 0));
+  const headBase = anchor.addScaledVector(new THREE.Vector3(0, Math.cos(tilt), Math.sin(tilt)), animalHeadGap(headR) + headR).add(new THREE.Vector3(0, headR * 0.15, 0));
   const skull = part(new THREE.SphereGeometry(headR, 10, 8), id === 'peacock' ? '#1f5a9a' : c, 'head', glow);
   skull.scale.set(0.9, 1, 1.1);
   head.add(skull);
