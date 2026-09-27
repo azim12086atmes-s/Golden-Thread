@@ -25,6 +25,7 @@ import type { Npc } from '../npc/Npcs';
 import { PEOPLE_BY_ID } from '../npc/people';
 import { friendDef } from '../social/friends';
 import { mealsIn, putAway, storeCap, storeOf, storeRoom, takeOut } from '../economy/storage';
+import { dayLearning, daysOutOfTouch, inTouch, trainingOf } from '../charity/upskill';
 import { wantedCrafts } from '../guide/objectives';
 import { QUESTS } from '../quests/quests';
 import { REPLY_OPTIONS } from '../social/Messages';
@@ -763,6 +764,15 @@ export class UI {
         const left = daysLeft(st, s);
         row.append(h('small', {}, `Wellbeing ${Math.round(s.wellbeing)} · ${left > 0 ? `${left.toFixed(1)} days of care paid` : 'waiting on your care'}${s.home ? ` · lives in your home in ${REGION_BY_ID[PLOT_BY_ID[s.home].region].name}` : ''}`),
           h('div', { class: 'meter' }, h('i', { style: `inline-size:${Math.round(s.wellbeing)}%` })));
+        // Their learning, paid for by your sponsorship, and whether you are in touch.
+        const skill = trainingOf(s), lv = learnerLevel(st, p.id, skill), xp = st.learners[p.id]?.[skill] ?? 0;
+        const next = LEVEL_XP[lv + 1], prev = LEVEL_XP[lv], pct = next ? Math.round(((xp - prev) / (next - prev)) * 100) : 100;
+        const away = Math.floor(daysOutOfTouch(st, s));
+        row.append(h('small', {}, `📚 Learning ${SKILLS[skill].icon} ${SKILLS[skill].name} (their choice) · level ${lv}${next ? ` · ${pct}% to the next` : ''} · +${dayLearning(st, s)} a day${s.home ? ' (faster in your home)' : ''}`),
+          h('small', { class: inTouch(st, s) ? '' : 'warn' }, inTouch(st, s)
+            ? `📇 Their contact is in your messages · last in touch ${away ? `${away} day${away > 1 ? 's' : ''} ago` : 'today'}`
+            : `📇 Not in touch for ${away} days — they learn at half the pace. Visit, write, or give to them.`));
+        row.append(h('div', { class: 'acts' }, btn('✉ Write to them', () => { this.msgFriend = p.id; this.open('messages'); }, 'small ghost')));
       }
       const acts = h('div', { class: 'acts' },
         btn(`${s ? 'Give' : 'Sponsor'} a day · ${DAY_COINS}🪙`, () => act(() => give(st, p.id, { coins: DAY_COINS }), `${p.name} is cared for today.`), 'small primary', st.coins < DAY_COINS),

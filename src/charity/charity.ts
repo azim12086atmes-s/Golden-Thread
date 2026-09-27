@@ -125,6 +125,8 @@ export function give(st: GameState, personId: string, pay: { coins: number } | {
   if (!s) { s = { id: personId, since: st.minutes, paidUntil: st.minutes, wellbeing: 30, at: st.minutes }; st.sponsored.push(s); }
   settle(st, s);
   s.paidUntil = Math.max(s.paidUntil, st.minutes) + days * DAY_MINUTES;
+  // Giving is being in touch.
+  s.contactAt = st.minutes;
   return null;
 }
 

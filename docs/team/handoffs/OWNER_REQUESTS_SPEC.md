@@ -200,4 +200,12 @@ The owner's order: **institutional buildings first, then complete the game logic
   what you bring or a courier delivers from your fields (homes are now courier destinations; only
   food goes). A prepared dish is a meal; raw produce is cooked two to a meal (one if they have
   learnt to cook). A meal is a day of their care; with the store empty they go hungry and you hear.
+- **Sponsorship upskills and keeps in touch** (`charity/upskill.ts`): when you sponsor someone you take
+  their contact (they are in your messages). Every day their care is paid they learn the trade they
+  chose themselves (their hope — the player does not choose it): faster living in your home, at half
+  pace if you have not been in touch for a week (visit, write back, or give). Level-ups are announced;
+  what they learn lets them work in your businesses and institutes.
+- **Lights:** her gown's lights on the skirt, bodice, sleeves and cape are kept (the owner loves them);
+  only the light radiating round her body is now faint. The travellers' faces are softly lit and the
+  crown's gold catches a little light, so both show at night.
 

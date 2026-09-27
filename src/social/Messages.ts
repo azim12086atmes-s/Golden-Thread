@@ -2,6 +2,7 @@ import type { EventBus } from '../core/events';
 import type { GameState, Message } from '../core/state';
 import { count, removeItems } from '../economy/economy';
 import { ITEMS } from '../economy/items';
+import { keepInTouch } from '../charity/upskill';
 import { friendDef, lettersOf } from './friends';
 import { addHearts } from '../quests/QuestSystem';
 import { REGION_BY_ID } from '../world/regions';
@@ -99,6 +100,8 @@ export class Messages {
 
   reply(npcId: string, key: (typeof REPLY_OPTIONS)[number]['key']): void {
     const opt = REPLY_OPTIONS.find((o) => o.key === key)!;
+    // Writing back to someone you sponsor keeps you in touch.
+    keepInTouch(this.st, npcId);
     this.push({ npcId, from: 'us', at: this.st.minutes, text: opt.text, read: true });
     const pool = REPLIES[key];
     const back = pool[Math.floor(hash(this.st.minutes + npcId.length) * pool.length)];

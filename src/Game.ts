@@ -52,6 +52,7 @@ import { tickBusinesses } from './economy/business';
 import { tickInventions } from './economy/inventions';
 import { befriend, befriendMet } from './social/friends';
 import { tickHomes } from './economy/storage';
+import { keepInTouch, tickLearning } from './charity/upskill';
 import { carryNews } from './economy/economy';
 import { expireErrands } from './npc/folk';
 import { tickWeavers } from './economy/crews';
@@ -404,6 +405,7 @@ export class Game {
       for (const n of tickBusinesses(this.st)) this.toast(n.text, 'reward');
       for (const n of tickInventions(this.st)) this.toast(n.text, 'reward');
       for (const n of tickHomes(this.st)) this.toast(n.text, 'info');
+      for (const n of tickLearning(this.st)) this.toast(n.text, 'reward');
       for (const name of expireErrands(this.st)) this.toast(`${name} could not wait any longer and went on with their day.`, 'info');
       while (carryNews.length) this.toast(carryNews.shift()!, 'info');
       for (const n of tickWeavers(this.st)) this.toast(`🧶 ${n.text}`, 'reward');
@@ -443,8 +445,8 @@ export class Game {
 
     this.trav.updateCamera(this.camera, dt);
     this.cutscene?.update(dt, this.camera);
-    // A soft light round each of them after dark (owner: gentle — not radiating from them).
-    const glow = 0.05 + this.sky.night * 0.4;
+    // A faint light round each of them after dark (owner: the light from the body was too much).
+    const glow = 0.02 + this.sky.night * 0.18;
     [this.trav.girl, this.trav.boy].forEach((m, i) => {
       this.auras[i].position.copy(m.root.position).add(new THREE.Vector3(0, 1.3, 0));
       this.auras[i].intensity = glow;
@@ -637,6 +639,7 @@ export class Game {
       case 'need': {
         if (meet(this.st, t.person.id)) this.toast(`🤲 ${t.person.name} — ${NEED_LABEL[t.person.kind].name.toLowerCase()}: “${t.person.hope}” They are in your people finder now.`, 'story');
         // Meeting them makes a friend: they write to you, and a marker stays over them in town.
+        keepInTouch(this.st, t.person.id);
         if (befriend(this.st, t.person.id)) { this.bus.emit('npc:befriended', { npcId: t.person.id }); this.toast(`💛 ${t.person.name} is now your friend`, 'reward'); }
         return this.ui.openCare();
       }

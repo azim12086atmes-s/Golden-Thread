@@ -27,6 +27,14 @@ function mat(color: string, glow = false): THREE.Material {
   return m;
 }
 
+/** A surface lit softly from within — the travellers' faces and crowns, so they show at night. */
+function softLit(color: string, k: number): THREE.Material {
+  const key = `${color}:lit${k}`;
+  let m = matCache.get(key);
+  if (!m) { m = new THREE.MeshStandardMaterial({ color, roughness: 0.7, emissive: new THREE.Color(color), emissiveIntensity: k }); matCache.set(key, m); }
+  return m;
+}
+
 /** Fabric that glows softly from within (for a gown that should shine at night). */
 function glowingFabric(color: string, k: number): THREE.Material {
   const key = `${color}:e${k}`;
@@ -406,15 +414,15 @@ export class CharacterModel {
         const c = (mm.material as THREE.MeshStandardMaterial).color;
         if (!c) return;
         const hex = `#${c.getHexString()}`;
-        // Only the skirt glows; the bodice, sleeves and cape stay unlit (owner: no glow at the chest).
-        const m = fabricMaterial(part === 'leg' ? 'none' : o.pattern, hex, o.trim, part === 'garment' ? glow : 0);
+        // The gown's lights: skirt, bodice, sleeves and cape (the owner loves them); trousers plain.
+        const m = fabricMaterial(part === 'leg' ? 'none' : o.pattern, hex, o.trim, part === 'leg' ? 0 : glow);
         if (!m) return;
         tileUVs(mm.geometry, 0.34, o.pattern === 'bands' && part !== 'leg');
         mm.material = m;
       });
     } else if (shine) b.traverse((x) => {
       const mm = x as THREE.Mesh;
-      if (!mm.isMesh || mm.userData.part !== 'garment') return;
+      if (!mm.isMesh || !['garment', 'torso', 'sleeve'].includes(mm.userData.part)) return;
       const c = (mm.material as THREE.MeshStandardMaterial).color;
       if (c) mm.material = glowingFabric(`#${c.getHexString()}`, shine);
     });
@@ -640,6 +648,8 @@ export class CharacterModel {
     b.add(this.head);
     const square = this.identity === 'boy' || this.outfit.who === 'boy';
     const skin = mesh(headGeometry(r, square), this.skin, 'head');
+    // The travellers' faces are softly lit so they can be seen (owner).
+    if (this.identity) skin.material = softLit(this.skin, 0.32);
     skin.scale.set(1, 1.06, 1);
     this.head.add(skin);
 
@@ -811,6 +821,11 @@ export class CharacterModel {
         if (merged) g.add(mesh(merged, col, 'headwear', glow === '1'));
       }
     }
+    // The crown's gold catches a little light of its own, so it shows at night.
+    g.traverse((x) => {
+      const mm = x as THREE.Mesh, m = mm.material as THREE.MeshStandardMaterial;
+      if (mm.isMesh && m?.isMeshStandardMaterial && m.color.getHexString() === 'e8b84a') mm.material = softLit('#e8b84a', 0.3);
+    });
     this.crown = g;
     this.head.add(g);
   }

@@ -69,7 +69,8 @@ export interface GameState {
   /** People in need you have met in their towns (charity/charity.ts `meet`) — the people finder lists them. */
   met: string[];
   /** People you sponsor (charity/charity.ts): their paid days, wellbeing and the home they live in. */
-  sponsored: Array<{ id: string; since: number; paidUntil: number; wellbeing: number; home?: string; at: number }>;
+  /** People you sponsor. `contactAt`: when you were last in touch (charity/upskill.ts). */
+  sponsored: Array<{ id: string; since: number; paidUntil: number; wellbeing: number; home?: string; at: number; contactAt?: number }>;
   /** Floors added to homes you own (by plot id), and a floor under construction. */
   homeFloors: Record<string, { floors: number; buildingUntil?: number }>;
   /** Institutes you founded (institutions/institutions.ts): site, kind, the stage reached, a stage being built, who runs it. */
