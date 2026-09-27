@@ -1,6 +1,7 @@
 import * as THREE from 'three';
 import { EffectComposer } from 'three/addons/postprocessing/EffectComposer.js';
 import { OutputPass } from 'three/addons/postprocessing/OutputPass.js';
+import { RoomEnvironment } from 'three/addons/environments/RoomEnvironment.js';
 import { RenderPass } from 'three/addons/postprocessing/RenderPass.js';
 import { UnrealBloomPass } from 'three/addons/postprocessing/UnrealBloomPass.js';
 import { Animals, type Animal } from './animals/Animals';
@@ -33,7 +34,7 @@ import { Travellers } from './player/Travellers';
 import { QuestSystem } from './quests/QuestSystem';
 import { Messages } from './social/Messages';
 import { UI } from './ui/UI';
-import { VEHICLES, type VehicleId } from './vehicles/vehicles';
+import { VEHICLES, setVehicleEnvironment, type VehicleId } from './vehicles/vehicles';
 import { Ambience } from './world/Ambience';
 import { RegionFX } from './world/RegionFX';
 import { TownDressing } from './world/TownDressing';
@@ -152,6 +153,12 @@ export class Game {
     host.appendChild(this.renderer.domElement);
     this.input = new Input(this.renderer.domElement);
 
+    // A small studio light for vehicle paint and metal to reflect (the world itself is not lit by it).
+    {
+      const pm = new THREE.PMREMGenerator(this.renderer);
+      setVehicleEnvironment(pm.fromScene(new RoomEnvironment(), 0.04).texture);
+      pm.dispose();
+    }
     this.scene.fog = this.sky.fog;
     this.scene.add(...this.auras);
     this.scene.add(this.world.group, this.sky.group, this.sky.sunLight, this.sky.sunLight.target, this.sky.hemi, this.ambience.points, this.regionFx.points, this.skyLanterns.mesh, this.skyFx.group, this.weather.group);

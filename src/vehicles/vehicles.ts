@@ -46,11 +46,31 @@ export const VEHICLES: Record<VehicleId, VehicleDef> = {
 // ───────────────────────── models ─────────────────────────
 
 const cache = new Map<string, THREE.Material>();
+/** Reflections for paint and metal (set once by the game; vehicles only, so the world's light is untouched). */
+let vehicleEnv: THREE.Texture | null = null;
+export function setVehicleEnvironment(tex: THREE.Texture): void {
+  vehicleEnv = tex;
+  for (const mat of cache.values()) if ((mat as THREE.MeshStandardMaterial).isMeshStandardMaterial) { (mat as THREE.MeshStandardMaterial).envMap = tex; mat.needsUpdate = true; }
+}
+const hsl = { h: 0, s: 0, l: 0 };
+/**
+ * What a vehicle part is made of, from its colour: bright colours are glossy car paint under a
+ * clear coat (white and cream too), mid and light greys brushed aluminium and chrome, near-blacks rubber
+ * and plastic, browns wood.
+ */
+function finish(c: string): THREE.Material {
+  new THREE.Color(c).getHSL(hsl);
+  let mat: THREE.MeshStandardMaterial;
+  if (hsl.l < 0.2) mat = new THREE.MeshStandardMaterial({ color: c, roughness: 0.85, metalness: 0 });
+  else if (hsl.s < 0.12 && hsl.l > 0.55 && hsl.l < 0.84) mat = new THREE.MeshStandardMaterial({ color: c, roughness: 0.3, metalness: 0.85, envMapIntensity: 0.75 });
+  else if (hsl.h > 0.04 && hsl.h < 0.12 && hsl.s < 0.5 && hsl.l < 0.45) mat = new THREE.MeshStandardMaterial({ color: c, roughness: 0.8, metalness: 0 });
+  else mat = new THREE.MeshPhysicalMaterial({ color: c, roughness: 0.38, metalness: 0.35, clearcoat: 0.8, clearcoatRoughness: 0.2, envMapIntensity: 0.55 });
+  mat.envMap = vehicleEnv;
+  return mat;
+}
 function m(c: string, glow = false): THREE.Material {
   const k = c + glow;
-  if (!cache.has(k)) cache.set(k, glow
-    ? new THREE.MeshBasicMaterial({ color: new THREE.Color(c).multiplyScalar(1.5), toneMapped: false })
-    : new THREE.MeshStandardMaterial({ color: c, flatShading: true, roughness: 0.6, metalness: 0.1 }));
+  if (!cache.has(k)) cache.set(k, glow ? new THREE.MeshBasicMaterial({ color: new THREE.Color(c).multiplyScalar(1.5), toneMapped: false }) : finish(c));
   return cache.get(k)!;
 }
 function bx(g: THREE.Object3D, w: number, h: number, d: number, c: string, x: number, y: number, z: number, glow = false) {
