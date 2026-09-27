@@ -1,5 +1,6 @@
 import * as THREE from 'three';
 import { ANIMAL_HEAD_GAP } from '../characters/anatomy';
+import { skinMaterial } from '../animals/skins';
 
 /**
  * A friendly night dragon — sleek and night-black, cat-like and playful, with a big rounded head,
@@ -13,7 +14,11 @@ export const DRAGON_SCALE = 1.6;
 
 const BODY = '#17181f', BELLY = '#22242e', WING = '#111218', PAW = '#1d1e26';
 
-const std = (c: string) => new THREE.MeshStandardMaterial({ color: c, roughness: 0.45, metalness: 0.15, flatShading: true, side: THREE.DoubleSide });
+const std = (c: string) => new THREE.MeshStandardMaterial({ color: c, roughness: 0.5, metalness: 0.12, side: THREE.DoubleSide });
+/** The hide: overlapping black scales with a faint blue-violet sheen (skins.ts). */
+const hide = (c: string) => skinMaterial(c, 'scale', { side: THREE.DoubleSide });
+/** The wing membranes: thin, satiny, veined by the shader's scale rows seen edge-on. */
+const membrane = (c: string) => new THREE.MeshStandardMaterial({ color: c, roughness: 0.62, metalness: 0.05, side: THREE.DoubleSide, transparent: true, opacity: 0.94 });
 
 export class Dragon {
   readonly root = new THREE.Group();
@@ -56,20 +61,20 @@ export class Dragon {
     }
     this.saddleY = mount ? 1.05 + 0.41 * scale : 0;
     // A long, sleek body.
-    const torso = new THREE.Mesh(new THREE.SphereGeometry(0.55, 14, 10), std(BODY));
+    const torso = new THREE.Mesh(new THREE.SphereGeometry(0.55, 22, 16), hide(BODY));
     torso.scale.set(0.72, 0.62, 1.9);
     body.add(torso);
-    const belly = new THREE.Mesh(new THREE.SphereGeometry(0.5, 12, 8), std(BELLY));
+    const belly = new THREE.Mesh(new THREE.SphereGeometry(0.5, 20, 12), hide(BELLY));
     belly.scale.set(0.62, 0.5, 1.7);
     belly.position.y = -0.1;
     body.add(belly);
-    const neck = new THREE.Mesh(new THREE.CylinderGeometry(0.22, 0.3, 0.55, 10), std(BODY));
+    const neck = new THREE.Mesh(new THREE.CylinderGeometry(0.22, 0.3, 0.55, 16), hide(BODY));
     neck.rotation.x = Math.PI / 2.8;
     neck.position.set(0, 0.2, 1.02);
     body.add(neck);
     // Four legs tucked under in flight, with rounded paws.
     for (const [x, z] of [[-0.3, 0.6], [0.3, 0.6], [-0.3, -0.55], [0.3, -0.55]]) {
-      const leg = new THREE.Mesh(new THREE.CylinderGeometry(0.09, 0.07, 0.42, 6), std(BODY));
+      const leg = new THREE.Mesh(new THREE.CylinderGeometry(0.09, 0.07, 0.42, 10), hide(BODY));
       leg.position.set(x, -0.38, z);
       leg.rotation.x = 0.9;
       body.add(leg);
@@ -78,10 +83,13 @@ export class Dragon {
       body.add(paw);
     }
     // Dorsal nubs along the spine.
-    for (let i = 0; i < 9; i++) {
-      const nub = new THREE.Mesh(new THREE.ConeGeometry(0.05, 0.12, 4), std(WING));
-      nub.position.set(0, 0.36 - Math.abs(i - 3) * 0.015, 0.8 - i * 0.2);
-      nub.rotation.x = -0.4;
+    // A row of dorsal plates down the spine, largest over the shoulders (like the night dragon she loves).
+    for (let i = 0; i < 11; i++) {
+      const k = 1 - Math.abs(i - 3) / 9;
+      const nub = new THREE.Mesh(new THREE.ConeGeometry(0.05 * k + 0.02, 0.14 * k + 0.05, 5), std(WING));
+      nub.scale.set(0.45, 1, 1.4);
+      nub.position.set(0, 0.36 - Math.abs(i - 3) * 0.015, 0.85 - i * 0.18);
+      nub.rotation.x = -0.5;
       body.add(nub);
     }
     // Its pattern: a line of softly glowing scales down the spine, and constellations of little
@@ -101,10 +109,10 @@ export class Dragon {
     }
     // The floating head: big, round and cat-like, with a short rounded snout and swept-back ear
     // flaps. No eyes and no mouth, ever.
-    const skull = new THREE.Mesh(new THREE.SphereGeometry(0.34, 14, 10), std(BODY));
+    const skull = new THREE.Mesh(new THREE.SphereGeometry(0.34, 22, 16), hide(BODY));
     skull.scale.set(1.15, 0.85, 1.05);
     this.head.add(skull);
-    const snout = new THREE.Mesh(new THREE.SphereGeometry(0.24, 12, 8), std(BODY));
+    const snout = new THREE.Mesh(new THREE.SphereGeometry(0.24, 18, 12), hide(BODY));
     snout.scale.set(1.05, 0.62, 0.9);
     snout.position.set(0, -0.08, 0.26);
     this.head.add(snout);
@@ -134,7 +142,7 @@ export class Dragon {
       shape.quadraticCurveTo(s * 1.1, -0.6, s * 0.85, -1.05);
       shape.quadraticCurveTo(s * 0.45, -0.7, 0, -0.75);
       shape.lineTo(0, 0.1);
-      const mem = new THREE.Mesh(new THREE.ShapeGeometry(shape), std(WING));
+      const mem = new THREE.Mesh(new THREE.ShapeGeometry(shape, 12), membrane(WING));
       mem.rotation.x = -Math.PI / 2;
       w.add(mem);
       for (const [x, z] of [[1.4, -0.45], [2.9, -0.1], [1.5, 0.8], [0.85, 1.05]]) {
@@ -156,7 +164,7 @@ export class Dragon {
       const seg = new THREE.Group();
       seg.position.set(0, 0, i === 0 ? z : -0.3);
       const r = 0.2 * (1 - i / 9);
-      const m = new THREE.Mesh(new THREE.CylinderGeometry(r * 0.85, r, 0.34, 7), std(BODY));
+      const m = new THREE.Mesh(new THREE.CylinderGeometry(r * 0.85, r, 0.34, 12), hide(BODY));
       m.rotation.x = Math.PI / 2;
       m.position.z = -0.15;
       seg.add(m);
@@ -171,10 +179,17 @@ export class Dragon {
       fin.lineTo(s * 0.42, 0.12);
       fin.quadraticCurveTo(s * 0.4, -0.18, s * 0.08, -0.3);
       fin.lineTo(0, 0);
-      const f = new THREE.Mesh(new THREE.ShapeGeometry(fin), std(WING));
+      // One fin is its own; the other a red leather-and-steel prosthetic, as on the dragon she loves.
+      const f = new THREE.Mesh(new THREE.ShapeGeometry(fin, 8), s < 0 ? std('#a3202a') : membrane(WING));
       f.rotation.x = -Math.PI / 2;
       f.position.z = -0.2;
       parent.add(f);
+      if (s < 0) for (const k of [0.3, 0.6]) {
+        const rib = new THREE.Mesh(new THREE.BoxGeometry(0.015, 0.02, 0.26), std('#8a8a96'));
+        rib.position.set(-0.42 * k, 0, -0.2 - 0.04 + 0.12 * k * 0);
+        rib.rotation.y = -0.6 + k;
+        parent.add(rib);
+      }
     }
 
     // Glitter breath.

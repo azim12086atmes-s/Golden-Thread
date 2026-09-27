@@ -1,5 +1,6 @@
 import * as THREE from 'three';
 import { animalHeadGap, type Part } from '../characters/anatomy';
+import { type Skin, featherGeometry, skinMaterial } from './skins';
 import { BIRDS, DETAILED, buildBird, buildDetailed, type BirdId, type DetailedId } from './detailed';
 
 /**
@@ -60,12 +61,17 @@ function mat(c: string, glow = false): THREE.Material {
   if (!cache.has(k)) {
     cache.set(k, glow
       ? new THREE.MeshBasicMaterial({ color: new THREE.Color(c).multiplyScalar(1.5), toneMapped: false })
-      : new THREE.MeshStandardMaterial({ color: c, flatShading: true, roughness: 0.9 }));
+      : new THREE.MeshStandardMaterial({ color: c, roughness: 0.6 }));
   }
   return cache.get(k)!;
 }
+/** The skin of the animal being built: fur for beasts, feathers for birds. */
+let coat: Skin = 'fur';
+const FURRY: Part[] = ['body', 'leg', 'neck', 'head', 'ear', 'tail', 'mane'];
 function part(geo: THREE.BufferGeometry, c: string, p: Part, glow = false): THREE.Mesh {
-  const m = new THREE.Mesh(geo, mat(c, glow));
+  // Fur (or feathers) on the body, feathers on wings; hooves and horns stay smooth.
+  const skin: Skin | null = glow ? null : p === 'wing' ? 'feather' : FURRY.includes(p) ? coat : null;
+  const m = new THREE.Mesh(geo, skin ? skinMaterial(c, skin, { side: p === 'wing' ? THREE.DoubleSide : THREE.FrontSide }) : mat(c, glow));
   m.userData.part = p;
   m.castShadow = true;
   return m;
@@ -98,6 +104,7 @@ export class AnimalModel {
     body.scale.setScalar(scale);
     this.root.add(body);
     const glow = s.extra === 'glow';
+    coat = bird || s.kind === 'bird' ? 'feather' : 'fur';
 
     const bodyY = s.leg + H / 2;
     const torso = part(new THREE.SphereGeometry(0.5, 12, 9), c, 'body', glow);
@@ -107,20 +114,31 @@ export class AnimalModel {
     this.saddleY = (bodyY + H / 2) * scale;
 
     if (species === 'unicorn') {
-      // Feathered wings with glowing rainbow tips, and a rainbow saddle-blanket.
+      // Real wings: three rows of tapered feathers (coverts, secondaries and long primaries)
+      // fanned out from the shoulder, the primaries tipped with glowing rainbow colours.
       for (const sd of [-1, 1]) {
         const w = new THREE.Group();
-        for (let i = 0; i < 6; i++) {
-          const len = 0.55 + i * 0.12;
-          const f = part(new THREE.BoxGeometry(0.03, 0.1, len).translate(0, 0, -len / 2), '#ffffff', 'wing');
-          f.rotation.y = sd * (0.25 + i * 0.16);
-          f.position.y = -i * 0.02;
-          w.add(f);
-          const tip = part(new THREE.BoxGeometry(0.034, 0.1, 0.14), RAINBOW[i], 'wing', true);
-          tip.position.set(Math.sin(sd * (0.25 + i * 0.16)) * -len, -i * 0.02, Math.cos(sd * (0.25 + i * 0.16)) * -len);
-          tip.rotation.y = sd * (0.25 + i * 0.16);
-          w.add(tip);
-        }
+        const rows: Array<[number, number, number, number, number]> = [
+          // count, base length, length step, width, height offset
+          [9, 0.62, 0.075, 0.2, 0],
+          [8, 0.4, 0.05, 0.17, 0.025],
+          [7, 0.22, 0.02, 0.14, 0.05],
+        ];
+        rows.forEach(([n, len0, step, wid, dy], r) => {
+          for (let i = 0; i < n; i++) {
+            const len = len0 + i * step, a = sd * (0.15 + i * (1.15 / n));
+            const f = part(featherGeometry(len, wid), r === 2 ? '#fff6fb' : '#ffffff', 'wing');
+            f.rotation.y = a;
+            f.position.y = dy - i * 0.012;
+            w.add(f);
+            if (r === 0) {
+              const tip = part(featherGeometry(0.16, wid * 0.8), RAINBOW[Math.min(RAINBOW.length - 1, Math.floor((i / n) * RAINBOW.length))], 'wing', true);
+              tip.position.set(Math.sin(a) * -(len - 0.14), dy - i * 0.012 + 0.002, Math.cos(a) * -(len - 0.14));
+              tip.rotation.y = a;
+              w.add(tip);
+            }
+          }
+        });
         w.position.set(sd * W * 0.42, bodyY + H * 0.32, L * 0.18);
         w.rotation.set(0.35, sd * 1.35, sd * 0.5);
         body.add(w);
