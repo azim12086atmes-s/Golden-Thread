@@ -6,6 +6,7 @@ import { houseDecor } from './houseDecor';
 import { lotusSpots } from './Water';
 import { TRADITIONS } from './traditions';
 import { NATURE, pickTree, zoneAt } from './nature';
+import { UNDERSTORY, plant, understoryFor } from './understory';
 import { CAVES, type Cave } from './caves';
 import { buildCave } from './models/caves';
 import { buildBanks } from './banks';
@@ -409,6 +410,34 @@ export function buildRegion(spec: RegionSpec, solid: THREE.Material, glowMat: TH
     grove.add(x, z, crown);
     tree(g, kind, x, y, z, s, () => rng.next());
     if (kind !== 'bamboo' && kind !== 'crystal') colliders.push({ x: c.x + x, z: c.z + z, r: (HABITS[kind]?.r ?? 0.25) * s * 1.1, h: y + 4 * s });
+  }
+  // The understory (understory.ts): reeds, papyrus and mangroves at the water, heather, alpenrose,
+  // edelweiss, saltbush, ferns, tea and flowering shrubs by ground — in clumps, on their own seed.
+  {
+    const urng = new Rng(`understory:${spec.id}`), us = UNDERSTORY[spec.id];
+    let planted = 0;
+    for (let i = 0; i < us.count; i++) {
+      const x = urng.range(-half, half), z = urng.range(-half, half), d = Math.hypot(x, z);
+      if (isSky ? d < 60 : d < CITY_RADIUS + 4) continue;
+      if (onRoad(x, z, 3) || nearPlot(x, z, 3)) continue;
+      const y = H(x, z);
+      if (y < WATER_Y + 0.05) continue;
+      const slope = Math.hypot(H(x + 2, z) - H(x - 2, z), H(x, z + 2) - H(x, z - 2)) / 4;
+      const zone = zoneAt(spec, y, slope, waterEdge(c.x + x, c.z + z).d, dunesHere, duneShape(c.x + x, c.z + z));
+      const kinds = understoryFor(spec.id, zone);
+      if (!kinds.length) continue;
+      if (buildings.some((b) => Math.hypot(x - b.x, z - b.z) < b.r + 2) || cavesHere.some((cv) => Math.hypot(x - cv.x, z - cv.z) < cv.r + 2) || onTowpath(x, z, 1.5)) continue;
+      const kind = kinds[Math.floor(urng.next() * kinds.length) % kinds.length];
+      // A clump of two to five, one kind, a little apart.
+      const n = urng.int(2, 5);
+      for (let k = 0; k < n; k++) {
+        const px = x + urng.range(-2.4, 2.4), pz = z + urng.range(-2.4, 2.4), py = H(px, pz);
+        if (py < WATER_Y + 0.02) continue;
+        plant(g, kind, px, py - 0.05, pz, urng.range(0.8, 1.3), () => urng.next(), us.blooms);
+        planted++;
+      }
+    }
+    if (planted) recordDecor(spec.id, 'nature: understory');
   }
   // Caves out in the wild (caves.ts), built by the 3D side's buildCave.
   const caves = CAVES.filter((cv) => cv.land === spec.id);

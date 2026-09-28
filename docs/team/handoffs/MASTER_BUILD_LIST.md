@@ -86,7 +86,7 @@ sections C1–C7) and `3D_BUILDS_HANDOFF.md` (3D work, sections 2a and 3.x). Tic
 - [x] Balloons (logic): children hold one at festivities, in the Meadow and Maple Row, and on market days (`caravan.ts` `balloonFor`, `CharacterModel.holdBalloon`); a Balloons decor item for everyone
 - [x] 3D: `heldBalloon` and `balloonCluster` models (`world/models/balloons.ts`, `CHATGPT_3D_MODELS.md` §10); balloon clusters in the skies
 - [x] Nature by terrain — logic (zones, species per zone, sizes; `world/nature.ts`)
-- [ ] Nature by terrain — models: shrubs, reeds, lotus, mangroves, alpine flowers; pines, palms and 10 more species rebuilt (3D)
+- [ ] Nature by terrain — pines, palms and 10 more species rebuilt (3D). Done: the understory by land and ground — reeds, papyrus, mangroves, heather, juniper, cotton-grass, alpenrose, edelweiss and gentians, saltbush, tussock, ferns, tea, lavender, flowering shrubs, crystal blooms (`world/understory.ts`); lotus ponds
 - [x] Caves — logic (placement, explore once a day; `world/caves.ts`)
 - [ ] Caves and caverns — models (3D)
 
