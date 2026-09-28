@@ -255,6 +255,14 @@ export class CharacterModel {
   readonly handAnchor = new THREE.Object3D();
   /** The cape's cloth, rippled every frame (base = rest positions). */
   private capeCloth?: { mesh: THREE.Mesh; base: Float32Array; len: number };
+  /**
+   * Cloth that swings: skirts, robes and scarf drapes lean their hems away from the way they walk,
+   * sway with the hips and ripple in the breeze (the cloth sheared below `top`, more towards the hem);
+   * what is sewn on them moves with them. `amp` scales it (a scarf's drape moves less than a skirt).
+   */
+  private flow: Array<{ top: number; len: number; amp: number; verts: Array<{ pos: THREE.BufferAttribute; base: Float32Array; y0: number }>; rigid: Array<{ o: THREE.Object3D; base: THREE.Vector3 }> }> = [];
+  private flowX = 0;
+  private flowZ = 0;
   /** 0..1: raises the free hand (the one not holding the thread) forward, palm up, to offer something. */
   offer = 0;
   /** A balloon held in the free hand (children on festive days), kept upright as they move. */
@@ -320,6 +328,7 @@ export class CharacterModel {
     this.legL.clear(); this.legR.clear(); this.armL.clear(); this.armR.clear(); this.head.clear();
     this.cape = undefined;
     this.capeCloth = undefined;
+    this.flow = [];
     this.wings = undefined;
     this.jetpack = undefined;
     this.build();
@@ -355,12 +364,14 @@ export class CharacterModel {
     if (o.lower === 'skirt' || o.lower === 'hakama' || o.lower === 'straight-skirt' || o.lower === 'wrap') {
       const top = o.top === 'jeogori' ? D.shoulder - 0.2 : D.waist;
       const rb = o.lower === 'skirt' ? 0.42 : o.lower === 'hakama' ? 0.34 : 0.25;
-      const skirt = new THREE.CylinderGeometry(0.19, rb, top - hemY, 12, 1, true);
+      const skirt = new THREE.CylinderGeometry(0.19, rb, top - hemY, 12, 3, true);
       skirt.translate(0, (top + hemY) / 2, 0);
+      const from = b.children.length;
       b.add(mesh(skirt, o.lowerColor, 'garment'));
       this.hemTrim(b, rb, hemY, o.trim);
       this.decorate(b, rb, hemY, top, o.lowerColor);
       if (o.detail?.vines) this.vines(b, 0.19, rb, top, hemY);
+      this.flows(b.children.slice(from), top, hemY, o.lower === 'straight-skirt' || o.lower === 'wrap' ? 0.6 : 1);
     }
 
     // Torso, and the long body of the top if it has one.
@@ -377,12 +388,14 @@ export class CharacterModel {
     if (info.long) {
       const longHem = o.lower === 'none' ? HEM_Y[o.hem] : Math.max(hemY, o.lower === 'skirt' ? 0.5 : hemY);
       const rb = 0.18 + (o.detail?.hemFlare ?? info.flare) * (1 - longHem / D.waist) * 0.8;
-      const body = new THREE.CylinderGeometry(0.17, rb, D.waist - longHem, 12, 1, true);
+      const body = new THREE.CylinderGeometry(0.17, rb, D.waist - longHem, 12, 3, true);
       body.translate(0, (D.waist + longHem) / 2, 0);
+      const from = b.children.length;
       b.add(mesh(body, o.topColor, 'garment'));
       this.hemTrim(b, rb, longHem, o.trim);
       // Motifs go on the long top unless a decorated skirt shows below it.
       if (o.lower === 'none' || !SKIRTS.includes(o.lower)) this.decorate(b, rb, longHem, D.waist, o.topColor);
+      this.flows(b.children.slice(from), D.waist, longHem, 0.8);
     }
     if (o.detail?.ribbon) this.ribbon(b, o.detail.ribbon);
 
@@ -489,6 +502,18 @@ export class CharacterModel {
       if (c) mm.material = glowingFabric(`#${c.getHexString()}`, shine);
     });
     this.buildIdentity();
+  }
+
+  /** Let these hang and swing from `top` down to `bottom` (see `flow`). */
+  private flows(parts: THREE.Object3D[], top: number, bottom: number, amp: number): void {
+    const f = { top, len: Math.max(0.05, top - bottom), amp, verts: [] as Array<{ pos: THREE.BufferAttribute; base: Float32Array; y0: number }>, rigid: [] as Array<{ o: THREE.Object3D; base: THREE.Vector3 }> };
+    for (const o of parts) {
+      const m = o as THREE.Mesh;
+      const plain = m.isMesh && m.rotation.x === 0 && m.rotation.y === 0 && m.rotation.z === 0 && m.scale.x === 1 && m.scale.y === 1 && m.scale.z === 1;
+      if (plain) { const pos = m.geometry.getAttribute('position') as THREE.BufferAttribute; f.verts.push({ pos, base: (pos.array as Float32Array).slice(), y0: m.position.y }); }
+      else f.rigid.push({ o, base: o.position.clone() });
+    }
+    this.flow.push(f);
   }
 
   private hemTrim(b: THREE.Group, r: number, y: number, color: string): void {
@@ -757,9 +782,9 @@ export class CharacterModel {
       add(headGeometry(r, false, 1.12, (x, y, z) => !inFace(x, y, z))).scale.set(1, 1.08, 1.02);
       // The drape falls from the head but stays attached to the head only — a gap remains above
       // the shoulders so the head still floats.
-      const drape = new THREE.CylinderGeometry(r * 1.05, r * 1.5, r * 0.8, 14, 1, true);
+      const drape = new THREE.CylinderGeometry(r * 1.05, r * 1.5, r * 0.8, 14, 2, true);
       drape.translate(0, -r * 0.95, -0.01);
-      add(drape);
+      this.flows([add(drape)], -r * 0.55, -r * 1.35, 0.45);
       if (style === 'hijab-wrap') {
         const wrap = new THREE.TorusGeometry(r * 1.05, r * 0.2, 6, 14);
         wrap.rotateX(Math.PI / 2 - 0.3);
@@ -781,9 +806,9 @@ export class CharacterModel {
       const hood = openShell(r * 1.28, 0.8);
       add(hood).scale.set(1, 1.18, 1.1);
       add(new THREE.ConeGeometry(r * 0.5, r * 0.8, 8), hc, r * 1.3).rotation.x = -0.5;
-      const drape = new THREE.CylinderGeometry(r * 1.15, r * 1.6, r * 0.9, 14, 1, true);
+      const drape = new THREE.CylinderGeometry(r * 1.15, r * 1.6, r * 0.9, 14, 2, true);
       drape.translate(0, -r * 1.0, -0.01);
-      add(drape);
+      this.flows([add(drape)], -r * 0.55, -r * 1.45, 0.45);
     } else if (style === 'hair') {
       add(headGeometry(r, this.identity === 'boy' || this.outfit.who === 'boy', 1.07, inHair)).scale.set(1, 1.06, 1);
     } else if (style === 'kufi' || style === 'songkok') {
@@ -1031,6 +1056,32 @@ export class CharacterModel {
     }
     this.wings?.update(s.t, dt, s.airborne, s.riding);
     this.jetpack?.update(s.t, dt, s.speed, s.airborne, s.riding);
+    if (this.flow.length) {
+      // Hems trail back from the way they walk (+z is forward), sway with the hips, flutter in the
+      // breeze; in a twirl the skirt flares out wide.
+      const tx = (moving ? Math.sin(this.phase) * 0.028 : 0) + Math.sin(s.t * 1.9) * 0.01 + Math.sin(s.t * 4.7) * 0.005;
+      const tz = s.riding ? 0 : -Math.min(0.1, s.speed * 0.012) - (s.airborne ? 0.08 : 0) + (moving ? Math.cos(this.phase * 2) * 0.012 : 0) + Math.sin(s.t * 2.3 + 1) * 0.008;
+      const ease = Math.min(1, dt * 8);
+      this.flowX += (tx - this.flowX) * ease;
+      this.flowZ += (tz - this.flowZ) * ease;
+      const flare = this.twirl * 0.32;
+      for (const f of this.flow) {
+        const dx = this.flowX * f.amp, dz = this.flowZ * f.amp, fl = flare * f.amp;
+        for (const v of f.verts) {
+          const a = v.base;
+          for (let i = 0; i < v.pos.count; i++) {
+            const bx = a[i * 3], by = a[i * 3 + 1], bz = a[i * 3 + 2];
+            const k = Math.min(1, Math.max(0, (f.top - by - v.y0) / f.len)), kk = k * k;
+            v.pos.setXYZ(i, bx + (dx + bx * fl) * kk, by, bz + (dz + bz * fl) * kk);
+          }
+          v.pos.needsUpdate = true;
+        }
+        for (const r of f.rigid) {
+          const k = Math.min(1, Math.max(0, (f.top - r.base.y) / f.len)), kk = k * k;
+          r.o.position.set(r.base.x + (dx + r.base.x * fl) * kk, r.base.y, r.base.z + (dz + r.base.z * fl) * kk);
+        }
+      }
+    }
     if (this.cape) {
       // The cape flies: it lifts and streams back with speed and in the air, and ripples always.
       // The cape hangs at her back (-z); a positive tilt swings its hem backwards, away from the

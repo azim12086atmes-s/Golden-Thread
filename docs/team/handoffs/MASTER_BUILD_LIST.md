@@ -109,7 +109,7 @@ sections C1–C7) and `3D_BUILDS_HANDOFF.md` (3D work, sections 2a and 3.x). Tic
 ## J. Carried over from earlier sessions
 - [ ] Walk-around interiors (rooms are dioramas now)
 - [x] Children going home at their destination (caravan limit) (`caravan.bringHome`)
-- [ ] Robes and headscarves swaying in the wind
+- [x] Robes and headscarves swaying in the wind
 - [ ] Instanced party guests at the celebration (performance)
 - [ ] Real-GPU frame-rate measurement
 
