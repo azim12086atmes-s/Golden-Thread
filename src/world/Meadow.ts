@@ -6,6 +6,7 @@ import { CITY_RADIUS, REGION_SIZE, regionAt, type RegionId } from './regions';
 import { neighbours } from '../traffic/schedule';
 import { WATER_Y, groundColor, terrainHeight } from './terrain';
 import { WIND_GLSL, WIND_UNIFORMS } from './wind';
+import { LAMP_GLSL, LAMP_UNIFORMS } from './lamplight';
 
 /**
  * Meadows instead of plain grass. Round the travellers a dense field of grass tufts grows (a
@@ -509,13 +510,14 @@ export class MeadowField {
  */
 export function patternGround(mat: THREE.MeshStandardMaterial): void {
   mat.onBeforeCompile = (sh) => {
-    Object.assign(sh.uniforms, GRASS_UNIFORMS, { uWindDir: WIND_UNIFORMS.uWindDir });
+    Object.assign(sh.uniforms, GRASS_UNIFORMS, { uWindDir: WIND_UNIFORMS.uWindDir }, LAMP_UNIFORMS);
     sh.vertexShader = sh.vertexShader
       .replace('#include <common>', '#include <common>\nvarying vec3 vGW;')
       .replace('#include <worldpos_vertex>', '#include <worldpos_vertex>\nvGW = (modelMatrix * vec4(transformed, 1.0)).xyz;');
     sh.fragmentShader = sh.fragmentShader
       .replace('#include <common>', `#include <common>
         varying vec3 vGW; uniform float uNight; uniform vec2 uWindDir;
+        ${LAMP_GLSL}
         float gh(vec2 p) { return fract(sin(dot(p, vec2(12.9898, 78.233))) * 43758.5453); }
         float vn(vec2 p) { vec2 i = floor(p), f = fract(p); f = f * f * (3.0 - 2.0 * f);
           return mix(mix(gh(i), gh(i + vec2(1.0, 0.0)), f.x), mix(gh(i + vec2(0.0, 1.0)), gh(i + vec2(1.0, 1.0)), f.x), f.y); }
@@ -621,7 +623,9 @@ export function patternGround(mat: THREE.MeshStandardMaterial): void {
           float ring = exp(-pow((length(vGW.xz - ctr) - rr) * 2.2, 2.0)) * step(0.55, gh(rc + 11.0));
           float greenish2 = smoothstep(0.02, 0.12, diffuseColor.g - max(diffuseColor.r, diffuseColor.b) * 0.92);
           totalEmissiveRadiance += vec3(0.55, 1.0, 0.75) * ring * uNight * 0.3 * greenish2;
-        }`);
+        }
+        // Pools of lamplight on the paving and grass round every lamp after dusk (lamplight.ts).
+        totalEmissiveRadiance += diffuseColor.rgb * lampLight(vGW, vec3(0.0, 1.0, 0.0));`);
   };
   mat.customProgramCacheKey = () => 'patterned-ground';
 }

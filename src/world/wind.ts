@@ -1,6 +1,7 @@
 import * as THREE from 'three';
 import type { RegionId } from './regions';
 import { SURFACE_GLSL } from './surfaces';
+import { LAMP_GLSL, LAMP_UNIFORMS } from './lamplight';
 
 /**
  * The wind. One breeze for the whole world: it turns slowly, gusts come and go, and each land
@@ -119,7 +120,7 @@ const LEAF_FRAG = /* glsl */ `
  */
 export function swayMaterial<T extends THREE.Material>(mat: T, amount = 0.45, leaves = false, surfaces = false): T {
   mat.onBeforeCompile = (sh) => {
-    Object.assign(sh.uniforms, WIND_UNIFORMS, leaves ? FOLIAGE_UNIFORMS : {});
+    Object.assign(sh.uniforms, WIND_UNIFORMS, leaves ? FOLIAGE_UNIFORMS : {}, leaves ? LAMP_UNIFORMS : {});
     sh.vertexShader = sh.vertexShader
       .replace('#include <common>', `#include <common>\nattribute float sway;\n${WIND_GLSL}${leaves ? '\nattribute float leaf; varying float vLeaf; varying vec3 vLW; varying vec3 vLN;' : ''}${surfaces ? '\nattribute float surf; varying float vSurf;' : ''}`)
       .replace('#include <begin_vertex>', `#include <begin_vertex>\nif (sway > 0.0) { vec3 wpS = (modelMatrix * vec4(transformed, 1.0)).xyz; transformed.xz += windOffset(wpS, sway) * ${amount.toFixed(3)}; }`);
@@ -128,7 +129,8 @@ export function swayMaterial<T extends THREE.Material>(mat: T, amount = 0.45, le
       vLeaf = leaf; vLW = (modelMatrix * vec4(transformed, 1.0)).xyz; vLN = normalize(mat3(modelMatrix) * objectNormal);${surfaces ? ' vSurf = surf;' : ''}`);
     sh.fragmentShader = sh.fragmentShader
       .replace('#include <common>', `#include <common>
-        varying float vLeaf; varying vec3 vLW; varying vec3 vLN; uniform vec3 uSunDir; uniform float uLeafNight;${surfaces ? `\nvarying float vSurf;\n${SURFACE_GLSL}` : ''}`)
+        varying float vLeaf; varying vec3 vLW; varying vec3 vLN; uniform vec3 uSunDir; uniform float uLeafNight;
+        ${LAMP_GLSL}${surfaces ? `\nvarying float vSurf;\n${SURFACE_GLSL}` : ''}`)
       .replace('#include <color_fragment>', `#include <color_fragment>
         float vLeafGlow = 0.0;
         ${LEAF_FRAG}
@@ -143,8 +145,10 @@ export function swayMaterial<T extends THREE.Material>(mat: T, amount = 0.45, le
           // Sunlight through the leaves, and a soft inner light so crowns never go dead-dark.
           float back = pow(max(dot(normalize(vLW - cameraPosition), normalize(uSunDir)), 0.0), 3.0);
           totalEmissiveRadiance += diffuseColor.rgb * (back * 0.6 + 0.07) * (1.0 - uLeafNight);
-        }`);
+        }
+        // Lamplight on the walls, trees and props near each lamp after dusk (lamplight.ts).
+        totalEmissiveRadiance += diffuseColor.rgb * lampLight(vLW, normalize(vLN)) * 0.85;`);
   };
-  mat.customProgramCacheKey = () => 'sway' + amount + (leaves ? '-leaves' : '') + (surfaces ? '-surfaces' : '');
+  mat.customProgramCacheKey = () => 'sway' + amount + (leaves ? '-leaves' : '') + (surfaces ? '-surfaces' : '') + (leaves ? '-lamps' : '');
   return mat;
 }

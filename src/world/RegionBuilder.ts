@@ -26,6 +26,8 @@ import { waterEdge } from './waters';
 import { INSTITUTE_SITES, SITE_SIZE } from '../institutions/sites';
 import { buildHouse, lampPost, streetProp, type Ctx } from './architecture';
 import { houseLights, streetLight } from './models/lights';
+import type { Lamp } from './lamplight';
+import { LOCALES } from './locale';
 import { CIVIC_R, buildMarket, buildWorship, civicColliders, civicOf } from './neighbourhood';
 import { SQUARE_R, buildSebil, buildSquare, sebilsOf, squaresOf, type Collide } from './landWaters';
 import { GeoBuilder, box, cone, cyl, flowers, rock, sphere, tree } from './kit';
@@ -59,6 +61,8 @@ export interface RegionInstance {
   /** Caves of this land (world coordinates): explore them with E. */
   caves: Cave[];
   wild: Array<{ x: number; z: number }>;
+  /** Every lamp that lights its surroundings after dusk (world coordinates): see lamplight.ts. */
+  lamps: Lamp[];
   dispose(): void;
 }
 
@@ -163,6 +167,10 @@ export function buildRegion(spec: RegionSpec, solid: THREE.Material, glowMat: TH
   const colliders: Collider[] = [];
   const spots: Array<{ x: number; z: number }> = [];
   const doors: Door[] = [];
+  // The lamps that throw light round them at night, each in one of the land's lantern colours.
+  const lamps: Lamp[] = [];
+  const lightCols = LOCALES[spec.id]?.lights ?? ['#ffd98a'];
+  const lamp = (x: number, y: number, z: number, r: number, i = 0) => lamps.push({ x: c.x + x, y, z: c.z + z, r, color: lightCols[i % lightCols.length] });
   /** Buildings' full footprints (local), so nothing gatherable ends up inside a wall. */
   const buildings: Array<{ x: number; z: number; r: number }> = [];
   const wild: Array<{ x: number; z: number }> = [];
@@ -307,6 +315,8 @@ export function buildRegion(spec: RegionSpec, solid: THREE.Material, glowMat: TH
     // Its halls, towers and walls; its courts, gates and market aisles stay open to walk.
     const cs = Math.cos(ry), sn = Math.sin(ry);
     for (const k of civicColliders(spec.id, q.kind)) colliders.push({ x: c.x + q.x + k.x * cs + k.z * sn, z: c.z + q.z - k.x * sn + k.z * cs, r: k.r, h: y + k.h });
+    // Lanterns at its gate, lighting the way in.
+    lamp(q.x * (1 - (CIVIC_R + 1.5) / Math.hypot(q.x, q.z)), y + 2.8, q.z * (1 - (CIVIC_R + 1.5) / Math.hypot(q.x, q.z)), 7, 1);
   }
 
   // What the land hangs across its streets (streetGarlands.ts): midway between the lamps, clear of
@@ -330,6 +340,7 @@ export function buildRegion(spec: RegionSpec, solid: THREE.Material, glowMat: TH
       for (const [x, z] of [[AVENUE + 2, d], [-AVENUE - 2, -d], [d, AVENUE + 2], [-d, -AVENUE - 2]] as const) {
         // The land's own street light from the 3D side (world/models/lights.ts), else its lamp post.
         if (!streetLight(ctx, x, H(x, z), z)) lampPost(ctx, x, H(x, z), z);
+        lamp(x, H(x, z) + 3.6, z, 8.5);
         recordDecor(spec.id, 'street: lamps');
         colliders.push({ x: c.x + x, z: c.z + z, r: 0.4, h: H(x, z) + 4 });
       }
@@ -373,7 +384,10 @@ export function buildRegion(spec: RegionSpec, solid: THREE.Material, glowMat: TH
 
   // The banks of the land's waters: quay walls, towpaths with lanterns, ghats, stone-edged ponds (banks.ts).
   const banks = buildBanks(ctx, spec.id, c.x, c.z, H, WATER_Y);
-  for (const l of banks.lamps) colliders.push({ x: c.x + l.x, z: c.z + l.z, r: 0.4, h: H(l.x, l.z) + 4 });
+  for (const l of banks.lamps) {
+    colliders.push({ x: c.x + l.x, z: c.z + l.z, r: 0.4, h: H(l.x, l.z) + 4 });
+    lamp(l.x, H(l.x, l.z) + 3, l.z, 7.5);
+  }
   const onTowpath = (x: number, z: number, pad: number) => banks.paths.some((p) => Math.abs(x - p.x) < 2 + pad && Math.abs(z - p.z) < 2 + pad);
 
   // Nature beyond the city.
@@ -608,6 +622,8 @@ export function buildRegion(spec: RegionSpec, solid: THREE.Material, glowMat: TH
     nodes.push({ id: `${spec.id}:${i}`, item, x: c.x + x, y, z: c.z + z, mesh });
   }
 
+  // A lamp by every front door (half a metre out, above the lintel): porch light on the wall and step.
+  for (const d of doors) lamps.push({ x: d.x + Math.sin(d.facing) * 0.6, y: d.y + 2.3, z: d.z + Math.cos(d.facing) * 0.6, r: 4.8, color: lightCols[0] });
   for (const lf of LANDFORMS) if (lf.land === spec.id) recordDecor(spec.id, `land: ${lf.kind}`);
   for (const cv of CAVES) if (cv.land === spec.id) recordDecor(spec.id, `land: ${cv.style === 'den' ? 'den' : 'cave'}`);
   return {
@@ -619,6 +635,7 @@ export function buildRegion(spec: RegionSpec, solid: THREE.Material, glowMat: TH
     doors,
     caves,
     wild,
+    lamps,
     dispose() {
       clearPaved(spec.id);
       solidMesh?.geometry.dispose();

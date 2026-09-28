@@ -12,6 +12,7 @@ import { foamMaterial, riverFlowGeometry, riverFlowMaterial, shoreGeometry, wate
 import { builtWaterMaterial } from './flowWater';
 import { swayMaterial } from './wind';
 import { LOCALES } from './locale';
+import type { Lamp } from './lamplight';
 
 /**
  * The world around the player. Terrain streams in chunks; each land's town streams as a whole;
@@ -44,6 +45,12 @@ export class World {
   private water: THREE.Mesh;
   private pending: RegionSpec[] = [];
   onRegionLoaded?: (r: RegionInstance) => void;
+  /** Every lamp of the lands loaded now (lamplight.ts). */
+  lamps(): Lamp[] {
+    const out: Lamp[] = [];
+    for (const r of this.regions.values()) for (const l of r.lamps) out.push(l);
+    return out;
+  }
   onRegionUnloaded?: (r: RegionInstance) => void;
 
   constructor() {

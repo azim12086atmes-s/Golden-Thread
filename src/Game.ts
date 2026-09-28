@@ -79,6 +79,7 @@ import { Weather } from './world/Weather';
 import { surfaceAt, terrainHeight } from './world/terrain';
 import { World } from './world/World';
 import { FOLIAGE_UNIFORMS, updateWind } from './world/wind';
+import { setLamps } from './world/lamplight';
 
 /** Real seconds per game minute: a day lasts 16 real minutes. */
 const MINUTES_PER_SECOND = DAY_MINUTES / (16 * 60);
@@ -355,6 +356,8 @@ export class Game {
 
   // ───────────────────────── main loop ─────────────────────────
 
+  private lampTick = 1;
+
   private frame(): void {
     const dt = Math.min(0.05, this.clock.getDelta());
     this.t += dt;
@@ -398,6 +401,8 @@ export class Game {
     FOLIAGE_UNIFORMS.uLeafNight.value = this.sky.night;
     this.world.setWaterLook(this.t, this.sky.night, this.region.id, this.sky.sunDirection);
     this.world.update(this.trav.gPos, this.sky.night);
+    // Lamplight: the nearest lamps light the ground and walls round them after dusk (a few times a second).
+    if ((this.lampTick += dt) > 0.15) { this.lampTick = 0; setLamps(this.world.lamps(), this.trav.gPos, this.sky.night); }
     this.sky.update(this.hour, this.trav.gPos, this.t, this.region.id);
     this.ambience.setMode(this.region.ambient);
     this.ambience.update(dt, this.trav.gPos, this.t, this.sky.night);
