@@ -505,38 +505,45 @@ function wall(x0: number, z0: number, x1: number, z1: number, h: number, r = 0.9
   const n = Math.max(1, Math.ceil(Math.hypot(x1 - x0, z1 - z0) / (r * 1.4)));
   return Array.from({ length: n + 1 }, (_, i) => ({ x: x0 + ((x1 - x0) * i) / n, z: z0 + ((z1 - z0) * i) / n, r, h }));
 }
-const ring = (pts: Array<[number, number, number, number]>, h: number): Collide[] => pts.flatMap(([x, z, r, hh]) => [{ x, z, r, h: hh || h }]);
+/** A hall filling the rectangle centred (x, z), half-sizes hw × hd, h high, with circles no wider than 2 m (big circles are for houses). */
+function hall(x: number, z: number, hw: number, hd: number, h: number): Collide[] {
+  const out: Collide[] = [], r = 1.9, step = 2.4;
+  const nx = Math.max(1, Math.ceil((hw * 2 - r) / step) + 1), nz = Math.max(1, Math.ceil((hd * 2 - r) / step) + 1);
+  for (let i = 0; i < nx; i++) for (let k = 0; k < nz; k++) out.push({ x: nx === 1 ? x : x - hw + r / 2 + ((hw * 2 - r) * i) / (nx - 1), z: nz === 1 ? z : z - hd + r / 2 + ((hd * 2 - r) * k) / (nz - 1), r: Math.min(r, hw, hd), h });
+  return out;
+}
+const post = (x: number, z: number, r: number, h: number): Collide => ({ x, z, r, h });
 
-const MOSQUE: Collide[] = [...ring([[-5, -4, 4, 0], [0, -4, 4, 0], [5, -4, 4, 0], [7.2, 8.2, 1.5, 13]], 7)];
-const CHAPEL_NAVE: Collide[] = ring([[0, -5, 3.6, 0], [0, -1.5, 3.6, 0], [0, 2, 3.6, 0]], 7);
+const MOSQUE: Collide[] = [...hall(0, -4, 8, 4, 7), post(7.2, 8.2, 1.5, 13)];
+const CHAPEL_NAVE: Collide[] = hall(0, -1.5, 3.5, 6.5, 7);
 const WORSHIP_COLLIDE: Record<RegionId, Collide[]> = {
-  islamic: MOSQUE, middleeast: MOSQUE, desert: MOSQUE, egypt: MOSQUE, mughal: [...MOSQUE, { x: -7.2, z: 8.2, r: 1.2, h: 12 }],
-  indianorth: ring([[0, -4, 3.2, 15]], 6),
-  indiasouth: ring([[0, -5, 3.2, 10], [-2.4, 8.5, 1.2, 8], [2.4, 8.5, 1.2, 8], [3.5, 6, 0.45, 5]], 6),
-  indonesia: [...ring([[-5, -5, 1.4, 10], [0, -5, 1.4, 10], [5, -5, 1.4, 10], [4, 3, 2.3, 4]], 6), ...wall(-9, -9, 9, -9, 1.8), ...wall(-9, -9, -9, 9, 1.8), ...wall(9, -9, 9, 9, 1.8), ...wall(-9, 9, -2.6, 9, 1.8), ...wall(2.6, 9, 9, 9, 1.8)],
-  japan: ring([[-2, -2.6, 2.6, 5], [2, -2.6, 2.6, 5], [-2.2, 10.5, 0.35, 5], [2.2, 10.5, 0.35, 5], [-3, 5, 0.8, 1]], 5),
-  korea: ring([[-3, -3, 3.2, 7], [3, -3, 3.2, 7], [0, 5, 1.1, 5]], 7),
-  china: ring([[-3, -3.5, 3.3, 9], [3, -3.5, 3.3, 9], [7, 3, 1.1, 10], [0, 5, 0.9, 2]], 9),
-  london: [...CHAPEL_NAVE, { x: 0, z: 6.2, r: 1.8, h: 20 }],
+  islamic: MOSQUE, middleeast: MOSQUE, desert: MOSQUE, egypt: MOSQUE, mughal: [...MOSQUE, post(-7.2, 8.2, 1.2, 12)],
+  indianorth: hall(0, -4, 3, 3, 15),
+  indiasouth: [...hall(0, -5, 3, 3, 10), post(-2.4, 8.5, 1.2, 8), post(2.4, 8.5, 1.2, 8), post(3.5, 6, 0.45, 5)],
+  indonesia: [post(-5, -5, 1.4, 10), post(0, -5, 1.4, 10), post(5, -5, 1.4, 10), post(4, 3, 2, 4), ...wall(-9, -9, 9, -9, 1.8), ...wall(-9, -9, -9, 9, 1.8), ...wall(9, -9, 9, 9, 1.8), ...wall(-9, 9, -2.6, 9, 1.8), ...wall(2.6, 9, 9, 9, 1.8)],
+  japan: [...hall(0, -2.6, 3.8, 2.5, 5), post(-2.2, 10.5, 0.35, 5), post(2.2, 10.5, 0.35, 5), post(-3, 5, 0.8, 1)],
+  korea: [...hall(0, -3, 5, 2.7, 7), post(0, 5, 1.1, 5)],
+  china: [...hall(0, -3.5, 5.5, 3, 9), post(7, 3, 1.1, 10), post(0, 5, 0.9, 2)],
+  london: [...CHAPEL_NAVE, post(0, 6.2, 1.8, 20)],
   norway: CHAPEL_NAVE,
-  switzerland: [...CHAPEL_NAVE, { x: 0, z: 6, r: 1.6, h: 14 }],
-  renaissance: [...CHAPEL_NAVE, { x: 0, z: -8, r: 3.2, h: 7 }, { x: 5.2, z: 3, r: 1.7, h: 16 }],
-  vintage: [...CHAPEL_NAVE, { x: 0, z: 3.5, r: 1.3, h: 13 }],
-  aurora: ring([[0, -5, 4, 7], [0, -1, 4, 7], [0, 2.6, 3.6, 5]], 7),
-  meadow: Array.from({ length: 10 }, (_, k) => ({ x: Math.cos((k / 10) * Math.PI * 2) * 5.2, z: Math.sin((k / 10) * Math.PI * 2) * 5.2, r: 0.3, h: 5 })).filter((q) => q.z < 4),
+  switzerland: [...CHAPEL_NAVE, post(0, 6, 1.6, 14)],
+  renaissance: [...CHAPEL_NAVE, ...hall(0, -8, 3.2, 1.6, 7), post(5.2, 3, 1.7, 16)],
+  vintage: [...CHAPEL_NAVE, post(0, 3.5, 1.3, 13)],
+  aurora: hall(0, -1, 4.3, 6.2, 7),
+  meadow: Array.from({ length: 10 }, (_, k) => post(Math.cos((k / 10) * Math.PI * 2) * 5.2, Math.sin((k / 10) * Math.PI * 2) * 5.2, 0.3, 5)).filter((q) => q.z < 4),
   newyork: [...wall(-7.5, -6.5, 7.5, -6.5, 5.5, 0.6), ...wall(-7.5, 4.5, -1.5, 4.5, 5.5, 0.6), ...wall(1.5, 4.5, 7.5, 4.5, 5.5, 0.6)],
   skyisles: [],
 };
 const MARKET_COLLIDE: Partial<Record<RegionId, Collide[]>> = {
   islamic: [...wall(-5, -9, -5, 9, 4.6), ...wall(5, -9, 5, 9, 4.6)],
-  middleeast: [...wall(-6.5, -8, -6.5, 8, 4, 1.4), ...wall(6.5, -8, 6.5, 8, 4, 1.4), { x: 6.5, z: -8, r: 1.9, h: 9 }],
+  middleeast: [...wall(-6.5, -8, -6.5, 8, 4, 1.4), ...wall(6.5, -8, 6.5, 8, 4, 1.4), post(6.5, -8, 1.9, 9)],
   egypt: [...wall(-8, -8, 8, -8, 5), ...wall(-8, -8, -8, 8, 5), ...wall(8, -8, 8, 8, 5), ...wall(-8, 8, -2, 8, 5), ...wall(2, 8, 8, 8, 5)],
-  mughal: [...wall(-8, -8, 8, -8, 4.6, 1.4), ...wall(-8, -8, -8, 8, 4.6, 1.4), ...wall(8, -8, 8, 8, 4.6, 1.4), { x: 0, z: 0, r: 1.9, h: 0.6 }],
+  mughal: [...wall(-8, -8, 8, -8, 4.6, 1.4), ...wall(-8, -8, -8, 8, 4.6, 1.4), ...wall(8, -8, 8, 8, 4.6, 1.4), post(0, 0, 1.9, 0.6)],
   japan: [...wall(-5.5, -9.9, -5.5, 9.9, 3.4, 1.4), ...wall(5.5, -9.9, 5.5, 9.9, 3.4, 1.4)],
-  norway: wall(-7, -4, 7, -4, 6, 3),
-  switzerland: [{ x: 0, z: 0, r: 1.7, h: 4 }],
-  indianorth: [{ x: 0, z: 0, r: 1, h: 6 }],
-  aurora: [{ x: 0, z: 0, r: 1.6, h: 5 }],
+  norway: hall(0, -4, 7, 3, 6),
+  switzerland: [post(0, 0, 1.7, 4)],
+  indianorth: [post(0, 0, 1, 6)],
+  aurora: [post(0, 0, 1.6, 5)],
 };
 
 /** What stops the traveller walking through the land's place of worship or market (local, h above its ground). */

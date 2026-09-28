@@ -51,6 +51,8 @@ describe("each town's neighbourhood", () => {
       for (const kind of ['worship', 'market'] as const) for (const k of civicColliders(r.id, kind)) {
         expect(Math.hypot(k.x, k.z) + k.r, `${r.id} ${kind}`).toBeLessThanOrEqual(CIVIC_R * Math.SQRT2 + 1);
         expect(k.h, `${r.id} ${kind}`).toBeGreaterThan(0);
+        // Circles wider than 2 m stand for houses; a civic building is a mass of small ones.
+        expect(k.r, `${r.id} ${kind}`).toBeLessThanOrEqual(2);
       }
       // The way in from the town (the +z side) is open for the last few steps before the door.
       for (const kind of ['worship', 'market'] as const) expect(civicColliders(r.id, kind).some((k) => Math.hypot(k.x, k.z - (CIVIC_R - 0.5)) < k.r), `${r.id} ${kind}`).toBe(false);
