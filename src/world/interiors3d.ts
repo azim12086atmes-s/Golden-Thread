@@ -67,7 +67,7 @@ function shelfWall(r: R, x: number, z: number, w: number, h: number, ry = 0): vo
 // ─────────────────────────── caverns ───────────────────────────
 
 function cavern(r: R, style: string): InteriorBuild {
-  const look = style === 'ice' ? { rock: '#bfe0f4', dark: '#8ab8dc', glow: '#6ac8ff' } : style === 'crystal' ? { rock: '#d8d0ec', dark: '#b0a8d0', glow: '#e0c8ff' } : style === 'sandstone' ? { rock: '#c98a5a', dark: '#9a6a42', glow: '#ffb84a' } : { rock: '#7a7064', dark: '#5a534c', glow: '#9ae8ff' };
+  const look = style === 'den' ? { rock: '#7a5a3a', dark: '#5a402a', glow: '#ffcf7a' } : style === 'ice' ? { rock: '#bfe0f4', dark: '#8ab8dc', glow: '#6ac8ff' } : style === 'crystal' ? { rock: '#d8d0ec', dark: '#b0a8d0', glow: '#e0c8ff' } : style === 'sandstone' ? { rock: '#c98a5a', dark: '#9a6a42', glow: '#ffb84a' } : { rock: '#7a7064', dark: '#5a534c', glow: '#9ae8ff' };
   const W = 9, H = 7;
   // The chamber: a great hollow of rock, seen from inside, its floor worn flat.
   const hollow = insideOut(rockGeometry(W, { style: style === 'ice' ? 'ice' : style === 'sandstone' ? 'sandstone' : 'crag', tall: H / W, seed: r.rng.int(1, 900), detail: 4 }));

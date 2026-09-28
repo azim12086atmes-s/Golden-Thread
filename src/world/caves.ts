@@ -1,4 +1,5 @@
 import { Rng } from '../core/rng';
+import { LANDFORMS } from './landforms';
 import { reservedAt } from './reserved';
 import { PLOTS, PLOT_SIZE } from './plots';
 import { CITY_RADIUS, REGIONS, REGION_SIZE, regionCenter, type RegionId } from './regions';
@@ -16,7 +17,7 @@ import { INSTITUTE_SITES, SITE_SIZE } from '../institutions/sites';
  * modelled by the 3D side (world/models/caves.ts).
  */
 
-export type CaveStyle = 'sandstone' | 'rock' | 'ice' | 'crystal';
+export type CaveStyle = 'sandstone' | 'rock' | 'ice' | 'crystal' | 'den';
 
 export interface Cave {
   id: string;
@@ -38,19 +39,44 @@ export const CAVE_LANDS: Partial<Record<RegionId, { style: CaveStyle; count: num
   switzerland: { style: 'ice', count: 3, finds: ['ice', 'cavecrystal', 'edelweiss'] },
   norway: { style: 'rock', count: 3, finds: ['cavecrystal', 'birch', 'fleece'] },
   skyisles: { style: 'crystal', count: 4, finds: ['stardust', 'cavecrystal', 'cloud'] },
+  // Caves in the mountains of the other lands, and dens dug into the green hills.
+  indianorth: { style: 'sandstone', count: 3, finds: ['clay', 'cavecrystal', 'spice'] },
+  islamic: { style: 'rock', count: 2, finds: ['clay', 'cavecrystal'] },
+  china: { style: 'rock', count: 4, finds: ['cavecrystal', 'bamboo', 'silk'] },
+  korea: { style: 'rock', count: 3, finds: ['cavecrystal', 'ginseng', 'hanji'] },
+  japan: { style: 'rock', count: 3, finds: ['cavecrystal', 'cedar', 'tea'] },
+  indonesia: { style: 'rock', count: 3, finds: ['cavecrystal', 'rattan', 'coconut'] },
+  indiasouth: { style: 'den', count: 3, finds: ['jasmine', 'coconut', 'cavecrystal'] },
+  meadow: { style: 'den', count: 4, finds: ['wildflower', 'wool', 'cavecrystal'] },
+  renaissance: { style: 'den', count: 3, finds: ['olive', 'marble', 'cavecrystal'] },
+  vintage: { style: 'den', count: 2, finds: ['spool', 'wood', 'cavecrystal'] },
+  mughal: { style: 'den', count: 2, finds: ['rose', 'saffron', 'cavecrystal'] },
 };
 
 /** What a cave is called in the game's words. */
-export const CAVE_NAME: Record<CaveStyle, string> = { sandstone: 'cave', rock: 'cave', ice: 'ice cavern', crystal: 'crystal grotto' };
+export const CAVE_NAME: Record<CaveStyle, string> = { sandstone: 'cave', rock: 'cave', ice: 'ice cavern', crystal: 'crystal grotto', den: 'den' };
 
 function place(land: RegionId): Cave[] {
   const cfg = CAVE_LANDS[land];
   if (!cfg) return [];
   const r0 = REGIONS.find((r) => r.id === land)!, c = regionCenter(r0), rng = new Rng(`caves:${land}`), out: Cave[] = [];
   const half = REGION_SIZE / 2;
-  for (let tries = 0; tries < 200 && out.length < cfg.count; tries++) {
-    const a = rng.range(0, Math.PI * 2), d = rng.range(CITY_RADIUS + 70, half - 50), r = rng.range(11, 16); // grand enough to walk into, and seen from afar
-    const x = c.x + Math.cos(a) * d, z = c.z + Math.sin(a) * d;
+  // First, cut into the feet of the land's mountains and hills, on the side facing the town; then anywhere wild.
+  const feet = LANDFORMS.filter((l) => l.land === land);
+  for (let tries = 0; tries < 260 && out.length < cfg.count; tries++) {
+    let x: number, z: number, d: number, r: number;
+    const lf = tries < feet.length * 3 ? feet[tries % feet.length] : null;
+    if (lf) {
+      r = rng.range(11, 16);
+      const at = Math.atan2(c.z - lf.z, c.x - lf.x) + rng.range(-0.5, 0.5), rr = lf.r * 0.92 + r * 0.25;
+      x = lf.x + Math.cos(at) * rr; z = lf.z + Math.sin(at) * rr; d = Math.hypot(x - c.x, z - c.z);
+      if (d < CITY_RADIUS + 70) continue;
+    } else {
+      const a = rng.range(0, Math.PI * 2);
+      d = rng.range(CITY_RADIUS + 70, half - 50);
+      r = rng.range(11, 16); // grand enough to walk into, and seen from afar
+      x = c.x + Math.cos(a) * d; z = c.z + Math.sin(a) * d;
+    }
     // Keep off the four avenue lines where they run out of town.
     const lx = x - c.x, lz = z - c.z;
     if (Math.abs(lx) < r + 14 || Math.abs(lz) < r + 14) continue;

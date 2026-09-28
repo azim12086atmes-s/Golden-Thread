@@ -1,6 +1,7 @@
 import * as THREE from 'three';
 import { fbm, lerp, smoothstep } from '../core/rng';
 import { PLOTS, PLOT_SIZE } from './plots';
+import { landformColor, landformHeight } from './landforms';
 import { carveWater } from './waters';
 import {
   CITY_RADIUS, GRID_COLS, GRID_ROWS, HOME_COL, HOME_ROW, REGION_SIZE, regionAtGrid, type RegionSpec,
@@ -110,6 +111,8 @@ function naturalHeight(x: number, z: number): number {
   let h = gentle * (1 - f) + f * relief * wild;
   // Where the land is a sand sea, the rough hills give way to dunes.
   if (dunes > 0) h = lerp(h, f * (relief * 0.18 * (n - 0.35) + duneShape(x, z) * 11), dunes * f);
+  // Mountains, plateaus and cliffs of the land's own kind (landforms.ts).
+  h += landformHeight(x, z);
   // The world is an island; beyond the grid it slopes into the sea.
   const o = outside(x, z);
   if (o > 0) h = h - o * 0.2 - 2;
@@ -176,6 +179,7 @@ export function buildTerrainChunk(cx: number, cz: number, material: THREE.Materi
     nrm[v * 3] = -dx * inv; nrm[v * 3 + 1] = inv; nrm[v * 3 + 2] = -dz * inv;
     groundColor(x, z, h, col);
     rockOnSlope(x, z, h, 1 - inv, col);
+    landformColor(x, z, h, 1 - inv, col);
     cols[v * 3] = col.r; cols[v * 3 + 1] = col.g; cols[v * 3 + 2] = col.b;
   }
   geo.setAttribute('color', new THREE.BufferAttribute(cols, 3));

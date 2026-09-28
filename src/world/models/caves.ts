@@ -17,20 +17,23 @@ import { hoodooGeometry, rockGeometry, shardGeometry } from '../rocks';
  * - ice (Aurora, the Alps): a faceted mound of blue ice, great shards breaking out of it at
  *   angles, icicles over the mouth, a blue glow inside;
  * - crystal (the Sky Isles): a pale stone mound burst open by giant crystals growing outward in
- *   every colour, their tips sparkling.
+ *   every colour, their tips sparkling;
+ * - den (the green lands): a grassy knoll dug into, its mouth ringed with stones and roots, a
+ *   little lantern hung by the door, wildflowers on its turf.
  */
 const LOOK: Record<CaveStyle, { rock: string; dark: string; accent: string }> = {
   sandstone: { rock: '#c98a5a', dark: '#a86a42', accent: '#e0b07a' },
   rock: { rock: '#7a7064', dark: '#5e5750', accent: '#8a8276' },
   ice: { rock: '#cfe8ff', dark: '#9cc8ec', accent: '#e8f6ff' },
   crystal: { rock: '#dcd6ee', dark: '#bcb4dc', accent: '#f4f0ff' },
+  den: { rock: '#6f9a4a', dark: '#6a4a30', accent: '#9a9486' },
 };
 
 export function buildCave(c: Ctx, style: CaveStyle, r: number): Footprint {
   const L = LOOK[style], seed = Math.floor(c.rng.next() * 1000);
   const mound = rockGeometry(r, {
-    style: style === 'sandstone' ? 'sandstone' : style === 'ice' ? 'ice' : 'crag',
-    tall: style === 'sandstone' ? 0.72 : style === 'crystal' ? 0.6 : 0.85, mouth: { w: 0.3, h: 0.42 }, seed, noSquash: true,
+    style: style === 'sandstone' ? 'sandstone' : style === 'ice' ? 'ice' : style === 'den' ? 'pebble' : 'crag',
+    tall: style === 'sandstone' ? 0.72 : style === 'crystal' ? 0.6 : style === 'den' ? 0.55 : 0.85, mouth: { w: 0.3, h: 0.42 }, seed, noSquash: true,
   });
   c.g.add(mound, L.rock);
   // The dark inside, seen through the alcove.
@@ -79,6 +82,25 @@ export function buildCave(c: Ctx, style: CaveStyle, r: number): Footprint {
         c.g.add(shardGeometry(h, 0.1, seed + 30 + k), L.accent, M(k * r * 0.07, r * 0.46, r * 0.72, 0, 1, 1, 1, Math.PI, 0));
       }
       sphere(c.glow, r * 0.14, '#6ac8ff', 0, r * 0.18, r * 0.5, 8);
+      break;
+    }
+    case 'den': {
+      // Stones ringing the mouth, roots trailing over it, turf and wildflowers, a lantern by the door.
+      for (let k = 0; k < 9; k++) {
+        const a = -0.9 + (k / 8) * 1.8;
+        c.g.add(rockGeometry(c.rng.range(0.35, 0.7), { style: 'pebble', seed: seed + 40 + k }), L.accent, M(Math.sin(a) * r * 0.36, r * 0.02 + Math.cos(a * 1.6) * r * 0.22, r * 0.62 + Math.cos(a) * 0.3));
+      }
+      for (let k = 0; k < 7; k++) {
+        const x = (k - 3) * r * 0.06, len = c.rng.range(0.8, 1.8);
+        c.g.add(new THREE.CylinderGeometry(0.04, 0.02, len, 4).translate(0, -len / 2, 0), '#5a3e28', M(x, r * 0.46, r * 0.66, 0, 1, 1, 1, c.rng.range(-0.2, 0.2), c.rng.range(-0.2, 0.2)));
+      }
+      for (let k = 0; k < 24; k++) {
+        const a = c.rng.range(0, Math.PI * 2), rr = r * c.rng.range(0.2, 0.9);
+        if (Math.cos(a) > 0.7 && rr > r * 0.5) continue;
+        sphere(c.g, 0.12, ['#ff8fb8', '#f2d14e', '#ffffff', '#b58ad9'][k % 4], Math.sin(a) * rr, r * 0.5 * (1 - (rr / r) ** 2) + 0.1, Math.cos(a) * rr, 5);
+      }
+      c.g.add(new THREE.CylinderGeometry(0.05, 0.05, 1.6, 5).translate(0, 0.8, 0), '#6b4a2a', M(r * 0.3, 0, r * 0.72));
+      sphere(c.glow, 0.18, '#ffcf7a', r * 0.3, 1.5, r * 0.72, 6);
       break;
     }
     case 'crystal': {

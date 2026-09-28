@@ -12,6 +12,7 @@ import { buildBanks } from './banks';
 import { neighbours } from '../traffic/schedule';
 import { bridgesOf } from './bridges';
 import { OUTCROPS, outcrop } from './outcrops';
+import { LANDFORMS } from './landforms';
 import { crystalCluster } from './islands';
 import { dressGulabi, gateTowers } from './gulabi';
 import { harbours } from './harbours';
@@ -400,6 +401,25 @@ export function buildRegion(spec: RegionSpec, solid: THREE.Material, glowMat: TH
       g.frame(x, y, z, rng.range(0, Math.PI * 2), 1, () => glow.frame(x, y, z, 0, 1, () => outcrop(ctx, kind.style, s, seed)));
       colliders.push({ x: c.x + x, z: c.z + z, r: Math.min(2, s * 0.6), h: y + s * 1.5 });
       placed++;
+    }
+  }
+  // Scree and fallen boulders round the feet of the land's mountains, plateaus and hills (landforms.ts).
+  {
+    const lrng = new Rng(`lfrocks:${spec.id}`);
+    const STYLE: Record<string, 'sandstone' | 'crag' | 'ice'> = { mesa: 'sandstone', butte: 'sandstone', arctic: 'ice' };
+    for (const lf of LANDFORMS.filter((l) => l.land === spec.id)) {
+      const n = Math.round(lf.r / (lf.kind === 'hill' ? 14 : 7));
+      for (let k = 0; k < n; k++) {
+        const a = lrng.range(0, Math.PI * 2), rr = lf.r * lrng.range(0.86, 1.12);
+        const x = lf.x - c.x + Math.cos(a) * rr, z = lf.z - c.z + Math.sin(a) * rr, sz = lrng.range(1.2, 3.4) * (lf.kind === 'hill' ? 0.7 : 1);
+        if (onRoad(x, z, sz + 4) || nearPlot(x, z, sz + 3) || onTowpath(x, z, sz + 2)) continue;
+        if (cavesHere.some((cv) => Math.hypot(x - cv.x, z - cv.z) < cv.r + sz + 4)) continue;
+        if (waterEdge(c.x + x, c.z + z).d < sz + 6) continue;
+        const y = H(x, z), seed = Math.floor(lrng.next() * 997);
+        if (y < WATER_Y + 0.5) continue;
+        g.frame(x, y - 0.3, z, lrng.range(0, Math.PI * 2), 1, () => glow.frame(x, y - 0.3, z, 0, 1, () => outcrop(ctx, STYLE[lf.kind] ?? 'crag', sz, seed)));
+        colliders.push({ x: c.x + x, z: c.z + z, r: Math.min(2, sz * 0.6), h: y + sz * 1.5 });
+      }
     }
   }
   // Meadow: whole fields of flowers.
