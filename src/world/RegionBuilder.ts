@@ -27,7 +27,8 @@ import { INSTITUTE_SITES, SITE_SIZE } from '../institutions/sites';
 import { buildHouse, lampPost, streetProp, type Ctx } from './architecture';
 import { houseLights, streetLight } from './models/lights';
 import type { Lamp } from './lamplight';
-import { collectChimneys, takeChimneys } from './chimneys';
+import { chimneyMark, chimneyRollback, collectChimneys, takeChimneys } from './chimneys';
+import { GRID_TOWNS, LANE_W, laneDistance, laneLots, townLanes } from './townLayout';
 import { LOCALES } from './locale';
 import { CIVIC_R, buildMarket, buildWorship, civicColliders, civicOf } from './neighbourhood';
 import { SQUARE_R, buildSebil, buildSquare, sebilsOf, squaresOf, type Collide } from './landWaters';
@@ -192,7 +193,11 @@ export function buildRegion(spec: RegionSpec, solid: THREE.Material, glowMat: TH
   const gatesHere = spec.id === 'indianorth' ? gateTowers() : [];
   // The neighbourhood's place of worship and its market (neighbourhood.ts).
   const civicHere = civicOf(spec.id);
+  // Where the town's people in need wait (charity.ts needSpot: 118 m out along each avenue, 13 m to
+  // the side): kept open ground.
+  const needHere = ([[0, 1], [1, 0], [0, -1], [-1, 0]] as const).map(([ax, az]) => ({ x: ax * 118 + az * 13, z: az * 118 - ax * 13 }));
   const nearPlot = (x: number, z: number, pad: number) => inCastle(x, z, pad) || reservedAt(spec.id, x, z, pad) ||
+    needHere.some((q) => Math.hypot(x - q.x, z - q.z) < 4 + pad) ||
     gatesHere.some((q) => Math.hypot(x - q.x, z - q.z) < q.r + pad) ||
     civicHere.some((q) => Math.hypot(x - q.x, z - q.z) < CIVIC_R + pad) ||
     squaresHere.some((q) => Math.hypot(x - q.x, z - q.z) < SQUARE_R + pad) ||
@@ -253,45 +258,88 @@ export function buildRegion(spec: RegionSpec, solid: THREE.Material, glowMat: TH
     }
   }
 
-  // Houses on a jittered grid inside the city.
+  // Houses. Most towns grew along winding lanes (townLayout.ts): the lanes first, then houses
+  // along them facing their lane, from the heart outwards; whatever room is left is filled from a
+  // loose grid, facing the nearest avenue. New Yonder is a grid city and keeps its blocks.
   let placed = 0;
-  const cells: Array<[number, number]> = [];
+  const hs = houseScale(spec.id);
   // Bagh-e-Noor is a garden city: its havelis stand well apart among the gardens.
-  const step = spec.id === 'newyork' ? 34 : spec.id === 'london' ? 26 : spec.id === 'mughal' ? 27 : 21;
+  const step = spec.id === 'newyork' ? 31 : spec.id === 'london' ? 26 : spec.id === 'mughal' ? 27 : 21;
+  const lanes = isSky || GRID_TOWNS.has(spec.id) ? [] : townLanes(rng, CITY_RADIUS, AVENUE, RING,
+    (x, z, pad) => nearPlot(x, z, pad) || H(x, z) < WATER_Y + 0.4 || waterEdge(c.x + x, c.z + z).d < 6 + pad,
+    (x, z, pad) => onRoad(x, z, pad));
+  const nearLane = (x: number, z: number, pad: number) => lanes.length > 0 && laneDistance(lanes, x, z) < LANE_W / 2 + pad;
+  /** The avenues, the ring road and the lanes. */
+  const onStreet = (x: number, z: number, pad = 0) => onRoad(x, z, pad) || nearLane(x, z, pad);
+  for (const l of lanes) {
+    drapeStrip(g, l.pts, l.width, spec.road, H);
+    recordDecor(spec.id, 'town: lanes');
+    // Lamps along the lane, every so often, on alternating sides.
+    let side = 1;
+    for (let i = 6; i < l.pts.length - 2; i += 9) {
+      const [ax, az] = l.pts[i - 1], [bx, bz] = l.pts[i + 1], len = Math.hypot(bx - ax, bz - az) || 1;
+      const x = l.pts[i][0] - ((bz - az) / len) * side * (l.width / 2 + 0.6), z = l.pts[i][1] + ((bx - ax) / len) * side * (l.width / 2 + 0.6);
+      side = -side;
+      if (buildings.some((q) => Math.hypot(x - q.x, z - q.z) < q.r + 1)) continue;
+      const y = H(x, z);
+      if (!streetLight(ctx, x, y, z)) lampPost(ctx, x, y, z);
+      lamp(x, y + 3.6, z, 8);
+      colliders.push({ x: c.x + x, z: c.z + z, r: 0.4, h: y + 4 });
+      buildings.push({ x, z, r: 0.6 });
+    }
+  }
+  /** Build a house at (x, z) facing `ry` if it fits: its real footprint clear of every other building. */
+  const placeHouse = (x: number, z: number, ry: number): boolean => {
+    const d = Math.hypot(x, z);
+    if (d < 62 || d > CITY_RADIUS - 6) return false;
+    if (onRoad(x, z, spec.id === 'newyork' ? 14 : 9) || nearPlot(x, z, 9) || nearLane(x, z, 2)) return false;
+    const y = H(x, z);
+    if (y < WATER_Y + 0.4) return false;
+    // Never on the banks of a river or lake.
+    if (waterEdge(c.x + x, c.z + z).d < 12) return false;
+    let fp = { r: 4, h: 6 };
+    // Lands built from real traditions (facade kit, New Yonder, the Meadow) build only their own kinds; others mix in generic variants.
+    const variant = LAND_STYLE[spec.id].kinds.length > 0 && spec.id !== 'desert' && spec.id !== 'aurora' && spec.id !== 'skyisles' && !['newyork', 'meadow', 'london', 'renaissance', 'vintage', 'norway', 'switzerland', ...Object.keys(TRADITIONS)].includes(spec.id) && rng.chance(VARIANT_SHARE);
+    const mg = g.mark(), ml = glow.mark(), mc = chimneyMark(), nLamps = lamps.length;
+    g.frame(x, y, z, ry, hs, () => glow.frame(x, y, z, ry, hs, () => { fp = variant ? buildVariant(ctx) : buildHouse(ctx); if (variant) houseDecor(ctx, fp); houseLights(ctx, fp); }));
+    const kind = (fp as { kind?: string }).kind ?? 'house';
+    fp = { r: fp.r * hs, h: fp.h * hs };
+    // Too big for its lot: clear of the lanes, and a little room between it and its neighbours.
+    // (Footprint radii reach a square building's corners, so neighbours may stand a little closer.)
+    if (buildings.some((q) => Math.hypot(x - q.x, z - q.z) < (fp.r + q.r) * 0.85 + 1) || nearLane(x, z, fp.r * 0.8) ||
+      nearPlot(x, z, fp.r * 0.8) || waterEdge(c.x + x, c.z + z).d < fp.r + 3) {
+      g.rollback(mg); glow.rollback(ml); chimneyRollback(mc); lamps.length = nLamps;
+      return false;
+    }
+    colliders.push({ x: c.x + x, z: c.z + z, r: fp.r * 0.85, h: y + fp.h });
+    buildings.push({ x, z, r: fp.r });
+    // The front door: on the street face, where the building faces its lane or avenue.
+    const reach = fp.r * 0.95 + 0.6;
+    doors.push({ id: `${spec.id}:${placed}`, land: spec.id, x: c.x + x + Math.sin(ry) * reach, z: c.z + z + Math.cos(ry) * reach, y, facing: ry, kind, r: fp.r });
+    placed++;
+    recordDecor(spec.id, 'town: houses');
+    if (rng.chance(0.25)) spots.push({ x: x + Math.sin(ry) * (fp.r + 3), z: z + Math.cos(ry) * (fp.r + 3) });
+    return true;
+  };
+  // Along the lanes, from the heart of the town outwards.
+  const lots = laneLots(rng, lanes, step * 0.62, step * 0.28).map((q) => ({ ...q, k: Math.hypot(q.x, q.z) + rng.range(0, 50) }));
+  lots.sort((a, b) => a.k - b.k);
+  for (const q of lots) {
+    if (placed >= spec.houses) break;
+    placeHouse(q.x, q.z, q.ry);
+  }
+  // Then a loose grid for whatever room is left, filled from the plaza outwards (with a little
+  // jitter), so every town has a close-built heart and thins out towards the fields.
+  const cells: Array<[number, number]> = [];
   for (let x = -CITY_RADIUS; x <= CITY_RADIUS; x += step) for (let z = -CITY_RADIUS; z <= CITY_RADIUS; z += step) cells.push([x, z]);
-  // Fill from the plaza outwards (with a little jitter), so every town has a close-built heart
-  // and thins out towards the fields rather than scattering thinly over the whole disc.
-  const order = new Map(cells.map((c) => [c, Math.hypot(c[0], c[1]) + rng.range(0, 70)]));
+  const order = new Map(cells.map((q) => [q, Math.hypot(q[0], q[1]) + rng.range(0, 70)]));
   cells.sort((a, b) => order.get(a)! - order.get(b)!);
   for (const [cx, cz] of cells) {
     if (placed >= spec.houses) break;
     const x = cx + rng.range(-3, 3), z = cz + rng.range(-3, 3);
-    const d = Math.hypot(x, z);
-    if (d < 62 || d > CITY_RADIUS - 6) continue;
-    if (onRoad(x, z, spec.id === 'newyork' ? 14 : 9) || nearPlot(x, z, 9)) continue;
-    const y = H(x, z);
-    if (y < WATER_Y + 0.4) continue;
-    // Never on the banks of a river or lake.
-    if (waterEdge(c.x + x, c.z + z).d < 12) continue;
+    if (nearLane(x, z, 4)) continue;
     // Face the nearest avenue.
-    const ry = Math.abs(x) < Math.abs(z) ? (x > 0 ? -Math.PI / 2 : Math.PI / 2) : z > 0 ? Math.PI : 0;
-    let fp = { r: 4, h: 6 };
-    const hs = houseScale(spec.id);
-    // Lands built from real traditions (facade kit, New Yonder, the Meadow) build only their own kinds; others mix in generic variants.
-    const variant = LAND_STYLE[spec.id].kinds.length > 0 && spec.id !== 'desert' && spec.id !== 'aurora' && spec.id !== 'skyisles' && !['newyork', 'meadow', 'london', 'renaissance', 'vintage', 'norway', 'switzerland', ...Object.keys(TRADITIONS)].includes(spec.id) && rng.chance(VARIANT_SHARE);
-    g.frame(x, y, z, ry, hs, () => glow.frame(x, y, z, ry, hs, () => { fp = variant ? buildVariant(ctx) : buildHouse(ctx); if (variant) houseDecor(ctx, fp); houseLights(ctx, fp); }));
-    const kind = (fp as { kind?: string }).kind ?? 'house';
-    fp = { r: fp.r * hs, h: fp.h * hs };
-    colliders.push({ x: c.x + x, z: c.z + z, r: fp.r * 0.85, h: y + fp.h });
-    buildings.push({ x, z, r: fp.r });
-    // The front door: on the street face, where the building faces the avenue.
-    {
-      const reach = fp.r * 0.95 + 0.6;
-      doors.push({ id: `${spec.id}:${placed}`, land: spec.id, x: c.x + x + Math.sin(ry) * reach, z: c.z + z + Math.cos(ry) * reach, y, facing: ry, kind, r: fp.r });
-    }
-    placed++;
-    recordDecor(spec.id, 'town: houses');
-    if (rng.chance(0.25)) spots.push({ x: x + Math.sin(ry) * (fp.r + 3), z: z + Math.cos(ry) * (fp.r + 3) });
+    placeHouse(x, z, Math.abs(x) < Math.abs(z) ? (x > 0 ? -Math.PI / 2 : Math.PI / 2) : z > 0 ? Math.PI : 0);
   }
 
   // The town's water: a fountain, pool or spring in each square, and sebils along the streets.
@@ -371,7 +419,7 @@ export function buildRegion(spec: RegionSpec, solid: THREE.Material, glowMat: TH
       // Drifts: most clusters grow where a broad, slow pattern says so.
       const drift = 0.5 + 0.5 * Math.sin(x * 0.021 + Math.sin(z * 0.017) * 2) * Math.sin(z * 0.019 - x * 0.007);
       if (rng.next() > 0.25 + drift * 0.75) continue;
-      if (d < 56 || onRoad(x, z, 1) || nearPlot(x, z, 1)) continue;
+      if (d < 56 || onStreet(x, z, 1) || nearPlot(x, z, 1)) continue;
       if (buildings.some((b) => Math.hypot(x - b.x, z - b.z) < b.r + 1.2)) continue;
       if (CAVES.some((cv) => cv.land === spec.id && Math.hypot(c.x + x - cv.x, c.z + z - cv.z) < cv.r + 3)) continue;
       const y = H(x, z);
@@ -384,7 +432,7 @@ export function buildRegion(spec: RegionSpec, solid: THREE.Material, glowMat: TH
   }
 
   // Gulabi Nagar in festival season: gates, rangolis, Holi stalls, torans, chhatris (gulabi.ts).
-  if (spec.id === 'indianorth') dressGulabi(ctx, c.x, c.z, H, colliders, doors, (x, z, pad) => onRoad(x, z, pad - 3) || nearPlot(x, z, pad));
+  if (spec.id === 'indianorth') dressGulabi(ctx, c.x, c.z, H, colliders, doors, (x, z, pad) => onStreet(x, z, pad - 3) || nearPlot(x, z, pad));
 
   // The banks of the land's waters: quay walls, towpaths with lanterns, ghats, stone-edged ponds (banks.ts).
   const banks = buildBanks(ctx, spec.id, c.x, c.z, H, WATER_Y);
@@ -407,9 +455,9 @@ export function buildRegion(spec: RegionSpec, solid: THREE.Material, glowMat: TH
     const d = Math.hypot(x, z);
     if (d < CITY_RADIUS + 10 && !isSky) {
       // Parks: a few trees inside the city between houses.
-      if (rng.chance(0.85) || onRoad(x, z, 4) || d < 60) continue;
+      if (rng.chance(0.85) || onStreet(x, z, 4) || d < 60) continue;
     }
-    if (isSky && (d < 60 || onRoad(x, z, 4))) continue;
+    if (isSky && (d < 60 || onStreet(x, z, 4))) continue;
     if (nearPlot(x, z, 2)) continue;
     const y = H(x, z);
     if (y < WATER_Y + 0.3) continue;
@@ -438,7 +486,7 @@ export function buildRegion(spec: RegionSpec, solid: THREE.Material, glowMat: TH
     for (let i = 0; i < us.count; i++) {
       const x = urng.range(-half, half), z = urng.range(-half, half), d = Math.hypot(x, z);
       if (isSky ? d < 60 : d < CITY_RADIUS + 4) continue;
-      if (onRoad(x, z, 3) || nearPlot(x, z, 3)) continue;
+      if (onStreet(x, z, 3) || nearPlot(x, z, 3)) continue;
       const y = H(x, z);
       if (y < WATER_Y + 0.05) continue;
       const slope = Math.hypot(H(x + 2, z) - H(x - 2, z), H(x, z + 2) - H(x, z - 2)) / 4;
@@ -467,7 +515,7 @@ export function buildRegion(spec: RegionSpec, solid: THREE.Material, glowMat: TH
   }
   for (let i = 0; i < 120; i++) {
     const x = rng.range(-half, half), z = rng.range(-half, half);
-    if (Math.hypot(x, z) < 62 || onRoad(x, z, 2) || nearPlot(x, z, 1)) continue;
+    if (Math.hypot(x, z) < 62 || onStreet(x, z, 2) || nearPlot(x, z, 1)) continue;
     const y = H(x, z);
     if (y < WATER_Y + 0.2) continue;
     if (rng.chance(0.3)) rock(g, x, y, z, rng.range(0.5, 1.6), spec.snowline < 50 ? '#9a9aa4' : '#a8a090');
@@ -481,7 +529,7 @@ export function buildRegion(spec: RegionSpec, solid: THREE.Material, glowMat: TH
     for (let i = 0, placed = 0; kind && i < kind.n * 8 && placed < kind.n; i++) {
       const a = rng.range(0, Math.PI * 2), r = rng.range(CITY_RADIUS + 25, half - 25);
       const x = Math.cos(a) * r, z = Math.sin(a) * r, s = rng.range(2, 6) * kind.size;
-      if (onRoad(x, z, s + 4) || nearPlot(x, z, s + 3) || onTowpath(x, z, s + 2)) continue;
+      if (onStreet(x, z, s + 4) || nearPlot(x, z, s + 3) || onTowpath(x, z, s + 2)) continue;
       if (cavesHere.some((cv) => Math.hypot(x - cv.x, z - cv.z) < cv.r + s + 6)) continue;
       if (waterEdge(c.x + x, c.z + z).d < s + 8) continue;
       const y = H(x, z), seed = Math.floor(rng.next() * 997);
@@ -501,7 +549,7 @@ export function buildRegion(spec: RegionSpec, solid: THREE.Material, glowMat: TH
       for (let k = 0; k < n; k++) {
         const a = lrng.range(0, Math.PI * 2), rr = lf.r * lrng.range(0.86, 1.12);
         const x = lf.x - c.x + Math.cos(a) * rr, z = lf.z - c.z + Math.sin(a) * rr, sz = lrng.range(1.2, 3.4) * (lf.kind === 'hill' ? 0.7 : 1);
-        if (onRoad(x, z, sz + 4) || nearPlot(x, z, sz + 3) || onTowpath(x, z, sz + 2)) continue;
+        if (onStreet(x, z, sz + 4) || nearPlot(x, z, sz + 3) || onTowpath(x, z, sz + 2)) continue;
         if (cavesHere.some((cv) => Math.hypot(x - cv.x, z - cv.z) < cv.r + sz + 4)) continue;
         if (waterEdge(c.x + x, c.z + z).d < sz + 6) continue;
         const y = H(x, z), seed = Math.floor(lrng.next() * 997);
@@ -570,6 +618,7 @@ export function buildRegion(spec: RegionSpec, solid: THREE.Material, glowMat: TH
     if (lg) paved.push({ ...W((lg.x0 + lg.x1) / 2, (lg.z0 + lg.z1) / 2), hw: (lg.x1 - lg.x0) / 2, hd: (lg.z1 - lg.z0) / 2 });
     for (const q of RESERVED[spec.id] ?? []) paved.push({ ...W(q.x, q.z), r: q.r });
     for (const q of banks.paths) paved.push({ ...W(q.x, q.z), r: 2 });
+    for (const l of lanes) for (let i = 0; i < l.pts.length; i += 2) paved.push({ ...W(l.pts[i][0], l.pts[i][1]), r: l.width / 2 + 0.6 });
     setPaved(spec.id, paved);
   }
 

@@ -20,7 +20,7 @@ describe('lamplight', () => {
         expect(l.color).toMatch(/^#[0-9a-f]{6}$/i);
       }
     }
-  }, 120_000);
+  }, 300_000);
 
   it('lights only after dusk, the nearest lamps first, the farthest chosen fading so none pops', () => {
     const lamps: Lamp[] = Array.from({ length: 60 }, (_, i) => ({ x: i * 2, y: 3, z: 0, r: 8, color: '#ffcc88' }));

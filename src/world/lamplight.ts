@@ -33,7 +33,7 @@ export const LAMP_GLSL = /* glsl */ `
       if (dist > r) continue;
       float k = 1.0 - dist / r;
       float face = 0.35 + 0.65 * max(dot(n, d / max(dist, 0.001)), 0.0);
-      sum += uLampCol[i] * k * k * face;
+      sum += uLampCol[i] * k * sqrt(k) * face;
     }
     return sum * uLampOn;
   }`;
@@ -59,9 +59,11 @@ export function setLamps(lamps: readonly Lamp[], p: THREE.Vector3, night: number
     if (!n) { U.uLamps.value[i].set(0, -1e4, 0, 0.001); U.uLampCol.value[i].setRGB(0, 0, 0); continue; }
     const fade = 1 - THREE.MathUtils.smoothstep(n.d, edge * 0.7, edge);
     U.uLamps.value[i].set(n.l.x, n.l.y, n.l.z, n.l.r);
-    U.uLampCol.value[i].set(n.l.color).multiplyScalar(1.15 * fade);
+    U.uLampCol.value[i].set(n.l.color).multiplyScalar(LAMP_POWER * fade);
   }
 }
 
 const REACH = 90;
+/** How bright a lamp's pool is at its foot (times the surface's own colour): dark paving must show it. */
+const LAMP_POWER = 2.6;
 const near: Array<{ d: number; l: Lamp }> = [];

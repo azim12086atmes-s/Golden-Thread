@@ -63,7 +63,7 @@ sections C1–C7) and `3D_BUILDS_HANDOFF.md` (3D work, sections 2a and 3.x). Tic
 
 ## F. Architecture polish (3D; sections 2a, 3.2, 3.2a)
 - [ ] Screenshot and fix houses in Hanok Village, Jade Terraces, Fjordhavn, Alpenrose, Maple Row, Souq al-Qamar, Nile Crossing, Tents of Rimal, Kaveri Coast, Bagh-e-Noor, Nusa Rinjani, the Sky Isles
-- [ ] More house types per land; courtyard houses. Done: a neighbourhood place of worship and a market in every town on the ground, each in its land's tradition (`world/neighbourhood.ts`)
+- [x] More house types per land; courtyard houses (3–4 traditional kinds per land: `traditions.ts`, `traditionsMore.ts`, `facade.ts`); organic town layouts along winding lanes (`townLayout.ts`). Also done: a neighbourhood place of worship and a market in every town on the ground, each in its land's tradition (`world/neighbourhood.ts`)
 - [x] Delete the unused old per-land house builders in `architecture.ts`
 - [ ] Sky Isles: more and larger trees (own branching species, giants), ground texture, richer surfaces, floating islands with bridges and waterfalls
 - [ ] New Yonder: penthouses. Done: screen towers, avenue panels and a pylon screen with moving programmes (`world/CityScreens.ts`)
@@ -92,6 +92,7 @@ sections C1–C7) and `3D_BUILDS_HANDOFF.md` (3D work, sections 2a and 3.x). Tic
 
 ## I. Traffic (section 3.5)
 - [x] ~85 designs moving on every land's roads, waters and skies
+- [x] Real lamplight (`lamplight.ts`); the living air: butterflies, dragonflies, fireflies, spores, chimney smoke, dawn mist, sunbeams (`atmosphere.ts`, `Atmos.ts`); bark by species; per-crystal hues; desert pebbles; Aurora snow tracks; a rough open sea
 - [ ] Screenshot and polish most designs
 - [ ] Vehicles entering and leaving; travel between lands; no pop-in at borders
 - [ ] Junctions, turning, traffic lights, roundabouts
@@ -99,7 +100,7 @@ sections C1–C7) and `3D_BUILDS_HANDOFF.md` (3D work, sections 2a and 3.x). Tic
 - [ ] Riding buses, taxis, trams, ferries, gondolas, air taxis (separate seats)
 - [ ] Time of day (quieter nights, evening lantern boats, daytime kites and balloons)
 - [ ] Townsfolk crossing streets; Sky Isles cable gondolas; distance culling
-- [ ] Rebuild the travellers' own vehicles (Safar as a VW Type 2 split-screen, car, truck, biplane) — keep seats and `SEAT_GAP`
+- [ ] Rebuild the travellers' own vehicles (car, truck, biplane) — keep seats and `SEAT_GAP`. Done: Safar as a split-screen bus in painted steel (`vehicles.ts` `buildVan`)
 
 ## I2. Ships and the sea (NEW)
 - [ ] 3D: ships — cargo, container, ocean liner, cruise, large ferry, trawler, coastal steamer, ocean dhow, large junk, phinisi, rice barge, full-rigged tall ship, hospital ship, research vessel, sky galleon (`CHATGPT_3D_MODELS.md` §12.4)

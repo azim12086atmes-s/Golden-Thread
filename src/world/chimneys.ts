@@ -35,3 +35,12 @@ export function fireAt(g: GeoBuilder, x: number, y: number, z: number, smoke = t
 export function chimneyTop(g: GeoBuilder, x: number, y: number, z: number): void {
   if (sink) sink.push(new THREE.Vector3(x, y, z).applyMatrix4(g.top));
 }
+
+/** How much has been recorded so far (to take back a trial placement with `chimneyRollback`). */
+export function chimneyMark(): [number, number] {
+  return [sink?.length ?? 0, fires?.length ?? 0];
+}
+export function chimneyRollback(m: [number, number]): void {
+  if (sink) sink.length = m[0];
+  if (fires) fires.length = m[1];
+}

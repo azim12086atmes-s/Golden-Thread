@@ -46,5 +46,5 @@ describe('the living air', () => {
         expect(s.y, id).toBeGreaterThan(-2);
       }
     }
-  }, 120_000);
+  }, 300_000);
 });

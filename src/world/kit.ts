@@ -130,9 +130,16 @@ export class GeoBuilder {
     return this;
   }
 
+  /** Take back everything added since `m` (a trial placement that did not fit). */
+  rollback(m: { start: number; cards?: number }): void {
+    for (let p = m.start; p < this.parts.length; p++) this.parts[p].dispose();
+    this.parts.length = m.start;
+    if (this.cards && m.cards !== undefined) this.cards.length = m.cards;
+  }
+
   /** Where the next parts start, and the transform they will be placed with (for `sway`). */
-  mark(): { start: number; top: THREE.Matrix4 } {
-    return { start: this.parts.length, top: this.top.clone() };
+  mark(): { start: number; top: THREE.Matrix4; cards?: number } {
+    return { start: this.parts.length, top: this.top.clone(), cards: this.cards?.length };
   }
 
   /**

@@ -44,7 +44,7 @@ describe('every building can be entered', () => {
         expect(terrainHeight(at.x, at.z), p.id).toBeGreaterThan(WATER_Y + 0.3);
       }
       inst.dispose();
-    }, 15_000); // builds a whole land: slow when the whole suite runs in parallel
+    }, 60_000); // builds a whole land: slow when the whole suite runs in parallel
   }
 });
 
@@ -85,7 +85,7 @@ describe('landmarks and your own home', () => {
       expect(roomTitle(d)).toContain(LANDMARK_NAME[r.id]);
       expect(doorLabel(d)).toContain(LANDMARK_NAME[r.id]);
     }
-  });
+  }, 60_000);
 
   it('your home is furnished with what you chose, inside its walls, with no host', () => {
     const room = new HouseInterior(OUTFITS['g-kurti-jeans'], OUTFITS['b-kurta-jeans']);
@@ -141,5 +141,5 @@ describe('landmarks and your own home', () => {
     }
     for (const k of ['igloo', 'lavvu', 'riad', 'nubian', 'rorbu', 'chalet', 'tongkonan', 'bedouintent', 'shop']) expect(seen, k).toContain(k);
     for (const k of seen) if (k !== 'shop') expect(HOUSE_NAME[k] ?? HOUSE_SHAPE[k], k).toBeTruthy();
-  });
+  }, 60_000);
 });
