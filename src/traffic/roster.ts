@@ -27,7 +27,7 @@ export const LAND_TRAFFIC: Record<RegionId, Roster> = {
     [['cranes', 2], ['light-plane', 1], ['airliner', 1], ['drone', 1], ['biplane-2', 1]]),
   china: R([['red-bus', 2], ['tuk-tuk-2', 3], ['taxi', 3], ['sedan', 3], ['future-ev', 3], ['hover-car', 2]],
     [['junk', 2], ['dragon-boat', 2], ['sampan', 2], ['raft', 1], ['lantern-boat', 2]],
-    [['festival-dragon', 1], ['cranes', 1], ['airliner-2', 1], ['drone', 2], ['air-taxi-2', 1]]),
+    [['cranes', 2], ['airliner-2', 1], ['drone', 2], ['air-taxi-2', 1]]),
   norway: R([['nordic-car', 4], ['city-bus', 2], ['future-ev-2', 3], ['suv-2', 3], ['pickup', 2]],
     [['longship', 1], ['fishing-boat', 3], ['kayak', 2], ['ferry', 1]],
     [['seaplane', 1], ['eagle', 2], ['airliner', 1], ['light-plane', 1]]),

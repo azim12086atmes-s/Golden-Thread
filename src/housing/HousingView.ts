@@ -9,7 +9,7 @@ import { GeoBuilder, box, cyl, flowers, sphere, tent, tree } from '../world/kit'
 import { REGION_BY_ID, type RegionId } from '../world/regions';
 import { surfaceAt } from '../world/terrain';
 import type { World } from '../world/World';
-import { CROPS, DECOR_BY_ID, PLOT_BY_ID, PLOT_SIZE } from './housing';
+import { CROPS, DECOR_BY_ID, PLOT_BY_ID } from './housing';
 
 /** Builds the look of a piece of decor. Used for placed decor and for the build-mode ghost. */
 export function buildDecor(kind: string, region: RegionId, seed: string, growth = 0, crop?: string, storeys?: { floors: number; scaffold: boolean }): { g: GeoBuilder; glow: GeoBuilder } {
@@ -155,9 +155,7 @@ export class HousingView {
       if (!site || !this.world.isLoaded(site.region)) continue;
       const grp = new THREE.Group();
       const g = new GeoBuilder();
-      // A soft lawn marks land you own.
-      const y0 = surfaceAt(site.x, site.z);
-      box(g, PLOT_SIZE, 0.06, PLOT_SIZE, '#8fc86a', 0, y0 - 0.02, 0);
+      // Land you own looks like the land round it; a marker above it shows it is yours (PlotsView).
       for (const d of plot.decor) {
         const y = surfaceAt(site.x + d.x, site.z + d.z);
         const storeys = d.kind.startsWith('house-') ? { floors: floorsOf(this.st, plotId), scaffold: floorBuilding(this.st, plotId) !== null } : undefined;

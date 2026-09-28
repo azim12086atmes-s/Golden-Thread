@@ -6,6 +6,7 @@ import { wardrobeFor } from '../npc/Townsfolk';
 import { PLOTS, PLOT_SIZE } from '../world/plots';
 import { terrainHeight } from '../world/terrain';
 import type { World } from '../world/World';
+import { markerSprite, tendMarker } from '../world/markers';
 
 const VERT = /* glsl */ `
   varying vec2 vUv; varying vec3 vW;
@@ -39,18 +40,28 @@ const FRAG = /* glsl */ `
 /**
  * The plot you are choosing — open in the land-for-sale panel, or for sale where you stand — is
  * painted green into the ground, fading softly into the land round it, with a gently glowing
- * boundary. Land you own is left looking like the land round it (the owner's wish). The people
+ * boundary. Land you own is left looking like the land round it, with a 🏡 marker floating above it
+ * (the owner's wish). The people
  * you have given a home stand in its garden (and inside it, HouseInterior.ts).
  */
 export class PlotsView {
   private lawns = new Map<string, { mesh: THREE.Mesh; mat: THREE.ShaderMaterial }>();
   private folk = new Map<string, { model: CharacterModel; ph: number }>();
+  /** A 🏡 marker over each plot you own, seen from far off (instead of painting it green). */
+  private marks = new Map<string, THREE.Sprite>();
   /** The plot shown as selected (set by the UI while its panel is open). */
   selected: string | null = null;
 
   constructor(private scene: THREE.Scene, private st: GameState, private world: World) {}
 
-  update(dt: number, t: number, night: number, standingOn: string | null): void {
+  update(dt: number, t: number, night: number, standingOn: string | null, from?: THREE.Vector3): void {
+    for (const p of PLOTS) {
+      const mine = !!this.st.plots[p.id] && this.world.isLoaded(p.region);
+      let m = this.marks.get(p.id);
+      if (mine && !m) { m = markerSprite('🏡', '#3fbf7f'); m.position.set(p.x, terrainHeight(p.x, p.z) + 14, p.z); this.scene.add(m); this.marks.set(p.id, m); }
+      else if (!mine && m) { this.scene.remove(m); this.marks.delete(p.id); m = undefined; }
+      if (m && from) tendMarker(m, from, t, false, 20, 900);
+    }
     for (const p of PLOTS) {
       const loaded = this.world.isLoaded(p.region), have = this.lawns.get(p.id);
       if (loaded && !have) this.addLawn(p.id, p.x, p.z);
