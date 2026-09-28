@@ -17,14 +17,16 @@ import * as THREE from 'three';
 
 /** Her height on the unscaled body (floating head included). */
 const HER_HEIGHT = 1.78;
-/** One wing: 3.3 times her height tall and broad — two-thirds as wide as it is tall (owner: "even bigger and broader"). */
-export const WING_H = 3.3 * HER_HEIGHT, WING_W = WING_H * 0.68;
+/** One wing: 3.5 times her height tall and broad, nearly three-quarters as wide as it is tall. */
+export const WING_H = 3.5 * HER_HEIGHT, WING_W = WING_H * 0.72;
 /** Across the pair, open flat. */
 export const WING_SPAN = 2 * WING_W;
 /** How far back the wings sweep from straight out sideways (radians): spread wide ... folded back. */
 export const MIN_BACK = 0.3, MAX_BACK = 1.35;
-/** The hinge: behind her back; the tails' tips just reach the ground (the root is then at her back). */
-export const HINGE_Z = -0.34, TIP_Y = -0.08;
+/** The root: one point on her back — behind it (HINGE_Z) at mid-back height (ROOT_Y). */
+export const HINGE_Z = -0.34, ROOT_Y = 1.2;
+/** Where the root is up the wing (0 = the tails' tips, 1 = the forewing's apex): the tails then just reach the ground. */
+export const ROOT_V = (ROOT_Y + 0.06) / WING_H;
 /** How far from her centre any part of a wing can reach, in any direction (model units). */
 export const WING_REACH = WING_W + Math.abs(HINGE_Z);
 
@@ -50,19 +52,23 @@ function noise2(seed: number) {
 }
 
 /**
- * One swallowtail wing, in (out, up) from 0 to 1: the root at her back (out = 0, up ≈ 0.22–0.37),
- * the forewing's pointed apex high and outward, its outer edge a little hollowed, then the smaller
- * hindwing, scalloped, ending in a long tail that reaches the ground.
+ * One swallowtail wing, in (out, up) from 0 to 1: everything grows from one point at her back
+ * (out = 0, up = ROOT_V). The forewing's leading edge arches up and out from it to the pointed apex
+ * high above, the outer edge falls back a little hollowed, then the smaller hindwing, scalloped,
+ * sweeps down to a long tail whose tip reaches the ground, and its inner edge returns to the root.
  */
+const R0 = ROOT_V;
 const KEY: Array<[number, number]> = [
-  [0, 0.37], [0.1, 0.5], [0.28, 0.66], [0.52, 0.82], [0.76, 0.94], [0.93, 1.0], [0.99, 0.95],
-  [0.95, 0.82], [0.88, 0.68], [0.8, 0.56], [0.72, 0.47], [0.62, 0.43],
-  [0.72, 0.39], [0.76, 0.3], [0.72, 0.21], [0.65, 0.15], [0.58, 0.11],
-  [0.55, 0.06], [0.53, 0.015], [0.51, 0.0], [0.48, 0.01], [0.47, 0.06], [0.44, 0.1],
-  [0.32, 0.1], [0.19, 0.13], [0.09, 0.17], [0.03, 0.2], [0, 0.22],
+  [0, R0],
+  [0.03, 0.28], [0.1, 0.42], [0.22, 0.6], [0.38, 0.76], [0.56, 0.88], [0.74, 0.96], [0.88, 1.0], [0.97, 0.985], [1.0, 0.93],
+  [0.97, 0.82], [0.9, 0.7], [0.82, 0.6], [0.74, 0.52], [0.66, 0.47],
+  [0.6, 0.44],
+  [0.68, 0.4], [0.73, 0.32], [0.72, 0.24], [0.66, 0.17], [0.58, 0.12],
+  [0.54, 0.07], [0.52, 0.02], [0.5, 0.0], [0.47, 0.01], [0.46, 0.06], [0.43, 0.1],
+  [0.32, 0.11], [0.2, 0.13], [0.1, 0.16], [0.03, 0.185],
 ];
 /** Where the hindwing's scalloped edge runs (indices into KEY). */
-const SCALLOP: [number, number] = [12, 17];
+const SCALLOP: [number, number] = [15, 20];
 
 /** The outline, smoothed (Catmull-Rom through KEY), scalloped along the hindwing. Closed. */
 export const OUTLINE: Array<[number, number]> = (() => {
@@ -101,7 +107,8 @@ export function onWing(u: number, v: number): boolean {
 export function wingTexture(): THREE.Texture | null {
   if (cached !== undefined) return cached;
   if (typeof document === 'undefined') return (cached = null);
-  const W = 600, H = Math.round(W / 0.5);
+  // The canvas has the wing's own proportions, so nothing is stretched.
+  const W = 640, H = Math.round((W * WING_H) / WING_W);
   const cv = document.createElement('canvas');
   cv.width = W; cv.height = H;
   const ctx = cv.getContext('2d')!;
@@ -111,7 +118,8 @@ export function wingTexture(): THREE.Texture | null {
   OUTLINE.forEach(([u, v], i) => (i ? shape.lineTo(px(u), py(v)) : shape.moveTo(px(u), py(v))));
   shape.closePath();
 
-  // Fragments: small and large, uneven — denser near the root and in clusters.
+  // Fragments of every size: broad panes across the wing, clusters of small shards here and there,
+  // and finer pieces crowding towards the root.
   const r = rng(9173), n1 = noise2(31), n2 = noise2(77);
   const inside = new Uint8Array(W * H);
   {
@@ -123,13 +131,18 @@ export function wingTexture(): THREE.Texture | null {
     for (let i = 0; i < W * H; i++) inside[i] = md[i * 4 + 3] > 127 ? 1 : 0;
   }
   const seeds: Array<[number, number]> = [];
-  for (let tries = 0; seeds.length < 300 && tries < 30000; tries++) {
-    const x = Math.floor(r() * W), y = Math.floor(r() * H);
-    if (!inside[y * W + x]) continue;
-    const root = Math.exp(-((x / W) ** 2) * 9), clump = n1(x / 80, y / 80);
-    if (r() < 0.14 + 0.5 * root + 0.5 * clump * clump) seeds.push([x, y]);
+  const put = (x: number, y: number) => { x = Math.round(x); y = Math.round(y); if (x >= 0 && y >= 0 && x < W && y < H && inside[y * W + x]) seeds.push([x, y]); };
+  for (let k = 0; k < 4000 && seeds.length < 46; k++) put(r() * W, r() * H); // broad panes
+  for (let k = 0, n = 0; k < 4000 && n < 26; k++) {
+    const x = r() * W, y = r() * H;
+    if (!inside[Math.floor(y) * W + Math.floor(x)]) continue;
+    n++;
+    const rad = 16 + r() * 46, m = 4 + Math.floor(r() * 9);
+    for (let i = 0; i < m; i++) { const a = r() * Math.PI * 2, d = Math.sqrt(r()) * rad; put(x + Math.cos(a) * d, y + Math.sin(a) * d); }
   }
-  const G = 40, gw = Math.ceil(W / G), gh = Math.ceil(H / G);
+  const rx = px(0), ry = py(R0);
+  for (let k = 0; k < 40; k++) { const a = -Math.PI / 2 + r() * Math.PI, d = 20 + r() * r() * W * 0.45; put(rx + Math.cos(a) * d, ry + Math.sin(a) * d); }
+  const G = 48, gw = Math.ceil(W / G), gh = Math.ceil(H / G);
   const grid: number[][] = Array.from({ length: gw * gh }, () => []);
   seeds.forEach(([x, y], i) => grid[Math.floor(y / G) * gw + Math.floor(x / G)].push(i));
 
@@ -141,7 +154,7 @@ export function wingTexture(): THREE.Texture | null {
     const wx = x + (n1(x / 50 + 9, y / 50) - 0.5) * bend, wy = y + (n1(x / 50, y / 50 + 5) - 0.5) * bend;
     let b1 = 1e9, b2 = 1e9;
     const cx = Math.floor(wx / G), cy = Math.floor(wy / G);
-    for (let gy = cy - 2; gy <= cy + 2; gy++) for (let gx = cx - 2; gx <= cx + 2; gx++) {
+    for (let gy = cy - 3; gy <= cy + 3; gy++) for (let gx = cx - 3; gx <= cx + 3; gx++) {
       if (gx < 0 || gy < 0 || gx >= gw || gy >= gh) continue;
       for (const i of grid[gy * gw + gx]) {
         const dd = (seeds[i][0] - wx) ** 2 + (seeds[i][1] - wy) ** 2;
@@ -163,15 +176,15 @@ export function wingTexture(): THREE.Texture | null {
   ctx.save();
   ctx.clip(shape);
   ctx.lineCap = 'round';
-  const root: [number, number] = [px(0.01), py(0.3)];
+  const root: [number, number] = [px(0), py(R0)];
   const stroke = (path: Path2D, w: number) => {
     ctx.strokeStyle = '#08060a'; ctx.lineWidth = w; ctx.stroke(path);
     ctx.strokeStyle = '#f0c95e'; ctx.lineWidth = w * 0.24; ctx.stroke(path);
   };
   // Veins to the edge all round, from the leading edge over the apex to the tail.
-  const from = 30, to = 21 * 10;
-  for (let i = 0; i < 12; i++) {
-    const [u, v] = OUTLINE[Math.round(from + (i / 11) * (to - from))];
+  const from = 2 * 10, to = 23 * 10;
+  for (let i = 0; i < 14; i++) {
+    const [u, v] = OUTLINE[Math.round(from + (i / 13) * (to - from))];
     const end: [number, number] = [px(u), py(v)];
     const bow = (i % 2 ? 1 : -1) * (30 + r() * 50);
     const mx = (root[0] + end[0]) / 2, my = (root[1] + end[1]) / 2;
@@ -196,10 +209,10 @@ export function wingTexture(): THREE.Texture | null {
   for (let i = 4; i < OUTLINE.length - 4; i += 7) {
     const [u, v] = OUTLINE[i];
     // Beads just inside the rim, pulled a little toward the root.
-    ctx.beginPath(); ctx.arc(px(u * 0.965), py(0.3 + (v - 0.3) * 0.965), 3.6, 0, Math.PI * 2); ctx.fill();
+    ctx.beginPath(); ctx.arc(px(u * 0.965), py(R0 + (v - R0) * 0.965), 3.6, 0, Math.PI * 2); ctx.fill();
   }
   // The swallowtail's eyespot beside the tail: a jewel of pink and blue ringed in black and gold.
-  const ex = px(0.4), ey = py(0.15), er = 0.045 * (W - 16);
+  const ex = px(0.4), ey = py(0.14), er = 0.04 * (W - 16);
   for (const [rr, c] of [[1, '#08060a'], [0.82, '#f2cf6a'], [0.7, '#4fa8ff'], [0.42, '#ff5fa8'], [0.16, '#fff4fa']] as const) {
     ctx.beginPath(); ctx.arc(ex, ey, er * rr, 0, Math.PI * 2); ctx.fillStyle = c; ctx.fill();
   }
@@ -265,7 +278,7 @@ const FRAG = /* glsl */ `
     float a;
     if (c.a < 0.9) {
       // Glass: pink at her back, flowing outward through the rainbow — one colour, no patches.
-      float r = length((vUv - vec2(0.0, 0.3)) * vec2(1.0, 2.0));
+      float r = length((vUv - vec2(0.0, ${ROOT_V.toFixed(3)})) * vec2(1.0, ${(WING_H / WING_W).toFixed(3)}));
       float t = smoothstep(0.08, 1.6, r);
       float h = mod(330.0 + 310.0 * t, 360.0) / 360.0;
       col = hsl(h, 1.0, mix(0.6, 0.5, t)) * c.r;
@@ -300,7 +313,7 @@ export class Wings {
   constructor() {
     const map = wingTexture();
     const geo = new THREE.PlaneGeometry(WING_W, WING_H, 24, 40);
-    geo.translate(WING_W / 2, WING_H / 2, 0);
+    geo.translate(WING_W / 2, WING_H / 2 - ROOT_V * WING_H, 0); // the root point at the origin
     const _c = new THREE.Vector3();
     for (const side of [1, -1]) {
       for (const pass of [0, 1]) {
@@ -320,7 +333,7 @@ export class Wings {
           // The glass of the farther wing is drawn first, so the nearer wing's glass lies over it.
           w.onBeforeRender = (_r, _s, camera) => {
             const half = WING_W * 0.5;
-            _c.set(side * half * Math.cos(this.back), WING_H * 0.55, -half * Math.sin(this.back));
+            _c.set(side * half * Math.cos(this.back), WING_H * (0.55 - ROOT_V), -half * Math.sin(this.back));
             this.group.localToWorld(_c);
             // Farther → smaller order → drawn first (takes effect from the next frame).
             w.renderOrder = 3 - Math.min(0.9, _c.distanceTo(camera.position) / 1000);
@@ -348,14 +361,14 @@ export class Wings {
     this.glitter.userData.part = 'wing';
     this.glitter.frustumCulled = false;
     this.group.add(this.glitter);
-    this.group.position.set(0, TIP_Y, HINGE_Z);
+    this.group.position.set(0, ROOT_Y, HINGE_Z);
   }
 
   private rnd = rng(733);
   private newGrain(r: () => number, age = 0) {
     let u = 0.5, v = 0.6;
     for (let k = 0; k < 30; k++) { u = 0.3 + r() * 0.7; v = r(); if (onWing(u, v)) break; }
-    return { x: u * WING_W, y: v * WING_H, side: r() < 0.5 ? 1 : -1, age, life: 2 + r() * 2.5, vy: -0.15 - r() * 0.3, vo: 0.05 + r() * 0.15 };
+    return { x: u * WING_W, y: (v - ROOT_V) * WING_H, side: r() < 0.5 ? 1 : -1, age, life: 2 + r() * 2.5, vy: -0.15 - r() * 0.3, vo: 0.05 + r() * 0.15 };
   }
 
   /** Heavy, slow beats — spread wide, then swept back — the tips lagging; glitter shed as they go. Hidden when riding. */

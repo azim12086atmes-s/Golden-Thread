@@ -12,7 +12,7 @@ import { RoundedBoxGeometry } from 'three/addons/geometries/RoundedBoxGeometry.j
  */
 
 /** How far from his centre any part of the pack reaches, in any direction (model units). */
-export const JET_REACH = 0.46;
+export const JET_REACH = 0.7;
 
 let boardTex: THREE.Texture | null | undefined;
 
@@ -20,8 +20,10 @@ function rng(seed: number) {
   let s = seed;
   return () => ((s = (s * 16807) % 2147483647) / 2147483647);
 }
-/** From the centre outward: pink at the heart, then red, orange, yellow, green, blue, violet at the rim (k 0…1). */
-const fromCentre = (k: number) => 0.93 + Math.min(1, Math.max(0, k)) * 0.8;
+/** Reds of every kind — crimson, scarlet, rose, ruby, coral, raspberry, pink — for the casing's glow. */
+const REDS = ['#ff1a3c', '#e8002a', '#ff4d6d', '#ff2a7a', '#c8102e', '#ff5a3a', '#ff7a9a', '#d6004f', '#ff3355', '#b3002d'];
+/** A colour for a trace or grain: mostly a red, now and then a rainbow hue. */
+const redOr = (r: () => number, l = 62) => (r() < 0.7 ? REDS[Math.floor(r() * REDS.length)] : rainbow(r(), l));
 const rainbow = (k: number, l = 62) => `hsl(${Math.round((((k % 1) + 1) % 1) * 360)}, 100%, ${l}%)`;
 
 /** The etched motherboard on clear glass: honeycomb, rainbow traces fading along a gradient, gold vias and pads, black chips. */
@@ -40,11 +42,11 @@ export function boardTexture(): THREE.Texture | null {
     for (let k = 0; k < 6; k++) { const a = Math.PI / 6 + (k * Math.PI) / 3; x.lineTo(cx + Math.cos(a) * R * 0.92, cy + Math.sin(a) * R * 0.92); }
     x.closePath(); x.stroke();
   }
-  // Rainbow traces: pink-red at the board's centre, out through the rainbow to its edges, glowing.
+  // Glowing traces, mostly in reds of every shade, a rainbow one here and there.
   x.lineCap = 'round'; x.lineJoin = 'round';
   for (let i = 0; i < 110; i++) {
     let px = Math.round(r() * 42) * 12, py = Math.round(r() * 42) * 12;
-    const col = rainbow(fromCentre(Math.hypot(px - S / 2, py - S / 2) / (S * 0.62)));
+    const col = redOr(r);
     x.strokeStyle = col; x.lineWidth = 1.2 + r() * 2.2;
     x.shadowColor = col; x.shadowBlur = 8;
     x.beginPath(); x.moveTo(px, py);
@@ -67,7 +69,7 @@ export function boardTexture(): THREE.Texture | null {
     x.strokeStyle = '#e6c15a'; x.lineWidth = 1.6; x.strokeRect(cx, cy, w, h);
     x.fillStyle = '#e6c15a';
     for (let p = 4; p < w - 3; p += 6) { x.fillRect(cx + p, cy - 4, 2, 4); x.fillRect(cx + p, cy + h, 2, 4); }
-    x.fillStyle = rainbow(fromCentre(Math.hypot(cx + w / 2 - S / 2, cy + h / 2 - S / 2) / (S * 0.62)), 65); x.fillRect(cx + 4, cy + 4, w * 0.35, 2.5);
+    x.fillStyle = redOr(r, 65); x.fillRect(cx + 4, cy + 4, w * 0.35, 2.5);
   }
   const t = new THREE.CanvasTexture(cv);
   t.colorSpace = THREE.SRGBColorSpace;
@@ -88,9 +90,8 @@ const GOLD = () => once('gold', () => new THREE.MeshStandardMaterial({ color: '#
 const BLACK = () => once('black', () => new THREE.MeshStandardMaterial({ color: '#0c0c10', metalness: 0.6, roughness: 0.3 }));
 
 /**
- * Rainbow fuel: one gradient across the whole pack, pink-red at its heart (the middle of the case)
- * turning outward through the rainbow to violet at the thrusters' ends; gently bubbling, and a
- * glow pulsing outward from the centre.
+ * The fuel: glowing reds that shift and swirl — crimson, scarlet, rose and pink in patches, lighter
+ * and darker by turns — with the odd rainbow streak running through them.
  */
 const FUEL_VERT = /* glsl */ `
   uniform vec3 uOff;
@@ -102,12 +103,14 @@ const FUEL_FRAG = /* glsl */ `
   varying vec3 vP;
   vec3 hue(float h) { return clamp(abs(mod(h * 6.0 + vec3(0.0, 4.0, 2.0), 6.0) - 3.0) - 1.0, 0.0, 1.0); }
   void main() {
-    vec2 d = (vP.xy - vec2(0.0, 1.1)) / vec2(0.24, 0.3);
-    float k = clamp(length(d), 0.0, 1.0);
-    vec3 c = hue(fract(0.93 + k * 0.8 + 0.015 * sin(vP.x * 60.0 + uTime * 3.0)));
-    c *= 0.9 + 0.25 * smoothstep(0.7, 1.0, sin(k * 12.0 - uTime * 2.5));
+    float n = sin(vP.x * 37.0 + uTime * 0.7) * sin(vP.y * 29.0 - uTime * 0.5) + 0.5 * sin(vP.z * 53.0 + vP.y * 17.0 + uTime * 1.3);
+    float m = sin(vP.x * 11.0 - vP.y * 13.0 + uTime * 0.4);
+    vec3 c = hue(fract(0.955 + 0.055 * n));
+    c = mix(c * (0.75 + 0.2 * m), mix(c, vec3(1.0, 0.72, 0.84), 0.55), smoothstep(0.2, 0.9, n * 0.5 + 0.5 + 0.3 * m));
+    float streak = smoothstep(0.86, 0.97, sin(vP.y * 23.0 + vP.x * 41.0 - uTime * 1.1));
+    c = mix(c, hue(fract(vP.y * 2.0 + vP.x * 3.0 + uTime * 0.05)), streak * 0.7);
     float swirl = 0.85 + 0.15 * sin(vP.y * 40.0 - uTime * 4.0 + vP.x * 30.0);
-    gl_FragColor = vec4(mix(c, vec3(1.0), 0.18) * 1.25 * swirl, 0.82);
+    gl_FragColor = vec4(c * 1.3 * swirl, 0.82);
   }
 `;
 const FLAME_VERT = /* glsl */ `
@@ -176,8 +179,8 @@ export class Jetpack {
       for (let i = 0; i < n; i++) {
         const p = [(r() - 0.5) * 2 * hx, (r() - 0.5) * 2 * hy, (r() - 0.5) * 2 * hz];
         pos.set(p, i * 3);
-        // Each grain takes the fuel's colour where it floats: pink at the heart, rainbow outward.
-        const c = new THREE.Color().setHSL(fromCentre(Math.hypot((x + p[0]) / 0.24, (y + p[1] - 1.1) / 0.3)) % 1, 1, 0.8);
+        // Mostly reds and pinks of every shade, a few rainbow sparks among them.
+        const c = r() < 0.8 ? new THREE.Color().setHSL((0.94 + r() * 0.1) % 1, 1, 0.55 + r() * 0.3) : new THREE.Color().setHSL(r(), 1, 0.75);
         col.set([c.r, c.g, c.b], i * 3);
         speeds[i] = 0.03 + r() * 0.08;
       }
@@ -256,6 +259,11 @@ export class Jetpack {
       this.flames.push(f);
       g.add(f);
     }
+    // A size up (owner: "a bit bigger"), grown down and back from its top edge so it never nears his floating head.
+    const pivot = new THREE.Vector3(0, 1.33, -0.14);
+    for (const ch of g.children) ch.position.sub(pivot);
+    g.position.copy(pivot);
+    g.scale.setScalar(1.3);
   }
 
   /** Fire: a flicker at rest, a steady burn walking, a roar in flight. Fuel flows, particles rise. */

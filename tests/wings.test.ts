@@ -11,8 +11,8 @@ const parts = (c: CharacterModel) => { const out: string[] = []; c.root.traverse
 
 describe('her stained-glass wings and his jetpack', () => {
   it('the wings are over three times her height and broad, spreading wide and sweeping back', () => {
-    expect(WING_H).toBeCloseTo(3.3 * 1.78, 1);
-    expect(WING_W).toBeGreaterThan(3.5);
+    expect(WING_H).toBeCloseTo(3.5 * 1.78, 1);
+    expect(WING_W).toBeGreaterThan(4.2);
     expect(MIN_BACK).toBeLessThan(0.5); // spread wide
     expect(MAX_BACK).toBeGreaterThan(1.2);
     expect(WING_REACH).toBeCloseTo(WING_W + Math.abs(HINGE_Z));

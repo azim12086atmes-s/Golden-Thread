@@ -58,8 +58,18 @@ export function cityGate(c: Ctx): void {
   const span = GATE_X * 2 - 5;
   box(g, span, 2.8, 4, PINK, 0, 6.2, 0);
   box(g, span + 0.2, 0.3, 4.2, WHITE, 0, 9, 0);
+  // Under the beam, pink spandrels shape the opening into a cusped arch — the road beneath stays open.
+  const S = span / 2, arch = (t: number) => 4.6 + 1.45 * Math.sin((t + 1) * Math.PI / 2); // t −1…1 across
+  const sp = new THREE.Shape();
+  sp.moveTo(-S, 6.25); sp.lineTo(-S, arch(-1));
+  for (let i = 1; i <= 24; i++) { const t = -1 + (2 * i) / 24; sp.lineTo(t * S, arch(t)); }
+  sp.lineTo(S, 6.25); sp.lineTo(-S, 6.25);
+  g.add(new THREE.ExtrudeGeometry(sp, { depth: 4, bevelEnabled: false }).translate(0, 0, -2), PINK, M(0, 0, 0));
+  for (const zf of [-1, 1]) for (let i = 0; i <= 16; i++) {
+    const t = -1 + (2 * i) / 16;
+    sphere(g, 0.26, WHITE, t * S, arch(t) - 0.05, zf * 2.02, 6, 0.7); // the cusps along the arch
+  }
   for (const zf of [-1, 1]) {
-    archPanel(g, span - 3, 2.4, WHITE, 0, 6.3, zf * 2.03, zf < 0 ? Math.PI : 0, 0.06, true);
     for (let k = -3; k <= 3; k++) {
       box(g, 1.2, 1, 0.5, PINK_D, k * 2.6, 9.3, zf * 1.8);
       dome(g, 0.6, WHITE, k * 2.6, 10.3, zf * 1.8, 8, 0.6);
