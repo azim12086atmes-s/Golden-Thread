@@ -6,7 +6,7 @@ import { blobMaterial, leafCardMesh } from './foliage';
 import { surfacesByColour } from './surfaces';
 import { buildRegion, type Collider, type Door, type RegionInstance, type ResourceNode } from './RegionBuilder';
 import { REGIONS, REGION_SIZE, regionCenter, type RegionSpec } from './regions';
-import { CHUNK, WATER_Y, addPlatform, buildTerrainChunk, terrainHeight } from './terrain';
+import { CHUNK, WATER_Y, addPlatform, buildTerrainChunk, groundAt, terrainHeight } from './terrain';
 import { GRASS_UNIFORMS, MeadowField, patternGround } from './Meadow';
 import { foamMaterial, riverFlowGeometry, riverFlowMaterial, shoreGeometry, waterMaterial } from './Water';
 import { builtWaterMaterial } from './flowWater';
@@ -227,10 +227,11 @@ function dist(f: THREE.Vector3, r: RegionSpec): number {
 
 /**
  * The landmark's door: walking out from its centre towards the southern avenue, the first spot
- * clear of every part of it.
+ * clear of every part of it (at the height you'd stand there — up on a terrace if it is one).
  */
 export function landmarkDoor(land: string, c: { x: number; z: number }, colliders: Array<{ x: number; z: number; r: number }>): Door {
   let z = 0;
   while (z < 80 && colliders.some((col) => Math.hypot(col.x, z - col.z) < col.r + 0.9)) z += 0.25;
-  return { id: `${land}:landmark`, land, x: c.x, z: c.z + z, y: terrainHeight(c.x, c.z + z), facing: 0, kind: 'landmark', r: z };
+  // The walkable height there — on a terrace or platform when the door stands on one.
+  return { id: `${land}:landmark`, land, x: c.x, z: c.z + z, y: groundAt(c.x, c.z + z), facing: 0, kind: 'landmark', r: z };
 }
