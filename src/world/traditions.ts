@@ -2,6 +2,7 @@ import * as THREE from 'three';
 import type { Ctx, Footprint } from './architecture';
 import { M, archPanel, box, cone, cyl, dome, gable, hip, onion, sphere, sweptRoof } from './kit';
 import { SURF } from './surfaces';
+import { agraharam, andalusian, baradari, barasti, cairene, chettinad, cloudCottage, coralHouse, diaojiaolou, fellah, gassho, huizhou, jeongja, joglo, kashmiri, kasbah, majlisTent, moonHouse, neowajip, oasisHouse, pinkTownhouse, rajHut, rumahGadang, teaHouse } from './traditionsMore';
 
 /**
  * Houses of the lands beyond Europe and America, each built from the real parts of its tradition
@@ -38,20 +39,20 @@ import { SURF } from './surfaces';
 
 const pick = <T>(c: Ctx, a: readonly T[]) => c.rng.pick(a);
 
-function surf(c: Ctx, s: number, fn: () => void): void {
+export function surf(c: Ctx, s: number, fn: () => void): void {
   const prev = c.g.surface;
   c.g.surface = s;
   try { fn(); } finally { c.g.surface = prev; }
 }
 
 /** Glass that glows at night, on the +z face at z (bottom centre x, y). */
-function glass(c: Ctx, x: number, y: number, z: number, w: number, h: number, arched = false, pointed = false): void {
+export function glass(c: Ctx, x: number, y: number, z: number, w: number, h: number, arched = false, pointed = false): void {
   if (arched) archPanel(c.glow, w, h, c.s.glow, x, y, z, 0, 0.04, pointed);
   else box(c.glow, w, h, 0.04, c.s.glow, x, y, z);
 }
 
 /** A lattice over an opening: vertical slats (koshi), a square grid (hanji) or a star jali. */
-function lattice(c: Ctx, x: number, y: number, z: number, w: number, h: number, col: string, kind: 'koshi' | 'grid' | 'jali'): void {
+export function lattice(c: Ctx, x: number, y: number, z: number, w: number, h: number, col: string, kind: 'koshi' | 'grid' | 'jali'): void {
   if (kind === 'koshi') {
     for (let i = 0; i <= Math.round(w / 0.1); i++) box(c.g, 0.035, h, 0.05, col, x - w / 2 + i * 0.1, y, z);
     box(c.g, w + 0.1, 0.05, 0.06, col, x, y + h * 0.3, z + 0.01);
@@ -68,7 +69,7 @@ function lattice(c: Ctx, x: number, y: number, z: number, w: number, h: number, 
 }
 
 /** A panelled door on +z at z. */
-function doorLeaf(c: Ctx, x: number, z: number, w: number, h: number, col: string, studs = false): void {
+export function doorLeaf(c: Ctx, x: number, z: number, w: number, h: number, col: string, studs = false): void {
   box(c.g, w, h, 0.08, col, x, 0, z);
   for (const s of [-1, 1]) box(c.g, w * 0.36, h * 0.35, 0.04, col, x + s * w * 0.22, h * 0.12, z + 0.05);
   if (studs) for (let i = 0; i < 4; i++) for (let j = 0; j < 5; j++) sphere(c.g, 0.035, '#d4af37', x - w * 0.36 + i * w * 0.24, 0.3 + j * h * 0.18, z + 0.07, 4);
@@ -216,7 +217,7 @@ function shophouse(c: Ctx): Footprint {
 // ───────────────────────── Islamic world, Middle East, Egypt, desert ─────────────────────────
 
 /** Crenellations (merlons) along a wall top: stepped blocks along the four edges. */
-function merlons(c: Ctx, w: number, d: number, y: number, col: string, stepped = true): void {
+export function merlons(c: Ctx, w: number, d: number, y: number, col: string, stepped = true): void {
   for (const [len, x, z, ry] of [[w, 0, d / 2, 0], [w, 0, -d / 2, 0], [d, w / 2, 0, Math.PI / 2], [d, -w / 2, 0, Math.PI / 2]] as const) {
     const n = Math.max(2, Math.round(len / 0.9));
     for (let i = 0; i < n; i++) {
@@ -261,7 +262,7 @@ function riad(c: Ctx): Footprint {
 }
 
 /** A barjeel: a square wind tower open on all four sides above the roof. */
-function barjeel(c: Ctx, x: number, y: number, z: number, col: string, h = 4.4): void {
+export function barjeel(c: Ctx, x: number, y: number, z: number, col: string, h = 4.4): void {
   surf(c, SURF.adobe, () => {
     for (const [dx, dz] of [[-1, -1], [1, -1], [-1, 1], [1, 1]]) box(c.g, 0.35, h, 0.35, col, x + dx * 1.05, y, z + dz * 1.05);
     box(c.g, 2.5, h * 0.35, 2.5, col, x, y, z);
@@ -396,7 +397,7 @@ function roundTent(c: Ctx): Footprint {
 // ───────────────────────── South Asia ─────────────────────────
 
 /** A jharokha: a projecting balcony window on stepped corbels, with a jali and a curved roof or dome. */
-function jharokha(c: Ctx, x: number, y: number, z: number, w: number, col: string, roof: string, kind: 'dome' | 'bangla'): void {
+export function jharokha(c: Ctx, x: number, y: number, z: number, w: number, col: string, roof: string, kind: 'dome' | 'bangla'): void {
   for (let k = 0; k < 3; k++) box(c.g, w - k * 0.3, 0.18, 0.9 - k * 0.25, col, x, y - 0.2 - k * 0.2, z + (0.9 - k * 0.25) / 2);
   box(c.g, w, 0.12, 0.95, col, x, y, z + 0.47);
   for (const s of [-1, 1]) cyl(c.g, 0.06, 0.07, 1.3, col, x + s * (w / 2 - 0.1), y + 0.1, z + 0.85, 6);
@@ -407,7 +408,7 @@ function jharokha(c: Ctx, x: number, y: number, z: number, w: number, col: strin
   else c.g.add(new THREE.CylinderGeometry(0.55, 0.55, w + 0.2, 10, 1, false, 0, Math.PI), roof, M(x, y + 1.52, z + 0.47, 0, 0.55, 1, 1, 0, Math.PI / 2));
 }
 
-function chhatriKiosk(c: Ctx, x: number, y: number, z: number, r: number, col: string, domeCol: string): void {
+export function chhatriKiosk(c: Ctx, x: number, y: number, z: number, r: number, col: string, domeCol: string): void {
   for (const [dx, dz] of [[-1, -1], [1, -1], [-1, 1], [1, 1]]) cyl(c.g, r * 0.1, r * 0.1, r * 1.2, col, x + dx * r * 0.7, y, z + dz * r * 0.7, 5);
   box(c.g, r * 1.9, r * 0.16, r * 1.9, col, x, y + r * 1.2, z);
   onion(c.g, r * 0.75, domeCol, x, y + r * 1.36, z);
@@ -687,19 +688,19 @@ function skyPavilion(c: Ctx): Footprint {
 type Fn = (c: Ctx) => Footprint;
 /** Each land's houses and how often each kind appears. */
 export const TRADITIONS: Partial<Record<string, Array<[Fn, number]>>> = {
-  japan: [[machiya, 0.75], [minka, 0.25]],
-  korea: [[hanok, 0.75], [choga, 0.25]],
-  china: [[chineseHall, 0.55], [shophouse, 0.45]],
-  islamic: [[riad, 1]],
-  middleeast: [[gulfHouse, 1]],
-  egypt: [[nubian, 1]],
-  desert: [[bedouinTent, 0.6], [roundTent, 0.4]],
-  indianorth: [[haveli, 1]],
-  indiasouth: [[keralaHome, 1]],
-  mughal: [[mughalPavilion, 1]],
-  indonesia: [[bale, 0.55], [tongkonan, 0.45]],
+  japan: [[machiya, 0.5], [minka, 0.2], [gassho, 0.15], [teaHouse, 0.15]],
+  korea: [[hanok, 0.5], [choga, 0.2], [neowajip, 0.18], [jeongja, 0.12]],
+  china: [[chineseHall, 0.4], [shophouse, 0.3], [huizhou, 0.18], [diaojiaolou, 0.12]],
+  islamic: [[riad, 0.5], [andalusian, 0.3], [kasbah, 0.2]],
+  middleeast: [[gulfHouse, 0.5], [coralHouse, 0.32], [barasti, 0.18]],
+  egypt: [[nubian, 0.45], [cairene, 0.3], [fellah, 0.25]],
+  desert: [[bedouinTent, 0.45], [roundTent, 0.25], [oasisHouse, 0.18], [majlisTent, 0.12]],
+  indianorth: [[haveli, 0.5], [pinkTownhouse, 0.32], [rajHut, 0.18]],
+  indiasouth: [[keralaHome, 0.45], [chettinad, 0.3], [agraharam, 0.25]],
+  mughal: [[mughalPavilion, 0.45], [kashmiri, 0.3], [baradari, 0.25]],
+  indonesia: [[bale, 0.4], [tongkonan, 0.3], [joglo, 0.18], [rumahGadang, 0.12]],
   aurora: [[lavvu, 0.22], [igloo, 0.2], [glassIgloo, 0.14], [goahti, 0.14], [logCabin, 0.18], [glassCabin, 0.12]],
-  skyisles: [[skySpire, 0.6], [skyPavilion, 0.4]],
+  skyisles: [[skySpire, 0.45], [skyPavilion, 0.25], [cloudCottage, 0.18], [moonHouse, 0.12]],
 };
 
 /** What each house is called (its door carries it, so the room inside can be shaped like it). */
@@ -709,6 +710,10 @@ const HOUSE_KIND = new Map<Fn, string>([
   [haveli, 'haveli'], [keralaHome, 'nalukettu'], [mughalPavilion, 'pavilion'], [bale, 'bale'], [tongkonan, 'tongkonan'],
   [lavvu, 'lavvu'], [igloo, 'igloo'], [glassIgloo, 'glassigloo'], [goahti, 'goahti'], [logCabin, 'logcabin'], [glassCabin, 'glasscabin'],
   [skySpire, 'skyspire'], [skyPavilion, 'skypavilion'],
+  [kasbah, 'kasbah'], [andalusian, 'andalusian'], [coralHouse, 'coralhouse'], [barasti, 'barasti'], [cairene, 'cairene'], [fellah, 'fellah'],
+  [pinkTownhouse, 'pinktownhouse'], [rajHut, 'rajhut'], [chettinad, 'chettinad'], [agraharam, 'agraharam'], [kashmiri, 'kashmiri'], [baradari, 'baradari'],
+  [gassho, 'gassho'], [teaHouse, 'teahouse'], [neowajip, 'neowajip'], [jeongja, 'jeongja'], [huizhou, 'huizhou'], [diaojiaolou, 'diaojiaolou'],
+  [joglo, 'joglo'], [rumahGadang, 'rumahgadang'], [oasisHouse, 'oasishouse'], [majlisTent, 'majlistent'], [cloudCottage, 'cloudcottage'], [moonHouse, 'moonhouse'],
 ]);
 
 /** Build one of the land's traditional houses (null if the land has none here), named by its kind. */

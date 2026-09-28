@@ -55,6 +55,10 @@ export const HOUSE_SHAPE: Record<string, RoomShape> = {
   logcabin: 'gable', glasscabin: 'glassgable', rorbu: 'gable', bryggen: 'gable', chalet: 'gable', bernese: 'gable', sorlandet: 'gable',
   engadin: 'vault', minka: 'gable', choga: 'gable', bungalow: 'gable', colonica: 'gable', tongkonan: 'saddle', bale: 'saddle', nubian: 'vault',
   riad: 'courtyard', haveli: 'courtyard', siheyuan: 'courtyard', hanok: 'courtyard', nalukettu: 'courtyard', gulfhouse: 'courtyard', courtyard: 'courtyard',
+  kasbah: 'courtyard', andalusian: 'courtyard', cairene: 'courtyard', chettinad: 'courtyard', huizhou: 'courtyard', coralhouse: 'box', barasti: 'gable',
+  fellah: 'box', pinktownhouse: 'box', rajhut: 'cone', agraharam: 'gable', kashmiri: 'gable', baradari: 'vault', gassho: 'saddle', teahouse: 'gable',
+  neowajip: 'gable', jeongja: 'box', diaojiaolou: 'gable', joglo: 'saddle', rumahgadang: 'saddle', oasishouse: 'box', majlistent: 'tent',
+  cloudcottage: 'dome', moonhouse: 'vault',
 };
 /** What each kind of house is called at its door. */
 export const HOUSE_NAME: Record<string, string> = {
@@ -65,6 +69,10 @@ export const HOUSE_NAME: Record<string, string> = {
   queenanne: 'a Painted Lady', machiya: 'a machiya', minka: 'a minka farmhouse', hanok: 'a hanok', choga: 'a choga cottage', siheyuan: 'a siheyuan',
   riad: 'a riad', gulfhouse: 'a majlis house', nubian: 'a Nubian house', haveli: 'a haveli', nalukettu: 'a nalukettu', pavilion: 'a garden pavilion',
   bale: 'a bale', tongkonan: 'a tongkonan', skyspire: 'a sky spire', skypavilion: 'a cloud pavilion',
+  kasbah: 'a kasbah', andalusian: 'an Andalusian house', coralhouse: 'a Hijazi coral house', barasti: 'a barasti', cairene: 'a Cairene house', fellah: 'a fellah farmhouse',
+  pinktownhouse: 'a Pink City townhouse', rajhut: 'a Rajasthani hut', chettinad: 'a Chettinad mansion', agraharam: 'an agraharam house', kashmiri: 'a Kashmiri house', baradari: 'a baradari',
+  gassho: 'a gassho farmhouse', teahouse: 'a tea house', neowajip: 'a neowajip', jeongja: 'a jeongja pavilion', huizhou: 'a Huizhou house', diaojiaolou: 'a diaojiaolou',
+  joglo: 'a joglo', rumahgadang: 'a rumah gadang', oasishouse: 'an oasis house', majlistent: 'a majlis tent', cloudcottage: 'a cloud cottage', moonhouse: 'a moon house',
 };
 
 export const ROOM = { halfW: 4.5, back: -4, front: 4, height: 3.6 } as const;
