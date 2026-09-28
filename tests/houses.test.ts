@@ -1,7 +1,8 @@
 import * as THREE from 'three';
 import { describe, expect, it } from 'vitest';
 import { OUTFITS } from '../src/characters/outfits';
-import { FAMILY, HouseInterior, LANDMARK_NAME, ROOM, ROOM_SEATS, doorLabel, roomTitle } from '../src/housing/HouseInterior';
+import { FAMILY, HOUSE_NAME, HOUSE_SHAPE, HouseInterior, LANDMARK_NAME, ROOM, ROOM_SEATS, doorLabel, roomTitle } from '../src/housing/HouseInterior';
+import { buildHouse } from '../src/world/architecture';
 import { buildLandmark } from '../src/world/architecture';
 import { GeoBuilder } from '../src/world/kit';
 import { landmarkDoor } from '../src/world/World';
@@ -113,5 +114,32 @@ describe('landmarks and your own home', () => {
       expect(Math.abs(r.root.position.x)).toBeLessThan(ROOM.halfW);
       for (const o of s.residents) if (o !== r) expect(r.root.position.distanceTo(o.root.position)).toBeGreaterThan(1);
     }
+  });
+
+  it('shapes the room like its building: domes, cones, tents, pitched roofs, vaults and open courts', () => {
+    const room = new HouseInterior(OUTFITS['g-kurti-jeans'], OUTFITS['b-kurta-jeans']);
+    const land: Record<string, string> = { igloo: 'aurora', glassigloo: 'aurora', lavvu: 'aurora', goahti: 'aurora', roundtent: 'desert', bedouintent: 'desert', logcabin: 'aurora', glasscabin: 'aurora', tongkonan: 'indonesia', nubian: 'egypt', riad: 'islamic', rorbu: 'norway', chalet: 'switzerland' };
+    for (const [kind, id] of Object.entries(land)) {
+      const door = { id: `${id}:3`, land: id, x: 0, z: 0, y: 0, facing: 0, kind, r: 5 };
+      room.enter(door, 0.9, false);
+      expect(roomTitle(door), kind).toContain(HOUSE_NAME[kind]);
+      const box = new THREE.Box3().setFromObject((room as unknown as { room: THREE.Group }).room);
+      // Round rooms reach a little wider than the square one; pitched roofs rise above it.
+      expect(box.max.x, kind).toBeLessThanOrEqual(ROOM.halfW + 1.2);
+      expect(box.max.y, kind).toBeLessThanOrEqual(ROOM.height + 3.6);
+      expect(box.max.y, kind).toBeGreaterThan(ROOM.height - 0.5);
+      const s = room as unknown as { girl: { root: THREE.Object3D }; boy: { root: THREE.Object3D } };
+      expect(s.girl.root.position.distanceTo(s.boy.root.position)).toBeGreaterThanOrEqual(2.2);
+    }
+  });
+
+  it('names each house by its kind, so the room inside can take its shape', () => {
+    const seen = new Set<string>();
+    for (const r of REGIONS) for (let i = 0; i < 16; i++) {
+      const fp = buildHouse({ g: new GeoBuilder(), glow: new GeoBuilder(), rng: new Rng(`${r.id}:${i}`), s: r }) as { kind?: string };
+      if (fp.kind) seen.add(fp.kind);
+    }
+    for (const k of ['igloo', 'lavvu', 'riad', 'nubian', 'rorbu', 'chalet', 'tongkonan', 'bedouintent', 'shop']) expect(seen, k).toContain(k);
+    for (const k of seen) if (k !== 'shop') expect(HOUSE_NAME[k] ?? HOUSE_SHAPE[k], k).toBeTruthy();
   });
 });

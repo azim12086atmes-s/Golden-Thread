@@ -40,6 +40,33 @@ export const ROOM_NAME: Record<RegionId, string> = {
   renaissance: 'a palazzo', skyisles: 'a cloud house',
 };
 
+/**
+ * The room takes the shape of its building (owner: "interiors shaped like their buildings … house
+ * structure and design variations while maintaining architecture"): a snow dome inside an igloo,
+ * a glass dome under the stars in a glass igloo, a cone of hides round the smoke hole in a lavvu,
+ * goahti or round tent, black goat-hair cloth on poles in a Bedouin tent, rafters under a pitched
+ * roof in cabins, rorbuer, chalets and farmhouses, a saddle roof sweeping up in a tongkonan or bale,
+ * a barrel vault in a Nubian house, and an open sky over the fountain court of a riad, haveli,
+ * hanok, siheyuan or nalukettu. Other houses keep the flat-beamed room.
+ */
+export type RoomShape = 'box' | 'dome' | 'glassdome' | 'cone' | 'tent' | 'gable' | 'glassgable' | 'saddle' | 'vault' | 'courtyard';
+export const HOUSE_SHAPE: Record<string, RoomShape> = {
+  igloo: 'dome', glassigloo: 'glassdome', lavvu: 'cone', goahti: 'cone', roundtent: 'cone', bedouintent: 'tent',
+  logcabin: 'gable', glasscabin: 'glassgable', rorbu: 'gable', bryggen: 'gable', chalet: 'gable', bernese: 'gable', sorlandet: 'gable',
+  engadin: 'vault', minka: 'gable', choga: 'gable', bungalow: 'gable', colonica: 'gable', tongkonan: 'saddle', bale: 'saddle', nubian: 'vault',
+  riad: 'courtyard', haveli: 'courtyard', siheyuan: 'courtyard', hanok: 'courtyard', nalukettu: 'courtyard', gulfhouse: 'courtyard', courtyard: 'courtyard',
+};
+/** What each kind of house is called at its door. */
+export const HOUSE_NAME: Record<string, string> = {
+  igloo: 'an igloo', glassigloo: 'a glass igloo', lavvu: 'a lavvu', goahti: 'a goahti', roundtent: 'a round tent', bedouintent: 'a Bedouin tent',
+  logcabin: 'a log cabin', glasscabin: 'a glass cabin', rorbu: 'a rorbu', bryggen: 'a Bryggen house', sorlandet: 'a Sørlandet house',
+  chalet: 'a chalet', engadin: 'an Engadin house', bernese: 'a Bernese farmhouse', mews: 'a mews cottage', georgian: 'a terraced house',
+  casa: 'a Tuscan townhouse', colonica: 'a Tuscan farmhouse', palazzo: 'a palazzo', bungalow: 'a Craftsman bungalow', colonial: 'a colonial house',
+  queenanne: 'a Painted Lady', machiya: 'a machiya', minka: 'a minka farmhouse', hanok: 'a hanok', choga: 'a choga cottage', siheyuan: 'a siheyuan',
+  riad: 'a riad', gulfhouse: 'a majlis house', nubian: 'a Nubian house', haveli: 'a haveli', nalukettu: 'a nalukettu', pavilion: 'a garden pavilion',
+  bale: 'a bale', tongkonan: 'a tongkonan', skyspire: 'a sky spire', skypavilion: 'a cloud pavilion',
+};
+
 export const ROOM = { halfW: 4.5, back: -4, front: 4, height: 3.6 } as const;
 /** Where the two sit: either side of the room, 3.4 m apart, facing in. */
 export const ROOM_SEATS: Array<[number, number, number]> = [[-1.7, 0, 0.9], [1.7, 0, 0.9]];
@@ -93,7 +120,7 @@ export function roomTitle(door: Door): string {
   if (door.name) return `Inside ${door.name}`;
   if (door.kind === 'landmark') return `Inside ${LANDMARK_NAME[land]} in ${place}`;
   if (door.kind === 'home') return `Your home in ${place}`;
-  const kind = door.kind === 'shop' ? 'a shop' : door.kind === 'tower' ? 'a tower house' : door.kind === 'courtyard' ? 'a courtyard house' : ROOM_NAME[land];
+  const kind = door.kind === 'shop' ? 'a shop' : door.kind === 'tower' ? 'a tower house' : door.kind === 'courtyard' ? 'a courtyard house' : HOUSE_NAME[door.kind] ?? ROOM_NAME[land];
   return `Inside ${kind} in ${place}`;
 }
 
@@ -102,7 +129,7 @@ export function doorLabel(door: Door): string {
   if (door.kind === 'home') return 'Go home';
   if (door.kind === 'castle') return 'Step inside the castle';
   if (door.kind === 'landmark') return `Step inside ${LANDMARK_NAME[door.land as RegionId]}`;
-  return `Step inside ${door.kind === 'shop' ? 'the shop' : ROOM_NAME[door.land as RegionId]}`;
+  return `Step inside ${door.kind === 'shop' ? 'the shop' : HOUSE_NAME[door.kind] ?? ROOM_NAME[door.land as RegionId]}`;
 }
 
 export class HouseInterior {
@@ -183,20 +210,27 @@ export class HouseInterior {
     } else {
       for (let i = 0; i < 12; i++) box(g, 0.74, 0.05, F - B, i % 2 ? '#9a7450' : '#8a6444', -W + 0.37 + i * 0.75, 0, 0);
     }
+    const shape = HOUSE_SHAPE[door.kind] ?? 'box';
+    const round = shape === 'dome' || shape === 'glassdome' || shape === 'cone' || shape === 'tent';
+    if (round) roundRoom(g, glow, shape, W, B, F, night, land, rng);
     // Walls: plaster over a wainscot, the land's frieze band, a cornice.
-    for (const [x, ry] of [[-W, Math.PI / 2], [W, -Math.PI / 2]] as const) {
+    if (!round) for (const [x, ry] of [[-W, Math.PI / 2], [W, -Math.PI / 2]] as const) {
       box(g, 0.1, H, F - B, wall, x, 0, 0);
       box(g, 0.12, 1.0, F - B, fam === 'majlis' ? fa : '#a8703f', x * 0.998, 0, 0);
       frieze(g, glow, st.motif, fa, fb, F - B, H - 0.7, x * 0.99, ry);
     }
-    box(g, W * 2, H, 0.1, wall, 0, 0, B);
-    box(g, W * 2, 1.0, 0.12, fam === 'majlis' ? fa : '#a8703f', 0, 0, B + 0.01);
-    frieze(g, glow, st.motif, fa, fb, W * 2, H - 0.7, B + 0.07, 0);
-    // Ceiling beams.
-    for (let i = 0; i < 5; i++) box(g, W * 2, 0.22, 0.25, fam === 'east' ? '#4a3426' : '#8a5a36', 0, H - 0.2, B + 0.8 + i * 1.7);
+    if (!round) {
+      box(g, W * 2, H, 0.1, wall, 0, 0, B);
+      box(g, W * 2, 1.0, 0.12, fam === 'majlis' ? fa : '#a8703f', 0, 0, B + 0.01);
+      frieze(g, glow, st.motif, fa, fb, W * 2, H - 0.7, B + 0.07, 0);
+    }
+    // Overhead: flat beams, or the roof of the building seen from inside.
+    const beam = fam === 'east' ? '#4a3426' : '#8a5a36';
+    if (shape === 'box' || shape === 'courtyard') for (let i = 0; i < 5; i++) box(g, W * 2, 0.22, 0.25, beam, 0, H - 0.2, B + 0.8 + i * 1.7);
+    else if (!round) roofInside(g, glow, shape, W, B, F, H, beam, wall, night);
     // Windows on the side walls: day sky or night stars behind them.
     const pointed = st.arch === 'pointed';
-    for (const x of [-W + 0.06, W - 0.06]) for (const z of [-1.2, 1.8]) {
+    if (!round) for (const x of [-W + 0.06, W - 0.06]) for (const z of [-1.2, 1.8]) {
       const ry = x < 0 ? Math.PI / 2 : -Math.PI / 2;
       if (st.arch === 'square') box(glow, 0.04, 1.3, 1.3, sky, x, 1.3, z);
       else archPanel(glow, 1.2, 1.5, sky, x, 1.2, z, ry, 0.04, pointed);
@@ -215,7 +249,7 @@ export class HouseInterior {
         box(g, W * 1.6, 0.06, 0.4, '#8a5a36', 0, 1.2 + r * 0.7, B + 0.3);
         for (let i = 0; i < 12; i++) box(g, 0.28, 0.4, 0.28, ['#e8b84a', '#c8483a', '#2f6f9a', '#4f9a44', '#ff8fb8'][(i + r) % 5], -W * 0.75 + i * 0.6, 1.27 + r * 0.7, B + 0.3);
       }
-    } else if (door.kind === 'courtyard') {
+    } else if (door.kind === 'courtyard' || shape === 'courtyard') {
       cyl(g, 1.0, 1.1, 0.45, '#e8dcc6', 0, 0, -1.4, 14);
       cyl(glow, 0.88, 0.88, 0.05, '#8ad8ff', 0, 0.45, -1.4, 14);
       cyl(g, 0.1, 0.14, 0.9, '#e8dcc6', 0, 0.45, -1.4, 6);
@@ -522,4 +556,74 @@ function furnishHome(g: GeoBuilder, glow: GeoBuilder, home: Record<VanSlot, stri
   if (lamp.length) { cyl(g, 0.05, 0.12, 1.2, '#3a2a22', 3.4, 0, 0.9, 6); sphere(glow, 0.2, lamp[0], 3.4, 1.35, 0.9, 8); }
   const cush = opt('cushions').colors;
   for (const [x, i] of [[-1.7, 0], [1.7, 1]] as const) box(g, 0.6, 0.18, 0.6, cush[i % cush.length], x, 0.47, 1.35);
+}
+
+/** A room with no straight walls: a snow or glass dome, a cone of hides, a black tent on poles. Open at the front for the eye. */
+function roundRoom(g: GeoBuilder, glow: GeoBuilder, shape: RoomShape, W: number, B: number, F: number, night: number, land: RegionId, rng: Rng): void {
+  const cz = (B + F) / 2 - 0.4, R = W + 0.9, open = 1.1;
+  if (shape === 'dome' || shape === 'glassdome') {
+    const glass = shape === 'glassdome';
+    const dome = inward(new THREE.SphereGeometry(R, 24, 10, Math.PI / 2 + open, Math.PI * 2 - open * 2, 0, Math.PI / 2).scale(1, 0.82, 1));
+    g.add(dome, glass ? (night > 0.5 ? '#1a2250' : '#bfe0f4') : '#eef6fb', M(0, 0, cz));
+    if (glass) {
+      // The glass: its frame of ribs, stars and the aurora over it.
+      for (let k = 0; k < 10; k++) g.add(new THREE.TorusGeometry(R * 0.99, 0.04, 3, 20, Math.PI / 2), '#8a8a90', M(0, 0, cz, (k / 10) * Math.PI * 2, 1, 0.82, 1, 0, 0).multiply(new THREE.Matrix4().makeRotationY(Math.PI / 2)));
+      for (let i = 0; i < 50; i++) { const a = rng.range(0, Math.PI * 2), e = rng.range(0.3, 1.4); sphere(glow, 0.03, '#fff4d0', Math.cos(a) * Math.cos(e) * R * 0.97, Math.sin(e) * R * 0.8, cz + Math.sin(a) * Math.cos(e) * R * 0.97, 3); }
+      for (let i = 0; i < 12; i++) box(glow, 0.2, 0.02, 1.4, i % 2 ? '#7affc0' : '#6ad8ff', -2.4 + i * 0.45, R * 0.8 - 0.15, cz - 1 + Math.sin(i) * 0.4);
+    } else {
+      // Snow blocks spiralling up, a clear ice window, fur on the sleeping bench.
+      for (let k = 1; k < 7; k++) g.add(new THREE.TorusGeometry(R * Math.cos(k * 0.2), 0.02, 3, 32, Math.PI * 2 - open * 2), '#d8e8f2', M(0, R * 0.82 * Math.sin(k * 0.2), cz, Math.PI / 2 + open, 1, 1, 1, Math.PI / 2, 0).multiply(new THREE.Matrix4().makeRotationZ(0)));
+      glow.add(new THREE.CircleGeometry(0.5, 12), night > 0.5 ? '#6a8ad8' : '#e8f6ff', M(-R * 0.62, 1.6, cz - R * 0.62, Math.PI / 4));
+    }
+    box(g, 3.4, 0.5, 1.4, '#e8f0f6', 0, 0, cz - R + 1.2); box(g, 3.2, 0.12, 1.2, '#c8a882', 0, 0.5, cz - R + 1.2);
+  } else if (shape === 'cone') {
+    // Hides or cloth on long poles meeting at the smoke hole, a hearth ring in the middle.
+    const Hc = 6.2;
+    g.add(inward(new THREE.ConeGeometry(R, Hc, 20, 1, true, open, Math.PI * 2 - open * 2)), land === 'desert' ? '#e8dcc6' : '#b8946a', M(0, Hc / 2, cz));
+    for (let k = 0; k < 12; k++) { const a = (k / 12) * Math.PI * 2; if (Math.abs(Math.atan2(Math.sin(a), Math.cos(a))) < open) continue; g.add(new THREE.CylinderGeometry(0.04, 0.05, Math.hypot(R, Hc) + 0.6, 4), '#6b4a2a', M(Math.sin(a) * R / 2, Hc / 2 + 0.2, cz + Math.cos(a) * R / 2, 0, 1, 1, 1, Math.cos(a) * Math.atan2(R, Hc), -Math.sin(a) * Math.atan2(R, Hc))); }
+    glow.add(new THREE.CircleGeometry(0.35, 10).rotateX(Math.PI / 2), night > 0.5 ? '#3a4a8a' : '#fff6e0', M(0, Hc - 0.5, cz));
+    for (let k = 0; k < 10; k++) { const a = (k / 10) * Math.PI * 2; sphere(g, 0.14, '#8a8078', Math.cos(a) * 0.55, 0.05, cz + 0.8 + Math.sin(a) * 0.55, 5, 0.6); }
+    for (let i = 0; i < 4; i++) cone(glow, 0.12, 0.45, i % 2 ? '#ffb84a' : '#ff6a2a', -0.2 + i * 0.13, 0.05, cz + 0.8, 5);
+    for (let k = 0; k < 6; k++) box(g, 1.2, 0.08, 0.9, ['#e8e0d0', '#8a6a4a', '#c8b8a0'][k % 3], Math.cos(k + 2) * (R - 1.4), 0.03, cz + Math.sin(k + 2) * (R - 1.4) - 0.8, k); // reindeer skins round the fire
+  } else {
+    // The Bedouin tent: black goat-hair cloth in bands, drawn over a ridge on tall poles, a woven divider at the back.
+    const ridge = 3.6, eave = 1.7;
+    for (const sx of [-1, 1]) for (let i = 0; i < 8; i++) g.add(new THREE.BoxGeometry(Math.hypot(W + 0.6, ridge - eave), 0.05, (F - B) / 8), i % 2 ? '#2a2622' : '#3a322a', M(sx * (W + 0.6) / 2, (ridge + eave) / 2, B + (i + 0.5) * ((F - B) / 8), 0, 1, 1, 1, 0, sx * -Math.atan2(ridge - eave, W + 0.6)));
+    for (const sx of [-1, 1]) box(g, 0.05, eave, F - B, '#2a2622', sx * (W + 0.6), 0, (B + F) / 2);
+    for (let z = B + 1; z < F; z += 2.6) cyl(g, 0.07, 0.08, ridge, '#6b4a2a', 0, 0, z, 6);
+    box(g, (W + 0.6) * 2, ridge, 0.06, '#c23b2a', 0, 0, B);
+    for (let i = 0; i < 12; i++) box(g, 0.5, 0.18, 0.07, ['#e2b43a', '#ffffff', '#2f5a9a'][i % 3], -W + 0.4 + i * 0.75, 1.2 + (i % 2) * 0.3, B + 0.02);
+  }
+}
+
+/** The roof seen from inside above straight walls: rafters under a pitched roof, a saddle roof, a vault, a glass gable. */
+function roofInside(g: GeoBuilder, glow: GeoBuilder, shape: RoomShape, W: number, B: number, F: number, H: number, beam: string, wall: string, night: number): void {
+  const L = F - B, cz = (B + F) / 2;
+  if (shape === 'vault') {
+    g.add(inward(new THREE.CylinderGeometry(W, W, L, 18, 1, true, -Math.PI / 2, Math.PI).rotateX(-Math.PI / 2)), wall, M(0, H, cz, 0, 1, 0.45, 1));
+    for (let z = B + 1; z < F; z += 2) g.add(new THREE.TorusGeometry(W, 0.08, 4, 18, Math.PI), beam, M(0, H, z, 0, 1, 0.45, 1));
+    box(g, W * 2, W * 0.45 + 0.1, 0.1, wall, 0, H, B);
+    return;
+  }
+  const rise = shape === 'saddle' ? 3.2 : 2.1, glass = shape === 'glassgable';
+  const slope = Math.hypot(W, rise), tilt = Math.atan2(rise, W);
+  for (const sx of [-1, 1]) {
+    g.add(new THREE.BoxGeometry(slope, 0.06, L), glass ? (night > 0.5 ? '#1a2250' : '#bfe0f4') : wall, M(sx * W / 2, H + rise / 2, cz, 0, 1, 1, 1, 0, sx * -tilt));
+    for (let z = B + 0.5; z < F; z += 1) g.add(new THREE.BoxGeometry(slope, 0.16, 0.12), beam, M(sx * W / 2, H + rise / 2 - 0.1, z, 0, 1, 1, 1, 0, sx * -tilt));
+  }
+  box(g, 0.24, 0.24, L, beam, 0, H + rise - 0.2, cz); // the ridge beam
+  for (let z = B + 1.2; z < F; z += 2.4) box(g, W * 2, 0.2, 0.2, beam, 0, H - 0.05, z); // tie beams
+  // The gable end over the back wall.
+  const tri = new THREE.Shape([new THREE.Vector2(-W, 0), new THREE.Vector2(W, 0), new THREE.Vector2(0, rise)]);
+  g.add(new THREE.ShapeGeometry(tri), wall, M(0, H, B + 0.06));
+  if (shape === 'saddle') for (const sx of [-1, 1]) box(g, 0.3, 0.3, 0.3, '#c23b2a', sx * 0.4, H + rise - 0.6, B + 0.2); // carved buffalo-horn boss
+  if (glass) for (let i = 0; i < 30; i++) sphere(glow, 0.03, '#fff4d0', (i % 2 ? -1 : 1) * (0.5 + (i * 0.37) % (W - 0.6)), H + rise * (1 - ((i * 0.37) % (W - 0.6) + 0.5) / W) + 0.05, B + ((i * 1.3) % L), 3);
+}
+
+/** Turn a surface to be seen from inside (a dome, a cone, a vault overhead). */
+function inward(geo: THREE.BufferGeometry): THREE.BufferGeometry {
+  const idx = geo.getIndex();
+  if (idx) for (let i = 0; i < idx.count; i += 3) { const t = idx.getX(i + 1); idx.setX(i + 1, idx.getX(i + 2)); idx.setX(i + 2, t); }
+  geo.computeVertexNormals();
+  return geo;
 }

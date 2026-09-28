@@ -91,19 +91,19 @@ const houses: Partial<Record<RegionId, HouseFn>> = {
   norway(c) {
     // Norwegian wood after Bryggen, red fishermen's rorbuer, white Sørlandet houses.
     const k = c.rng.next();
-    return compose(c, k < 0.25 ? FACADES.rorbu : k < 0.45 ? FACADES.sorlandet : FACADES.norway, '#3a2a22');
+    return { ...compose(c, k < 0.25 ? FACADES.rorbu : k < 0.45 ? FACADES.sorlandet : FACADES.norway, '#3a2a22'), kind: k < 0.25 ? 'rorbu' : k < 0.45 ? 'sorlandet' : 'bryggen' };
   },
 
   switzerland(c) {
     // Swiss chalets, white Engadin houses, great-roofed Bernese farmhouses.
     const k = c.rng.next();
-    return compose(c, k < 0.25 ? FACADES.engadin : k < 0.4 ? FACADES.bernese : FACADES.switzerland, '#5a3a26');
+    return { ...compose(c, k < 0.25 ? FACADES.engadin : k < 0.4 ? FACADES.bernese : FACADES.switzerland, '#5a3a26'), kind: k < 0.25 ? 'engadin' : k < 0.4 ? 'bernese' : 'chalet' };
   },
 
   london(c) {
     // Georgian and Victorian terraces (docs/ARCHITECTURE_RESEARCH.md), mews cottages, corner shops.
     const k = c.rng.next();
-    return compose(c, k < 0.15 ? FACADES.londonShop : k < 0.35 ? FACADES.londonMews : FACADES.london, pick(c, ['#1f1f24', '#2f4a3a', '#7a1f24', '#1f2f5a']));
+    return { ...compose(c, k < 0.15 ? FACADES.londonShop : k < 0.35 ? FACADES.londonMews : FACADES.london, pick(c, ['#1f1f24', '#2f4a3a', '#7a1f24', '#1f2f5a'])), kind: k < 0.15 ? 'shop' : k < 0.35 ? 'mews' : 'georgian' };
   },
 
   newyork(c) {
@@ -118,13 +118,13 @@ const houses: Partial<Record<RegionId, HouseFn>> = {
   renaissance(c) {
     // Italian palazzi, Tuscan townhouses, farmhouses with their dovecotes, botteghe.
     const k = c.rng.next();
-    return compose(c, k < 0.15 ? FACADES.bottega : k < 0.4 ? FACADES.tuscanTown : k < 0.55 ? FACADES.tuscanFarm : FACADES.renaissance, '#5a3a26');
+    return { ...compose(c, k < 0.15 ? FACADES.bottega : k < 0.4 ? FACADES.tuscanTown : k < 0.55 ? FACADES.tuscanFarm : FACADES.renaissance, '#5a3a26'), kind: k < 0.15 ? 'shop' : k < 0.4 ? 'casa' : k < 0.55 ? 'colonica' : 'palazzo' };
   },
 
   vintage(c) {
     // Queen Anne "Painted Ladies", Craftsman bungalows, colonials, main-street shops.
     const k = c.rng.next(), door = pick(c, ['#5a8ab5', '#e07a5f', '#6ab58a', '#d9467a']);
-    return compose(c, k < 0.15 ? FACADES.mainStreet : k < 0.35 ? FACADES.bungalow : k < 0.5 ? FACADES.colonial : FACADES.vintage, door);
+    return { ...compose(c, k < 0.15 ? FACADES.mainStreet : k < 0.35 ? FACADES.bungalow : k < 0.5 ? FACADES.colonial : FACADES.vintage, door), kind: k < 0.15 ? 'shop' : k < 0.35 ? 'bungalow' : k < 0.5 ? 'colonial' : 'queenanne' };
   },
 };
 

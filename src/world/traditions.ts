@@ -702,11 +702,21 @@ export const TRADITIONS: Partial<Record<string, Array<[Fn, number]>>> = {
   skyisles: [[skySpire, 0.6], [skyPavilion, 0.4]],
 };
 
-/** Build one of the land's traditional houses (null if the land has none here). */
-export function buildTradition(c: Ctx): Footprint | null {
+/** What each house is called (its door carries it, so the room inside can be shaped like it). */
+const HOUSE_KIND = new Map<Fn, string>([
+  [machiya, 'machiya'], [minka, 'minka'], [hanok, 'hanok'], [choga, 'choga'], [chineseHall, 'siheyuan'], [shophouse, 'shop'],
+  [riad, 'riad'], [gulfHouse, 'gulfhouse'], [nubian, 'nubian'], [bedouinTent, 'bedouintent'], [roundTent, 'roundtent'],
+  [haveli, 'haveli'], [keralaHome, 'nalukettu'], [mughalPavilion, 'pavilion'], [bale, 'bale'], [tongkonan, 'tongkonan'],
+  [lavvu, 'lavvu'], [igloo, 'igloo'], [glassIgloo, 'glassigloo'], [goahti, 'goahti'], [logCabin, 'logcabin'], [glassCabin, 'glasscabin'],
+  [skySpire, 'skyspire'], [skyPavilion, 'skypavilion'],
+]);
+
+/** Build one of the land's traditional houses (null if the land has none here), named by its kind. */
+export function buildTradition(c: Ctx): (Footprint & { kind?: string }) | null {
   const list = TRADITIONS[c.s.id];
   if (!list) return null;
   let k = c.rng.next();
-  for (const [fn, share] of list) { if (k < share) return fn(c); k -= share; }
-  return list[list.length - 1][0](c);
+  let fn = list[list.length - 1][0];
+  for (const [f, share] of list) { if (k < share) { fn = f; break; } k -= share; }
+  return { ...fn(c), kind: HOUSE_KIND.get(fn) };
 }
