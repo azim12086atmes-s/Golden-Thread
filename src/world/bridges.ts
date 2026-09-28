@@ -1,4 +1,5 @@
-import { REGION_BY_ID, regionCenter, type RegionId } from './regions';
+import { REGION_BY_ID, regionAt, regionCenter, type RegionId } from './regions';
+import { bridgeDeck } from './models/bridges';
 import { WATER_Y, terrainHeight } from './terrain';
 import { ROADS_END, WATERS, waterEdge } from './waters';
 
@@ -24,7 +25,8 @@ export interface Bridge {
   dir: [number, number];
 }
 
-export const BRIDGE_WIDTH = 4;
+/** Wide enough for a lane each way (two 3.6 m lanes) and a pavement on each side. */
+export const BRIDGE_WIDTH = 11;
 
 function find(land: RegionId): Bridge[] {
   const river = WATERS.find((w) => w.kind === 'river' && w.land === land);
@@ -56,3 +58,12 @@ function find(land: RegionId): Bridge[] {
 
 const cache = new Map<RegionId, Bridge[]>();
 export const bridgesOf = (land: RegionId): Bridge[] => { let b = cache.get(land); if (!b) cache.set(land, (b = find(land))); return b; };
+
+/** The height of a bridge's deck at (x, z), if a bridge crosses there (vehicles drive over, not under). */
+export function bridgeDeckAt(x: number, z: number): number | null {
+  for (const b of bridgesOf(regionAt(x, z).id)) {
+    const rx = x - b.x, rz = z - b.z, along = rx * b.dir[0] + rz * b.dir[1], across = rx * b.dir[1] - rz * b.dir[0];
+    if (Math.abs(along) <= b.length / 2 && Math.abs(across) <= b.width / 2) return b.y + bridgeDeck(b.land, b.length, along);
+  }
+  return null;
+}

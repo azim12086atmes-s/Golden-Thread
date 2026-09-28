@@ -1,6 +1,7 @@
 import * as THREE from 'three';
 import { CITY_RADIUS, REGION_BY_ID, regionCenter, type RegionId } from '../world/regions';
 import { WATER_Y, terrainHeight } from '../world/terrain';
+import { bridgeDeckAt } from '../world/bridges';
 import { WATERS } from '../world/waters';
 import type { Anim, Piece } from './creatures';
 import { type Design, makeDesign } from './designs';
@@ -424,7 +425,8 @@ export class Traffic {
     _p.x += (_f.z / len) * across;
     _p.z -= (_f.x / len) * across;
     if (d.realm === 'road') {
-      const h0 = terrainHeight(_p.x, _p.z), h1 = terrainHeight(_q.x, _q.z);
+      // Over a river the road runs on the bridge's deck.
+      const h0 = bridgeDeckAt(_p.x, _p.z) ?? terrainHeight(_p.x, _p.z), h1 = bridgeDeckAt(_q.x, _q.z) ?? terrainHeight(_q.x, _q.z);
       _p.y = h0 + 0.07 + (d.bob ? Math.sin(t * 2 + m.phase) * d.bob : 0);
       pitch = -Math.atan2(h1 - h0, 1.5) * 0.8;
     } else if (d.realm === 'water') {

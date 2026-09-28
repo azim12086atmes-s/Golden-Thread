@@ -1,6 +1,7 @@
 import * as THREE from 'three';
 import { buildCoach } from '../vehicles/vehicles';
 import { surfaceAt } from '../world/terrain';
+import { bridgeDeckAt } from '../world/bridges';
 import { REGION_BY_ID, type RegionId } from '../world/regions';
 import { COACH_SEATS, busPath, keepSide, type BusStop } from './bus';
 import type { Travellers } from '../player/Travellers';
@@ -74,7 +75,7 @@ export class BusRide {
       d = Math.atan2(Math.sin(d), Math.cos(d));
       this.heading += d * Math.min(1, dt * 3);
     }
-    const g = surfaceAt(p[0], p[1], this.y + 3);
+    const g = bridgeDeckAt(p[0], p[1]) ?? surfaceAt(p[0], p[1], this.y + 3);
     this.y += (g - this.y) * Math.min(1, dt * 8);
     this.place(p);
     if (left < 0.05 && this.v < 0.6) this.arrive();

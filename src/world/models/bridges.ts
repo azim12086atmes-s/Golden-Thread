@@ -108,14 +108,25 @@ function bridgeLamp(c: Ctx, kind: Lamp, x: number, y: number, z: number): void {
   }
 }
 
+/** The deck's height above its banks at `x` along a bridge of `length` in `land`'s style. */
+export function bridgeDeck(land: RegionId, length: number, x: number, deck = 1.2): number {
+  const rise = STYLE[land].rise ?? deck;
+  return 0.15 + (rise - 0.15) * (1 - (2 * x / length) ** 2);
+}
+
 export function buildBridge(c: Ctx, length: number, width: number, deck = 1.2): { deckAt: (x: number) => number } {
-  const st = STYLE[c.s.id], L = length, W = width, rise = st.rise ?? deck, g = c.g;
-  const deckAt = (x: number) => 0.15 + (rise - 0.15) * (1 - (2 * x / L) ** 2);
+  const st = STYLE[c.s.id], L = length, W = width, g = c.g;
+  const deckAt = (x: number) => bridgeDeck(c.s.id, L, x, deck);
   const n = Math.max(6, Math.round(L / 1.1)), step = L / n;
   // The deck: planks or paving following the curve.
   for (let i = 0; i < n; i++) {
     const x = -L / 2 + (i + 0.5) * step, y = deckAt(x), slope = Math.atan2(deckAt(x + step / 2) - deckAt(x - step / 2), step);
     g.add(new THREE.BoxGeometry(step + 0.06, 0.3, W), i % 2 && !st.arches ? st.deck : st.deck, M(x, y - 0.15, 0, 0, 1, 1, 1, 0, slope));
+    // A road bridge: a lane each way with a dashed line between, and raised pavements at the sides.
+    if (W >= 8) {
+      if (i % 2 === 0) g.add(new THREE.BoxGeometry(step * 0.7, 0.02, 0.14), '#f4f0e0', M(x, y + 0.01, 0, 0, 1, 1, 1, 0, slope));
+      for (const sz of [-1, 1]) g.add(new THREE.BoxGeometry(step + 0.06, 0.16, 1.4), '#' + new THREE.Color(st.deck).multiplyScalar(1.12).getHexString(), M(x, y + 0.08, sz * (W / 2 - 0.9), 0, 1, 1, 1, 0, slope));
+    }
   }
   // What holds it up: masonry arches, or posts standing in the water.
   if (st.arches > 0) {
