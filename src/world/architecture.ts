@@ -58,7 +58,7 @@ function door(c: Ctx, w: number, d: number, arched = false, col = DOOR): void {
 }
 
 /** A square pyramid (base 2·half, height h) with flat faces, base centred on the origin. */
-function pyramidGeometry(half: number, h: number): THREE.BufferGeometry {
+export function pyramidGeometry(half: number, h: number): THREE.BufferGeometry {
   const a = [-half, 0, -half], b = [half, 0, -half], cc = [half, 0, half], d = [-half, 0, half], t = [0, h, 0];
   const tri = [cc, b, t, b, a, t, a, d, t, d, cc, t, a, b, cc, a, cc, d].flat();
   const g = new THREE.BufferGeometry();

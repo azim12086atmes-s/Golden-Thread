@@ -349,3 +349,47 @@ export function stabbur(c: Ctx, x: number, z: number, ry: number, tar: string): 
     for (let k = 0; k < 14; k++) cone(c.g, 0.08, 0.35, '#5a9a44', -1.9 + (k % 7) * 0.62, 4.6 + Math.floor(k / 7) * 0.4, (k % 2 ? 0.6 : -0.6) * (1 - Math.floor(k / 7) * 0.5), 4);
   });
 }
+
+// ───────────────────────────── South Indian parts ─────────────────────────────
+
+/** A kuthuvilakku: a tall brass oil lamp — a round foot, a slender stem with collars, a dish of wick-flames, a finial. */
+export function kuthuvilakku(c: Ctx, x: number, z: number, s = 1): void {
+  const brass = '#d4a83a';
+  cyl(c.g, 0.35 * s, 0.42 * s, 0.12 * s, brass, x, 0, z, 12);
+  cyl(c.g, 0.05 * s, 0.07 * s, 1.4 * s, brass, x, 0.12 * s, z, 8);
+  for (const y of [0.4, 0.8, 1.2]) sphere(c.g, 0.1 * s, brass, x, y * s, z, 8, 0.6);
+  c.g.add(new THREE.CylinderGeometry(0.34 * s, 0.1 * s, 0.14 * s, 12), brass, M(x, 1.58 * s, z));
+  for (let i = 0; i < 5; i++) { const a = (i / 5) * Math.PI * 2; cone(c.glow, 0.035 * s, 0.14 * s, '#ffb84a', x + Math.cos(a) * 0.28 * s, 1.66 * s, z + Math.sin(a) * 0.28 * s, 5); }
+  cone(c.g, 0.06 * s, 0.4 * s, brass, x, 1.66 * s, z, 8);
+}
+
+/** A kolam: white rice-flour loops round a grid of dots, laid on the ground before a door, r across. */
+export function kolam(c: Ctx, x: number, z: number, r: number, y = 0.02): void {
+  const n = 5, step = (r * 2) / (n + 1);
+  for (let i = 1; i <= n; i++) for (let j = 1; j <= n; j++) cyl(c.g, 0.05, 0.05, 0.01, '#ffffff', x - r + i * step, y, z - r + j * step, 5);
+  for (let i = 1; i < n; i++) for (let j = 1; j < n; j++) if ((i + j) % 2 === 0) c.g.add(new THREE.TorusGeometry(step * 0.5, 0.025, 3, 16), '#ffffff', M(x - r + (i + 0.5) * step, y + 0.005, z - r + (j + 0.5) * step, 0, 1, 1, 1, Math.PI / 2, 0));
+  c.g.add(new THREE.TorusGeometry(r * 0.95, 0.03, 3, 40), '#ffffff', M(x, y + 0.005, z, 0, 1, 1, 1, Math.PI / 2, 0));
+  for (let i = 0; i < 12; i++) { const a = (i / 12) * Math.PI * 2; sphere(c.g, 0.07, i % 2 ? '#ff9a1f' : '#e8347a', x + Math.cos(a) * r * 0.95, y + 0.02, z + Math.sin(a) * r * 0.95, 4); }
+}
+
+/** A banana plant: a soft trunk and broad arching leaves. */
+export function banana(c: Ctx, x: number, z: number, s = 1): void {
+  cyl(c.g, 0.14 * s, 0.2 * s, 2 * s, '#7a9a4a', x, 0, z, 7);
+  for (let i = 0; i < 7; i++) c.g.add(new THREE.BoxGeometry(0.55 * s, 0.02, 2 * s).translate(0, 0, s).rotateX(0.7 + (i % 2) * 0.3), i % 3 ? '#4f9a3a' : '#6ab44a', M(x, 2 * s, z, (i / 7) * Math.PI * 2));
+}
+
+/** A ratha: a wooden temple chariot on four great wheels, a carved platform, a tiered cloth-and-wood canopy, a kalasha. */
+export function ratha(c: Ctx, x: number, z: number, ry: number): void {
+  const wood = '#6a4a2a', gold = '#d4af37';
+  c.g.frame(x, 0, z, ry, 1, () => {
+    for (const [sx, sz] of [[-1, -1], [1, -1], [-1, 1], [1, 1]]) { c.g.add(new THREE.CylinderGeometry(1.1, 1.1, 0.4, 16).rotateZ(Math.PI / 2), '#4a3420', M(sx * 1.9, 1.1, sz * 1.6)); c.g.add(new THREE.TorusGeometry(1.1, 0.08, 4, 16), '#2a2018', M(sx * 2.1, 1.1, sz * 1.6, Math.PI / 2)); }
+    for (let k = 0; k < 4; k++) box(c.g, 3.6 - k * 0.3, 0.55, 4 - k * 0.3, k % 2 ? '#8a5a36' : wood, 0, 1.1 + k * 0.55, 0);
+    for (let k = 0; k < 8; k++) box(c.g, 0.3, 0.4, 0.06, gold, -1.4 + k * 0.4, 1.8, 2.02); // carved panels
+    for (const [sx, sz] of [[-1, -1], [1, -1], [-1, 1], [1, 1]]) cyl(c.g, 0.1, 0.1, 2.4, gold, sx * 1.1, 3.3, sz * 1.2, 8);
+    const cols = ['#c23b2a', '#f4efe4', '#e2b43a', '#2f7a5a', '#c23b2a'];
+    for (let k = 0; k < 5; k++) cyl(c.g, 1.9 - k * 0.33, 1.7 - k * 0.33, 0.7, cols[k], 0, 5.7 + k * 0.7, 0, 8);
+    cone(c.g, 0.3, 0.8, gold, 0, 9.2, 0, 8); sphere(c.g, 0.2, gold, 0, 10.1, 0, 8);
+    for (let k = 0; k < 16; k++) { const a = (k / 16) * Math.PI * 2; cyl(c.g, 0.02, 0.02, 0.6, '#e2b43a', Math.cos(a) * 1.9, 5.1, Math.sin(a) * 1.9, 3); sphere(c.g, 0.07, k % 2 ? '#ff9a1f' : '#ffffff', Math.cos(a) * 1.9, 5.05, Math.sin(a) * 1.9, 4); }
+    for (const sx of [-1, 1]) c.g.add(new THREE.CylinderGeometry(0.06, 0.06, 5, 5).rotateX(Math.PI / 2 - 0.15), '#c9b08a', M(sx * 0.8, 0.6, 4.2)); // the pulling ropes
+  });
+}

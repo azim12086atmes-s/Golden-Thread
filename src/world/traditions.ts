@@ -324,7 +324,7 @@ function nubian(c: Ctx): Footprint {
 
 
 /** A sadu band woven into a tent strip: black ground, white and red triangles, a chain of diamonds, lines either side — `len` along x. */
-function saduBand(c: Ctx, len: number, h: number, colA = '#f4efe6', colB = '#b8322a'): void {
+export function saduBand(c: Ctx, len: number, h: number, colA = '#f4efe6', colB = '#b8322a'): void {
   const n = Math.max(2, Math.round(len / (h * 0.9)));
   for (let i = 0; i < n; i++) {
     const x = -len / 2 + (i + 0.5) * (len / n), w = len / n;
