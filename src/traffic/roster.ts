@@ -13,7 +13,15 @@ export interface Roster {
   sky: Array<[string, number]>;
 }
 
-const R = (road: Array<[string, number]>, water: Array<[string, number]>, sky: Array<[string, number]>): Roster => ({ road, water, sky });
+/**
+ * Busier than first drawn (owner: "increase the vehicles … and the number of sky vehicles and sea
+ * vehicles"): each land's list below is scaled up — half as many again on the roads, and nearly
+ * twice as many on its waters and in its skies.
+ */
+export const TRAFFIC_SCALE = { road: 1.5, water: 1.7, sky: 1.8, sea: 2 };
+const scale = (list: Array<[string, number]>, k: number): Array<[string, number]> => list.map(([id, n]) => [id, Math.max(n + 1, Math.round(n * k))]);
+const R = (road: Array<[string, number]>, water: Array<[string, number]>, sky: Array<[string, number]>): Roster =>
+  ({ road: scale(road, TRAFFIC_SCALE.road), water: scale(water, TRAFFIC_SCALE.water), sky: scale(sky, TRAFFIC_SCALE.sky) });
 
 export const LAND_TRAFFIC: Record<RegionId, Roster> = {
   meadow: R([['pumpkin-coach', 2], ['flower-cart', 3], ['vardo', 2], ['carriage', 2], ['hatchback', 2], ['vintage-car-2', 2], ['hover-car-2', 2]],
@@ -83,7 +91,7 @@ export const LAND_TRAFFIC: Record<RegionId, Roster> = {
  * charters. Each entry names the ship wanted (CHATGPT_3D_MODELS.md §12.4) and what sails in its
  * place until the 3D side builds it: `resolveShip` picks whichever exists.
  */
-export const SEA_TRAFFIC: Partial<Record<RegionId, Array<[string, string, number]>>> = {
+const SEA_BASE: Partial<Record<RegionId, Array<[string, string, number]>>> = {
   aurora: [['research-vessel', 'fishing-boat', 1], ['fishing-trawler', 'fishing-boat', 2], ['hurtigruten', 'ferry', 1]],
   norway: [['hurtigruten', 'ferry', 1], ['fishing-trawler', 'fishing-boat', 2], ['ferry-large', 'ferry', 1], ['longship', 'longship', 1]],
   switzerland: [['ferry-large', 'paddle-steamer', 1], ['cargo-ship', 'ferry', 1], ['yacht', 'yacht', 1]],
@@ -99,6 +107,9 @@ export const SEA_TRAFFIC: Partial<Record<RegionId, Array<[string, string, number
   egypt: [['cargo-ship', 'ferry', 1], ['felucca', 'felucca', 2], ['dhow-large', 'dhow', 1]],
   desert: [['dhow-large', 'dhow', 2], ['cargo-ship', 'ferry', 1]],
 };
+
+export const SEA_TRAFFIC: Partial<Record<RegionId, Array<[string, string, number]>>> = Object.fromEntries(
+  Object.entries(SEA_BASE).map(([land, list]) => [land, list!.map(([w, s2, n]) => [w, s2, Math.round(n * TRAFFIC_SCALE.sea)] as [string, string, number])]));
 
 /** The shipping line's own ship in each harbour land (wanted, stand-in). */
 export const SHIP_LINE: Partial<Record<RegionId, [string, string]>> = {

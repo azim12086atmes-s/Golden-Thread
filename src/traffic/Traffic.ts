@@ -7,7 +7,7 @@ import type { Anim, Piece } from './creatures';
 import { type Design, makeDesign } from './designs';
 import { harbourOf } from '../world/harbours';
 import { LAND_TRAFFIC, SEA_TRAFFIC, resolveShip } from './roster';
-import { HIGHWAY_TRAFFIC, RING_R, STOP_BACK, activeShare, highwayU, isOut, lights, neighbours, type Light } from './schedule';
+import { HIGHWAY_COUNT, HIGHWAY_TRAFFIC, RING_R, STOP_BACK, activeShare, highwayU, isOut, lights, neighbours, type Light } from './schedule';
 import { hasDesign } from './designs';
 
 /**
@@ -315,7 +315,7 @@ export class Traffic {
       const key = `${a}~${b}`;
       for (const [id, count] of HIGHWAY_TRAFFIC) for (let i = 0; i < count; i++, k++) {
         if (!hasDesign(id)) continue;
-        const u0 = (route.len * (k + ((key.length * 7) % 10) / 10)) / 8;
+        const u0 = (route.len * (k + ((key.length * 7) % 10) / 10)) / HIGHWAY_COUNT;
         push(id, { route, u: u0, speed: design(id).speed, alt: 0, hw: { u0 } });
       }
     }

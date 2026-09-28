@@ -85,7 +85,9 @@ export function highways(): Array<{ id: string; a: RegionId; b: RegionId; dir: [
 }
 
 /** What travels between towns on each highway, and how many (intercity buses, lorries, carts, couriers). */
-export const HIGHWAY_TRAFFIC: Array<[string, number]> = [['post-bus', 1], ['city-bus', 1], ['pickup', 1], ['suv', 1], ['sedan', 1], ['painted-truck', 1]];
+export const HIGHWAY_TRAFFIC: Array<[string, number]> = [['post-bus', 1], ['city-bus', 2], ['pickup', 2], ['suv', 2], ['sedan', 2], ['painted-truck', 2], ['hatchback', 1], ['future-ev', 1]];
+/** How many vehicles run on each highway (spread evenly round its loop). */
+export const HIGHWAY_COUNT = HIGHWAY_TRAFFIC.reduce((n, [, k]) => n + k, 0);
 
 /** Where a highway vehicle is along its loop at time t: it keeps going, whichever land you are in. */
 export const highwayU = (u0: number, speed: number, t: number, len: number): number => (((u0 + speed * t) % len) + len) % len;
