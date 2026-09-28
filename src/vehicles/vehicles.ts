@@ -1,4 +1,5 @@
 import * as THREE from 'three';
+import { RoundedBoxGeometry } from 'three/addons/geometries/RoundedBoxGeometry.js';
 import { AnimalModel } from '../animals/AnimalModel';
 import { BODY_RADIUS } from '../characters/follow';
 import { DRAGON_SCALE, Dragon } from '../event/Dragon';
@@ -205,97 +206,244 @@ export function buildVehicle(id: VehicleId, van?: { lights: string; rug: string 
 // ───────────────────────── Safar ─────────────────────────
 
 /**
+ * Safar's painted steel body: one rounded shell (a split-screen bus stretched long enough to live
+ * in), two-tone paint — teal below, cream above, the cream sweeping down the nose in the old
+ * split-screen V — under a clear coat. Its windows and wheel arches are true openings cut by the
+ * shader, so the crew inside shows through the glass.
+ */
+interface Hole { x?: number; z?: number; y: number; hx?: number; hz?: number; hy: number }
+function vanShell(W: number, y0: number, y1: number, B: number, F: number, belt: number, vTip: number, sideHoles: Hole[], frontHoles: Hole[], backHoles: Hole[], arches: Array<[number, number, number]>): THREE.Mesh {
+  const R = 0.34;
+  const geo = new RoundedBoxGeometry(W * 2, y1 - y0, F - B, 5, R);
+  geo.translate(0, (y0 + y1) / 2, (B + F) / 2);
+  const mesh = new THREE.Mesh(geo, (cache.get('safar-shell') as THREE.MeshPhysicalMaterial | undefined) ?? shellMaterial(W, belt, vTip, sideHoles, frontHoles, backHoles, arches));
+  mesh.castShadow = true;
+  return mesh;
+}
+
+/** The shell's paint: one material for every Safar (the openings are the same on all). */
+function shellMaterial(W: number, belt: number, vTip: number, sideHoles: Hole[], frontHoles: Hole[], backHoles: Hole[], arches: Array<[number, number, number]>): THREE.MeshPhysicalMaterial {
+  const mat = new THREE.MeshPhysicalMaterial({ color: '#ffffff', roughness: 0.36, metalness: 0.35, clearcoat: 0.85, clearcoatRoughness: 0.14, envMapIntensity: 0.5, side: THREE.DoubleSide });
+  mat.envMap = vehicleEnv;
+  cache.set('safar-shell', mat); // so the environment reaches it too
+  const v4 = (h: Hole, a: 'x' | 'z') => `vec4(${(h[a] ?? 0).toFixed(3)}, ${h.y.toFixed(3)}, ${((a === 'x' ? h.hx : h.hz) ?? 0).toFixed(3)}, ${h.hy.toFixed(3)})`;
+  const holes = (list: Hole[], a: 'x' | 'z', coord: string, name: string) => list.map((h) => `if (sdRR(vec2(${coord} - ${v4(h, a)}.x, vP.y - ${v4(h, a)}.y), ${v4(h, a)}.zw, 0.1) < 0.0) discard; // ${name}`).join('\n');
+  mat.onBeforeCompile = (sh) => {
+    sh.vertexShader = sh.vertexShader
+      .replace('#include <common>', '#include <common>\nvarying vec3 vP; varying vec3 vN0;')
+      .replace('#include <begin_vertex>', '#include <begin_vertex>\nvP = position; vN0 = normal;');
+    sh.fragmentShader = sh.fragmentShader
+      .replace('#include <common>', `#include <common>
+        varying vec3 vP; varying vec3 vN0;
+        float sdRR(vec2 p, vec2 b, float r) { vec2 q = abs(p) - b + r; return length(max(q, 0.0)) + min(max(q.x, q.y), 0.0) - r; }`)
+      .replace('#include <color_fragment>', `#include <color_fragment>
+        {
+          vec3 n = normalize(vN0);
+          // Windows through the sides, the split windscreen, the back window; the wheel arches.
+          if (abs(n.x) > 0.6) {
+            ${holes(sideHoles, 'z', 'vP.z', 'side')}
+            ${arches.map(([z, y, r]) => `if (length(vec2(vP.z - ${z.toFixed(3)}, vP.y - ${y.toFixed(3)})) < ${r.toFixed(3)}) discard;`).join('\n')}
+          }
+          if (n.z > 0.6) { ${holes(frontHoles, 'x', 'vP.x', 'front')} }
+          if (n.z < -0.6) { ${holes(backHoles, 'x', 'vP.x', 'back')} }
+          // Two-tone: cream above the beltline; on the nose the cream dips to a V at the badge.
+          float edge = ${belt.toFixed(3)};
+          if (n.z > 0.3) edge = mix(${vTip.toFixed(3)}, ${belt.toFixed(3)}, clamp(abs(vP.x) / ${(W - 0.3).toFixed(3)}, 0.0, 1.0));
+          vec3 teal = vec3(0.16, 0.48, 0.42), cream = vec3(0.9, 0.85, 0.72);
+          diffuseColor.rgb = vP.y > edge ? cream : teal;
+          // Inside the shell, plain cream lining.
+          if (!gl_FrontFacing) diffuseColor.rgb = vec3(0.86, 0.8, 0.7);
+        }`);
+  };
+  mat.customProgramCacheKey = () => 'safar-shell';
+  return mat;
+}
+
+/** A whitewall wheel with a chrome hubcap, turning about its axle. */
+function busWheel(g: THREE.Object3D, r: number, x: number, y: number, z: number) {
+  const w = new THREE.Group();
+  w.position.set(x, y, z);
+  w.userData.wheel = true;
+  const s = Math.sign(x);
+  const tyre = new THREE.Mesh(new THREE.CylinderGeometry(r, r, 0.3, 20), m('#1f1f22'));
+  tyre.rotation.z = Math.PI / 2;
+  w.add(tyre);
+  const wall = new THREE.Mesh(new THREE.TorusGeometry(r * 0.72, r * 0.1, 6, 20), m('#f4f1ea'));
+  wall.rotation.y = Math.PI / 2;
+  wall.position.x = s * 0.155;
+  w.add(wall);
+  const cap = new THREE.Mesh(new THREE.SphereGeometry(r * 0.46, 14, 8), m('#c8ccd4'));
+  cap.scale.set(0.35, 1, 1);
+  cap.position.x = s * 0.15;
+  w.add(cap);
+  for (let i = 0; i < 5; i++) {
+    const a = (i / 5) * Math.PI * 2;
+    const nut = new THREE.Mesh(new THREE.SphereGeometry(0.025, 5, 4), m('#9a9ea8'));
+    nut.position.set(s * 0.2, Math.cos(a) * r * 0.28, Math.sin(a) * r * 0.28);
+    w.add(nut);
+  }
+  g.add(w);
+}
+
+/**
  * Safar, the travellers' home on wheels: long and tall enough for the room inside (vanLayout.ts)
- * — two separate beds at the back, four children's bunks (the round windows), two facing
- * benches by the big windows, pet beds and a kitchen by the door, and the cab in front with two
- * separate seats and a console between. Teal and cream, with a painted band of golden-thread
- * vines, a striped awning, a roof rack with a rolled carpet and bags, and a ladder at the back.
+ * — two separate beds at the back, four children's bunks, two facing benches by the big windows,
+ * pet beds and a kitchen by the door, and the cab in front with two separate seats and a console
+ * between. A split-screen bus in painted steel: a rounded shell, teal and cream with the cream V on
+ * its nose and the golden-thread knot for a badge; a two-pane windscreen propped open a crack,
+ * round headlamps, chrome bumpers and beltline, engine louvres, whitewall tyres; a painted band of
+ * golden-thread vines, a striped awning, a roof rack with a rolled carpet and bags, a ladder.
  */
 function buildVan(root: THREE.Group, van?: { lights: string; rug: string }): void {
   const { halfW: W, back: B, cab: C, front: F, floorY: FY, wall } = VAN;
-  const top = FY + wall, len = C - B, mid = (C + B) / 2;
-  const teal = '#6fb8ae', cream = '#f7f1e3', wood = '#6b4a2a', gold = '#e2b43a', dark = '#2a3a44';
-  // Chassis and skirts.
-  bx(root, W * 2 - 0.1, 0.4, F - B - 0.3, '#3a3a40', 0, 0.55, (F + B) / 2);
-  // Living cabin walls: solid panels round real window openings (so the crew inside shows).
+  const top = FY + wall, len = C - B;
+  const wood = '#6b4a2a', gold = '#e2b43a', chrome = '#c8ccd4', seam = '#1f2226', cream = '#f7f1e3';
+  const y0 = FY - 0.35, belt = FY + 0.62;
   const winLo = FY + 0.72, winHi = FY + 1.6;
-  const openings: Array<[number, number]> = [[-0.45, 1.55], [-2.35, -0.75]]; // bench windows, bunk windows
+  const wheelZ = [C + 0.2, B + 1.4], wheelR = 0.55;
+  // Windows: the benches', the bunks', the cab doors'; the split windscreen; the back window.
+  const openings: Array<[number, number]> = [[-0.45, 1.55], [-2.35, -0.75], [C + 0.12, F - 0.5]];
+  const sideHoles = openings.map(([a, b]) => ({ z: (a + b) / 2, hz: (b - a) / 2, y: (winLo + winHi) / 2, hy: (winHi - winLo) / 2 }));
+  const wsLo = FY + 1.02, wsHi = top - 0.42;
+  const frontHoles = [-1, 1].map((s) => ({ x: s * 0.6, hx: 0.5, y: (wsLo + wsHi) / 2, hy: (wsHi - wsLo) / 2 }));
+  const backHoles = [{ x: 0.35, hx: 0.6, y: FY + 1.5, hy: 0.3 }];
+  root.add(vanShell(W, y0, top, B, F, belt, FY + 0.12, sideHoles, frontHoles, backHoles, wheelZ.map((z) => [z, wheelR, wheelR + 0.1] as [number, number, number])));
+
+  // Chassis, and dark wheel wells behind the arches so no one sees into the body.
+  bx(root, W * 2 - 0.3, 0.3, F - B - 0.6, '#2a2a30', 0, 0.45, (F + B) / 2);
+  for (const z of wheelZ) for (const s of [-1, 1]) {
+    const well = new THREE.Mesh(new THREE.CylinderGeometry(wheelR + 0.1, wheelR + 0.1, 0.4, 16, 1, true, 0, Math.PI), m('#141416'));
+    well.rotation.set(0, 0, Math.PI / 2);
+    well.position.set(s * (W - 0.22), wheelR, z);
+    root.add(well);
+  }
+  // Glass in every opening: side windows framed in chrome; the windscreen panes propped open.
   for (const sx of [-1, 1]) {
-    const x = sx * (W - 0.03);
-    bx(root, 0.06, winLo - FY, len, teal, x, (FY + winLo) / 2, mid); // below the windows
-    bx(root, 0.06, top - winHi, len, cream, x, (winHi + top) / 2, mid); // above
-    // Between and around the openings.
-    const cuts = [B, ...openings.flatMap(([a, b]) => [Math.min(a, b), Math.max(a, b)]).sort((a, b) => a - b), C];
-    for (let i = 0; i < cuts.length; i += 2) if (cuts[i + 1] - cuts[i] > 0.01) bx(root, 0.06, winHi - winLo, cuts[i + 1] - cuts[i], i === 0 || i === cuts.length - 2 ? teal : cream, x, (winLo + winHi) / 2, (cuts[i] + cuts[i + 1]) / 2);
-    // Glass in the openings, framed in gold; the bunk windows are round portholes' squared cousins.
+    const x = sx * (W - 0.05);
     for (const [a, b] of openings) {
       glass(root, 0.03, winHi - winLo, Math.abs(b - a), x, (winLo + winHi) / 2, (a + b) / 2);
-      bx(root, 0.08, 0.05, Math.abs(b - a) + 0.1, gold, x, winHi + 0.02, (a + b) / 2);
-      bx(root, 0.08, 0.05, Math.abs(b - a) + 0.1, gold, x, winLo - 0.02, (a + b) / 2);
-      bx(root, 0.07, winHi - winLo, 0.06, cream, x, (winLo + winHi) / 2, (a + b) / 2);
+      for (const y of [winHi + 0.02, winLo - 0.02]) bx(root, 0.04, 0.035, Math.abs(b - a) - 0.1, chrome, sx * (W + 0.005), y, (a + b) / 2);
     }
-    // The golden-thread band: a wavy line of vines and flowers along the whole body.
-    bx(root, 0.07, 0.06, len, gold, x * 1.005, winLo - 0.2, mid);
-    for (let i = 0; i < 22; i++) {
-      const z = B + 0.2 + i * (len - 0.4) / 21, y = winLo - 0.2 + Math.sin(i * 1.1) * 0.12;
-      const leaf = new THREE.Mesh(new THREE.SphereGeometry(0.07, 5, 4), m(i % 3 ? '#4f9a6a' : '#ff8fb8'));
-      leaf.position.set(x * 1.01, y, z);
+    // The beltline: a chrome strip the length of the body; a rain gutter under the roof's curve.
+    bx(root, 0.03, 0.04, F - B - 0.9, chrome, sx * (W + 0.01), belt, (F + B) / 2);
+    bx(root, 0.05, 0.035, F - B - 0.8, chrome, sx * (W + 0.005), top - 0.36, (F + B) / 2);
+    // Door seams: the cab door on each side, the double cargo doors on hers.
+    const seamBox = (w: number, h: number, d: number, y: number, z: number) => bx(root, w, h, d, seam, sx * (W + 0.004), y, z);
+    for (const z of [C + 0.05, F - 0.42]) seamBox(0.012, top - 0.45 - (FY - 0.2), 0.014, (top - 0.45 + FY - 0.2) / 2, z);
+    if (sx < 0) {
+      for (const z of [-0.5, 1.6]) seamBox(0.012, top - 0.45 - (FY - 0.2), 0.014, (top - 0.45 + FY - 0.2) / 2, z);
+      seamBox(0.012, winLo - 0.05 - (FY - 0.2), 0.014, (winLo - 0.05 + FY - 0.2) / 2, 0.55);
+    }
+    // Handles and hinges.
+    bx(root, 0.04, 0.05, 0.22, chrome, sx * (W + 0.02), belt - 0.12, F - 0.62);
+    if (sx < 0) for (const z of [0.4, 0.7]) bx(root, 0.04, 0.05, 0.18, chrome, sx * (W + 0.02), belt - 0.12, z);
+    // Engine louvres behind the last window.
+    for (let i = 0; i < 7; i++) bx(root, 0.02, 0.025, 0.55, seam, sx * (W + 0.004), winLo + 0.1 + i * 0.1, B + 0.95);
+    // A side mirror on a chrome arm.
+    const arm = bx(root, 0.04, 0.04, 0.34, chrome, sx * (W + 0.14), winLo + 0.1, F - 0.55);
+    arm.rotation.y = sx * 0.6;
+    const mirror = new THREE.Mesh(new THREE.CylinderGeometry(0.1, 0.1, 0.04, 14), m(chrome));
+    mirror.rotation.x = Math.PI / 2;
+    mirror.position.set(sx * (W + 0.26), winLo + 0.16, F - 0.46);
+    root.add(mirror);
+    // The golden-thread band: a wavy line of vines and flowers along the lower body, clear of the arches.
+    bx(root, 0.03, 0.05, F - B - 1.2, gold, sx * (W + 0.012), belt - 0.26, (F + B) / 2 - 0.2);
+    for (let i = 0; i < 26; i++) {
+      const z = B + 0.5 + i * (F - B - 1.3) / 25, y = belt - 0.26 + Math.sin(i * 1.1) * 0.1;
+      if (wheelZ.some((wz) => Math.abs(z - wz) < wheelR + 0.25) && y < wheelR * 2 + 0.2) continue;
+      const leaf = new THREE.Mesh(new THREE.SphereGeometry(0.065, 5, 4), m(i % 3 ? '#4f9a6a' : '#ff8fb8'));
+      leaf.position.set(sx * (W + 0.02), y, z);
       root.add(leaf);
     }
-    // Wheel arches.
-    for (const z of [B + 1.4, C - 0.6]) bx(root, 0.1, 0.25, 1.5, dark, x * 1.01, FY + 0.05, z);
   }
-  // Back wall with a window, and the ladder to the roof.
-  bx(root, W * 2, wall, 0.08, teal, 0, FY + wall / 2, B);
-  glass(root, 1.2, 0.6, 0.03, 0, FY + 1.5, B - 0.05);
-  for (const x of [-0.95, -0.55]) bx(root, 0.05, wall + 0.4, 0.05, wood, x, FY + wall / 2 + 0.2, B - 0.08);
-  for (let r = 0; r < 7; r++) bx(root, 0.45, 0.04, 0.05, wood, -0.75, FY + 0.25 + r * 0.33, B - 0.08);
-  // A barrel roof, cream, with a skylight.
-  const roof = new THREE.Mesh(new THREE.CylinderGeometry(W + 0.05, W + 0.05, len + 0.1, 18, 1, false, -Math.PI / 2, Math.PI), m(cream));
-  roof.rotation.x = -Math.PI / 2;
-  roof.scale.set(1, 1, 0.34);
-  roof.position.set(0, top, mid);
-  root.add(roof);
-  bx(root, 1.0, 0.12, 1.4, '#9fd8ff', 0, top + 0.5, 0.4);
-  // Roof rack: rails, a rolled carpet and travel bags.
-  for (const x of [-0.95, 0.95]) bx(root, 0.05, 0.05, 3.4, wood, x, top + 0.62, -1.6);
-  for (let i = 0; i < 5; i++) bx(root, 1.95, 0.04, 0.05, wood, 0, top + 0.6, -3.2 + i * 0.8);
+  // The split windscreen: two panes hinged at the top, propped open a hand's width; the pillar between.
+  for (const s of [-1, 1]) {
+    const hinge = new THREE.Group();
+    hinge.position.set(s * 0.6, wsHi, F - 0.02);
+    hinge.rotation.x = -0.1;
+    const pane = new THREE.Mesh(new THREE.BoxGeometry(1.0, wsHi - wsLo, 0.03), GLASS);
+    pane.position.y = -(wsHi - wsLo) / 2;
+    hinge.add(pane);
+    const frame = new THREE.Mesh(new THREE.BoxGeometry(1.04, 0.035, 0.04), m(chrome));
+    frame.position.y = -(wsHi - wsLo);
+    hinge.add(frame);
+    root.add(hinge);
+  }
+  // The nose: the golden-thread knot as its badge in a cream ring, chrome edging the V.
+  const badgeY = FY + 0.2;
+  const ring = new THREE.Mesh(new THREE.TorusGeometry(0.25, 0.035, 8, 28), m(chrome));
+  ring.position.set(0, badgeY, F + 0.03);
+  root.add(ring);
+  const disc = new THREE.Mesh(new THREE.CircleGeometry(0.23, 28), m(cream));
+  disc.position.set(0, badgeY, F + 0.025);
+  root.add(disc);
+  const knot = new THREE.Mesh(new THREE.TorusKnotGeometry(0.11, 0.028, 48, 6, 2, 3), m(gold));
+  knot.position.set(0, badgeY, F + 0.06);
+  knot.scale.z = 0.4;
+  root.add(knot);
+  // Round headlamps in chrome bezels, indicators above them, a chrome bumper with over-riders.
+  for (const s of [-1, 1]) {
+    const bezel = new THREE.Mesh(new THREE.TorusGeometry(0.19, 0.035, 8, 20), m(chrome));
+    bezel.position.set(s * (W - 0.5), FY + 0.12, F + 0.03);
+    root.add(bezel);
+    const hl = new THREE.Mesh(new THREE.CircleGeometry(0.17, 20), m('#fff6c0', true));
+    hl.position.set(s * (W - 0.5), FY + 0.12, F + 0.04);
+    root.add(hl);
+    const ind = new THREE.Mesh(new THREE.SphereGeometry(0.06, 10, 6), m('#ffb03a', true));
+    ind.scale.z = 0.5;
+    ind.position.set(s * (W - 0.5), FY + 0.44, F + 0.03);
+    root.add(ind);
+    for (const z of [F + 0.14, B - 0.14]) bx(root, 0.1, 0.34, 0.1, chrome, s * 0.7, 0.62, z);
+    // Round tail lamps.
+    const tl = new THREE.Mesh(new THREE.SphereGeometry(0.09, 10, 6), m('#e8303a', true));
+    tl.scale.z = 0.5;
+    tl.position.set(s * (W - 0.45), FY + 0.35, B - 0.03);
+    root.add(tl);
+  }
+  for (const z of [F + 0.12, B - 0.12]) {
+    const bar = new THREE.Mesh(new THREE.CapsuleGeometry(0.08, W * 2 - 0.1, 4, 10), m(chrome));
+    bar.rotation.z = Math.PI / 2;
+    bar.position.set(0, 0.6, z);
+    root.add(bar);
+  }
+  // Back: the engine lid's outline and the ladder to the roof.
+  bx(root, 1.3, 0.012, 0.01, seam, 0.35, FY + 0.95, B - 0.004);
+  for (const x of [-0.3, 1.0]) bx(root, 0.012, 0.9, 0.01, seam, x, FY + 0.05, B - 0.004);
+  for (const x of [-1.05, -0.65]) bx(root, 0.05, wall + 0.4, 0.05, wood, x, FY + wall / 2 + 0.2, B - 0.1);
+  for (let r = 0; r < 7; r++) bx(root, 0.45, 0.04, 0.05, wood, -0.85, FY + 0.25 + r * 0.33, B - 0.1);
+  glass(root, 1.2, 0.6, 0.03, 0.35, FY + 1.5, B + 0.05);
+  // A skylight, and the roof rack: rails, a rolled carpet and travel bags.
+  bx(root, 1.0, 0.1, 1.4, '#9fd8ff', 0, top - 0.02, 0.4);
+  for (const x of [-0.95, 0.95]) {
+    bx(root, 0.05, 0.05, 3.4, wood, x, top + 0.2, -1.6);
+    for (const z of [-3.2, 0]) bx(root, 0.04, 0.3, 0.04, chrome, x, top + 0.05, z);
+  }
+  for (let i = 0; i < 5; i++) bx(root, 1.95, 0.04, 0.05, wood, 0, top + 0.18, -3.2 + i * 0.8);
   const carpet = new THREE.Mesh(new THREE.CylinderGeometry(0.2, 0.2, 1.8, 10), m(van?.rug === 'plain' || !van ? '#c23b2a' : '#e2b43a'));
   carpet.rotation.z = Math.PI / 2;
-  carpet.position.set(0, top + 0.82, -2.6);
+  carpet.position.set(0, top + 0.42, -2.6);
   root.add(carpet);
-  for (const [x, z, c] of [[-0.5, -1.2, '#8a5a36'], [0.45, -1.4, '#2f6f9a'], [0, -0.6, '#b5654a']] as const) bx(root, 0.6, 0.35, 0.5, c, x, top + 0.82, z);
-  // The cab: lower, with a sloped windscreen and a console between the two seats.
-  bx(root, W * 2, 1.15, F - C, teal, 0, FY + 0.15, (C + F) / 2);
-  bx(root, W * 2, 0.8, 0.5, cream, 0, FY + 0.4, F - 0.2);
-  for (const x of [-(W - 0.05), W - 0.05]) bx(root, 0.1, 1.0, 0.1, cream, x, FY + 1.2, F - 0.55);
-  const shield = new THREE.Mesh(new THREE.BoxGeometry(W * 2 - 0.2, 1.0, 0.04), GLASS);
-  shield.position.set(0, FY + 1.2, F - 0.6);
-  shield.rotation.x = -0.3;
-  root.add(shield);
-  for (const x of [-W + 0.02, W - 0.02]) glass(root, 0.03, 0.9, F - C - 0.6, x, FY + 1.2, (C + F) / 2 - 0.25);
-  bx(root, W * 2, 0.1, F - C - 0.3, cream, 0, FY + 1.72, (C + F) / 2 - 0.35);
+  for (const [x, z, c] of [[-0.5, -1.2, '#8a5a36'], [0.45, -1.4, '#2f6f9a'], [0, -0.6, '#b5654a']] as const) bx(root, 0.6, 0.35, 0.5, c, x, top + 0.22, z);
+  // The cab inside: a painted dashboard, the steering wheel on her side, the console between the seats.
+  bx(root, W * 2 - 0.2, 0.36, 0.4, '#3f8f86', 0, FY + 0.72, F - 0.34);
+  bx(root, W * 2 - 0.25, 0.05, 0.42, cream, 0, FY + 0.92, F - 0.34);
+  const sw = new THREE.Mesh(new THREE.TorusGeometry(0.22, 0.025, 6, 20), m('#f4f1ea'));
+  sw.position.set(CAB_SEATS[0][0], FY + 0.98, F - 0.62);
+  sw.rotation.x = -0.9;
+  root.add(sw);
   bx(root, 0.2, 0.6, 1.0, '#8a6a4a', 0, FY + 0.25, CAB_SEATS[0][2]); // the console between their seats
   for (const [x, , z] of CAB_SEATS) {
     bx(root, 0.62, 0.14, 0.6, '#c8483a', x, FY + 0.35, z);
     bx(root, 0.62, 0.7, 0.12, '#c8483a', x, FY + 0.7, z - 0.32);
   }
-  // Bumper, headlights and the name plate.
-  bx(root, W * 2 + 0.1, 0.2, 0.2, '#d9d9e0', 0, 0.6, F + 0.05);
-  for (const x of [-0.95, 0.95]) {
-    const hl = new THREE.Mesh(new THREE.CylinderGeometry(0.2, 0.2, 0.06, 12), m('#fff6c0', true));
-    hl.rotation.x = Math.PI / 2;
-    hl.position.set(x, 1.0, F + 0.02);
-    root.add(hl);
-  }
-  bx(root, 0.9, 0.2, 0.04, gold, 0, 1.25, F + 0.03);
+  bx(root, W * 2 - 0.1, 0.05, F - B - 0.3, '#9a7450', 0, FY, (F + B) / 2 - 0.1); // the floor
   // A striped awning rolled out over the bench windows on her side.
   for (let i = 0; i < 8; i++) {
-    const a = bx(root, 0.9, 0.04, 0.26, i % 2 ? '#ffffff' : '#e8576a', -(W + 0.4), top - 0.05 - 0.02, -0.4 + i * 0.26);
+    const a = bx(root, 0.9, 0.04, 0.26, i % 2 ? '#ffffff' : '#e8576a', -(W + 0.42), top - 0.5, -0.4 + i * 0.26);
     a.rotation.z = 0.25;
   }
-  bx(root, 0.06, 0.06, 2.2, wood, -(W + 0.82), top - 0.17, 0.5);
-  // The inside you can see through the windows: bunk frames with lanterns, benches, curtains.
+  bx(root, 0.06, 0.06, 2.2, wood, -(W + 0.84), top - 0.62, 0.5);
+  // The inside you can see through the windows: bunk frames with lanterns, benches, pet beds.
   for (const [x, y, z] of BUNKS) {
     bx(root, 0.8, 0.1, 1.4, '#8a5a36', x * 0.93, FY + y - 0.05, z);
     const l = new THREE.Mesh(new THREE.SphereGeometry(0.06, 6, 5), m('#ffcf7a', true));
@@ -311,17 +459,16 @@ function buildVan(root: THREE.Group, van?: { lights: string; rug: string }): voi
     bed.position.set(x, FY + 0.08, z);
     root.add(bed);
   }
-  bx(root, W * 2 - 0.1, 0.05, len, '#9a7450', 0, FY, mid); // the cabin floor
   // Wheels.
-  for (const [x, z] of [[-W + 0.1, C + 0.2], [W - 0.1, C + 0.2], [-W + 0.1, B + 1.4], [W - 0.1, B + 1.4]]) wheel(root, 0.55, x, 0.55, z);
-  // Fairy lights under the eaves.
+  for (const z of wheelZ) for (const s of [-1, 1]) busWheel(root, wheelR, s * (W - 0.13), wheelR, z);
+  // Fairy lights along the gutter.
   if (van && van.lights !== 'none') {
     const cols = van.lights === 'rainbow' ? ['#ff8a8a', '#fff08a', '#8ac8ff', '#c8a4ff'] : ['#fff0b0'];
     for (let i = 0; i < 20; i++) {
-      const z = B + 0.2 + i * (len - 0.4) / 19;
+      const z = B + 0.4 + i * (len - 0.6) / 19;
       for (const x of [-W - 0.05, W + 0.05]) {
         const s2 = new THREE.Mesh(new THREE.SphereGeometry(0.06, 5, 4), m(cols[i % cols.length], true));
-        s2.position.set(x, top - 0.1 - Math.sin((i / 19) * Math.PI * 3) * 0.12, z);
+        s2.position.set(x, top - 0.45 - Math.sin((i / 19) * Math.PI * 3) * 0.1, z);
         root.add(s2);
       }
     }

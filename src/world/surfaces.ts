@@ -12,6 +12,9 @@ import type { RegionId } from './regions';
 export const SURF = {
   plain: 0, brick: 1, ashlar: 2, cobble: 3, plaster: 4, clapboard: 5, boards: 6, thatch: 7, clayTile: 8,
   slate: 9, steel: 10, glass: 11, asphalt: 12, marble: 13, adobe: 14, flagstone: 15, glazed: 16, cloth: 17, snow: 18,
+  // Bark, by kind of tree: deep furrows (oak, pine), peeling plates (plane), lenticels (birch,
+  // cherry), smooth mottled (magnolia, citrus), ringed leaf scars (palms).
+  barkFurrowed: 19, barkPlates: 20, barkLenticel: 21, barkSmooth: 22, barkRinged: 23,
 } as const;
 export type SurfName = keyof typeof SURF;
 
@@ -108,7 +111,18 @@ export const SURFACE_GLSL = /* glsl */ `
       float slub = sn2(vec2(st.x * 3.0, st.y * 26.0)) * 0.12;
       float stripe = step(0.86, fract(st.y / 0.62 + 0.4));
       return vec2((0.8 + fib * 0.26 + slub) * (1.0 - seam * 0.32) * (1.0 - stripe * 0.2), seam * 0.5); } // hand-spun woven strips: coarse grainy fibres, slubs, sewn seams
-    vec2 b = courses(st, vec2(0.55, 0.32), 0.5, 0.02, 0.06); return vec2(b.x, b.y * 0.5); // snow blocks
+    if (id < 18.5) { vec2 b = courses(st, vec2(0.55, 0.32), 0.5, 0.02, 0.06); return vec2(b.x, b.y * 0.5); } // snow blocks
+    if (id < 19.5) { float f = sfbm(vec2(st.x * 13.0, st.y * 1.2)); float ridge = smoothstep(0.38, 0.62, f);
+      return vec2(0.72 + ridge * 0.42 + sn2(st * 40.0) * 0.06, (1.0 - smoothstep(0.3, 0.45, f)) * 0.9); } // furrowed bark: long ridges split by deep cracks
+    if (id < 20.5) { float p = sfbm(st * 2.6 + 4.0), q = sfbm(st * 5.1 - 2.0);
+      float shade = p > 0.55 ? 1.14 : (q > 0.5 ? 0.86 : 0.98);
+      return vec2(shade * (0.95 + sn2(st * 24.0) * 0.08), (1.0 - smoothstep(0.0, 0.02, abs(p - 0.55))) * 0.5); } // plates: patches of fresh and weathered bark
+    if (id < 21.5) { vec2 q = st * vec2(3.2, 13.0); float dash = step(0.9, sh1(floor(q))) * (1.0 - smoothstep(0.18, 0.42, abs(fract(q.y) - 0.5)));
+      float mark = smoothstep(0.66, 0.74, sfbm(st * vec2(2.2, 3.6) + 9.0));
+      return vec2(1.02 + sn2(st * 18.0) * 0.05 - dash * 0.55 - mark * 0.6, 0.0); } // lenticels: dark dashes across the trunk, black knots
+    if (id < 22.5) return vec2(0.92 + sfbm(st * vec2(5.0, 1.8)) * 0.14 + sn2(st * 30.0) * 0.04, 0.0); // smooth, mottled bark
+    { float ring = fract(st.y / 0.16 + sn2(vec2(st.x * 2.0, st.y)) * 0.2); float scar = 1.0 - smoothstep(0.0, 0.18, min(ring, 1.0 - ring));
+      return vec2(0.84 + sn2(vec2(st.x * 30.0, st.y * 3.0)) * 0.2, scar * 0.8); } // ringed palm trunk: the scars of fallen fronds
   }
   // The size of each surface's smallest repeating detail (metres), for fading it out before it aliases.
   float surfacePeriod(float id) {
@@ -116,7 +130,8 @@ export const SURFACE_GLSL = /* glsl */ `
     if (id < 5.5) return 0.17; if (id < 6.5) return 0.19; if (id < 7.5) return 0.05; if (id < 8.5) return 0.19;
     if (id < 9.5) return 0.19; if (id < 10.5) return 0.6; if (id < 11.5) return 1.2; if (id < 12.5) return 0.05;
     if (id < 13.5) return 0.5; if (id < 14.5) return 0.2; if (id < 15.5) return 0.44; if (id < 16.5) return 0.15;
-    if (id < 17.5) return 0.12; return 0.32;
+    if (id < 17.5) return 0.12; if (id < 18.5) return 0.32; if (id < 19.5) return 0.07; if (id < 20.5) return 0.2;
+    if (id < 21.5) return 0.07; if (id < 22.5) return 0.18; return 0.16;
   }
   vec2 surface(float id, vec3 wp, vec3 wn) {
     vec3 an = abs(wn);

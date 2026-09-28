@@ -3,6 +3,7 @@ import { rockGeometry } from './rocks';
 import { bamboo, banana, baobab, conifer, crystalFruitTree, palm } from './species';
 import { mergeGeometries } from 'three/addons/utils/BufferGeometryUtils.js';
 import { HABITS, growTree } from './trees';
+import { SURF } from './surfaces';
 
 /**
  * GeoBuilder collects coloured primitives in a local frame stack and merges them into ONE mesh.
@@ -109,6 +110,23 @@ export class GeoBuilder {
     const surf = leaf ? 0 : this.surface ?? this.surfaces?.get('#' + this.tmpColor.getHexString()) ?? 0;
     g.setAttribute('surf', new THREE.BufferAttribute(new Float32Array(n).fill(surf), 1));
     this.parts.push(g);
+    return this;
+  }
+
+  /**
+   * Like `add`, but coloured from `bottom` at the part's lowest point to `top` at its highest (in
+   * its own frame, before placing): a crystal cloudy at its root and clear at its tip, a flame.
+   */
+  addGradient(geo: THREE.BufferGeometry, bottom: THREE.ColorRepresentation, top: THREE.ColorRepresentation, local?: THREE.Matrix4): this {
+    const src = geo.index ? geo.toNonIndexed() : geo.clone();
+    const pos = src.getAttribute('position');
+    let lo = Infinity, hi = -Infinity;
+    for (let i = 0; i < pos.count; i++) { lo = Math.min(lo, pos.getY(i)); hi = Math.max(hi, pos.getY(i)); }
+    const ts = Array.from({ length: pos.count }, (_, i) => (pos.getY(i) - lo) / Math.max(hi - lo, 1e-6));
+    this.add(src, bottom, local);
+    const g = this.parts[this.parts.length - 1], cols = g.getAttribute('color');
+    const a = new THREE.Color(bottom), b = new THREE.Color(top), c = new THREE.Color();
+    for (let i = 0; i < cols.count; i++) { c.copy(a).lerp(b, ts[i]); cols.setXYZ(i, c.r, c.g, c.b); }
     return this;
   }
 
@@ -283,11 +301,23 @@ export type Flora =
   /** Quivering gold leaves (Norway, Switzerland). */
   | 'aspen';
 
+/** Each species' bark (surfaces.ts); unlisted kinds (crystal, cloud, candy trees) keep plain wood. */
+const BARK: Partial<Record<Flora, number>> = {
+  oak: SURF.barkFurrowed, maple: SURF.barkFurrowed, olive: SURF.barkFurrowed, willow: SURF.barkFurrowed, jacaranda: SURF.barkFurrowed,
+  ginkgo: SURF.barkFurrowed, wisteria: SURF.barkFurrowed, pine: SURF.barkFurrowed, snowpine: SURF.barkFurrowed, cypress: SURF.barkFurrowed,
+  plane: SURF.barkPlates, birch: SURF.barkLenticel, aspen: SURF.barkLenticel, sakura: SURF.barkLenticel,
+  orange: SURF.barkSmooth, magnolia: SURF.barkSmooth, flame: SURF.barkSmooth, rainbowgum: SURF.barkSmooth, dragonblood: SURF.barkSmooth,
+  banana: SURF.barkSmooth, baobab: SURF.barkSmooth, bamboo: SURF.barkSmooth, palm: SURF.barkRinged, coconut: SURF.barkRinged,
+};
+
 export function tree(g: GeoBuilder, kind: Flora, x: number, y: number, z: number, s: number, rng: () => number): void {
   const m = g.mark();
   // Crowns, fronds and blossoms are leaves (crystals and cloud-puffs are not); trunks are wood.
   g.leafy = true;
   const habit = HABITS[kind];
+  // Its trunk and limbs in the species' own bark.
+  const was = g.surface;
+  g.surface = BARK[kind] ?? null;
   try {
     // Species with a habit are grown branch by branch (trees.ts); the rest keep their shapes.
     if (habit) growTree(g, habit, x, y, z, s, rng);
@@ -300,7 +330,7 @@ export function tree(g: GeoBuilder, kind: Flora, x: number, y: number, z: number
     else if (kind === 'baobab') baobab(g, x, y, z, s, rng);
     else if (kind === 'crystal') crystalFruitTree(g, x, y, z, s, rng);
     else treeParts(g, kind, x, y, z, s, rng);
-  } finally { g.leafy = false; }
+  } finally { g.leafy = false; g.surface = was; }
   // Crowns move in the wind; trunks stand firm. Palms and bamboo bend the most.
   const tall = habit ? habit.h : kind === 'palm' || kind === 'coconut' || kind === 'bamboo' ? 6 : 4.5;
   g.sway(m, y, tall * s, kind === 'bamboo' || kind === 'willow' || kind === 'palm' || kind === 'coconut' ? 1.3 : 1);

@@ -102,6 +102,12 @@ export function floatingIsland(g: GeoBuilder, glow: GeoBuilder | null, R: number
 }
 
 /** Pastel crystal colours for the Sky Isles' crystal meadows. */
+/** `c` with its hue turned by `dh` (0..1 of the wheel). */
+function hueShift(c: string, dh: number): THREE.Color {
+  const out = new THREE.Color(c), hsl = { h: 0, s: 0, l: 0 };
+  out.getHSL(hsl);
+  return out.setHSL((hsl.h + dh + 1) % 1, hsl.s, hsl.l);
+}
 export const CRYSTAL_PAL = ['#bfe8ff', '#e0c8ff', '#ffd6f0', '#c8fff0', '#fff4c0', '#d6d8ff'];
 
 let crystalTemplate: THREE.BufferGeometry | null = null;
@@ -131,9 +137,13 @@ export function crystalCluster(g: GeoBuilder, glow: GeoBuilder | null, x: number
   for (let i = 0; i < n; i++) {
     const a = (i / n) * Math.PI * 2 + rnd(), lean = i === 0 ? rnd() * 0.15 : 0.25 + rnd() * 0.45;
     const h = size * (i === 0 ? 1 : 0.35 + rnd() * 0.5), w = h * (0.22 + rnd() * 0.1);
-    const col = rnd() < 0.7 ? base : pal[Math.floor(rnd() * pal.length)];
+    // Each crystal its own hue, near its cluster's: deeper and cloudier at the root, paler and
+    // clearer toward the tip; now and then a two-coloured one (like ametrine), root one colour, tip another.
+    const own = hueShift(rnd() < 0.8 ? base : pal[Math.floor(rnd() * pal.length)], (rnd() - 0.5) * 0.14);
+    const root = own.clone().offsetHSL(0, 0.12, -0.12), tip = rnd() < 0.2 ? hueShift(pal[Math.floor(rnd() * pal.length)], 0).offsetHSL(0, 0, 0.06) : own.clone().offsetHSL(0, -0.05, 0.08);
+    const col = '#' + own.getHexString();
     const ox = Math.cos(a) * w * 0.5, oz = Math.sin(a) * w * 0.5;
-    g.add(crystalGeo(), col, M(x + ox, y - 0.05, z + oz, rnd() * 6.28, w, h, w, Math.sin(a) * lean, -Math.cos(a) * lean));
+    g.addGradient(crystalGeo(), root, tip, M(x + ox, y - 0.05, z + oz, rnd() * 6.28, w, h, w, Math.sin(a) * lean, -Math.cos(a) * lean));
     if (i === 0 && glow) sphere(glow, w * 0.35, col, x, y + h * 1.25, z, 5, 1.6);
   }
 }
