@@ -3,7 +3,7 @@ import { Rng } from '../core/rng';
 import type { Ctx } from '../world/architecture';
 import { harbours, type Harbour } from '../world/harbours';
 import { GeoBuilder } from '../world/kit';
-import { DECK, WAREHOUSE, buildHarbour } from '../world/models/harbour';
+import { DECK, LIGHTHOUSE, WAREHOUSE, buildHarbour } from '../world/models/harbour';
 import { REGION_BY_ID } from '../world/regions';
 import { WATER_Y, addPlatform, removePlatforms, terrainHeight } from '../world/terrain';
 import type { World } from '../world/World';
@@ -55,7 +55,8 @@ export class HarboursView {
       for (const x of [-9, 0, 9]) plat(x, -4, 5.2);
       for (let z = 1.5; z <= h.pier; z += 2.5) plat(0, z, 2);
       const w = harbourPoint(h, WAREHOUSE.x, WAREHOUSE.z);
-      this.world.setColliders(`harbour:${h.id}`, [{ x: w.x, z: w.z, r: WAREHOUSE.w * 0.55, h: terrainHeight(w.x, w.z) + WAREHOUSE.h + 2 }]);
+      const lh = harbourPoint(h, LIGHTHOUSE.x, LIGHTHOUSE.z);
+      this.world.setColliders(`harbour:${h.id}`, [{ x: w.x, z: w.z, r: WAREHOUSE.w * 0.55, h: terrainHeight(w.x, w.z) + WAREHOUSE.h + 2 }, { x: lh.x, z: lh.z, r: LIGHTHOUSE.r, h: terrainHeight(lh.x, lh.z) + LIGHTHOUSE.h }]);
     }
   }
 }

@@ -143,6 +143,7 @@ function institute(r: R, kind: string, stage: number): InteriorBuild {
       box(r.g, 0.4, 0.3, 0.4, ['#c8a060', '#7fb8a0', '#b0322a', '#6a8aa8'][i % 4], sx * (halfW - 0.9), 0.82, z);
       sphere(r.glow, 0.1, '#ffd08a', sx * (halfW - 0.9), h - 0.6, z, 6, 1.3);
     }
+    scienceRoom(r, kind, halfW, back, h);
     if (kind === 'magic') for (let i = 0; i < 20; i++) sphere(r.glow, 0.08, '#ffe8a0', r.rng.range(-halfW + 1, halfW - 1), r.rng.range(2.2, h - 0.4), r.rng.range(back + 1, 1), 5, 1.6);
     if (kind === 'lightcraft') for (let i = 0; i < 7; i++) box(r.glow, 0.25, 2.4, 0.05, ['#ff5a5a', '#ff9a3a', '#ffd23a', '#5ad85a', '#3a9aff', '#5a5aff', '#b86bff'][i], -1.5 + i * 0.5, 0.5, back + 0.2);
     if (kind === 'polar' || kind === 'starlore' || kind === 'navigation') { cyl(r.g, 0.15, 0.2, 1.2, '#3a3a44', 0, 0, back + 1.6, 8); r.g.add(new THREE.CylinderGeometry(0.18, 0.25, 1.8, 10), GOLD, M(0, 1.6, back + 1.6, 0, 1, 1, 1, -0.7, 0)); }
@@ -202,6 +203,75 @@ function landmarkHall(r: R): InteriorBuild {
   }
   for (const sx of [-1, 1]) bench(r, sx * 3.2, 0.6, 1.8, Math.PI / 2);
   return finish(r, { halfW, back, front: 5, height: h }, [[-3.2, 0.45, 0.6], [3.2, 0.45, 0.6]], [[0, back + 6.5], [-4, back + 3], [4, back + 3]], { pos: [0, 2.6, 7], look: [0, 2, back + 3] }, [4.5, 0, back + 1.5]);
+}
+
+/**
+ * The heart of each science's workshop (owner: "interiors for institutional builds"): what that
+ * science works with, set in the middle of the room, clear of the seats and the way in.
+ */
+function scienceRoom(r: R, kind: string, halfW: number, back: number, h: number): void {
+  const z = back + 2.6, brass = '#c9a24a', wood = '#7a5a3a';
+  switch (kind) {
+    case 'tea':
+      for (let i = 0; i < 4; i++) box(r.g, 1.8, 0.05, 0.9, '#c8d49a', -0.9 + (i % 2) * 1.8, 0, z - 0.45 + Math.floor(i / 2) * 0.9);
+      cyl(r.g, 0.3, 0.25, 0.3, '#2a2a2a', 0, 0.05, z, 10); sphere(r.g, 0.28, '#3a3a3a', 0, 0.5, z, 10, 0.8);
+      for (let i = 0; i < 4; i++) cyl(r.g, 0.09, 0.07, 0.1, '#6a8a5a', -0.6 + i * 0.4, 0.05, z + 0.6, 8);
+      break;
+    case 'celadon':
+      // A kiln with a glowing mouth, a potter's wheel, shelves of jade-green ware.
+      box(r.g, 1.6, 1.6, 1.4, '#8a6a5a', -2.2, 0, z); archPanel(r.glow, 0.6, 0.6, '#ff8a3a', -2.2, 0.3, z + 0.72);
+      cyl(r.g, 0.4, 0.45, 0.6, '#6a5a4a', 1.4, 0, z, 12); cyl(r.g, 0.35, 0.35, 0.05, '#8a7a6a', 1.4, 0.6, z, 12);
+      for (let i = 0; i < 10; i++) cyl(r.g, 0.12, 0.09, 0.3, '#9ac8b0', -halfW + 0.8 + (i % 5) * 0.4, 1.2 + Math.floor(i / 5) * 0.5, back + 0.35, 8);
+      break;
+    case 'watchmaking':
+      for (let i = 0; i < 5; i++) { r.glow.add(new THREE.CircleGeometry(0.35, 16), '#fff4d8', M(-2.4 + i * 1.2, h - 1.3, back + 0.12)); box(r.g, 0.04, 0.28, 0.02, '#2a2a2a', -2.4 + i * 1.2, h - 1.4, back + 0.14); }
+      for (let i = 0; i < 12; i++) cyl(r.g, 0.05 + (i % 3) * 0.03, 0.05 + (i % 3) * 0.03, 0.02, brass, -0.8 + (i % 6) * 0.3, 0.83, z + (i < 6 ? -0.15 : 0.15), 10);
+      sphere(r.glow, 0.08, '#ffe8a0', 0, 1.5, z, 6);
+      break;
+    case 'engineering':
+    case 'radio':
+      // Gears and a drafting table with plans; a radio set with glowing valves for the radio lab.
+      table(r, 0, z, 2.2, 1.2, '#6a4a30'); box(r.g, 1.8, 0.02, 1, '#dce8f4', 0, 0.83, z);
+      for (let i = 0; i < 3; i++) r.g.add(new THREE.TorusGeometry(0.3 + i * 0.12, 0.05, 4, 16), brass, M(-2.8 + i * 0.3, 1.6 + i * 0.5, back + 0.15));
+      if (kind === 'radio') { box(r.g, 1, 0.7, 0.5, wood, 2.3, 0.75, z); for (let i = 0; i < 4; i++) cyl(r.glow, 0.05, 0.05, 0.2, '#ff9a3a', 2.0 + i * 0.2, 1.45, z, 6); cyl(r.g, 0.02, 0.02, h - 1.6, '#3a3a3a', 2.7, 1.45, z, 3); }
+      break;
+    case 'tech':
+      for (let i = 0; i < 3; i++) { table(r, -2.2 + i * 2.2, z, 1.6, 0.8, '#d8d8e0'); box(r.glow, 1, 0.6, 0.04, ['#4ad8ff', '#b86bff', '#7aff9a'][i], -2.2 + i * 2.2, 0.95, z - 0.25); }
+      for (let i = 0; i < 6; i++) box(r.glow, 0.05, 0.05, 2, ['#ff4ad0', '#4ad8ff'][i % 2], -halfW + 0.2, 0.5 + i * 0.5, back + 2);
+      break;
+    case 'shipwright':
+      // A boat's hull on its stocks, half planked.
+      box(r.g, 0.6, 0.6, 3.4, '#6b4a2a', 0, 0, z);
+      r.g.add(new THREE.SphereGeometry(0.8, 12, 8, 0, Math.PI * 2, Math.PI / 2, Math.PI / 2).scale(1, 0.9, 2.6), '#a8783f', M(0, 1.3, z));
+      break;
+    case 'anatomy':
+      for (let i = 0; i < 3; i++) { const x = -2.4 + i * 2.4; for (const sx of [-1, 1]) r.g.add(new THREE.BoxGeometry(0.05, 1.8, 0.05), wood, M(x + sx * 0.35, 0.9, z, 0, 1, 1, 1, -0.15, 0)); box(r.g, 0.9, 1.1, 0.04, '#f4eee2', x, 1, z - 0.15); }
+      break;
+    case 'navigation':
+    case 'starlore':
+    case 'polar':
+      // A globe or an orrery on a map table.
+      table(r, 0, z, 2.4, 1.4, '#6a4a30'); box(r.g, 2.2, 0.02, 1.2, '#e8d8a8', 0, 0.83, z);
+      sphere(r.g, 0.35, '#3a6aa8', -0.7, 1.25, z, 12); r.g.add(new THREE.TorusGeometry(0.42, 0.02, 4, 20), brass, M(-0.7, 1.25, z, 0, 1, 1, 1, 0.4, 0));
+      for (let i = 0; i < 4; i++) { r.g.add(new THREE.TorusGeometry(0.2 + i * 0.12, 0.012, 4, 20), brass, M(0.8, 1.2, z, 0, 1, 1, 1, Math.PI / 2, 0)); sphere(r.glow, 0.04 + i * 0.01, ['#ffd24a', '#8fd0ff', '#ff8a5a', '#c9a0ff'][i], 0.8 + 0.2 + i * 0.12, 1.2, z, 5); }
+      break;
+    case 'irrigation':
+    case 'subak':
+    case 'gardens':
+      // A model of terraces or a garden with running water.
+      for (let k = 0; k < 4; k++) box(r.g, 2.6 - k * 0.5, 0.2, 1.6 - k * 0.3, '#6a8a4a', 0, 0.5 + k * 0.2, z);
+      r.glow.add(new THREE.PlaneGeometry(0.15, 1.2).rotateX(-Math.PI / 2), '#7ad8ff', M(0.9, 0.72, z));
+      box(r.g, 2.8, 0.5, 1.8, '#8a7a6a', 0, 0, z);
+      break;
+    case 'lightcraft':
+      for (let i = 0; i < 3; i++) r.glow.add(new THREE.OctahedronGeometry(0.25), ['#ff8fb8', '#8fd0ff', '#ffd24a'][i], M(-0.8 + i * 0.8, 1.6, z));
+      break;
+    case 'magic':
+      table(r, 0, z, 1.8, 1, '#4a3a5a');
+      for (let i = 0; i < 5; i++) box(r.g, 0.35, 0.08, 0.25, ['#8a2a3a', '#2f4a8a', '#3a7a4a'][i % 3], -0.6 + i * 0.3, 0.83 + (i % 2) * 0.08, z);
+      sphere(r.glow, 0.2, '#c9a0ff', 0, 1.3, z, 10);
+      break;
+  }
 }
 
 /** A gear: a wheel with teeth, facing +z. */
