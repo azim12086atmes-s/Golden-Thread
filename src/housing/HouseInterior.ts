@@ -259,7 +259,11 @@ export class HouseInterior {
       cyl(g, 1.0, 1.1, 0.45, '#e8dcc6', 0, 0, -1.4, 14);
       cyl(glow, 0.88, 0.88, 0.05, '#8ad8ff', 0, 0.45, -1.4, 14);
       cyl(g, 0.1, 0.14, 0.9, '#e8dcc6', 0, 0.45, -1.4, 6);
-      box(glow, 2.6, 0.04, 2.6, night > 0.5 ? '#3a4a8a' : LOCALES[land].sky.day, 0, H - 0.02, -1.4);
+      // The open sky over the court: painted sky by day, stars at night — lit only in small points.
+      box(g, 2.6, 0.04, 2.6, night > 0.5 ? '#1f2a5a' : LOCALES[land].sky.day, 0, H + 0.4, -1.4);
+      for (const sx of [-1, 1]) box(g, 0.2, 0.44, 2.8, '#e8dcc6', sx * 1.4, H, -1.4);
+      for (const sz of [-1, 1]) box(g, 2.8, 0.44, 0.2, '#e8dcc6', 0, H, -1.4 + sz * 1.4);
+      if (night > 0.5) for (let i = 0; i < 14; i++) sphere(glow, 0.025, '#fff4d0', -1.1 + (i * 0.37) % 2.2, H + 0.36, -2.5 + (i * 0.61) % 2.2, 3);
     } else if (door.kind === 'tower') {
       for (let i = 0; i < 12; i++) box(g, 1.1, 0.14, 0.4, '#a8703f', -W + 0.8, i * 0.3, B + 0.4 + i * 0.28);
     }
@@ -450,7 +454,12 @@ const FURNISH: Record<Family, Furnish> = {
       sphere(glow, 0.26, land === 'mughal' || land === 'indianorth' ? '#ffb070' : '#ffd27a', x, 2.55, z, 8, 1.4);
       for (let k = 0; k < 6; k++) cone(g, 0.04, 0.12, '#d4a84a', x + Math.cos(k) * 0.26, 2.35, z + Math.sin(k) * 0.26, 4);
     }
-    if (land === 'mughal' || land === 'indianorth') for (let i = 0; i < 3; i++) box(glow, 0.9, 1.4, 0.04, '#fff0d8', -3 + i * 3, 1.2, 3.9);
+    // Jali screens in the back wall: marble pierced in a lattice, the light coming through the holes
+    // (never a solid glowing sheet — and never at the front, between you and the room).
+    if (land === 'mughal' || land === 'indianorth') for (const x of [-3.7, 3.7]) {
+      box(g, 1.0, 1.5, 0.06, '#f2eee4', x, 1.2, -3.9);
+      for (let k = 0; k < 15; k++) box(glow, 0.1, 0.1, 0.02, '#fff0d8', x - 0.3 + (k % 3) * 0.3, 1.4 + Math.floor(k / 3) * 0.26, -3.86);
+    }
     if (land === 'islamic') { cyl(g, 0.7, 0.8, 0.4, '#2f8ab8', 2.8, 0, 1.5, 12); cyl(glow, 0.6, 0.6, 0.05, '#8ad8ff', 2.8, 0.4, 1.5, 12); }
     void rng; void trim;
   },
@@ -500,7 +509,8 @@ const FURNISH: Record<Family, Furnish> = {
     // A cuckoo clock (Switzerland), antlers-free carvings, and a wood stack.
     if (land === 'switzerland') { box(g, 0.5, 0.6, 0.2, '#6b4a2a', 2.5, 2.0, -3.85); cone(g, 0.36, 0.3, '#4a3426', 2.5, 2.6, -3.8, 4); glow.add(new THREE.CircleGeometry(0.14, 12), '#fff6e0', M(2.5, 2.3, -3.74)); }
     for (let i = 0; i < 9; i++) cyl(g, 0.1, 0.1, 0.9, '#9a6a3a', -3.3 + (i % 3) * 0.22, 0.1 + Math.floor(i / 3) * 0.2, -3.4, 6);
-    if (land === 'aurora') for (let i = 0; i < 3; i++) sphere(glow, 0.15, '#7affc0', -2 + i * 2, 2.7, 3.2, 6);
+    // Little aurora-green lamps along the back wall's beam (not hanging in front of your eyes).
+    if (land === 'aurora') for (let i = 0; i < 3; i++) sphere(glow, 0.1, '#7affc0', -2 + i * 2, 2.9, -3.6, 6);
     void rng; void b; void trim;
   },
 
@@ -574,8 +584,9 @@ function roundRoom(g: GeoBuilder, glow: GeoBuilder, shape: RoomShape, W: number,
     if (glass) {
       // The glass: its frame of ribs, stars and the aurora over it.
       for (let k = 0; k < 10; k++) g.add(new THREE.TorusGeometry(R * 0.99, 0.04, 3, 20, Math.PI / 2), '#8a8a90', M(0, 0, cz, (k / 10) * Math.PI * 2, 1, 0.82, 1, 0, 0).multiply(new THREE.Matrix4().makeRotationY(Math.PI / 2)));
-      for (let i = 0; i < 50; i++) { const a = rng.range(0, Math.PI * 2), e = rng.range(0.3, 1.4); sphere(glow, 0.03, '#fff4d0', Math.cos(a) * Math.cos(e) * R * 0.97, Math.sin(e) * R * 0.8, cz + Math.sin(a) * Math.cos(e) * R * 0.97, 3); }
-      for (let i = 0; i < 12; i++) box(glow, 0.2, 0.02, 1.4, i % 2 ? '#7affc0' : '#6ad8ff', -2.4 + i * 0.45, R * 0.8 - 0.15, cz - 1 + Math.sin(i) * 0.4);
+      // Stars and the aurora in the back half of the glass (the front is where you look from).
+      for (let i = 0; i < 50; i++) { const a = rng.range(Math.PI * 1.1, Math.PI * 1.9), e = rng.range(0.3, 1.2); sphere(glow, 0.03, '#fff4d0', Math.cos(a) * Math.cos(e) * R * 0.97, Math.sin(e) * R * 0.8, cz + Math.sin(a) * Math.cos(e) * R * 0.97, 3); }
+      for (let i = 0; i < 12; i++) box(glow, 0.12, 0.02, 0.9, i % 2 ? '#7affc0' : '#6ad8ff', -2.4 + i * 0.45, R * 0.7, cz - 2.6 + Math.sin(i) * 0.4);
     } else {
       // Snow blocks spiralling up, a clear ice window, fur on the sleeping bench.
       // The courses of snow blocks, drawn as faint seams on the dome's inside.

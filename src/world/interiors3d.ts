@@ -165,7 +165,12 @@ function castle(r: R): InteriorBuild {
   // A vaulted ceiling of stars; tall pointed windows; banners.
   for (let i = 0; i < 40; i++) sphere(r.glow, 0.05, '#fff4c0', r.rng.range(-halfW, halfW), h - 0.15, r.rng.range(back, 4), 4);
   for (const sx of [-1, 1]) for (let i = 0; i < 4; i++) {
-    archPanel(r.glow, 1.6, 5, r.night > 0.5 ? '#b89aff' : '#dff0ff', sx * (halfW - 0.01), 3, back + 3 + i * 4.5, sx * -Math.PI / 2, 0.06, true);
+    // Tall pointed windows as leaded panes: stone mullions and transoms, the light in the panes.
+    r.g.frame(sx * (halfW - 0.01), 3, back + 3 + i * 4.5, sx * -Math.PI / 2, 1, () => r.glow.frame(sx * (halfW - 0.01), 3, back + 3 + i * 4.5, sx * -Math.PI / 2, 1, () => {
+      archPanel(r.g, 1.8, 5.2, '#d8c8d0', 0, -0.1, -0.02, 0, 0.04, true);
+      for (let row = 0; row < 5; row++) for (const px of [-0.4, 0.4]) box(r.glow, 0.62, 0.8, 0.03, r.night > 0.5 ? ['#b89aff', '#ff9ac8', '#8ad8ff'][(row + (px > 0 ? 1 : 0)) % 3] : '#dff0ff', px, row * 0.9, 0.03);
+      archPanel(r.glow, 1.4, 0.6, r.night > 0.5 ? '#ffd88a' : '#eef6ff', 0, 4.55, 0.03, 0, 0.03, true);
+    }));
     box(r.g, 0.05, 3.6, 1.2, i % 2 ? rose : '#6a3a8a', sx * (halfW - 0.1), 6.5, back + 5.2 + i * 4.5, 0);
   }
   // The high table on a dais, long tables down the hall, floating candles.
