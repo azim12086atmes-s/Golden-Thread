@@ -114,7 +114,9 @@ sections C1–C7) and `3D_BUILDS_HANDOFF.md` (3D work, sections 2a and 3.x). Tic
 - [ ] Real-GPU frame-rate measurement
 
 ## K. Interiors (NEW)
-- [ ] 3D: interiors for monuments, the castle (great hall, library, tower), every institute stage, penthouses and caverns (`CHATGPT_3D_MODELS.md` §20; contract `src/world/models/interiors.ts`)
+- [ ] 3D: interiors for penthouses (still the standard room). Done: monuments, the castle, every institute stage and caverns (`CHATGPT_3D_MODELS.md` §20; contract `src/world/models/interiors.ts`)
+- [x] Institute rooms and monument halls dressed as their land's own interiors — floor, walls, ceiling, lamps (`world/interiorDress.ts`)
+- [x] House rooms shaped like their buildings (igloo and glass-igloo domes, lavvu/goahti/round-tent cones, the Bedouin tent, pitched and saddle roofs, vaults, open courts), named by their kind at the door, with per-home colour variations and a keepsake (`housing/HouseInterior.ts` `HOUSE_SHAPE`, `keepsake`)
 - [x] Logic: doors ask `buildInterior` first (monuments, institutes via “Step inside”, caverns after exploring, castle, penthouses) and use its seats, spots, gather point and camera; scenes seating the two closer than 2.2 m are refused (`HouseInterior.safeInterior`); the institute panel opens from inside
 - [ ] Logic: penthouses to buy (after their models). The castle door is done (`event/site.ts` `CASTLE_DOOR`)
 
