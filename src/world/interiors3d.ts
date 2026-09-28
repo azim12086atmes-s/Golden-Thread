@@ -3,6 +3,7 @@ import { Rng } from '../core/rng';
 import { LAND_STYLE } from './buildings';
 import { CRYSTAL_PAL, crystalCluster } from './islands';
 import { GeoBuilder, M, archPanel, box, cone, cyl, dome, sphere } from './kit';
+import { dressRoom } from './interiorDress';
 import type { InteriorBuild, InteriorSpec } from './models/interiors';
 import { REGION_BY_ID, type RegionId } from './regions';
 import { rockGeometry, shardGeometry } from './rocks';
@@ -13,6 +14,8 @@ import { rockGeometry, shardGeometry } from './rocks';
  * by kind — the kitchen hall, the clinic ward (green crescent), the classroom, the library stacks,
  * and the sciences' workshops; the celebration castle's great hall of floating candles with its
  * library alcove and tower stair; and each land's landmark hall in its own colours and arches.
+ * Institute rooms and landmark halls are dressed as their land's own interiors are (interiorDress.ts):
+ * the floor, the walls, the ceiling and the lamps.
  *
  * Every room: floor at y = 0, the way in at +z, the two seats ≥ 2.2 m apart (they never touch).
  */
@@ -104,9 +107,10 @@ const BOOKS = ['library'];
 function institute(r: R, kind: string, stage: number): InteriorBuild {
   const s = REGION_BY_ID[r.land], st = LAND_STYLE[r.land];
   const halfW = 4.5 + stage * 1.2, back = -5 - stage * 1.5, h = 3.6 + stage * 0.8;
-  shell(r, halfW, back, 4, h, s.walls[0], '#a88a6a', '#f4eee2');
+  // The room as its land builds rooms inside: floor, walls, ceiling and lamps (interiorDress.ts).
+  const inset = dressRoom(r, halfW, back, 4, h);
   // Windows along the walls in the land's arch, bright by day, warm at night.
-  for (const sx of [-1, 1]) for (let i = 0; i < 2 + stage; i++) archPanel(r.glow, 1, 1.6, r.night > 0.5 ? s.glow : '#e8f4ff', sx * (halfW - 0.01), 1.2, back + 1.5 + i * 2.6, sx * -Math.PI / 2, 0.05, st.arch === 'pointed');
+  for (const sx of [-1, 1]) for (let i = 0; i < 2 + stage; i++) archPanel(r.glow, 1, 1.6, r.night > 0.5 ? s.glow : '#e8f4ff', sx * (halfW - inset - 0.01), 1.4, back + 1.5 + i * 2.6, sx * -Math.PI / 2, 0.05, st.arch === 'pointed');
   const spots: Array<[number, number]> = [[0, back + 1.4]];
   if (kind === 'kitchen') {
     box(r.g, halfW * 1.4, 0.95, 0.8, '#b8b0a0', 0, 0, back + 0.6); // the counter
@@ -184,16 +188,17 @@ function castle(r: R): InteriorBuild {
 function landmarkHall(r: R): InteriorBuild {
   const s = REGION_BY_ID[r.land], st = LAND_STYLE[r.land];
   const halfW = 7, back = -12, h = 8;
-  shell(r, halfW, back, 5, h, s.walls[0], '#c8bca8', s.walls[1 % s.walls.length]);
+  // The hall as its land builds halls inside (interiorDress.ts); Sakura Hollow and New Yonder lay their own floors below.
+  const inset = dressRoom(r, halfW, back, 5, h, { floor: r.land !== 'japan' && r.land !== 'newyork' });
   // Columns down both sides, arches between, a lit dome of the land's colour overhead.
   for (const sx of [-1, 1]) for (let i = 0; i < 5; i++) {
     const z = back + 1.5 + i * 3;
     cyl(r.g, 0.3, 0.34, h - 0.4, s.trims[0], sx * (halfW - 1.6), 0, z, 10);
-    archPanel(r.glow, 1.2, 2.6, r.night > 0.5 ? s.glow : '#e8f4ff', sx * (halfW - 0.01), 1.6, z + 1.5, sx * -Math.PI / 2, 0.05, st.arch === 'pointed');
+    archPanel(r.glow, 1.2, 2.6, r.night > 0.5 ? s.glow : '#e8f4ff', sx * (halfW - inset - 0.01), 1.6, z + 1.5, sx * -Math.PI / 2, 0.05, st.arch === 'pointed');
   }
-  // A patterned carpet down the middle in the land's frieze colours.
+  // A runner down the middle in the land's frieze colours, over its floor.
   const [fa, fb] = st.frieze;
-  for (let i = 0; i < 12; i++) box(r.g, 2.2, 0.03, 1.2, i % 2 ? fa : fb, 0, 0, back + 1 + i * 1.3);
+  for (let i = 0; i < 12; i++) box(r.g, 1.4, 0.05, 1.2, i % 2 ? fa : fb, 0, 0, back + 1 + i * 1.3);
   // What is inside this monument (monumentInside): each its own.
   if (!monumentInside(r, halfW, back, h)) {
     dome(r.glow, 2.6, s.glow, 0, h - 1.6, back + 5, 16, 0.4);
