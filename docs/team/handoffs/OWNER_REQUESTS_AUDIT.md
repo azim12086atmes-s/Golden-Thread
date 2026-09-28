@@ -87,6 +87,16 @@ checking. Detailed specifications for the open items are in `OWNER_REQUESTS_SPEC
 | Atmospheric particles beyond drifting motes | ✅ butterflies and dragonflies by day, fireflies after dusk, Sky Isles spores, chimney and tent-fire smoke, dawn ground mist, golden-hour sunbeams (atmosphere.ts, Atmos.ts) |
 | Interiors: no glowing sheet across the view | ✅ tested (interiorGlow.test.ts) |
 
+## 5c. Owner requests of 2026-09-28
+| Request | Status |
+|---|---|
+| London monument designed on every side, not one | ✅ palace river front, both ends and the Victoria Tower dressed like the front |
+| More road, sky and sea vehicles | ✅ counts scaled (roster.ts `TRAFFIC_SCALE`), twelve per highway; new designs per land ⬜ (kit first, DESIGN_METHOD.md) |
+| Water brought up to meet the land | ✅ water level −1.5 → −0.8 |
+| Bridges wider and broader for two-way lanes | ✅ |
+| Tree leaves glow slightly at night like the flowers | ✅ |
+| Sky Isles crystals mostly pink with pastels here and there | ✅ |
+
 ## 6. Towns, architecture and lighting
 | Request | Status |
 |---|---|
@@ -100,7 +110,7 @@ checking. Detailed specifications for the open items are in `OWNER_REQUESTS_SPEC
 | Houses less monotonous: more types, colours, textures (grainy plaster, timber, bamboo) | ✅ 3–4 traditional kinds per land (traditions.ts, traditionsMore.ts, facade.ts) |
 | Town layouts organic, not a grid | ✅ winding lanes and side lanes, houses facing them (townLayout.ts); New Yonder keeps its grid |
 | Roads, paths and canals following the terrain; no overlap or chunking | ⬜ |
-| Bridges larger and fancier in each land's architecture; boats under, vehicles over | ✅ each land's own lit bridge (645e452); wider two-way decks ⬜ |
+| Bridges larger and fancier in each land's architecture; boats under, vehicles over | ✅ each land's own lit bridge (645e452); 11 m two-way decks with a centre line, traffic drives over them |
 | Real lighting: lamps and lanterns that light the ground round them; London gas lamps, tent lamps, Gulabi Nagar diyas, Madinat an-Nur hanging lanterns, Chinese sky lanterns; lit bridges | ✅ street, lane, bank, door, gate lamps and tent fires light pools round them (lamplight.ts); lit bridges 🟡 |
 | TV panels and more cyber/solar-punk artifacts in New Yonder | ✅ screen towers, avenue panels, pylon screen (ed6168b) |
 | Monuments: external detail and texturing | ✅ |

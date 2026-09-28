@@ -15,7 +15,7 @@ export type WaterBody =
   | { kind: 'river'; land: RegionId; pts: Array<[number, number]>; w: number };
 
 /** The sea level (terrain.ts). Kept here too so this module has no cycle with terrain. */
-const SEA = -1.5;
+const SEA = -0.8; // = WATER_Y (terrain.ts), kept here to avoid an import cycle
 /** Roads end here (RegionBuilder lays avenues out to CITY_RADIUS + 40 plus a segment). */
 export const ROADS_END = CITY_RADIUS + 48;
 export const CASTLE_AT = { x: 0, z: -292, r: 72 };

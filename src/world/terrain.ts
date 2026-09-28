@@ -7,7 +7,8 @@ import {
   CITY_RADIUS, GRID_COLS, GRID_ROWS, HOME_COL, HOME_ROW, REGION_SIZE, regionAtGrid, type RegionSpec,
 } from './regions';
 
-export const WATER_Y = -1.5;
+/** The water level of the sea, lakes and rivers: high enough that the water comes up to meet the land. */
+export const WATER_Y = -0.8;
 
 /** A walkable surface that is not terrain: floating islands, platforms, temple terraces. */
 export interface Platform { x: number; z: number; r: number; y: number; /** Who added it, to remove it again. */ tag?: string }
