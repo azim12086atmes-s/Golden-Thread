@@ -1,6 +1,6 @@
 import * as THREE from 'three';
 import type { Ctx, LandmarkOut } from './architecture';
-import { pyramidGeometry } from './architecture';
+import { floatingIsland, pyramidGeometry } from './architecture';
 import { regionCenter } from './regions';
 import { PYRAMIDS } from './reserved';
 import { terrainHeight } from './terrain';
@@ -2449,6 +2449,89 @@ const aurora: Monument = (c, o) => {
   o.height = 32;
 };
 
+// ───────────────────────────── The Sky Isles ─────────────────────────────
+
+/** A bridge of light between two points: glowing planks, rope rails sagging on little posts. */
+function lightBridge(c: Ctx, a: THREE.Vector3, b: THREE.Vector3): void {
+  const d = b.clone().sub(a), len = d.length(), n = Math.max(4, Math.round(len / 0.8));
+  const side = new THREE.Vector3(-d.z, 0, d.x).normalize();
+  const ry = Math.atan2(d.x, d.z);
+  for (let i = 0; i <= n; i++) {
+    const t = i / n, p = a.clone().lerp(b, t);
+    p.y -= Math.sin(t * Math.PI) * len * 0.05;
+    c.glow.add(new THREE.BoxGeometry(1.6, 0.08, 0.5), i % 2 ? '#e0d0ff' : '#fff0c8', M(p.x, p.y, p.z, ry));
+    if (i % 3 === 0) for (const s of [-1, 1]) { cyl(c.g, 0.03, 0.03, 0.9, '#b8a4ff', p.x + side.x * s * 0.8, p.y, p.z + side.z * s * 0.8, 4); sphere(c.glow, 0.07, '#fff0b0', p.x + side.x * s * 0.8, p.y + 0.95, p.z + side.z * s * 0.8, 5); }
+  }
+  for (const s of [-1, 1]) {
+    const pts: THREE.Vector3[] = [];
+    for (let i = 0; i <= 12; i++) { const t = i / 12, p = a.clone().lerp(b, t); p.y += 0.85 - Math.sin(t * Math.PI) * len * 0.05; p.addScaledVector(side, s * 0.8); pts.push(p); }
+    c.g.add(new THREE.TubeGeometry(new THREE.CatmullRomCurve3(pts), 24, 0.03, 4), '#d8c8ff');
+  }
+}
+
+/** A moon pavilion: a ring of slender moonstone columns, a lilac dome, a crystal hanging inside. */
+function moonPavilion(c: Ctx, x: number, y: number, z: number, s: number): void {
+  const moon = '#f4f0ff';
+  for (let k = 0; k < 6; k++) { const a = (k / 6) * Math.PI * 2; cyl(c.g, 0.12 * s, 0.14 * s, 3 * s, moon, x + Math.cos(a) * 1.6 * s, y, z + Math.sin(a) * 1.6 * s, 8); }
+  cyl(c.g, 1.9 * s, 1.9 * s, 0.25 * s, moon, x, y + 3 * s, z, 12);
+  c.g.add(new THREE.SphereGeometry(1.7 * s, 14, 7, 0, Math.PI * 2, 0, Math.PI / 2), '#c8b8ff', M(x, y + 3.25 * s, z));
+  cone(c.g, 0.1 * s, 0.8 * s, '#d4af37', x, y + 4.9 * s, z, 6);
+  c.glow.add(new THREE.OctahedronGeometry(0.4 * s).scale(0.6, 1.4, 0.6), '#bfe8ff', M(x, y + 1.9 * s, z));
+}
+
+const skyisles: Monument = (c, o) => {
+  const moon = '#f4f0ff', lilac = '#b8a4ff', gold = '#d4af37';
+  const tops: THREE.Vector3[] = [];
+  // ═══ The spiral of floating isles, each joined to the next by a bridge of light. ═══
+  for (let i = 0; i < 16; i++) {
+    const a = i * 0.9, r = 70 - i * 3.2;
+    const x = Math.cos(a) * r, z = Math.sin(a) * r, y = 18 + i * 9;
+    const size = i === 15 ? 26 : c.rng.range(9, 15);
+    floatingIsland(c, x, y, z, size);
+    o.platforms.push({ x, z, r: size - 0.8, y: y + 0.6 });
+    tops.push(new THREE.Vector3(x, y + 0.6, z));
+    if (i < 15 && i % 4 === 2) moonPavilion(c, x + 2, y + 0.6, z - 2, 1);
+    if (i < 15) { cyl(c.g, 0.06, 0.08, 2.6, moon, x - 2.5, y + 0.6, z + 2.5, 6); c.glow.add(new THREE.OctahedronGeometry(0.3).scale(0.7, 1.3, 0.7), ['#bfe8ff', '#ffc8f0', '#fff0b0'][i % 3], M(x - 2.5, y + 3.5, z + 2.5)); }
+  }
+  for (let i = 0; i < 15; i++) {
+    const a = tops[i], b = tops[i + 1], d = b.clone().sub(a).setY(0).normalize();
+    const rb = i + 1 === 15 ? 20 : 8;
+    lightBridge(c, a.clone().addScaledVector(d, 8).setY(a.y + 0.2), b.clone().addScaledVector(d, -rb).setY(b.y + 0.2));
+  }
+  // ═══ The Temple of the Great Lantern on the highest isle. ═══
+  const T = tops[15];
+  c.g.frame(T.x, T.y, T.z, 0, 1, () => c.glow.frame(T.x, T.y, T.z, 0, 1, () => {
+    // A stepped moonstone platform, twelve columns with crystal capitals and arches between them.
+    for (let k = 0; k < 3; k++) surf(c, SURF.marble, () => cyl(c.g, 15 - k * 0.8, 15.2 - k * 0.8, 0.4, moon, 0, k * 0.4, 0, 36));
+    const R = 12.5, H = 13;
+    for (let k = 0; k < 12; k++) {
+      const a = (k / 12) * Math.PI * 2, x = Math.cos(a) * R, z = Math.sin(a) * R;
+      cyl(c.g, 0.75, 0.85, 0.5, moon, x, 1.2, z, 12);
+      cyl(c.g, 0.55, 0.62, H, moon, x, 1.7, z, 14);
+      for (let q = 0; q < 6; q++) c.glow.add(new THREE.OctahedronGeometry(0.35).scale(0.5, 1.5, 0.5), ['#bfe8ff', '#ffc8f0', '#fff0b0', '#c8ffe0'][q % 4], M(x + Math.cos(q) * 0.45, 1.7 + H + 0.2, z + Math.sin(q) * 0.45, 0, 1, 1, 1, Math.cos(q) * 0.4, Math.sin(q) * 0.4));
+      const a2 = ((k + 0.5) / 12) * Math.PI * 2, span = 2 * R * Math.sin(Math.PI / 12);
+      c.g.add(new THREE.TorusGeometry(span / 2 - 0.5, 0.2, 5, 16, Math.PI), lilac, M(Math.cos(a2) * R * 0.99, 1.7 + H - span / 2 + 0.6, Math.sin(a2) * R * 0.99, Math.PI / 2 - a2));
+      c.glow.add(new THREE.TorusGeometry(span / 2 - 0.8, 0.05, 4, 16, Math.PI), '#fff0c8', M(Math.cos(a2) * R * 0.99, 1.7 + H - span / 2 + 0.6, Math.sin(a2) * R * 0.99, Math.PI / 2 - a2));
+    }
+    // The entablature ring, a band of little stars, the ribbed dome of lilac glass.
+    cyl(c.g, R + 1, R + 1, 1.2, moon, 0, 1.7 + H, 0, 36);
+    for (let k = 0; k < 48; k++) { const a = (k / 48) * Math.PI * 2; sphere(c.glow, 0.12, k % 2 ? '#fff0b0' : '#bfe8ff', Math.cos(a) * (R + 1.02), 1.7 + H + 0.6, Math.sin(a) * (R + 1.02), 5); }
+    c.g.add(new THREE.SphereGeometry(R, 32, 14, 0, Math.PI * 2, 0, Math.PI / 2), lilac, M(0, 2.9 + H, 0, 0, 1, 0.75, 1));
+    for (let k = 0; k < 16; k++) { const a = (k / 16) * Math.PI * 2, pts: THREE.Vector3[] = []; for (let q = 0; q <= 8; q++) { const t = (q / 8) * (Math.PI / 2) * 0.95; pts.push(new THREE.Vector3(Math.cos(a) * Math.cos(t) * (R + 0.08), 2.9 + H + Math.sin(t) * R * 0.75 + 0.06, Math.sin(a) * Math.cos(t) * (R + 0.08))); } c.glow.add(new THREE.TubeGeometry(new THREE.CatmullRomCurve3(pts), 10, 0.1, 4), '#fff0c8'); }
+    // The Great Lantern within: a glowing heart, armillary rings about it, a beam rising through the dome.
+    sphere(c.glow, 3, '#fff0b0', 0, 7.5, 0, 16, 1.2);
+    for (const [rx, ry] of [[0, 0], [Math.PI / 2, 0], [0.9, 0.6], [2.1, 1.2]]) c.g.add(new THREE.TorusGeometry(4.4, 0.12, 5, 40), gold, M(0, 7.5, 0, ry, 1, 1, 1, rx, 0));
+    cyl(c.g, 0.4, 0.6, 1.4, gold, 0, 1.2, 0, 10); cyl(c.g, 0.2, 0.2, 2.6, gold, 0, 2.6, 0, 8);
+    cyl(c.glow, 0.3, 0.3, 30, '#fff0b0', 0, 2.9 + H + R * 0.75, 0, 6);
+    cone(c.g, 0.6, 3, gold, 0, 2.9 + H + R * 0.75, 0, 8);
+    // Crystals floating round the temple, and banners of light between some columns.
+    for (let k = 0; k < 10; k++) { const a = (k / 10) * Math.PI * 2 + 0.3; c.glow.add(new THREE.OctahedronGeometry(0.7).scale(0.6, 1.6, 0.6), ['#bfe8ff', '#ffc8f0', '#fff0b0', '#c8ffe0', '#d8c8ff'][k % 5], M(Math.cos(a) * 19, 8 + Math.sin(k * 1.7) * 3, Math.sin(a) * 19, a)); }
+    for (let k = 0; k < 12; k += 3) { const a = ((k + 0.5) / 12) * Math.PI * 2; box(c.glow, 1.2, 5, 0.04, ['#ffc8f0', '#bfe8ff', '#fff0b0', '#c8ffe0'][k / 3], Math.cos(a) * (R - 0.4), 8, Math.sin(a) * (R - 0.4), Math.PI / 2 - a); }
+  }));
+  // No colliders: they stand from the ground up and would wall off the meadow beneath the isle.
+  o.height = T.y + 60;
+};
+
 // ───────────────────────────── the rebuilt monuments ─────────────────────────────
 
-export const MONUMENTS: Partial<Record<RegionId, Monument>> = { japan, korea, china, norway, switzerland, london, newyork, indianorth, renaissance, indiasouth, islamic, vintage, middleeast, egypt, desert, indonesia, aurora };
+export const MONUMENTS: Partial<Record<RegionId, Monument>> = { japan, korea, china, norway, switzerland, london, newyork, indianorth, renaissance, indiasouth, islamic, vintage, middleeast, egypt, desert, indonesia, aurora, skyisles };

@@ -1300,7 +1300,7 @@ const landmarks: Record<RegionId, LandmarkFn> = {
   },
 };
 
-function floatingIsland(c: Ctx, x: number, y: number, z: number, size: number): void {
+export function floatingIsland(c: Ctx, x: number, y: number, z: number, size: number): void {
   c.g.frame(x, y, z, 0, 1, () => c.glow.frame(x, y, z, 0, 1, () => {
     const edgeAt = craggyIsland(c.g, c.glow, size, () => c.rng.next());
     // A crystal meadow on the lawn: clusters round the rim, clear of the middle where you land.
