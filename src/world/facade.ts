@@ -21,7 +21,7 @@ export interface FacadeStyle {
   bayW: number;
   depth: [number, number];
   /** The ground storey: plain, white stucco (London), rusticated stone (palazzo), a stone base (chalet), a stoop (brownstone). */
-  base: 'plain' | 'stucco' | 'rusticated' | 'stone' | 'stoop';
+  base: 'plain' | 'stucco' | 'rusticated' | 'stone' | 'stoop' | 'shop';
   /** Glazing: sash (two sashes), casement (cross), arched, lattice (Japanese koshi), tall (French). */
   win: 'sash' | 'casement' | 'arched' | 'lattice' | 'tall';
   /** Over each window: a flat lintel, a keystone, a pediment, an arch or a hood. */
@@ -49,6 +49,10 @@ export interface FacadeStyle {
   baseCol: string;
   iron: string;
   roofCol?: string;
+  /** Walls of the style's own (a red rorbu, a white Engadin house) instead of the land's palette. */
+  walls?: string[];
+  /** A shopfront's fascia and awning colours (base 'shop'). */
+  shop?: string[];
 }
 
 const pick = <T>(c: Ctx, a: readonly T[]) => c.rng.pick(a);
@@ -166,6 +170,37 @@ export function balconyUnit(c: Ctx, st: FacadeStyle, x: number, y: number, w: nu
   }
 }
 
+/**
+ * A shopfront across the ground floor (the wall facing +z at z = 0): a painted fascia with gilt
+ * lettering, pilasters, glazed display windows on stall-risers with goods behind the glass, and a
+ * striped awning let down over the pavement. The door (at doorX) is left clear.
+ */
+function shopfront(c: Ctx, st: FacadeStyle, w: number, fh: number, doorX: number): void {
+  const col = pick(c, st.shop ?? ['#2f4a3a', '#7a1f24', '#1f2f5a']), t = st.trim;
+  // The shopfront stands forward of the wall: its windows are shallow display cases.
+  const G = 0.4; // the glass line
+  box(c.g, w, 0.7, 0.16, col, 0, fh - 0.85, G + 0.06); // the fascia
+  for (let i = 0; i < Math.floor((w - 2) / 0.5); i++) box(c.g, 0.26, 0.3, 0.02, '#d4af37', -w / 2 + 1 + i * 0.5, fh - 0.7, G + 0.15); // gilt letters
+  box(c.g, w + 0.3, 0.14, 0.3, t, 0, fh - 0.15, G); // the cornice over the fascia
+  for (const x of [-w / 2 + 0.1, w / 2 - 0.1]) box(c.g, 0.24, fh - 0.15, G + 0.2, t, x, 0, (G + 0.2) / 2); // pilasters
+  // Display windows either side of the recessed door: a stall-riser, goods on a shelf, the glass.
+  for (const [x0, x1] of [[-w / 2 + 0.3, doorX - 0.9], [doorX + 0.9, w / 2 - 0.3]]) {
+    const ww = x1 - x0;
+    if (ww < 0.8) continue;
+    const cx = (x0 + x1) / 2;
+    box(c.g, ww, 0.6, G, col, cx, 0, G / 2);
+    box(c.g, ww, fh - 1.75, 0.04, '#a8c0c8', cx, 0.6, G);
+    box(c.g, ww, 0.05, G, col, cx, fh - 1.15, G / 2); // the case's head, a strip of light under it
+    box(c.glow, ww * 0.9, 0.05, 0.05, c.s.glow, cx, fh - 1.2, G - 0.1);
+    for (let k = 0; k < Math.floor(ww / 0.45); k++) box(c.g, 0.26, 0.3 + (k % 3) * 0.12, 0.22, ['#e8b84a', '#c8483a', '#6aa84f', '#f2efe6'][k % 4], x0 + 0.25 + k * 0.45, 0.6, G / 2);
+    for (const x of [x0, x1]) box(c.g, 0.06, fh - 1.75, 0.08, t, x, 0.6, G);
+  }
+  // The awning, striped, let down over the pavement, its valance hanging at the front.
+  const stripes = Math.round(w / 0.5);
+  for (let i = 0; i < stripes; i++) c.g.add(new THREE.BoxGeometry(w / stripes, 0.04, 1.3).translate(0, 0, 0.65), i % 2 ? col : '#f4f0e6', M(-w / 2 + (i + 0.5) * (w / stripes), fh - 1.05, G + 0.1, 0, 1, 1, 1, 0.38));
+  for (let i = 0; i < stripes; i++) box(c.g, w / stripes, 0.22, 0.03, i % 2 ? col : '#f4f0e6', -w / 2 + (i + 0.5) * (w / stripes), fh - 1.75, G + 1.3);
+}
+
 /** A canted bay window: three angled faces of glass projecting from the +z wall, floors high. */
 function bayWindow(c: Ctx, st: FacadeStyle, wall: string, x: number, y0: number, h: number, w: number): void {
   const geo = new THREE.CylinderGeometry(w / 2, w / 2, h, 6, 1, false, -Math.PI / 2, Math.PI);
@@ -243,8 +278,8 @@ function roofUnit(c: Ctx, st: FacadeStyle, w: number, d: number, y: number, roof
 export function compose(c: Ctx, st: FacadeStyle, doorCol = '#4a3426'): Footprint & { top: number } {
   const floors = c.rng.int(st.floors[0], st.floors[1]), bays = c.rng.int(st.bays[0], st.bays[1]);
   const fh = st.floorH, w = bays * st.bayW + 0.6, d = c.rng.range(st.depth[0], st.depth[1]), H = floors * fh;
-  const wall = pick(c, c.s.walls), roofCol = st.roofCol ?? pick(c, c.s.roofs);
-  const baseH = st.base === 'stone' ? fh : st.base === 'stucco' || st.base === 'rusticated' ? fh : st.base === 'stoop' ? 1.6 : 0;
+  const wall = pick(c, st.walls ?? c.s.walls), roofCol = st.roofCol ?? pick(c, c.s.roofs);
+  const baseH = st.base === 'stone' ? fh : st.base === 'stucco' || st.base === 'rusticated' || st.base === 'shop' ? fh : st.base === 'stoop' ? 1.6 : 0;
 
   // The body, and its base storey in stone, stucco or rusticated blocks.
   box(c.g, w, H, d, wall);
@@ -273,11 +308,13 @@ export function compose(c: Ctx, st: FacadeStyle, doorCol = '#4a3426'): Footprint
       for (let i = 0; i < bays; i++) {
         const x = -w / 2 + 0.3 + (i + 0.5) * st.bayW;
         if (f === 0 && i === doorBay) { doorUnit(c, st, x, st.base === 'stoop' ? 1.6 : 0, doorCol); continue; }
+        if (f === 0 && st.base === 'shop') continue; // the shopfront fills the ground floor
         if (i === bayAt && f < 2) continue;
         windowUnit(c, st, x, wy, st.bayW * 0.46, wh, c.rng.chance(st.shutters));
         if (f > 0 && (st.balconyAt === 'all' || (st.balconyAt === 'noble' && noble)) && st.balcony !== 'none') balconyUnit(c, st, x, f * fh + 0.02, st.bayW * 0.8);
       }
     }
+    if (st.base === 'shop') shopfront(c, st, w, fh, -w / 2 + 0.3 + (doorBay + 0.5) * st.bayW);
     if (bayAt >= 0) bayWindow(c, st, wall, -w / 2 + 0.3 + (bayAt + 0.5) * st.bayW, st.base === 'stoop' ? 1.6 : 0, Math.min(2, floors) * fh - 0.2, st.bayW * 0.9);
     if (st.base === 'stoop') {
       // A high stoop to the parlour floor, with iron railings.
@@ -357,5 +394,29 @@ export const FACADES = {
   /** Swiss chalet: stone base, deep-eaved low gable, a carved wooden balcony on every floor, flower boxes, shutters. */
   switzerland: S({ floors: [2, 3], bays: [3, 3], bayW: 2.1, depth: [8, 9], base: 'stone', win: 'casement', head: 'none', shutters: 0.9, balcony: 'wood', balconyAt: 'all', cornice: 'eaves', roof: 'chalet', trim: '#f3ead8', shutter: ['#c23b3b', '#2f6b3a'], baseCol: '#a8a090' }),
   /** New York brownstone: a high stoop, carved lintels, a bay, a bracketed cornice. */
+  /** A London mews cottage: two low storeys in pastel paint, casements, a parapet. */
+  londonMews: S({ floors: [2, 2], floorH: 3, bays: [2, 3], bayW: 2.1, depth: [7, 8], win: 'casement', head: 'flat', cornice: 'parapet', roof: 'parapet', chimneys: 1, walls: ['#f2d8d8', '#d8e8f2', '#f2ecc8', '#d8f0dc', '#f4f0e6'], trim: '#ffffff' }),
+  /** A London corner shop: a Victorian shopfront with fascia and awning, flats above. */
+  londonShop: S({ floors: [3, 3], bays: [3, 4], bayW: 2.0, depth: [8, 9], base: 'shop', win: 'sash', head: 'keystone', cornice: 'parapet', strings: true, roof: 'parapet', chimneys: 2, baseCol: '#f2efe6', shop: ['#1f3a2a', '#5a1a24', '#1a2a4a', '#2a2a2a'] }),
+  /** A rorbu: a fisherman's cabin in ox-blood red with white trim, one or two storeys under a dark gable. */
+  rorbu: S({ floors: [1, 2], floorH: 3, bays: [2, 2], bayW: 2, depth: [6, 7], win: 'casement', head: 'flat', cornice: 'none', roof: 'gablefront', chimneys: 1, walls: ['#8a2a22', '#9a3226'], roofCol: '#3a3a36', trim: '#ffffff' }),
+  /** A Sørlandet house: white clapboard, two storeys, a porch, a steep gable. */
+  sorlandet: S({ floors: [2, 2], bays: [3, 4], bayW: 2.1, depth: [7, 8], win: 'casement', head: 'hood', cornice: 'none', roof: 'gable', chimneys: 1, porch: 0.8, walls: ['#fbfbf6', '#f4f4ee'], roofCol: '#3a2a26', trim: '#ffffff' }),
+  /** An Engadin house: thick white stucco walls, small deep windows under grey sgraffito arches, a broad low gable. */
+  engadin: S({ floors: [2, 3], floorH: 3.1, bays: [3, 3], bayW: 2.2, depth: [9, 10], base: 'stucco', win: 'casement', head: 'arch', shutters: 0.3, cornice: 'none', roof: 'gable', walls: ['#f4f0e6', '#ece6d8'], trim: '#7a7a7a', baseCol: '#e8e2d4', shutter: ['#6a4a2a'] }),
+  /** A Bernese farmhouse: a vast hipped roof over timber walls, galleries on every floor. */
+  bernese: S({ floors: [2, 2], bays: [4, 5], bayW: 2.1, depth: [10, 12], base: 'stone', win: 'casement', head: 'none', shutters: 0.6, balcony: 'wood', balconyAt: 'all', cornice: 'none', roof: 'hip', walls: ['#a8743a', '#9a6a36'], trim: '#f3ead8', shutter: ['#c23b3b'], baseCol: '#b8b0a0' }),
+  /** A Tuscan townhouse (casa a schiera): tall and narrow, green shutters, iron balconies. */
+  tuscanTown: S({ floors: [3, 4], floorH: 3.3, bays: [2, 3], bayW: 2, depth: [8, 10], win: 'tall', head: 'flat', shutters: 0.9, balcony: 'iron', balconyAt: 'noble', cornice: 'bracket', strings: true, roof: 'hip', shutter: ['#3a5a3a', '#4a6a4a'], trim: '#f4ead8' }),
+  /** A Tuscan farmhouse (casa colonica): stone walls, a hipped roof, a dovecote tower at the corner. */
+  tuscanFarm: S({ floors: [2, 2], bays: [3, 4], bayW: 2.3, depth: [9, 10], base: 'stone', win: 'arched', head: 'none', shutters: 0.6, cornice: 'none', roof: 'hip', turret: 0.6, walls: ['#c8a878', '#b89868', '#d8b888'], shutter: ['#6a4a2a'], baseCol: '#a89878', trim: '#e8dcc0' }),
+  /** A Florentine bottega: a palazzo with quoins and a shop on the ground floor. */
+  bottega: S({ floors: [3, 3], floorH: 3.5, bays: [3, 4], bayW: 2.3, depth: [9, 10], base: 'shop', win: 'arched', head: 'pediment', cornice: 'bracket', quoins: true, strings: true, roof: 'hip', trim: '#fbf3e0', shop: ['#5a3a1a', '#2f4a6a', '#6a2a2a'] }),
+  /** A Craftsman bungalow: one and a half storeys, a deep porch, a low wide gable. */
+  bungalow: S({ floors: [1, 2], floorH: 3.1, bays: [3, 3], bayW: 2.3, depth: [9, 10], win: 'casement', head: 'flat', cornice: 'bracket', roof: 'gablefront', porch: 1, chimneys: 1, trim: '#f4efe0', shutters: 0.2, shutter: ['#4a6a4a'] }),
+  /** A New England colonial: symmetrical, clapboard, black shutters, twin chimneys. */
+  colonial: S({ floors: [2, 2], bays: [5, 5], bayW: 2, depth: [8, 9], win: 'sash', head: 'pediment', shutters: 1, cornice: 'dentil', roof: 'gable', chimneys: 2, porch: 0.5, walls: ['#fbfbf6', '#e8d8b8', '#c8483a', '#d8e0e8'], shutter: ['#1f1f24', '#2f4a3a'], trim: '#ffffff' }),
+  /** A Maple Row main-street shop: a painted front over a shopfront with an awning. */
+  mainStreet: S({ floors: [2, 2], bays: [3, 4], bayW: 2.2, depth: [9, 10], base: 'shop', win: 'tall', head: 'hood', cornice: 'bracket', roof: 'parapet', trim: '#ffffff', shop: ['#c8483a', '#2f5a9a', '#3a7a4a', '#e8b84a'] }),
   brownstone: S({ floors: [4, 5], floorH: 3.4, bays: [3, 3], bayW: 2.2, depth: [12, 13], base: 'stoop', win: 'tall', head: 'hood', cornice: 'bracket', roof: 'parapet', bay: 0.35, trim: '#d8cfbf', baseCol: '#8a7a6a' }),
 };

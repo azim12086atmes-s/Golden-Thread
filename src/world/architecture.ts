@@ -89,18 +89,21 @@ const houses: Partial<Record<RegionId, HouseFn>> = {
   },
 
   norway(c) {
-    // Norwegian wood, after Bryggen.
-    return compose(c, FACADES.norway, '#3a2a22');
+    // Norwegian wood after Bryggen, red fishermen's rorbuer, white Sørlandet houses.
+    const k = c.rng.next();
+    return compose(c, k < 0.25 ? FACADES.rorbu : k < 0.45 ? FACADES.sorlandet : FACADES.norway, '#3a2a22');
   },
 
   switzerland(c) {
-    // A Swiss chalet.
-    return compose(c, FACADES.switzerland, '#5a3a26');
+    // Swiss chalets, white Engadin houses, great-roofed Bernese farmhouses.
+    const k = c.rng.next();
+    return compose(c, k < 0.25 ? FACADES.engadin : k < 0.4 ? FACADES.bernese : FACADES.switzerland, '#5a3a26');
   },
 
   london(c) {
-    // Georgian and Victorian terraces (docs/ARCHITECTURE_RESEARCH.md).
-    return compose(c, FACADES.london, pick(c, ['#1f1f24', '#2f4a3a', '#7a1f24', '#1f2f5a']));
+    // Georgian and Victorian terraces (docs/ARCHITECTURE_RESEARCH.md), mews cottages, corner shops.
+    const k = c.rng.next();
+    return compose(c, k < 0.15 ? FACADES.londonShop : k < 0.35 ? FACADES.londonMews : FACADES.london, pick(c, ['#1f1f24', '#2f4a3a', '#7a1f24', '#1f2f5a']));
   },
 
   newyork(c) {
@@ -113,13 +116,15 @@ const houses: Partial<Record<RegionId, HouseFn>> = {
   },
 
   renaissance(c) {
-    // An Italian palazzo.
-    return compose(c, FACADES.renaissance, '#5a3a26');
+    // Italian palazzi, Tuscan townhouses, farmhouses with their dovecotes, botteghe.
+    const k = c.rng.next();
+    return compose(c, k < 0.15 ? FACADES.bottega : k < 0.4 ? FACADES.tuscanTown : k < 0.55 ? FACADES.tuscanFarm : FACADES.renaissance, '#5a3a26');
   },
 
   vintage(c) {
-    // A Queen Anne "Painted Lady".
-    return compose(c, FACADES.vintage, pick(c, ['#5a8ab5', '#e07a5f', '#6ab58a', '#d9467a']));
+    // Queen Anne "Painted Ladies", Craftsman bungalows, colonials, main-street shops.
+    const k = c.rng.next(), door = pick(c, ['#5a8ab5', '#e07a5f', '#6ab58a', '#d9467a']);
+    return compose(c, k < 0.15 ? FACADES.mainStreet : k < 0.35 ? FACADES.bungalow : k < 0.5 ? FACADES.colonial : FACADES.vintage, door);
   },
 };
 
