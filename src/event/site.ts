@@ -100,7 +100,7 @@ export function lines(st: GameState): Lines {
       `Congratulations, ${girl}, on your new job!`,
     ],
     cake: [
-      `A chocolate cake as tall as a lantern — and her friends, Musadiq, Farzan, Zaid, Zidane, Varna, Srushti, the twins Shruti and Smruti, and Shifa, circling ${girl} as though she were the bride.`,
+      `A chocolate cake as tall as a lantern — and her friends, Musadiq, Farzan, Zaid, Zidane, Varna, Srushti, the twins Shruti and Smruti, and Shifa, with Aasima, Suvaibia, Maryam and Abdur Rahim, circling ${girl} as though she were the bride.`,
       `From across the table, ${boy} cuts it with the thread's light.`,
       `${boy} offers ${girl} the first piece…`,
       '…and everyone cheers, under the aurora and the rainbows.',

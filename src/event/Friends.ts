@@ -1,16 +1,21 @@
 import * as THREE from 'three';
 import { CharacterModel, HERO_SCALE } from '../characters/CharacterModel';
 import { OUTFITS } from '../characters/outfits';
+import { SIBLINGS } from '../caravan/caravan';
 
 /**
- * Her friends at the celebration (owner's list), who circle round her while the cake is cut, as
- * though she were the bride. Heights are set against the two travellers':
+ * Her friends and their brothers and sisters at the celebration (owner's lists), who circle round her
+ * while the cake is cut, as though she were the bride. Heights are set against the two travellers':
  *   Musadiq taller than Azim; Farzan as tall as Azim; Zaid taller than Fathima, shorter than Azim;
  *   Zidane taller than Zaid; Varna taller than Fathima, shorter than Zaid; Srushti, Shifa and the
- *   twins Shruti and Smruti as tall as Fathima.
+ *   twins Shruti and Smruti as tall as Fathima; and the family (caravan.ts SIBLINGS): Aasima taller
+ *   than Fathima, Suvaibia shorter, Maryam taller than Suvaibia, Abdur Rahim as tall as Maryam and
+ *   shorter than Azim — each in their party best.
  * `rise` places each between her height (0) and his (1); above 1 is taller than him.
  */
 export interface Friend { name: string; who: 'girl' | 'boy'; outfit: string; skin: string; rise: number }
+
+const PARTY_BEST: Record<string, string> = { 'sib-aasima': 'g-kurung', 'sib-suvaibia': 'g-pavadai', 'sib-maryam': 'g-kebaya', 'sib-abdurrahim': 'b-jama' };
 
 export const FRIENDS: Friend[] = [
   { name: 'Musadiq', who: 'boy', outfit: 'b-sherwani', skin: '#c99a74', rise: 1.35 },
@@ -22,13 +27,15 @@ export const FRIENDS: Friend[] = [
   { name: 'Shruti', who: 'girl', outfit: 'g-phulkari', skin: '#dba27a', rise: 0 },
   { name: 'Smruti', who: 'girl', outfit: 'g-phulkari', skin: '#dba27a', rise: 0 },
   { name: 'Shifa', who: 'girl', outfit: 'g-farshi', skin: '#e3b58f', rise: 0 },
+  // The family, in their party best (their heights are theirs wherever they are).
+  ...SIBLINGS.map((s) => ({ name: s.name, who: s.who, outfit: PARTY_BEST[s.id] ?? s.outfit, skin: s.skin, rise: s.rise })),
 ];
 
 /** A friend's model scale: between hers and his by `rise`. */
 export const friendScale = (f: Friend): number => HERO_SCALE.girl + (HERO_SCALE.boy - HERO_SCALE.girl) * f.rise;
 
-/** How far from her they walk: clear of him (1.95 m), the table and her wings' folded reach. */
-export const RING_R = 3.6;
+/** How far from her they walk: clear of him (1.95 m), the table and her wings' folded reach; wide enough for thirteen. */
+export const RING_R = 3.8;
 
 /** The ring of friends walking round her, cheering. */
 export class FriendsRing {

@@ -550,3 +550,35 @@ const MARKET_COLLIDE: Partial<Record<RegionId, Collide[]>> = {
 export function civicColliders(land: RegionId, kind: 'worship' | 'market'): Collide[] {
   return kind === 'worship' ? WORSHIP_COLLIDE[land] : MARKET_COLLIDE[land] ?? [];
 }
+
+// ─────────────────────────── names and pointers ───────────────────────────
+
+/** What each land's place of worship and market are called, and the icon over them (no crosses: chapels ring a bell). */
+export const CIVIC_LABEL: Record<RegionId, { worship: [string, string]; market: [string, string] }> = {
+  islamic: { worship: ['🕌', 'the neighbourhood mosque'], market: ['🛍️', 'the covered souk'] },
+  middleeast: { worship: ['🕌', 'the Gulf mosque'], market: ['🛍️', 'the souq'] },
+  desert: { worship: ['🕌', 'the mud-brick mosque'], market: ['⛺', 'the tent market'] },
+  egypt: { worship: ['🕌', 'the Mamluk mosque'], market: ['🛍️', 'the khan bazaar'] },
+  mughal: { worship: ['🕌', 'the Mughal mosque'], market: ['🛍️', 'the chowk'] },
+  indianorth: { worship: ['🛕', 'the Nagara temple'], market: ['🛍️', 'the haat'] },
+  indiasouth: { worship: ['🛕', 'the Dravidian shrine'], market: ['🛍️', 'the market'] },
+  indonesia: { worship: ['🛕', 'the pura'], market: ['🛍️', 'the pasar'] },
+  japan: { worship: ['⛩️', 'the Shinto shrine'], market: ['🛍️', 'the shōtengai'] },
+  korea: { worship: ['🏯', 'the temple hall'], market: ['🛍️', 'the market'] },
+  china: { worship: ['🏯', 'the temple'], market: ['🏮', 'the night market'] },
+  london: { worship: ['🔔', 'the Gothic chapel'], market: ['🛍️', 'the covered market'] },
+  norway: { worship: ['🔔', 'the stave chapel'], market: ['🐟', 'the fish market'] },
+  switzerland: { worship: ['🔔', 'the Alpine chapel'], market: ['🧀', "the farmers' market"] },
+  renaissance: { worship: ['🔔', 'the Romanesque chapel'], market: ['🛍️', 'the market loggia'] },
+  vintage: { worship: ['🔔', 'the meeting house'], market: ['🛍️', "the farmers' market"] },
+  aurora: { worship: ['🔔', 'the A-frame chapel'], market: ['❄️', 'the winter market'] },
+  meadow: { worship: ['🌸', 'the blossom pavilion'], market: ['🛍️', 'the market'] },
+  newyork: { worship: ['🏛️', 'the community hall'], market: ['🛍️', 'the market'] },
+  skyisles: { worship: ['✨', ''], market: ['✨', ''] },
+};
+
+/** Where to walk to reach a civic building's way in (local to the land's centre): its door, on the town side. */
+export function civicDoor(q: { x: number; z: number }): { x: number; z: number } {
+  const d = Math.hypot(q.x, q.z) || 1;
+  return { x: q.x - (q.x / d) * (CIVIC_R + 1.5), z: q.z - (q.z / d) * (CIVIC_R + 1.5) };
+}

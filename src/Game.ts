@@ -13,6 +13,7 @@ import { EventBus } from './core/events';
 import { Guide } from './guide/Guide';
 import { CakeScene } from './story/CakeScene';
 import { FestivalAir } from './world/FestivalAir';
+import { CivicMarkers } from './world/CivicMarkers';
 import { CityScreens } from './world/CityScreens';
 import { THREAD_FLAG, ThreadScene } from './story/ThreadScene';
 import { StoryScene } from './story/StoryScene';
@@ -132,6 +133,8 @@ export class Game {
   private festivalAir!: FestivalAir;
   /** New Yonder's big screens (CityScreens.ts). */
   private cityScreens!: CityScreens;
+  /** Pointers over the town's place of worship and market (CivicMarkers.ts). */
+  private civicMarkers = new CivicMarkers();
   /** Each land's own sky effects (world/skies.ts). */
   readonly skyFx = new SkyFX();
   /** Each land's weather: dust, snow, mist, haze or pollen on the wind. */
@@ -220,7 +223,7 @@ export class Game {
     this.scene.add(this.world.group, this.sky.group, this.sky.sunLight, this.sky.sunLight.target, this.sky.hemi, this.ambience.points, this.regionFx.points, this.skyLanterns.mesh, this.skyFx.group, this.weather.group, this.traffic.group);
     this.festivalAir = new FestivalAir(this.world.solid, this.world.glow);
     this.cityScreens = new CityScreens(this.world.solid);
-    this.scene.add(this.festivalAir.group, this.cityScreens.group);
+    this.scene.add(this.festivalAir.group, this.cityScreens.group, this.civicMarkers.group);
 
     this.composer = new EffectComposer(this.renderer);
     this.composer.addPass(new RenderPass(this.scene, this.camera));
@@ -405,6 +408,7 @@ export class Game {
     this.skyLanterns.update(dt, this.t, this.trav.gPos, this.region.id, this.sky.night);
     this.festivalAir.update(dt, this.t, this.region.id, this.sky.night);
     this.cityScreens.update(this.t, this.region.id, this.sky.night);
+    this.civicMarkers.update(this.t, this.region.id, this.trav.gPos);
     this.skyFx.party = this.celebration.festivities.level;
     this.skyFx.partyAt.copy(this.celebration.festivities.centre);
     this.camera.getWorldDirection(this.skyFx.lookDir);

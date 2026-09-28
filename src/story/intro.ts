@@ -35,8 +35,11 @@ export function features(st: GameState): Card[] {
   const pals = st.caravan.map((id) => COMPANION_BY_ID[id]).filter(Boolean);
   const kids = pals.filter((c) => c.kind === 'child').map((c) => c.name);
   const pets = pals.filter((c) => c.kind === 'pet').map((c) => c.name);
+  const sibs = pals.filter((c) => c.kind === 'sibling').map((c) => c.name);
+  const list = (a: string[]) => a.length <= 1 ? a.join('') : `${a.slice(0, -1).join(', ')} and ${a[a.length - 1]}`;
   const cards: Card[] = [
-    { icon: '🧒', title: 'Children', text: `${kids.join(' and ') || 'Children'} travel with you, with their families' blessing — each going to family or to learn a craft. More join as you help their lands.`, how: 'Walk up and press E to chat.' },
+    { icon: '👨‍👩‍👧', title: 'Family', text: `${list(sibs) || 'Your brothers and sisters'} — your brothers and sisters — travel with you everywhere: walking beside you, riding their own carpet when you fly, and at every celebration.`, how: 'Walk up and press E to chat.' },
+    { icon: '🧒', title: 'Children', text: `${kids.length ? `${list(kids)} travel` : 'Children from the lands you help join you'} with their families' blessing — each going to family or to learn a craft.`, how: 'Walk up and press E to chat.' },
     { icon: '🐾', title: 'Pets', text: `${pets.join(' and ') || 'Pets'} come too. Befriend animals everywhere with the food they like; give them a home on your land.`, how: 'Press E near an animal.' },
   ];
   for (const v of Object.values(VEHICLES)) {

@@ -1,6 +1,7 @@
 import * as THREE from 'three';
 import { AnimalModel } from '../animals/AnimalModel';
-import { CharacterModel } from '../characters/CharacterModel';
+import { CharacterModel, HERO_SCALE } from '../characters/CharacterModel';
+import { OUTFITS } from '../characters/outfits';
 import type { Game } from '../Game';
 import { wardrobeFor } from '../npc/Townsfolk';
 import { REGION_BY_ID, regionCenter, type RegionId } from '../world/regions';
@@ -14,12 +15,13 @@ const CHILD_SCALE = 0.62;
 import { arrivalsIn, bringHome, CARPET_L, CARPET_W, CHILDREN, COMPANION_BY_ID, MAX_CHILDREN, TRAVELLER_CLEARANCE, CARPET_SIDE, caravanStep, canJoin, balloonFor, carpetTarget, offerFood, strayHome, PETS, type CompanionDef, type Member, type PetDef } from './caravan';
 
 /**
- * The caravan in the world: the children and pets travelling with the two, walking behind them
+ * The caravan in the world: their brothers and sisters, the children and pets travelling with the
+ * two, walking behind them
  * (children close, pets ranging wider), always keeping clear space around the travellers and
  * each other (caravan.ts proves it). When the travellers take a ground vehicle they ride along
  * and reappear beside them on foot. Whenever the two fly — on the cape, the dragon, the plane or
- * a winged unicorn — the children and pets ride a flying carpet beside them, and step off where
- * it lands.
+ * a winged unicorn — the children and pets ride a flying carpet beside them, the brothers and sisters
+ * a second carpet just behind it, and they step off where it lands.
  */
 interface Body { def: CompanionDef; member: Member; child?: CharacterModel; pet?: AnimalModel; ph: number }
 /** A land's pet waiting at the plaza to be met. */
@@ -31,13 +33,16 @@ export class CaravanView {
   private bodies: Body[] = [];
   private strays = new Map<string, Stray>();
   private carpet = new Carpet();
+  /** The brothers' and sisters' own carpet, flying just behind the first. */
+  private carpet2 = new Carpet();
   private carpetState: CarpetState = 'off';
   private carpetHeading = 0;
   private tmp = new THREE.Vector3();
 
   constructor(private g: Game) {
     this.carpet.root.visible = false;
-    g.scene.add(this.carpet.root, this.carpet.trail);
+    this.carpet2.root.visible = false;
+    g.scene.add(this.carpet.root, this.carpet.trail, this.carpet2.root, this.carpet2.trail);
     for (const id of g.st.caravan) this.add(id);
     // Children go home when the caravan reaches their destination.
     g.bus.on('region:entered', ({ regionId }) => {
@@ -82,7 +87,11 @@ export class CaravanView {
     const p = this.g.trav.gPos;
     const member: Member = { id, kind: def.kind, x: p.x - 3, z: p.z - 3, speed: 0 };
     const body: Body = { def, member, ph: Math.random() * 10 };
-    if (def.kind === 'child') {
+    if (def.kind === 'sibling') {
+      // Full grown, at their own heights between hers and his (caravan.ts SIBLINGS).
+      body.child = new CharacterModel(OUTFITS[def.outfit], def.skin, HERO_SCALE.girl + (HERO_SCALE.boy - HERO_SCALE.girl) * def.rise);
+      this.g.scene.add(body.child.root);
+    } else if (def.kind === 'child') {
       const pool = wardrobeFor(def.origin, def.who);
       const outfit = pool[(def.name.length * 7) % pool.length];
       body.child = new CharacterModel(outfit, ['#f1c9a5', '#e0ac85', '#c68b62', '#a8704a'][def.name.length % 4], CHILD_SCALE);
@@ -155,7 +164,7 @@ export class CaravanView {
   }
 
   /** Where the children (or the pets) are, on average — for the story's camera. */
-  centroid(kind: 'child' | 'pet'): THREE.Vector3 | null {
+  centroid(kind: 'child' | 'pet' | 'sibling'): THREE.Vector3 | null {
     const b = this.bodies.filter((x) => x.def.kind === kind);
     if (!b.length) return null;
     const v = new THREE.Vector3();
@@ -180,7 +189,7 @@ export class CaravanView {
     const aloft = g.started && !g.inVan && cutOk && tr.airborne && tr.gPos.y > below + 1.2;
     if (aloft && this.carpetState === 'off') {
       // Unroll the carpet under the caravan where they stand.
-      const c = this.centroid('child') ?? this.centroid('pet') ?? tr.gPos;
+      const c = this.centroid('child') ?? this.centroid('pet') ?? this.centroid('sibling') ?? tr.gPos;
       this.carpet.root.position.set(c.x, surfaceAt(c.x, c.z, c.y + 3) + 0.3, c.z);
       this.carpetHeading = tr.heading;
       this.carpet.open = 0.05;
@@ -212,7 +221,7 @@ export class CaravanView {
       root.position.set(m.x, surfaceAt(m.x, m.z, tr.gPos.y + 3), m.z);
       if (Math.hypot(dx, dz) > 0.002) root.rotation.y = Math.atan2(dx, dz);
       if (b.child) {
-        b.child.holdBalloon(balloonFor(b.def.id, this.g.region.id, Math.floor(this.g.st.minutes / 1440), this.g.celebration.festivities.level > 0.5));
+        if (b.def.kind === 'child') b.child.holdBalloon(balloonFor(b.def.id, this.g.region.id, Math.floor(this.g.st.minutes / 1440), this.g.celebration.festivities.level > 0.5));
         b.child.update(dt, { speed: m.speed, airborne: false, riding: false, t: t + b.ph });
       } else b.pet!.update(dt, m.speed, t + b.ph);
     });
@@ -266,12 +275,24 @@ export class CaravanView {
     root.rotation.set(Math.sin(t * 1.3) * 0.03, this.carpetHeading, Math.sin(t * 0.9) * 0.04 * (aloft ? 1 : 0));
     this.carpet.update(dt, t, g.sky.night, aloft ? tr.currentSpeed : 0);
     root.updateMatrixWorld();
+    // The second carpet flies a carpet's length behind the first, on the same side, farther still
+    // from the two.
+    const r2 = this.carpet2.root, hasSibs = this.bodies.some((b) => b.def.kind === 'sibling');
+    r2.visible = hasSibs && root.visible;
+    if (hasSibs) {
+      const fx = Math.sin(this.carpetHeading), fz = Math.cos(this.carpetHeading);
+      r2.position.set(root.position.x - fx * (CARPET_L + 1.4), root.position.y + Math.sin(t * 1.1 + 1) * 0.08, root.position.z - fz * (CARPET_L + 1.4));
+      r2.rotation.copy(root.rotation);
+      this.carpet2.open = this.carpet.open;
+      this.carpet2.update(dt, t, g.sky.night, aloft ? tr.currentSpeed : 0);
+      r2.updateMatrixWorld();
+    }
 
-    let ci = 0, pi = 0;
+    let ci = 0, pi = 0, si = 0;
     for (const b of this.bodies) {
       const kind = b.def.kind;
-      const seatIdx = kind === 'child' ? ci++ : pi++;
-      const p = this.carpet.seat(kind, seatIdx, new THREE.Vector3());
+      const seatIdx = kind === 'child' ? ci++ : kind === 'sibling' ? si++ : pi++;
+      const p = (kind === 'sibling' ? this.carpet2 : this.carpet).seat(kind, seatIdx, new THREE.Vector3());
       const r = (b.child ?? b.pet)!.root;
       r.visible = this.carpet.open > 0.3 || aloft;
       r.position.copy(p);
@@ -283,6 +304,7 @@ export class CaravanView {
     if (!aloft && this.carpet.open <= 0) {
       this.carpetState = 'off';
       root.visible = false;
+      this.carpet2.root.visible = false;
     }
   }
 
@@ -292,6 +314,12 @@ export class CaravanView {
     let ci = 0, pi = 0;
     for (const b of this.bodies) {
       const r = (b.child ?? b.pet)!.root;
+      if (b.def.kind === 'sibling') {
+        // The brothers and sisters follow in their own car (the van's benches are sized for the
+        // children), and are beside the two again the moment they step out.
+        r.visible = false;
+        continue;
+      }
       if (b.child) {
         const s = RIDE_CHILD_SEATS[ci++ % RIDE_CHILD_SEATS.length];
         // Sitting: the hips rest on the cushion (0.5 m up), legs forward.
@@ -313,6 +341,7 @@ export class CaravanView {
   /** A short line when you stop to talk to one of them. */
   chat(def: CompanionDef): string {
     if (def.kind === 'pet') return `${def.name} (from ${REGION_BY_ID[def.origin].name}) — ${def.blurb}`;
+    if (def.kind === 'sibling') return `${def.name}: ${def.blurb}`;
     return `${def.name}: ${def.blurb} (${def.tradition}.) Travelling to ${REGION_BY_ID[def.destination].name}: ${def.journey}`;
   }
 }

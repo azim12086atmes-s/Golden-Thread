@@ -90,7 +90,7 @@ Publish with `bash scripts/deploy-pages.sh` (builds, tests, copies to gh-pages r
 | Day/night control | `core/time.ts`, UI | T or tap the clock → next of dawn/day/dusk/night (forward only). Help: four buttons + "pause the sky". |
 | Objective panel | `ui/UI.ts` | ✕ close, 🎯 pill to reopen, O key; focus follows; remembered per device. Browser-verified. |
 | Safar van | `vehicles/vanLayout.ts`, `vehicles.ts`, `housing/VanInterior.ts` | 3 × 8.6 m; shared floor plan inside/out: 2 separate beds, 4 bunks, 4 pet beds, benches with table (seats 2.2 m+ apart), kitchen, storage. Children and pets ride visibly inside while driving. |
-| Pets and children | `caravan/*` | 13 pets (6 dogs, 4 cats, 3 birds), 11 children. Start: Rosie, Teo, Pip, Clover. Max 4 children + 4 pets. Pets now wait at their home land's plaza and join when offered their food. |
+| Pets and children | `caravan/*` | 13 pets (6 dogs, 4 cats, 3 birds), 9 children, and the family: Aasima, Suvaibia, Maryam and Abdur Rahim (`SIBLINGS`, owner's heights) travel with the two always — walking just behind, on their own carpet when flying, in the party ring. Start: the family, Pip, Clover (Rosie and Teo removed at the owner's request; old saves migrate). Max 4 children + 4 pets. Pets now wait at their home land's plaza and join when offered their food. |
 | Flying carpet | `caravan/Carpet.ts`, `CaravanView.ts`, `caravan.ts` | All flight modes (cape, unicorn, biplane, dragon), eased in her frame (no lag, never cuts across on turns), hard clearance guard; tested + browser-checked. |
 | Houses and buildings | `world/buildings.ts`, `houseDecor.ts`, `RegionBuilder.ts` | 5 new archetypes per land style; houses 15% larger; path mosaics in land colours. |
 | Enterable houses | `housing/HouseInterior.ts` | Every town building's front door → a land-styled room (5 families + shop/courtyard/tower variants); share an item once a day, talk, rest. Items never spawn inside walls. |
@@ -108,7 +108,7 @@ Publish with `bash scripts/deploy-pages.sh` (builds, tests, copies to gh-pages r
 - House interiors are a furnished diorama with actions, not a walk-around space.
 - A full caravan cannot yet say goodbye (children going home at their destination is described but not built), so a fifth
   child/pet waits.
-- Wind moves grass, foliage, flowers, the carpet and particles; robes and headscarves do not sway (capes already ripple).
+- The family ride along out of sight while you drive the van (its benches are sized for children).
 - Rivers have bridges wherever they cross the line of an avenue (22, walkable); elsewhere the water is a walkable surface, as before.
 - Crowd figures far away are simple instanced shapes; up close they swap to full outfits.
 - Sky ornaments were screenshot-checked in the Meadow, Islamic, Egypt, Norway and Sky Isles; others are covered by tests only.

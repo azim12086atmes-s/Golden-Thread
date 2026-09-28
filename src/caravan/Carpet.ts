@@ -100,7 +100,7 @@ export class Carpet {
   get trail(): THREE.Points { return this.sparks; }
 
   /** Seat position in world space. */
-  seat(kind: 'child' | 'pet', i: number, out: THREE.Vector3): THREE.Vector3 {
+  seat(kind: 'child' | 'pet' | 'sibling', i: number, out: THREE.Vector3): THREE.Vector3 {
     const s = CARPET_SEATS[kind][i % 4];
     return this.root.localToWorld(out.set(s[0], 0.06, s[1]));
   }

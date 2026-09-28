@@ -22,15 +22,22 @@ describe('the story before the journey', () => {
 });
 
 describe('the caravan from the first morning', () => {
-  it('two children and two pets travel with you from the start, and old saves gain them too', () => {
+  it('their brothers and sisters and two pets travel with you from the start, and old saves gain them too', () => {
     const st = newGame();
     expect([...st.caravan].sort()).toEqual([...STARTING_CARAVAN].sort());
     const defs = st.caravan.map((id) => COMPANION_BY_ID[id]);
-    expect(defs.filter((d) => d.kind === 'child').length).toBe(2);
+    expect(defs.filter((d) => d.kind === 'sibling').map((d) => d.name).sort()).toEqual(['Aasima', 'Abdur Rahim', 'Maryam', 'Suvaibia']);
+    expect(defs.filter((d) => d.kind === 'child').length).toBe(0);
     expect(defs.filter((d) => d.kind === 'pet').length).toBe(2);
     const old = newGame() as unknown as Record<string, unknown>;
     delete old.caravan;
     expect([...deserialize(JSON.stringify(old))!.caravan].sort()).toEqual([...STARTING_CARAVAN].sort());
+    // A save from before: Rosie and Teo leave, the family joins, the rest stay as they were.
+    old.caravan = ['child-rosie', 'child-teo', 'pet-sheepdog', 'child-kavya'];
+    const now = deserialize(JSON.stringify(old))!.caravan;
+    expect(now).not.toContain('child-rosie');
+    expect(now).not.toContain('child-teo');
+    for (const id of ['sib-aasima', 'sib-suvaibia', 'sib-maryam', 'sib-abdurrahim', 'pet-sheepdog', 'child-kavya']) expect(now).toContain(id);
   });
 
   it('they keep clear of both travellers while walking', () => {
@@ -103,8 +110,9 @@ describe('the story cinematic', () => {
     const total = shots.reduce((a, s) => a + s.dur, 0);
     expect(total).toBeGreaterThan(45);
     expect(total).toBeLessThan(120);
-    // The children and pets travelling with them are introduced by name, and Noor speaks.
-    for (const n of ['Rosie', 'Teo', 'Pip', 'Clover']) expect(text).toContain(n);
+    // Their brothers and sisters and the pets travelling with them are introduced by name, and Noor speaks.
+    for (const n of ['Aasima', 'Suvaibia', 'Maryam', 'Abdur Rahim', 'Pip', 'Clover']) expect(text).toContain(n);
+    expect(shots.some((s) => s.focus === 'siblings')).toBe(true);
     expect(shots.some((s) => s.focus === 'market')).toBe(true);
     expect(text).toContain('Grandmother Noor: "');
   });
@@ -135,6 +143,7 @@ describe('the journey guide', () => {
     expect(titles).toContain('Children');
     expect(titles).toContain('Pets');
     expect(f.find((c) => c.title === 'Night Dragon')?.how).toBe('After the celebration evening');
-    expect(f.find((c) => c.title === 'Children')?.text).toContain('Rosie');
+    expect(titles).toContain('Family');
+    for (const n of ['Aasima', 'Suvaibia', 'Maryam', 'Abdur Rahim']) expect(f.find((c) => c.title === 'Family')?.text).toContain(n);
   });
 });

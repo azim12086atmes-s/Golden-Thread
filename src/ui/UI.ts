@@ -42,6 +42,7 @@ import { USES, placeName, placesFor, putToUse } from '../economy/inventions';
 import { MANAGER, TRADES, TRADE_IDS, canBegin, candidatesFor, clientsOf, firstHire, handOut, homesWithRoom, isPaid, managerBlock, memberLevel, monthlyWage, orderPay, perDay, personName, stageOf, startBusiness, takeOn, takeOrder, teachMember, appoint, payWage, letGo, businessTitle } from '../economy/business';
 import { courseCost, courseOffer, payWithCourse } from '../institutions/opportunities';
 import { CAVES, CAVE_NAME, caveMouth } from '../world/caves';
+import { CIVIC_LABEL, civicDoor, civicOf } from '../world/neighbourhood';
 import { FIELD_SITES } from '../world/plots';
 import type { Game } from '../Game';
 
@@ -1307,8 +1308,8 @@ export class UI {
     }
     body.append(h('h3', {}, 'The caravan'));
     for (const c of this.g.caravan.list()) body.append(h('div', { class: 'quest' },
-      h('b', {}, `${c.kind === 'pet' ? '🐾' : '🧒'} ${c.name}`),
-      h('small', {}, c.kind === 'child' ? `${c.tradition} · going to ${REGION_BY_ID[c.destination].name}` : `from ${REGION_BY_ID[c.origin].name}`),
+      h('b', {}, `${c.kind === 'pet' ? '🐾' : c.kind === 'sibling' ? (c.who === 'girl' ? '👩' : '👨') : '🧒'} ${c.name}`),
+      h('small', {}, c.kind === 'child' ? `${c.tradition} · going to ${REGION_BY_ID[c.destination].name}` : c.kind === 'sibling' ? (c.who === 'girl' ? 'Sister · travels with you always' : 'Brother · travels with you always') : `from ${REGION_BY_ID[c.origin].name}`),
       h('p', {}, c.kind === 'child' ? c.journey : c.blurb)));
     body.append(h('h3', {}, `Hidden wonders · ${wondersFound} of ${WONDERS.length}`));
     for (const w of WONDERS) {
@@ -1367,6 +1368,23 @@ export class UI {
               this.g.guide.pin({ title: `The ${name}`, text: `Walk to the ${name}'s mouth and press E to explore`, x: m.x, z: m.z, region: cv.land });
               this.closePanel();
               this.g.toast(`Follow the golden motes to the ${name}.`);
+            }, 'small'));
+        }));
+      }
+      // Its place of worship and its market (world/neighbourhood.ts), with the way there.
+      const civic = civicOf(sel.id);
+      if (known && civic.length) {
+        const rc = regionCenter(sel);
+        body.append(h('h3', {}, `🧭 Around ${sel.name}`), ...civic.map((q) => {
+          const [icon, name] = CIVIC_LABEL[sel.id][q.kind];
+          const door = civicDoor(q);
+          const title = name.charAt(0).toUpperCase() + name.slice(1);
+          return h('div', { class: 'quest' }, h('b', {}, `${icon} ${title}`),
+            h('small', {}, q.kind === 'worship' ? 'Its place of worship, beyond the ring road' : 'Its market, beyond the ring road'),
+            btn('Show the way', () => {
+              this.g.guide.pin({ title, text: `Walk to ${name}`, x: rc.x + door.x, z: rc.z + door.z, region: sel.id });
+              this.closePanel();
+              this.g.toast(`Follow the golden motes to ${name}.`);
             }, 'small'));
         }));
       }

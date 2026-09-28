@@ -66,6 +66,13 @@ describe('her friends at the celebration', () => {
     expect(h('Varna')).toBeGreaterThan(her);
     expect(h('Varna')).toBeLessThan(h('Zaid'));
     for (const n of ['Srushti', 'Shruti', 'Smruti', 'Shifa']) expect(h(n)).toBeCloseTo(her);
+    // The family: Aasima taller than her, Suvaibia shorter, Maryam taller than Suvaibia,
+    // Abdur Rahim as tall as Maryam and shorter than him.
+    expect(h('Aasima')).toBeGreaterThan(her);
+    expect(h('Suvaibia')).toBeLessThan(her);
+    expect(h('Maryam')).toBeGreaterThan(h('Suvaibia'));
+    expect(h('Abdur Rahim')).toBeCloseTo(h('Maryam'));
+    expect(h('Abdur Rahim')).toBeLessThan(him);
   });
   it('wear real, modest outfits', () => {
     for (const f of FRIENDS) expect(OUTFITS[f.outfit], f.name).toBeTruthy();

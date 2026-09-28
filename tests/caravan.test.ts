@@ -148,15 +148,19 @@ describe('children go home at their destination', () => {
     const { arrivalsIn, bringHome } = await import('../src/caravan/caravan');
     const { newGame } = await import('../src/core/state');
     const st = newGame();
+    st.caravan.push('child-kavya', 'child-tomas');
     expect(arrivalsIn(st.caravan, 'meadow')).toEqual([]);
-    const kids = arrivalsIn(st.caravan, 'renaissance');
-    expect(kids.map((k) => k.id)).toEqual(['child-rosie']);
-    const line = bringHome(st, 'child-rosie', 'Firenzia');
-    expect(line).toContain('Rosie');
-    expect(st.caravan).not.toContain('child-rosie');
-    expect(st.homecomings['child-rosie'].land).toBe('renaissance');
-    // Pets and other children stay; a child who is not travelling cannot be brought home.
-    expect(st.caravan).toContain('child-teo');
-    expect(bringHome(st, 'child-rosie', 'Firenzia')).toBeNull();
+    const kids = arrivalsIn(st.caravan, 'indianorth');
+    expect(kids.map((k) => k.id)).toEqual(['child-kavya']);
+    const line = bringHome(st, 'child-kavya', 'Gulabi Nagar');
+    expect(line).toContain('Kavya');
+    expect(st.caravan).not.toContain('child-kavya');
+    expect(st.homecomings['child-kavya'].land).toBe('indianorth');
+    // The family, pets and other children stay; a child who is not travelling cannot be brought home.
+    expect(st.caravan).toContain('child-tomas');
+    for (const id of ['sib-aasima', 'sib-suvaibia', 'sib-maryam', 'sib-abdurrahim']) expect(st.caravan).toContain(id);
+    expect(bringHome(st, 'child-kavya', 'Gulabi Nagar')).toBeNull();
+    // Brothers and sisters never go home at a milestone: they are not children to be brought home.
+    expect(bringHome(st, 'sib-maryam', 'Wanderers\' Meadow')).toBeNull();
   });
 });

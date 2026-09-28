@@ -49,7 +49,21 @@ export interface ChildDef extends Base {
   starts?: boolean;
 }
 
-export type CompanionDef = PetDef | ChildDef;
+/**
+ * Their brothers and sisters (owner's list), who travel with the two from the first morning and
+ * stay with them all the way: never going home at a milestone, walking just behind them, riding their
+ * own carpet when the two fly. Heights are set against the two travellers' (as at the party):
+ * `rise` places each between her height (0) and his (1); below 0 is shorter than her.
+ */
+export interface SiblingDef extends Base {
+  kind: 'sibling';
+  who: 'girl' | 'boy';
+  outfit: string;
+  skin: string;
+  rise: number;
+}
+
+export type CompanionDef = PetDef | ChildDef | SiblingDef;
 
 export const PETS: PetDef[] = [
   { kind: 'pet', id: 'pet-saluki', name: 'Rih', species: 'dog', tint: '#e2c79a', likes: 'bread', scale: 1.1, origin: 'desert', help: 'finds-resources', blurb: 'A slender desert sighthound who spots things across the dunes long before you do.' },
@@ -67,9 +81,18 @@ export const PETS: PetDef[] = [
   { kind: 'pet', id: 'pet-pigeon', name: 'Percy', species: 'dove', tint: '#9aa0aa', likes: 'rice', scale: 1.0, origin: 'london', help: 'carries-letters', blurb: 'A homing pigeon who always knows the way to your friends.' },
 ];
 
+/**
+ * Aasima taller than Fathima; Suvaibia shorter than Fathima; Maryam taller than Suvaibia; Abdur
+ * Rahim as tall as Maryam and shorter than Azim.
+ */
+export const SIBLINGS: SiblingDef[] = [
+  { kind: 'sibling', id: 'sib-aasima', name: 'Aasima', who: 'girl', origin: 'meadow', outfit: 'g-abaya', skin: '#e0b08a', rise: 0.25, help: 'lifts-spirits', blurb: 'Always the first to greet a new friend on the road, and the last to say goodbye.' },
+  { kind: 'sibling', id: 'sib-suvaibia', name: 'Suvaibia', who: 'girl', origin: 'meadow', outfit: 'g-kurti-jeans', skin: '#e3b58f', rise: -0.3, help: 'finds-resources', blurb: 'Spots the ripest fruit on every stall and the kindest face in every crowd.' },
+  { kind: 'sibling', id: 'sib-maryam', name: 'Maryam', who: 'girl', origin: 'meadow', outfit: 'g-angrakha', skin: '#dcaa82', rise: 0.45, help: 'carries-letters', blurb: 'Keeps the letters home to Grandmother Noor, and writes the best ones.' },
+  { kind: 'sibling', id: 'sib-abdurrahim', name: 'Abdur Rahim', who: 'boy', origin: 'meadow', outfit: 'b-pathani', skin: '#c99a74', rise: 0.45, help: 'learns-craft', blurb: 'Carries the heaviest bags without being asked, and fixes whatever breaks.' },
+];
+
 export const CHILDREN: ChildDef[] = [
-  { kind: 'child', id: 'child-rosie', name: 'Rosie', who: 'girl', origin: 'meadow', tradition: 'Her family bakes harvest loaves and sings round the midsummer bonfire', journey: 'Lina\'s daughter, going to learn bread and pastry from the bakers of Firenzia — with her mother\'s blessing and a jar of starter dough.', joinsAfter: 'meadow', destination: 'renaissance', help: 'learns-craft', blurb: 'Asks everyone their favourite food and remembers every answer.', starts: true },
-  { kind: 'child', id: 'child-teo', name: 'Teo', who: 'boy', origin: 'meadow', tradition: 'His grandmother is Buddhist; together they light a lamp at Vesak', journey: 'Going to visit his grandmother in Nusa Rinjani and help plant the rice terraces, with his father\'s blessing.', joinsAfter: 'meadow', destination: 'indonesia', help: 'herds-animals', blurb: 'Can whistle like any bird and is never, ever lost.', starts: true },
   { kind: 'child', id: 'child-kavya', name: 'Kavya', who: 'girl', origin: 'indiasouth', tradition: 'Hindu family; lights oil lamps for Karthigai Deepam', journey: 'Learning to cook from her aunt in Gulabi Nagar; her grandmother Lakshmi Amma asked the travellers to take her.', joinsAfter: 'indiasouth', destination: 'indianorth', help: 'learns-craft', blurb: 'Hums while she stirs; knows every spice by smell.' },
   { kind: 'child', id: 'child-tomas', name: 'Tomas', who: 'boy', origin: 'norway', tradition: 'Lutheran family; walks in the Santa Lucia candle procession', journey: 'A carpentry apprentice going to see the great clock of Alpenrose, with his mother Ingrid\'s blessing.', joinsAfter: 'norway', destination: 'switzerland', help: 'learns-craft', blurb: 'Carves small boats from anything and gives them away.' },
   { kind: 'child', id: 'child-hana', name: 'Hana', who: 'girl', origin: 'japan', tradition: 'Keeps Obon with her family and floats a lantern for her grandfather', journey: 'Visiting her grandmother in Maple Row; her parents run a tea house in Sakura Hollow.', joinsAfter: 'japan', destination: 'vintage', help: 'lifts-spirits', blurb: 'Folds paper cranes for everyone you meet.' },
@@ -81,10 +104,10 @@ export const CHILDREN: ChildDef[] = [
   { kind: 'child', id: 'child-aino', name: 'Aino', who: 'girl', origin: 'aurora', tradition: 'Her family marks the return of the sun after the polar night', journey: 'A young stargazer going to the Sky Isles\' Star Library with Aila\'s blessing.', joinsAfter: 'aurora', destination: 'skyisles', help: 'lifts-spirits', blurb: 'Names constellations after the friends you make.' },
 ];
 
-export const COMPANIONS: CompanionDef[] = [...PETS, ...CHILDREN];
+export const COMPANIONS: CompanionDef[] = [...SIBLINGS, ...PETS, ...CHILDREN];
 export const COMPANION_BY_ID = Object.fromEntries(COMPANIONS.map((c) => [c.id, c])) as Record<string, CompanionDef>;
 /** Who travels with you on the first morning. */
-export const STARTING_CARAVAN: string[] = COMPANIONS.filter((c) => c.starts).map((c) => c.id);
+export const STARTING_CARAVAN: string[] = [...SIBLINGS.map((s) => s.id), ...COMPANIONS.filter((c) => c.kind !== 'sibling' && c.starts).map((c) => c.id)];
 
 /** How many can travel at once: the van has a back bench for two children, pets ride on rugs. */
 export const MAX_CHILDREN = 4;
@@ -93,7 +116,7 @@ export const MAX_PETS = 4;
 // ───────────────────────── movement ─────────────────────────
 
 export interface P2 { x: number; z: number }
-export interface Member { id: string; kind: 'pet' | 'child'; x: number; z: number; speed: number }
+export interface Member { id: string; kind: 'pet' | 'child' | 'sibling'; x: number; z: number; speed: number }
 
 /** Clear space kept around the two travellers, and between caravan members (centre to centre, m). */
 export const TRAVELLER_CLEARANCE = 1.2;
@@ -101,22 +124,29 @@ export const MEMBER_CLEARANCE = 0.8;
 const SNAP = 80;
 
 /**
- * Slots behind the pair: children walk close behind in a row, pets range a little further back
- * and to the sides. `heading` is the girl's facing (0 = +Z).
+ * Slots behind the pair: their brothers and sisters walk just behind in a row, the children close
+ * behind them, pets range a little further back and to the sides. `heading` is the girl's facing
+ * (0 = +Z).
  */
 export function caravanSlots(girl: P2, boy: P2, heading: number, members: Member[]): P2[] {
   const cx = (girl.x + boy.x) / 2, cz = (girl.z + boy.z) / 2;
   const fx = Math.sin(heading), fz = Math.cos(heading);
   const rx = Math.cos(heading), rz = -Math.sin(heading);
-  let child = 0, pet = 0;
+  const sibs = members.filter((m) => m.kind === 'sibling').length, lift = sibs ? 1.9 : 0;
+  let sib = 0, child = 0, pet = 0;
   return members.map((m) => {
+    if (m.kind === 'sibling') {
+      const k = sib++, n = Math.min(4, sibs);
+      const side = ((k % 4) - (n - 1) / 2) * 1.6, back = 2.5 + Math.floor(k / 4) * 1.8;
+      return { x: cx - fx * back + rx * side, z: cz - fz * back + rz * side };
+    }
     if (m.kind === 'child') {
       const side = child++ % 2 === 0 ? -0.9 : 0.9;
-      const back = 2.6 + Math.floor((child - 1) / 2) * 1.8;
+      const back = 2.6 + lift + Math.floor((child - 1) / 2) * 1.8;
       return { x: cx - fx * back + rx * side, z: cz - fz * back + rz * side };
     }
     const k = pet++;
-    const side = [-2.2, 2.2, 0][k % 3], back = 4.4 + Math.floor(k / 3) * 1.6;
+    const side = [-2.2, 2.2, 0][k % 3], back = 4.4 + lift + Math.floor(k / 3) * 1.6;
     return { x: cx - fx * back + rx * side, z: cz - fz * back + rz * side };
   });
 }
@@ -190,6 +220,7 @@ function clearOfTravellers(m: P2, girl: P2, boy: P2): void {
 /** Who may join now: children after their land's chapter, pets once befriended; within limits. */
 export function canJoin(def: CompanionDef, current: CompanionDef[], chaptersDone: LandId[], befriendedPets: string[]): { ok: boolean; reason: string } {
   if (current.some((c) => c.id === def.id)) return { ok: false, reason: `${def.name} is already travelling with you.` };
+  if (def.kind === 'sibling') return { ok: true, reason: `${def.name} travels with you, as family always does.` };
   if (def.kind === 'child') {
     if (!chaptersDone.includes(def.joinsAfter)) return { ok: false, reason: `${def.name}'s family would like to know you better first.` };
     if (current.filter((c) => c.kind === 'child').length >= MAX_CHILDREN) return { ok: false, reason: 'The bunks are full — bring someone home first.' };
@@ -202,10 +233,14 @@ export function canJoin(def: CompanionDef, current: CompanionDef[], chaptersDone
 
 // ───────────────────────── the flying carpet ─────────────────────────
 
-/** Seats on the carpet (local metres; +z is forward): children in front, pets behind. */
+/**
+ * Seats on the carpet (local metres; +z is forward): children in front, pets behind. The brothers
+ * and sisters ride a carpet of their own, two by two with room between.
+ */
 export const CARPET_SEATS = {
   child: [[-0.95, 0.75], [-0.32, 0.75], [0.32, 0.75], [0.95, 0.75]] as const,
   pet: [[-0.95, -0.75], [-0.32, -0.75], [0.32, -0.75], [0.95, -0.75]] as const,
+  sibling: [[-0.7, 0.85], [0.7, 0.85], [-0.7, -0.85], [0.7, -0.85]] as const,
 };
 export const CARPET_W = 2.9, CARPET_L = 3.6;
 

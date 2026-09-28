@@ -1,3 +1,4 @@
+import { COMPANION_BY_ID, SIBLINGS } from '../caravan/caravan';
 import { fromOldSave } from '../economy/business';
 import { newGame, type GameState } from './state';
 
@@ -45,6 +46,12 @@ export function deserialize(json: string): GameState | null {
     } else if (typeof v === typeof b || (Array.isArray(b) && Array.isArray(v))) {
       base[k] = v;
     }
+  }
+  // Their brothers and sisters travel with them in every save; Rosie and Teo (who no longer start
+  // the journey with them) and anyone else unknown leave the caravan.
+  if (Array.isArray(base.caravan)) {
+    const known = (base.caravan as string[]).filter((id) => COMPANION_BY_ID[id]);
+    base.caravan = [...SIBLINGS.map((c) => c.id).filter((id) => !known.includes(id)), ...known];
   }
   // Businesses from older saves (bought by sector) become ones grown the new way.
   if (Array.isArray(base.businesses)) base.businesses = (base.businesses as unknown[]).map(fromOldSave).filter((b) => b !== null);

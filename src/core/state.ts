@@ -183,7 +183,7 @@ export function newGame(): GameState {
     unlockedDecor: ['fence', 'bench', 'flowerbed', 'farmbed', 'lamp-post', 'tree', 'tent', 'cottage', 'pen'],
     flags: [],
     tracked: '',
-    caravan: ['child-rosie', 'child-teo', 'pet-sheepdog', 'pet-clover'],
+    caravan: ['sib-aasima', 'sib-suvaibia', 'sib-maryam', 'sib-abdurrahim', 'pet-sheepdog', 'pet-clover'],
     homecomings: {},
     certificates: {},
     playSeconds: 0,

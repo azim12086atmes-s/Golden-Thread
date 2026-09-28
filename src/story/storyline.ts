@@ -13,7 +13,7 @@ import { REGION_BY_ID, type RegionId } from '../world/regions';
  * the journal prints it, tests check it.
  */
 
-export type Focus = 'landmark' | 'castle' | 'travellers' | 'market' | 'noor' | 'children' | 'pets';
+export type Focus = 'landmark' | 'castle' | 'travellers' | 'market' | 'noor' | 'siblings' | 'children' | 'pets';
 
 export interface Shot {
   land: RegionId;
@@ -30,9 +30,9 @@ export interface Shot {
 }
 
 /** Bumped when the story changes, so everyone sees the new opening once. */
-export const STORY_FLAG = 'story-4';
+export const STORY_FLAG = 'story-5';
 
-/** "Rosie and Teo", "Rosie, Teo and Mina". */
+/** "Aasima and Maryam", "Aasima, Suvaibia and Maryam". */
 const names = (list: string[]) => list.length <= 1 ? list.join('') : `${list.slice(0, -1).join(', ')} and ${list[list.length - 1]}`;
 
 export function storyline(st: GameState): Shot[] {
@@ -40,6 +40,8 @@ export function storyline(st: GameState): Shot[] {
   const partyWaits = !st.flags.includes('celebration-done');
   const pals = st.caravan.map((id) => COMPANION_BY_ID[id]).filter(Boolean);
   const kids = pals.filter((c) => c.kind === 'child');
+  const sibs = pals.filter((c) => c.kind === 'sibling');
+  const sisters = sibs.filter((c) => c.who === 'girl').map((c) => c.name), brothers = sibs.filter((c) => c.who === 'boy').map((c) => c.name);
   const pets = pals.filter((c) => c.kind === 'pet');
   const shots: Shot[] = [
     {
@@ -73,10 +75,17 @@ export function storyline(st: GameState): Shot[] {
       ],
     },
   ];
+  if (sibs.length) shots.push({
+    land: 'meadow', focus: 'siblings', hour: 8.6, dur: 12, radius: 6, height: 2, spin: 0.45,
+    lines: [
+      `You do not travel alone. Your family comes with you: ${names([...(sisters.length ? [`your sisters ${names(sisters)}`] : []), ...(brothers.length ? [`your brother${brothers.length > 1 ? 's' : ''} ${names(brothers)}`] : [])])}.`,
+      `${sibs.map((c) => `${c.name} ${c.blurb.charAt(0).toLowerCase()}${c.blurb.slice(1)}`).join(' ')} Wherever the road goes, they go too — on foot beside you, on their own carpet when you fly, and at every celebration.`,
+    ],
+  });
   if (kids.length) shots.push({
     land: 'meadow', focus: 'children', hour: 8.7, dur: 10, radius: 4.5, height: 1.6, spin: 0.4,
     lines: [
-      `You do not travel alone. Meet ${names(kids.map((k) => k.name))}, travelling with the caravan with their families' blessing.`,
+      `Meet ${names(kids.map((k) => k.name))}, travelling with the caravan with their families' blessing.`,
       kids.map((k) => `${k.name}, off to ${REGION_BY_ID[k.destination].name}, ${k.blurb.charAt(0).toLowerCase()}${k.blurb.slice(1)}`).join(' '),
     ],
   });
@@ -91,7 +100,9 @@ export function storyline(st: GameState): Shot[] {
     {
       land: 'meadow', focus: 'noor', hour: 9.2, dur: 11, radius: 7, height: 2.2, spin: 0.3,
       lines: [
-        'Grandmother Noor: "There you both are. Everyone you meet on the road is carrying something. Help them carry it."',
+        sibs.length
+          ? `Grandmother Noor: "There you all are. ${names(sibs.map((c) => c.name))} — look after these two, and let them look after you. Everyone you meet on the road is carrying something. Help them carry it."`
+          : 'Grandmother Noor: "There you both are. Everyone you meet on the road is carrying something. Help them carry it."',
         'Grandmother Noor: "Go and become part of the people out there. But stay connected to home: write to me, and come back to tell me everything."',
       ],
     },
@@ -102,7 +113,7 @@ export function storyline(st: GameState): Shot[] {
     {
       land: 'meadow', focus: 'landmark', hour: 9.5, dur: 12, radius: 55, height: 18, spin: 0.3,
       lines: [
-        'Your journey: live life together and keep exploring. Learn, build and contribute; earn by helping, adopt everyone as family, own a home, and light all twenty lanterns.',
+        `Your journey: live life together and keep exploring${sibs.length ? ', with your family beside you' : ''}. Learn, build and contribute; earn by helping, adopt everyone as family, own a home, and light all twenty lanterns.`,
         partyWaits
           ? 'A lifelong journey of bonding: with each other, with the people you meet, and with home. But first, tonight, there is something to celebrate.'
           : 'A lifelong journey of bonding: with each other, with the people you meet, and with home.',

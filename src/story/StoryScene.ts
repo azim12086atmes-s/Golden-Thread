@@ -60,7 +60,7 @@ export class StoryScene {
   }
 
   private walking(s: Shot): boolean {
-    return s.focus === 'travellers' || s.focus === 'children' || s.focus === 'pets' || s.focus === 'noor';
+    return s.focus === 'travellers' || s.focus === 'siblings' || s.focus === 'children' || s.focus === 'pets' || s.focus === 'noor';
   }
 
   private begin(i: number): void {
@@ -143,11 +143,11 @@ export class StoryScene {
       }
       tr.heading = Math.PI;
       const p = tr.gPos;
-      if (s.focus === 'children' || s.focus === 'pets') {
-        const who = this.g.caravan.centroid(s.focus === 'children' ? 'child' : 'pet') ?? p.clone().add(V(0, 0, 3));
+      if (s.focus === 'children' || s.focus === 'pets' || s.focus === 'siblings') {
+        const who = this.g.caravan.centroid(s.focus === 'children' ? 'child' : s.focus === 'siblings' ? 'sibling' : 'pet') ?? p.clone().add(V(0, 0, 3));
         const a = 0.6 + u * s.spin;
         camera.position.set(who.x + Math.sin(a) * s.radius, who.y + s.height, who.z - Math.cos(a) * s.radius);
-        camera.lookAt(who.x, who.y + (s.focus === 'children' ? 0.7 : 0.3), who.z);
+        camera.lookAt(who.x, who.y + (s.focus === 'siblings' ? 1.2 : s.focus === 'children' ? 0.7 : 0.3), who.z);
       } else if (s.focus === 'noor') {
         // A two-shot from the side: the travellers on one side, Noor on the other.
         const mid = V((p.x + this.target.x) / 2, p.y, (p.z + this.target.z) / 2);

@@ -2,7 +2,7 @@ import * as THREE from 'three';
 import { describe, expect, it } from 'vitest';
 import { Rng } from '../src/core/rng';
 import { GeoBuilder } from '../src/world/kit';
-import { CIVIC_R, buildMarket, buildWorship, civicColliders, civicOf } from '../src/world/neighbourhood';
+import { CIVIC_LABEL, CIVIC_R, buildMarket, buildWorship, civicColliders, civicDoor, civicOf } from '../src/world/neighbourhood';
 import { reservedAt } from '../src/world/reserved';
 import { squaresOf, SQUARE_R } from '../src/world/landWaters';
 import { INSTITUTE_SITES, SITE_SIZE } from '../src/institutions/sites';
@@ -56,6 +56,18 @@ describe("each town's neighbourhood", () => {
       }
       // The way in from the town (the +z side) is open for the last few steps before the door.
       for (const kind of ['worship', 'market'] as const) expect(civicColliders(r.id, kind).some((k) => Math.hypot(k.x, k.z - (CIVIC_R - 0.5)) < k.r), `${r.id} ${kind}`).toBe(false);
+    }
+  });
+
+  it('names and points the way to each, from the town side, never with a cross', () => {
+    for (const r of REGIONS) for (const q of civicOf(r.id)) {
+      const [icon, name] = CIVIC_LABEL[r.id][q.kind];
+      expect(name.length, r.id).toBeGreaterThan(3);
+      expect(icon).not.toMatch(/[⛪✝✞✟]/u);
+      const door = civicDoor(q);
+      // The way in lies between the building and the town, just outside its grounds.
+      expect(Math.hypot(door.x, door.z)).toBeLessThan(Math.hypot(q.x, q.z));
+      expect(Math.hypot(door.x - q.x, door.z - q.z)).toBeGreaterThan(CIVIC_R);
     }
   });
 });
