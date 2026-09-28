@@ -29,6 +29,7 @@ import { houseLights, streetLight } from './models/lights';
 import type { Lamp } from './lamplight';
 import { chimneyMark, chimneyRollback, collectChimneys, takeChimneys } from './chimneys';
 import { GRID_TOWNS, LANE_W, laneDistance, laneLots, townLanes } from './townLayout';
+import { stopShelters } from '../travel/bus';
 import { LOCALES } from './locale';
 import { CIVIC_R, buildMarket, buildWorship, civicColliders, civicOf } from './neighbourhood';
 import { SQUARE_R, buildSebil, buildSquare, sebilsOf, squaresOf, type Collide } from './landWaters';
@@ -196,8 +197,11 @@ export function buildRegion(spec: RegionSpec, solid: THREE.Material, glowMat: TH
   // Where the town's people in need wait (charity.ts needSpot: 118 m out along each avenue, 13 m to
   // the side): kept open ground.
   const needHere = ([[0, 1], [1, 0], [0, -1], [-1, 0]] as const).map(([ax, az]) => ({ x: ax * 118 + az * 13, z: az * 118 - ax * 13 }));
+  // The town's bus stops (travel/bus.ts): a shelter beside each avenue.
+  const stopsHere = stopShelters(spec.id);
   const nearPlot = (x: number, z: number, pad: number) => inCastle(x, z, pad) || reservedAt(spec.id, x, z, pad) ||
     needHere.some((q) => Math.hypot(x - q.x, z - q.z) < 4 + pad) ||
+    stopsHere.some((q) => Math.hypot(x - q.x, z - q.z) < 4 + pad) ||
     gatesHere.some((q) => Math.hypot(x - q.x, z - q.z) < q.r + pad) ||
     civicHere.some((q) => Math.hypot(x - q.x, z - q.z) < CIVIC_R + pad) ||
     squaresHere.some((q) => Math.hypot(x - q.x, z - q.z) < SQUARE_R + pad) ||
@@ -256,6 +260,29 @@ export function buildRegion(spec: RegionSpec, solid: THREE.Material, glowMat: TH
         box(g, 1.1, 0.04, 1.1, (i + ring) % 2 ? pa : pb, Math.cos(a) * r, H(Math.cos(a) * r, Math.sin(a) * r) + 0.1, Math.sin(a) * r, a + Math.PI / 4);
       }
     }
+  }
+
+  // Bus stops: a shelter with a bench and a lit timetable, a round sign on a pole, a lamp.
+  for (const q of stopsHere) {
+    const y = H(q.x, q.z);
+    g.frame(q.x, y, q.z, q.facing, 1, () => glow.frame(q.x, y, q.z, q.facing, 1, () => {
+      const [roof, wall, trim] = [spec.roofs[0], spec.walls[0], spec.trims[0]];
+      box(g, 3.6, 0.12, 0.2, '#d8d8dc', 0, 0, 0.9); // the kerb stone
+      for (const x of [-1.5, 1.5]) box(g, 0.1, 2.5, 0.1, trim, x, 0, -0.4);
+      box(g, 3.2, 1.9, 0.05, '#bfe0f0', 0, 0.45, -0.55); // the glass back
+      box(g, 3.5, 0.14, 1.6, roof, 0, 2.5, 0.05);
+      box(g, 3.6, 0.1, 0.1, trim, 0, 2.45, 0.85);
+      box(g, 2.4, 0.08, 0.45, wall, 0, 0.48, -0.25); // the bench
+      for (const x of [-1, 1]) box(g, 0.08, 0.48, 0.4, '#6a6a70', x, 0, -0.25);
+      box(glow, 0.7, 0.9, 0.04, '#fff2c8', -1.1, 1.1, -0.5); // the lit timetable
+      // The sign: a round board on a pole by the kerb.
+      cyl(g, 0.05, 0.05, 2.9, '#6a6a70', 1.9, 0, 0.8, 6);
+      cyl(glow, 0.32, 0.32, 0.05, '#3f7fd9', 1.9, 2.9, 0.8, 16);
+    }));
+    lamp(q.x, y + 2.3, q.z, 6);
+    colliders.push({ x: c.x + q.x - Math.sin(q.facing) * 0.4, z: c.z + q.z - Math.cos(q.facing) * 0.4, r: 1.4, h: y + 2.6 });
+    buildings.push({ x: q.x, z: q.z, r: 2.2 });
+    recordDecor(spec.id, 'street: bus stops');
   }
 
   // Houses. Most towns grew along winding lanes (townLayout.ts): the lanes first, then houses

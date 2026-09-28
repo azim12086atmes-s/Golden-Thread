@@ -4,6 +4,7 @@ import { AnimalModel } from '../animals/AnimalModel';
 import { BODY_RADIUS } from '../characters/follow';
 import { DRAGON_SCALE, Dragon } from '../event/Dragon';
 import { BUNKS, CAB_SEATS, PET_BEDS, VAN } from './vanLayout';
+import { COACH, COACH_FAMILY_SEATS, COACH_SEATS } from '../travel/bus';
 
 /**
  * Ways to travel. In every vehicle the two sit in separate seats with a divider between them, and
@@ -212,20 +213,35 @@ export function buildVehicle(id: VehicleId, van?: { lights: string; rug: string 
  * shader, so the crew inside shows through the glass.
  */
 interface Hole { x?: number; z?: number; y: number; hx?: number; hz?: number; hy: number }
-function vanShell(W: number, y0: number, y1: number, B: number, F: number, belt: number, vTip: number, sideHoles: Hole[], frontHoles: Hole[], backHoles: Hole[], arches: Array<[number, number, number]>): THREE.Mesh {
-  const R = 0.34;
-  const geo = new RoundedBoxGeometry(W * 2, y1 - y0, F - B, 5, R);
-  geo.translate(0, (y0 + y1) / 2, (B + F) / 2);
-  const mesh = new THREE.Mesh(geo, (cache.get('safar-shell') as THREE.MeshPhysicalMaterial | undefined) ?? shellMaterial(W, belt, vTip, sideHoles, frontHoles, backHoles, arches));
+/** A rounded, painted steel body (Safar, the intercity coach): its size, paint, openings and arches. */
+export interface ShellSpec {
+  /** One material per kind of body (every body of a kind shares its openings). */
+  key: string;
+  W: number; y0: number; y1: number; B: number; F: number; R: number;
+  /** Lower paint below the beltline, upper above; on the nose the upper dips to `vTip` at the middle (a V). */
+  belt: number; vTip: number; lower: string; upper: string;
+  /** A painted band along the sides (y centre, half-height, colour). */
+  band?: [number, number, string];
+  side: Hole[]; front: Hole[]; back: Hole[];
+  /** Wheel arches: [z, y, r]. */
+  arches: Array<[number, number, number]>;
+}
+
+function paintedShell(sp: ShellSpec): THREE.Mesh {
+  const geo = new RoundedBoxGeometry(sp.W * 2, sp.y1 - sp.y0, sp.F - sp.B, 5, sp.R);
+  geo.translate(0, (sp.y0 + sp.y1) / 2, (sp.B + sp.F) / 2);
+  const mesh = new THREE.Mesh(geo, (cache.get(sp.key) as THREE.MeshPhysicalMaterial | undefined) ?? shellMaterial(sp));
   mesh.castShadow = true;
   return mesh;
 }
 
-/** The shell's paint: one material for every Safar (the openings are the same on all). */
-function shellMaterial(W: number, belt: number, vTip: number, sideHoles: Hole[], frontHoles: Hole[], backHoles: Hole[], arches: Array<[number, number, number]>): THREE.MeshPhysicalMaterial {
+const glslColor = (c: string) => { const k = new THREE.Color(c); return `vec3(${k.r.toFixed(3)}, ${k.g.toFixed(3)}, ${k.b.toFixed(3)})`; };
+
+/** The shell's paint under a clear coat, with its openings cut by the shader. */
+function shellMaterial(sp: ShellSpec): THREE.MeshPhysicalMaterial {
   const mat = new THREE.MeshPhysicalMaterial({ color: '#ffffff', roughness: 0.36, metalness: 0.35, clearcoat: 0.85, clearcoatRoughness: 0.14, envMapIntensity: 0.5, side: THREE.DoubleSide });
   mat.envMap = vehicleEnv;
-  cache.set('safar-shell', mat); // so the environment reaches it too
+  cache.set(sp.key, mat); // so the environment reaches it too
   const v4 = (h: Hole, a: 'x' | 'z') => `vec4(${(h[a] ?? 0).toFixed(3)}, ${h.y.toFixed(3)}, ${((a === 'x' ? h.hx : h.hz) ?? 0).toFixed(3)}, ${h.hy.toFixed(3)})`;
   const holes = (list: Hole[], a: 'x' | 'z', coord: string) => list.map((h) => `if (sdRR(vec2(${coord} - ${v4(h, a)}.x, vP.y - ${v4(h, a)}.y), ${v4(h, a)}.zw, 0.1) < 0.0) discard;`).join('\n');
   mat.onBeforeCompile = (sh) => {
@@ -239,28 +255,28 @@ function shellMaterial(W: number, belt: number, vTip: number, sideHoles: Hole[],
       .replace('#include <color_fragment>', `#include <color_fragment>
         {
           vec3 n = normalize(vN0);
-          // Windows through the sides, the split windscreen, the back window; the wheel arches.
+          // Windows through the sides, the windscreen, the back window; the wheel arches.
           if (abs(n.x) > 0.6) {
-            ${holes(sideHoles, 'z', 'vP.z')}
-            ${arches.map(([z, y, r]) => `if (length(vec2(vP.z - ${z.toFixed(3)}, vP.y - ${y.toFixed(3)})) < ${r.toFixed(3)}) discard;`).join('\n')}
+            ${holes(sp.side, 'z', 'vP.z')}
+            ${sp.arches.map(([z, y, r]) => `if (length(vec2(vP.z - ${z.toFixed(3)}, vP.y - ${y.toFixed(3)})) < ${r.toFixed(3)}) discard;`).join('\n')}
           }
-          if (n.z > 0.6) { ${holes(frontHoles, 'x', 'vP.x')} }
-          if (n.z < -0.6) { ${holes(backHoles, 'x', 'vP.x')} }
-          // Two-tone: cream above the beltline; on the nose the cream dips to a V at the badge.
-          float edge = ${belt.toFixed(3)};
-          if (n.z > 0.3) edge = mix(${vTip.toFixed(3)}, ${belt.toFixed(3)}, clamp(abs(vP.x) / ${(W - 0.3).toFixed(3)}, 0.0, 1.0));
-          vec3 teal = vec3(0.16, 0.48, 0.42), cream = vec3(0.9, 0.85, 0.72);
-          diffuseColor.rgb = vP.y > edge ? cream : teal;
+          if (n.z > 0.6) { ${holes(sp.front, 'x', 'vP.x')} }
+          if (n.z < -0.6) { ${holes(sp.back, 'x', 'vP.x')} }
+          // Two-tone at the beltline; on the nose the upper colour dips to a V.
+          float edge = ${sp.belt.toFixed(3)};
+          if (n.z > 0.3) edge = mix(${sp.vTip.toFixed(3)}, ${sp.belt.toFixed(3)}, clamp(abs(vP.x) / ${(sp.W - 0.3).toFixed(3)}, 0.0, 1.0));
+          diffuseColor.rgb = vP.y > edge ? ${glslColor(sp.upper)} : ${glslColor(sp.lower)};
+          ${sp.band ? `if (abs(n.x) > 0.3 && abs(vP.y - ${sp.band[0].toFixed(3)}) < ${sp.band[1].toFixed(3)}) diffuseColor.rgb = ${glslColor(sp.band[2])};` : ''}
           // Inside the shell, plain cream lining.
           if (!gl_FrontFacing) diffuseColor.rgb = vec3(0.86, 0.8, 0.7);
         }`);
   };
-  mat.customProgramCacheKey = () => 'safar-shell';
+  mat.customProgramCacheKey = () => sp.key;
   return mat;
 }
 
 /** A whitewall wheel with a chrome hubcap, turning about its axle. */
-function busWheel(g: THREE.Object3D, r: number, x: number, y: number, z: number) {
+export function busWheel(g: THREE.Object3D, r: number, x: number, y: number, z: number) {
   const w = new THREE.Group();
   w.position.set(x, y, z);
   w.userData.wheel = true;
@@ -307,7 +323,10 @@ function buildVan(root: THREE.Group, van?: { lights: string; rug: string }): voi
   const wsLo = FY + 1.02, wsHi = top - 0.42;
   const frontHoles = [-1, 1].map((s) => ({ x: s * 0.6, hx: 0.5, y: (wsLo + wsHi) / 2, hy: (wsHi - wsLo) / 2 }));
   const backHoles = [{ x: 0.35, hx: 0.6, y: FY + 1.5, hy: 0.3 }];
-  root.add(vanShell(W, y0, top, B, F, belt, FY + 0.12, sideHoles, frontHoles, backHoles, wheelZ.map((z) => [z, wheelR, wheelR + 0.1] as [number, number, number])));
+  root.add(paintedShell({
+    key: 'safar-shell', W, y0, y1: top, B, F, R: 0.34, belt, vTip: FY + 0.12, lower: '#6fb8ae', upper: '#f4eedc',
+    side: sideHoles, front: frontHoles, back: backHoles, arches: wheelZ.map((z) => [z, wheelR, wheelR + 0.1] as [number, number, number]),
+  }));
 
   // Chassis, and dark wheel wells behind the arches so no one sees into the body.
   bx(root, W * 2 - 0.3, 0.3, F - B - 0.6, '#2a2a30', 0, 0.45, (F + B) / 2);
@@ -473,4 +492,86 @@ function buildVan(root: THREE.Group, van?: { lights: string; rug: string }): voi
       }
     }
   }
+}
+
+// ───────────────────────── the intercity coach ─────────────────────────
+
+/**
+ * The Golden Thread Lines coach that runs between the towns (travel/bus.ts): a long rounded body
+ * in painted steel — deep blue below, cream above, a gold band — with a row of big windows each
+ * side, a wide windscreen with a lit destination board over it, a door by the driver, and pairs
+ * of seats either side of the aisle (theirs at the front, the family's behind).
+ */
+export function buildCoach(dest: string): THREE.Group {
+  const root = new THREE.Group();
+  const { halfW: W, len, floorY: FY } = COACH;
+  const B = -len / 2, F = len / 2, top = FY + 2.3, y0 = 0.55, belt = FY + 0.55;
+  const chrome = '#c8ccd4', seam = '#1f2226', seat = '#8a2a3a';
+  const winLo = FY + 0.65, winHi = FY + 1.75, wheelZ = [F - 2.2, B + 2.4], wheelR = 0.55;
+  const panes: Array<[number, number]> = [];
+  for (let z = B + 0.8; z + 1.1 < F - 1.6; z += 1.3) panes.push([z, z + 1.1]);
+  root.add(paintedShell({
+    key: 'coach-shell', W, y0, y1: top, B, F, R: 0.3, belt, vTip: belt, lower: '#2f5a9a', upper: '#f4eedc',
+    band: [belt - 0.14, 0.05, '#e2b43a'],
+    side: panes.map(([a, b]) => ({ z: (a + b) / 2, hz: (b - a) / 2, y: (winLo + winHi) / 2, hy: (winHi - winLo) / 2 })),
+    front: [{ x: 0, hx: W - 0.35, y: FY + 1.3, hy: 0.62 }],
+    back: [{ x: 0, hx: W - 0.5, y: FY + 1.45, hy: 0.4 }],
+    arches: wheelZ.map((z) => [z, wheelR, wheelR + 0.1] as [number, number, number]),
+  }));
+  bx(root, W * 2 - 0.3, 0.3, len - 1, '#2a2a30', 0, 0.45, 0);
+  for (const sx of [-1, 1]) {
+    const x = sx * (W - 0.04);
+    for (const [a, b] of panes) glass(root, 0.03, winHi - winLo, b - a, x, (winLo + winHi) / 2, (a + b) / 2);
+    bx(root, 0.03, 0.04, len - 0.9, chrome, sx * (W + 0.01), winLo - 0.04, 0);
+    bx(root, 0.03, 0.04, len - 0.9, chrome, sx * (W + 0.01), winHi + 0.04, 0);
+  }
+  // The door on the kerb side (his side, +x), by the driver.
+  for (const z of [F - 1.5, F - 0.55]) bx(root, 0.012, top - 0.5 - (FY - 0.35), 0.014, seam, W + 0.004, (top - 0.5 + FY - 0.35) / 2, z);
+  // Windscreen, and the destination board lit above it.
+  glass(root, W * 2 - 0.7, 1.24, 0.03, 0, FY + 1.3, F - 0.05);
+  bx(root, W * 2 - 0.9, 0.26, 0.04, '#ffd27a', 0, top - 0.32, F + 0.01, true);
+  const label = typeof document !== 'undefined' ? destSprite(dest) : null;
+  if (label) { label.position.set(0, top - 0.32, F + 0.04); root.add(label); }
+  bx(root, W * 2 - 0.2, 0.36, 0.4, '#3a4a6a', 0, FY + 0.6, F - 0.4); // dashboard
+  for (const s of [-1, 1]) {
+    const hl = new THREE.Mesh(new THREE.CircleGeometry(0.16, 16), m('#fff6c0', true));
+    hl.position.set(s * (W - 0.4), FY - 0.05, F + 0.02);
+    root.add(hl);
+    const tl = new THREE.Mesh(new THREE.CircleGeometry(0.1, 12), m('#e8303a', true));
+    tl.position.set(s * (W - 0.4), FY + 0.1, B - 0.02);
+    tl.rotation.y = Math.PI;
+    root.add(tl);
+  }
+  for (const z of [F + 0.1, B - 0.1]) bx(root, W * 2 + 0.05, 0.22, 0.14, chrome, 0, 0.62, z);
+  // Seats in pairs either side of the aisle, a low partition between each row.
+  const rows = [COACH_SEATS.girl[2], ...new Set(COACH_FAMILY_SEATS.map((q) => q[2]))];
+  for (const z of rows) for (const sx of [-1, 1]) {
+    bx(root, 0.9, 0.12, 0.55, seat, sx * 0.8, FY + 0.4, z);
+    bx(root, 0.9, 0.7, 0.1, seat, sx * 0.8, FY + 0.8, z - 0.3);
+  }
+  bx(root, 0.05, 0.9, 0.5, '#6a6a70', 0, FY + 0.45, COACH_SEATS.girl[2]); // a rail up the aisle between their seats
+  bx(root, W * 2 - 0.1, 0.05, len - 0.4, '#5a5a62', 0, FY, 0); // the floor
+  for (const z of wheelZ) for (const s of [-1, 1]) {
+    const well = new THREE.Mesh(new THREE.CylinderGeometry(wheelR + 0.1, wheelR + 0.1, 0.4, 16, 1, true, 0, Math.PI), m('#141416'));
+    well.rotation.set(0, 0, Math.PI / 2);
+    well.position.set(s * (W - 0.22), wheelR, z);
+    root.add(well);
+    busWheel(root, wheelR, s * (W - 0.13), wheelR, z);
+  }
+  root.traverse((o) => { if ((o as THREE.Mesh).isMesh) o.castShadow = true; });
+  return root;
+}
+
+/** The destination, painted in light on the board above the windscreen. */
+function destSprite(text: string): THREE.Mesh | null {
+  const c = document.createElement('canvas');
+  c.width = 512; c.height = 64;
+  const x = c.getContext('2d');
+  if (!x) return null;
+  x.fillStyle = '#1a1206'; x.fillRect(0, 0, 512, 64);
+  x.fillStyle = '#ffd27a'; x.font = 'bold 40px sans-serif'; x.textAlign = 'center'; x.textBaseline = 'middle';
+  x.fillText(text, 256, 34);
+  const tex = new THREE.CanvasTexture(c);
+  tex.colorSpace = THREE.SRGBColorSpace;
+  return new THREE.Mesh(new THREE.PlaneGeometry(COACH.halfW * 2 - 0.95, 0.22), new THREE.MeshBasicMaterial({ map: tex, toneMapped: false }));
 }

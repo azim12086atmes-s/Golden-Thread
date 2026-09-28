@@ -41,6 +41,11 @@ export class Travellers {
   private vehicle: VehicleModel | null = null;
   private boyUnicorn: Mount | null = null;
   parkedVan: { model: VehicleModel; pos: THREE.Vector3; heading: number } | null = null;
+  /**
+   * Riding someone else's vehicle (the intercity coach, travel/BusRide.ts): its body, and their two
+   * seats in its frame — separate seats either side of the aisle. While set they sit and ride.
+   */
+  carriage: { root: THREE.Object3D; girl: readonly [number, number, number]; boy: readonly [number, number, number] } | null = null;
 
   /** Riding their own mounts (unicorns, or the dragon and a unicorn). */
   get mounted(): boolean {
@@ -184,6 +189,7 @@ export class Travellers {
     this.camPitch = clamp(this.camPitch + input.dy * 0.004, -1.35, 1.3);
     this.camDist = clamp(this.camDist + input.wheel * 1.2, 4, 40);
 
+    if (this.carriage) return this.rideCarriage(dt, t);
     const a = input.axis();
     const fwd = new THREE.Vector3(Math.sin(this.camYaw), 0, Math.cos(this.camYaw));
     const right = new THREE.Vector3(-Math.cos(this.camYaw), 0, Math.sin(this.camYaw));
@@ -431,6 +437,32 @@ export class Travellers {
     const boyAir = this.mode === 'fly' || (!riding && this.bPos.y > surfaceAt(this.bPos.x, this.bPos.z, this.bPos.y) + 0.4);
     this.boy.update(dt, { speed: this.bSpeed, airborne: boyAir, riding, t });
 
+    const ga = new THREE.Vector3(), ba = new THREE.Vector3();
+    this.girl.handAnchor.getWorldPosition(ga);
+    this.boy.handAnchor.getWorldPosition(ba);
+    this.thread.update(ga, ba, this.tension, this.st.light, t, dt);
+  }
+
+  /** Sitting in their seats on a coach, carried along. */
+  private rideCarriage(dt: number, t: number): void {
+    const c = this.carriage!;
+    c.root.updateMatrixWorld();
+    const q = c.root.getWorldQuaternion(new THREE.Quaternion());
+    const g = new THREE.Vector3(c.girl[0], c.girl[1] - 0.55, c.girl[2]).applyMatrix4(c.root.matrixWorld);
+    const b = new THREE.Vector3(c.boy[0], c.boy[1] - 0.55, c.boy[2]).applyMatrix4(c.root.matrixWorld);
+    this.gPos.copy(g);
+    this.bPos.copy(b);
+    this.heading = this.bHeading = c.root.rotation.y;
+    this.speed = this.bSpeed = 0;
+    this.vel.set(0, 0, 0);
+    this.grounded = true;
+    this.girl.setBackRoom(0.2);
+    this.girl.root.position.copy(g);
+    this.boy.root.position.copy(b);
+    this.girl.root.quaternion.copy(q);
+    this.boy.root.quaternion.copy(q);
+    this.girl.update(dt, { speed: 0, airborne: false, riding: true, t });
+    this.boy.update(dt, { speed: 0, airborne: false, riding: true, t });
     const ga = new THREE.Vector3(), ba = new THREE.Vector3();
     this.girl.handAnchor.getWorldPosition(ga);
     this.boy.handAnchor.getWorldPosition(ba);

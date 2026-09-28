@@ -35,6 +35,7 @@ import { features, objectives, type Card } from '../story/intro';
 import { WONDERS, foundWonder, wonderHint, wonderPos } from '../world/wonders';
 import { VEHICLES, type VehicleId } from '../vehicles/vehicles';
 import { GRID_COLS, GRID_ROWS, REGIONS, REGION_BY_ID, regionCenter, type RegionId, type RegionSpec } from '../world/regions';
+import { busFare, type BusStop } from '../travel/bus';
 import { INSTITUTE_SITES } from '../institutions/sites';
 import { certificatesOf, rankCap } from '../institutions/certificates';
 import { BENCH_FEE, PRODUCT_BY_INVENTION, bestMarkets as bestProductMarkets, manufacture, productPrice, sellProduct, workshopAt } from '../economy/manufacture';
@@ -46,7 +47,7 @@ import { CIVIC_LABEL, civicDoor, civicOf } from '../world/neighbourhood';
 import { FIELD_SITES } from '../world/plots';
 import type { Game } from '../Game';
 
-type Panel = 'finder' | 'work' | 'harbour' | 'field' | 'institute' | 'care' | 'wardrobe' | 'bag' | 'journal' | 'map' | 'messages' | 'vehicles' | 'dialogue' | 'animal' | 'build' | 'van' | 'house' | 'farm' | 'market' | 'help' | 'homes' | 'property' | null;
+type Panel = 'finder' | 'work' | 'harbour' | 'bus' | 'field' | 'institute' | 'care' | 'wardrobe' | 'bag' | 'journal' | 'map' | 'messages' | 'vehicles' | 'dialogue' | 'animal' | 'build' | 'van' | 'house' | 'farm' | 'market' | 'help' | 'homes' | 'property' | null;
 
 const h = (tag: string, attrs: Record<string, string> = {}, ...kids: Array<Node | string | null | false>) => {
   const el = document.createElement(tag);
@@ -613,7 +614,7 @@ export class UI {
 
   render(): void {
     const body = h('div', { class: 'body' });
-    const titles: Record<string, string> = { wardrobe: 'Dressing room', bag: 'Bag & Crafts', journal: 'Journal', map: 'The World', messages: 'Messages', vehicles: 'Ways to Travel', dialogue: '', animal: '', build: 'Build', van: 'Inside Safar', house: this.g.houseTitle(), farm: 'Farm bed', market: 'Market stall', help: 'How to play', care: 'Care & sponsorship', institute: this.instituteTitle(), field: this.fieldTitle(), work: `Work in ${this.g.region.name}`, finder: 'People finder', harbour: `The harbour of ${REGION_BY_ID[this.harbourLand]?.name ?? ''}`, homes: 'Homes & Land', property: 'Land for sale' };
+    const titles: Record<string, string> = { wardrobe: 'Dressing room', bag: 'Bag & Crafts', journal: 'Journal', map: 'The World', messages: 'Messages', vehicles: 'Ways to Travel', dialogue: '', animal: '', build: 'Build', van: 'Inside Safar', house: this.g.houseTitle(), farm: 'Farm bed', market: 'Market stall', help: 'How to play', care: 'Care & sponsorship', institute: this.instituteTitle(), field: this.fieldTitle(), work: `Work in ${this.g.region.name}`, finder: 'People finder', harbour: `The harbour of ${REGION_BY_ID[this.harbourLand]?.name ?? ''}`, bus: `Bus stop · ${this.busStop ? REGION_BY_ID[this.busStop.land].name : ''}`, homes: 'Homes & Land', property: 'Land for sale' };
     const head = this.panel === 'van'
       ? h('header', {}, h('h2', {}, titles.van),
         h('span', { class: 'head-acts' },
@@ -645,6 +646,7 @@ export class UI {
       case 'institute': this.institutePanel(body); break;
       case 'field': this.fieldPanel(body); break;
       case 'harbour': this.harbourPanel(body); break;
+      case 'bus': this.busPanel(body); break;
       case 'work': this.workPanel(body); break;
       case 'finder': this.finderPanel(body); break;
       case 'property': this.property(body); break;
@@ -1093,6 +1095,28 @@ export class UI {
 
   // ───── harbours ─────
   private harbourLand: RegionId = 'london';
+
+  private busStop: BusStop | null = null;
+
+  openBusStop(stop: BusStop): void {
+    this.busStop = stop;
+    this.open('bus');
+  }
+
+  /** A bus stop: every town the roads reach, how far, and the fare. */
+  private busPanel(body: HTMLElement): void {
+    const g = this.g, stop = this.busStop;
+    if (!stop) return;
+    body.append(h('p', { class: 'dim' }, 'The Golden Thread Lines coach runs from here to every town on the ground — out along the avenue, round the ring road and down the highway. You sit in your own window seats, either side of the aisle, the family in the rows behind.'));
+    const dests = REGIONS.filter((r) => r.id !== stop.land).map((r) => ({ r, f: busFare(stop.land, r.id) })).filter((x) => x.f).sort((a, b) => a.f!.towns - b.f!.towns || a.r.name.localeCompare(b.r.name));
+    for (const { r, f } of dests) {
+      body.append(h('div', { class: 'quest' },
+        h('b', {}, r.name),
+        h('small', {}, `${f!.towns === 1 ? 'the next town' : `${f!.towns} towns`} · ${f!.coins} coins`),
+        btn('🚌 Ride', () => { const e = g.rideBus(stop, r.id); if (e) g.toast(e, 'info'); else this.closePanel(); }, 'small primary', g.st.coins < f!.coins)));
+    }
+    body.append(h('p', { class: 'dim' }, 'The Sky Isles float above the clouds: no road reaches them.'));
+  }
 
   openHarbour(land: RegionId): void {
     this.harbourLand = land;
