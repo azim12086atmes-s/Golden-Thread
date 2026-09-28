@@ -443,7 +443,7 @@ export class Atmos {
       b.z += Math.cos(b.yaw) * sp * dt;
       const gy = ground(b.x, b.z);
       b.y = Math.max(gy, WATER_Y) + 0.7 + 0.8 * (0.5 + 0.5 * Math.sin(t * 0.6 + ph)) + Math.sin(t * 11 + ph) * 0.06;
-      W.write(i, 0.13, amt);
+      W.write(i, 0.17, amt);
     });
     W.flush(t, light);
     W.mesh.visible = amt > 0.01 && n > 0;
@@ -565,7 +565,7 @@ export class Atmos {
     for (let i = 0; i < BEAMS; i++) this.beamW[i] = this.beamAlive[i] ? Math.abs(this.beamW[i]) : 0;
     const aW = this.beams.geometry.getAttribute('aW') as THREE.InstancedBufferAttribute;
     // The shared strength rides in the colour; each beam keeps its own share.
-    m.uColor.value.set('#ffd89a').multiplyScalar(amt * 0.09);
+    m.uColor.value.set('#ffd89a').multiplyScalar(amt * 0.14);
     aW.needsUpdate = true;
     this.beams.geometry.getAttribute('aB').needsUpdate = true;
   }

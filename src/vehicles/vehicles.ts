@@ -227,7 +227,7 @@ function shellMaterial(W: number, belt: number, vTip: number, sideHoles: Hole[],
   mat.envMap = vehicleEnv;
   cache.set('safar-shell', mat); // so the environment reaches it too
   const v4 = (h: Hole, a: 'x' | 'z') => `vec4(${(h[a] ?? 0).toFixed(3)}, ${h.y.toFixed(3)}, ${((a === 'x' ? h.hx : h.hz) ?? 0).toFixed(3)}, ${h.hy.toFixed(3)})`;
-  const holes = (list: Hole[], a: 'x' | 'z', coord: string, name: string) => list.map((h) => `if (sdRR(vec2(${coord} - ${v4(h, a)}.x, vP.y - ${v4(h, a)}.y), ${v4(h, a)}.zw, 0.1) < 0.0) discard; // ${name}`).join('\n');
+  const holes = (list: Hole[], a: 'x' | 'z', coord: string) => list.map((h) => `if (sdRR(vec2(${coord} - ${v4(h, a)}.x, vP.y - ${v4(h, a)}.y), ${v4(h, a)}.zw, 0.1) < 0.0) discard;`).join('\n');
   mat.onBeforeCompile = (sh) => {
     sh.vertexShader = sh.vertexShader
       .replace('#include <common>', '#include <common>\nvarying vec3 vP; varying vec3 vN0;')
@@ -241,11 +241,11 @@ function shellMaterial(W: number, belt: number, vTip: number, sideHoles: Hole[],
           vec3 n = normalize(vN0);
           // Windows through the sides, the split windscreen, the back window; the wheel arches.
           if (abs(n.x) > 0.6) {
-            ${holes(sideHoles, 'z', 'vP.z', 'side')}
+            ${holes(sideHoles, 'z', 'vP.z')}
             ${arches.map(([z, y, r]) => `if (length(vec2(vP.z - ${z.toFixed(3)}, vP.y - ${y.toFixed(3)})) < ${r.toFixed(3)}) discard;`).join('\n')}
           }
-          if (n.z > 0.6) { ${holes(frontHoles, 'x', 'vP.x', 'front')} }
-          if (n.z < -0.6) { ${holes(backHoles, 'x', 'vP.x', 'back')} }
+          if (n.z > 0.6) { ${holes(frontHoles, 'x', 'vP.x')} }
+          if (n.z < -0.6) { ${holes(backHoles, 'x', 'vP.x')} }
           // Two-tone: cream above the beltline; on the nose the cream dips to a V at the badge.
           float edge = ${belt.toFixed(3)};
           if (n.z > 0.3) edge = mix(${vTip.toFixed(3)}, ${belt.toFixed(3)}, clamp(abs(vP.x) / ${(W - 0.3).toFixed(3)}, 0.0, 1.0));
