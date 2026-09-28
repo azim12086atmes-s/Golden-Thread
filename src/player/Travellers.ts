@@ -1,3 +1,4 @@
+import { THREAD_FLAG } from '../story/ThreadScene';
 import * as THREE from 'three';
 import { CharacterModel, HERO_SCALE } from '../characters/CharacterModel';
 import { BODY_RADIUS, MIN_GAP, enforceGap, followStep, wingRoom } from '../characters/follow';
@@ -58,6 +59,8 @@ export class Travellers {
     this.girl = new CharacterModel(girlOutfit, '#e3b58f', HERO_SCALE.girl, 1, 'girl');
     this.boy = new CharacterModel(boyOutfit, '#c99a74', HERO_SCALE.boy, -1, 'boy');
     scene.add(this.girl.root, this.boy.root, this.thread.group);
+    // The golden thread each tied round the other's wrist in the opening stays tied.
+    if (st.flags.includes(THREAD_FLAG)) { this.girl.setBand(true); this.boy.setBand(true); }
     this.gPos.set(st.player.x, st.player.y, st.player.z);
     this.heading = st.player.heading;
     this.camYaw = this.heading;

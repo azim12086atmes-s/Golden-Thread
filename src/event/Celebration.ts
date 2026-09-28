@@ -105,7 +105,8 @@ export class Celebration {
     scene.onDone = () => {
       g.cutscene = null;
       // The chocolate cake, with everyone watching.
-      const cake = new CakeScene(g, { palette: CHOCOLATE, lines: lines(g.st).cake, flag: 'celebration-cake' });
+      const L = lines(g.st);
+      const cake = new CakeScene(g, { palette: CHOCOLATE, lines: L.cake, flag: 'celebration-cake', joy: L.joy });
       g.cutscene = cake;
       this.partyCake = true;
       cake.onDone = () => {

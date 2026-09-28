@@ -55,6 +55,25 @@ function mesh(geo: THREE.BufferGeometry, color: string, part: Part, glow = false
 
 const SKIRTS: string[] = ['skirt', 'straight-skirt', 'hakama', 'wrap'];
 
+/** The golden thread of commitment round a wrist: three turns of glowing gold and a little bow. */
+function threadBand(): THREE.Group {
+  const g = new THREE.Group();
+  g.position.y = -0.53;
+  for (let k = 0; k < 3; k++) {
+    const turn = mesh(new THREE.TorusGeometry(0.072, 0.009, 5, 18), '#f5c451', 'trim', true);
+    turn.rotation.x = Math.PI / 2 + (k - 1) * 0.12;
+    turn.position.y = (k - 1) * 0.018;
+    g.add(turn);
+  }
+  for (const s of [-1, 1]) {
+    const loop = mesh(new THREE.TorusGeometry(0.022, 0.006, 4, 10), '#f5c451', 'trim', true);
+    loop.position.set(s * 0.024, 0, 0.078);
+    loop.rotation.y = s * 0.5;
+    g.add(loop);
+  }
+  return g;
+}
+
 /** A turned shape from (radius, y) pairs, bottom to top. */
 const lathe = (prof: number[][], seg = 12) => new THREE.LatheGeometry(prof.map(([r, y]) => new THREE.Vector2(r, y)), seg);
 
@@ -62,10 +81,22 @@ const lathe = (prof: number[][], seg = 12) => new THREE.LatheGeometry(prof.map((
  * A trouser leg shaped like a leg inside loose cloth: full through the thigh, easing in at the
  * knee, a rounded calf and a narrow ankle (salwar stays full to a gathered cuff). Top at y = 0.
  */
-function trouserLeg(hip: number, loose: boolean): THREE.BufferGeometry {
-  return lathe(loose
+function trouserLeg(hip: number, loose: boolean): number[][] {
+  return loose
     ? [[0.058, -hip], [0.07, -hip + 0.05], [0.108, -hip + 0.26], [0.118, -hip * 0.45], [0.112, -0.1], [0.104, 0]]
-    : [[0.056, -hip], [0.06, -hip + 0.07], [0.072, -hip + 0.26], [0.066, -hip * 0.52], [0.082, -hip * 0.34], [0.094, -0.08], [0.09, 0]]);
+    : [[0.056, -hip], [0.06, -hip + 0.07], [0.072, -hip + 0.26], [0.066, -hip * 0.52], [0.082, -hip * 0.34], [0.094, -0.08], [0.09, 0]];
+}
+
+/**
+ * A leg profile cut at the knee (y = knee) into the thigh (top at 0) and the shin (its top, the
+ * knee, at its own origin) so the knee can bend — for kneeling.
+ */
+function splitLeg(prof: number[][], knee: number, seg: number): [THREE.BufferGeometry, THREE.BufferGeometry] {
+  const i = prof.findIndex(([, y]) => y > knee);
+  const [r0, y0] = prof[i - 1], [r1, y1] = prof[i];
+  const at = [r0 + ((r1 - r0) * (knee - y0)) / (y1 - y0), knee];
+  const upper = [at, ...prof.slice(i)], lower = [...prof.slice(0, i), at].map(([r, y]) => [r, y - knee]);
+  return [lathe(upper, seg), lathe(lower, seg)];
 }
 
 /**
@@ -133,11 +164,10 @@ function fittedSleeve(len: number): THREE.BufferGeometry {
 const RAINBOW = ['#ff6b8b', '#ffb347', '#fff27a', '#7dffa8', '#6bc8ff', '#b99bff'];
 
 /** A trouser leg that is looser through the thigh and opens below the knee. Top at y = 0. */
-function flaredLeg(kind: 'bell' | 'flared', hip: number): THREE.BufferGeometry {
-  const prof = kind === 'bell'
+function flaredLeg(kind: 'bell' | 'flared', hip: number): number[][] {
+  return kind === 'bell'
     ? [[0.14, -hip], [0.112, -hip + 0.2], [0.082, -hip + 0.36], [0.088, -0.22], [0.094, 0]]
     : [[0.118, -hip], [0.098, -hip + 0.16], [0.083, -hip + 0.32], [0.088, -0.22], [0.093, 0]];
-  return new THREE.LatheGeometry(prof.map(([r, y]) => new THREE.Vector2(r, y)), 10);
 }
 
 const HEM_Y: Record<Hem, number> = { floor: 0.03, ankle: 0.09, midi: 0.42, knee: 0.52, thigh: 0.66, mini: 0.72 };
@@ -175,6 +205,12 @@ export interface Dimensions {
 }
 
 export const DIMS: Dimensions = { hip: 0.82, waist: 0.95, shoulder: 1.36, neck: 1.4, headR: 0.155 };
+/** The knee, halfway down the leg (leg-local y): the thigh above, the shin hinged below. */
+const KNEE = -DIMS.hip * 0.5;
+/** Kneeling: the hips come down this far (the knee rests on the ground through the cloth), and the front thigh slopes forward at this angle so that foot stands flat. */
+const KNEEL_DROP = -KNEE - 0.075;
+const KNEEL_THIGH = Math.acos((DIMS.hip - KNEEL_DROP - (DIMS.hip - 0.036 + KNEE) - 0.037) / -KNEE);
+const _aim = new THREE.Vector3(), _aimQ = new THREE.Quaternion(), _down = new THREE.Vector3(0, -1, 0);
 
 /** Mid-chest height on the unscaled body: 60% of the way from the waist to the shoulder line. */
 export const CHEST_MID = DIMS.waist + 0.6 * (DIMS.shoulder - DIMS.waist);
@@ -203,6 +239,9 @@ export class CharacterModel {
   readonly root = new THREE.Group();
   private legL = new THREE.Group();
   private legR = new THREE.Group();
+  private shinL = new THREE.Group();
+  private shinR = new THREE.Group();
+  private feet: THREE.Object3D[] = [];
   private armL = new THREE.Group();
   private armR = new THREE.Group();
   private body = new THREE.Group();
@@ -223,6 +262,16 @@ export class CharacterModel {
   private balloonColour: string | null = null;
   /** Added to the offering arm's forward angle: negative lifts it higher, positive lowers it. */
   offerLift = 0;
+  /** 0..1: down on one knee (the left knee on the ground, the right foot planted before him). */
+  kneel = 0;
+  /** 0..1: how far each hand reaches towards its point in the world (null: that hand stays as it is). */
+  reach = 0;
+  reachThread: THREE.Vector3 | null = null;
+  reachFree: THREE.Vector3 | null = null;
+  /** 0..1: arms lifted out wide, the body tipped back a little — a twirl of joy. */
+  twirl = 0;
+  /** The golden thread of commitment, tied round the thread hand's wrist. */
+  private band = false;
 
   constructor(
     public outfit: Outfit,
@@ -282,16 +331,22 @@ export class CharacterModel {
     b.scale.setScalar(this.scale);
 
     // Legs — always covered to the ankle (modesty invariant): trousers are the base layer.
-    const legGeo = o.detail?.legs ? flaredLeg(o.detail.legs, D.hip) : trouserLeg(D.hip, o.lower === 'salwar');
-    for (const [leg, x] of [[this.legL, -0.1], [this.legR, 0.1]] as const) {
+    const [thighGeo, shinGeo] = o.detail?.legs ? splitLeg(flaredLeg(o.detail.legs, D.hip), KNEE, 10) : splitLeg(trouserLeg(D.hip, o.lower === 'salwar'), KNEE, 12);
+    this.feet = [];
+    for (const [leg, shin, x] of [[this.legL, this.shinL, -0.1], [this.legR, this.shinR, 0.1]] as const) {
       leg.position.set(x, D.hip, 0);
-      leg.add(mesh(legGeo.clone(), o.underTrousers, 'leg'));
+      leg.add(mesh(thighGeo.clone(), o.underTrousers, 'leg'));
+      shin.clear();
+      shin.position.y = KNEE;
+      shin.add(mesh(shinGeo.clone(), o.underTrousers, 'leg'));
       // A rounded shoe: toe cap and heel.
       const shoe = new THREE.SphereGeometry(0.06, 10, 6);
       shoe.scale(0.95, 0.62, 1.9);
       const foot = mesh(shoe, '#3a2a22', 'foot');
-      foot.position.set(0, -D.hip + 0.036, 0.045);
-      leg.add(foot);
+      foot.position.set(0, -D.hip + 0.036 - KNEE, 0.045);
+      shin.add(foot);
+      this.feet.push(foot);
+      leg.add(shin);
       b.add(leg);
     }
 
@@ -404,6 +459,7 @@ export class CharacterModel {
     }
     this.handAnchor.position.set(0, -0.63, 0);
     (this.threadHand > 0 ? this.armR : this.armL).add(this.handAnchor);
+    if (this.band) (this.threadHand > 0 ? this.armR : this.armL).add(threadBand());
 
     this.buildOuter(b);
     if (o.detail?.back === 'wings' && this.backShown) { this.wings = new Wings(); b.add(this.wings.group); }
@@ -639,6 +695,29 @@ export class CharacterModel {
     b.scale.setScalar(1 / this.scale);
     (this.threadHand > 0 ? this.armL : this.armR).add(b);
     this.balloon = b;
+  }
+
+  get hasBand(): boolean {
+    return this.band;
+  }
+
+  /** Wear (or take off) the golden thread tied round the wrist. */
+  setBand(on: boolean): void {
+    if (this.band === on) return;
+    this.band = on;
+    this.setOutfit(this.outfit);
+  }
+
+  /** The wrist of the thread hand or the free hand (for a knot of light to wind round). */
+  wrist(which: 'thread' | 'free', out: THREE.Vector3): THREE.Vector3 {
+    const thread = which === 'thread';
+    const arm = (this.threadHand > 0) === thread ? this.armR : this.armL;
+    return arm.localToWorld(out.set(0, -0.56, 0));
+  }
+
+  /** The arm itself (the knot of light is parented to it so it moves with the wrist). */
+  armOf(which: 'thread' | 'free'): THREE.Object3D {
+    return (this.threadHand > 0) === (which === 'thread') ? this.armR : this.armL;
   }
 
   /** World position just above the free hand's palm. */
@@ -909,14 +988,44 @@ export class CharacterModel {
       this.armR.rotation.z = 0.12;
       this.body.rotation.x = 0;
     }
+    this.armL.rotation.y = this.armR.rotation.y = 0;
+    this.shinL.rotation.x = this.shinR.rotation.x = 0;
+    if (this.feet[0]) this.feet[0].rotation.x = 0;
     if (this.offer > 0) {
       const arm = this.threadHand > 0 ? this.armL : this.armR;
       arm.rotation.x += (-1.25 + this.offerLift - arm.rotation.x) * this.offer;
       arm.rotation.z *= 1 - this.offer * 0.7;
     }
+    if (this.twirl > 0) {
+      const k = this.twirl;
+      this.armL.rotation.x += (-0.35 - this.armL.rotation.x) * k;
+      this.armR.rotation.x += (-0.35 - this.armR.rotation.x) * k;
+      this.armL.rotation.z += (-1.25 - this.armL.rotation.z) * k;
+      this.armR.rotation.z += (1.25 - this.armR.rotation.z) * k;
+      this.body.rotation.x = -0.1 * k;
+    }
+    if (this.kneel > 0) {
+      // Down on the left knee: the left thigh straight down, its shin back along the ground; the
+      // right thigh forward, its shin standing — the body lowered by a thigh's length.
+      const k = this.kneel, ease = (g: THREE.Object3D, want: number) => { g.rotation.x += (want - g.rotation.x) * k; };
+      ease(this.legL, 0.1); ease(this.shinL, Math.PI / 2 - 0.1);
+      ease(this.legR, -KNEEL_THIGH); ease(this.shinR, KNEEL_THIGH);
+      // The back foot lies flat along the ground, its instep down.
+      if (this.feet[0]) this.feet[0].rotation.x = -(Math.PI / 2 - 0.1) * k;
+    }
     // The floating head bobs gently on its own — never touching the body.
     this.head.position.y = (DIMS.neck + HEAD_GAP + DIMS.headR) + Math.sin(s.t * 2.2) * 0.012 + (moving ? Math.abs(Math.cos(this.phase)) * 0.015 : 0);
-    this.body.position.y = moving ? Math.abs(Math.sin(this.phase)) * 0.03 : 0;
+    this.body.position.y = (moving ? Math.abs(Math.sin(this.phase)) * 0.03 : 0) - KNEEL_DROP * this.scale * this.kneel;
+    if (this.reach > 0) {
+      // Each hand reaches along the line to its point (the arm's length is its own: it never stretches).
+      this.root.updateMatrixWorld(true);
+      for (const [arm, target] of [[this.armOf('thread'), this.reachThread], [this.armOf('free'), this.reachFree]] as const) {
+        if (!target) continue;
+        this.body.worldToLocal(_aim.copy(target)).sub(arm.position).normalize();
+        _aimQ.setFromUnitVectors(_down, _aim);
+        arm.quaternion.slerp(_aimQ, this.reach);
+      }
+    }
     if (this.crown) {
       this.crown.position.y = DIMS.headR * (['gat', 'wide-hat', 'hijab-hat', 'turban', 'songkok'].includes(this.outfit.head.style) ? 2.5 : 1.85) + Math.sin(s.t * 1.6) * 0.012;
     }

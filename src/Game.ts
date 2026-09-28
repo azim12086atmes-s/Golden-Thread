@@ -12,6 +12,7 @@ import './characters/wardrobe'; // registers the fusion outfits
 import { EventBus } from './core/events';
 import { Guide } from './guide/Guide';
 import { CakeScene } from './story/CakeScene';
+import { THREAD_FLAG, ThreadScene } from './story/ThreadScene';
 import { StoryScene } from './story/StoryScene';
 import { STORY_FLAG } from './story/storyline';
 import { Celebration } from './event/Celebration';
@@ -1039,7 +1040,8 @@ export class Game {
     this.started = true;
     this.trav.camYaw = this.trav.heading;
     const after = () => {
-      if (!this.st.quests['main-meadow'] && !this.st.flags.includes('cake')) this.playOpening();
+      const cake = !this.st.quests['main-meadow'] && !this.st.flags.includes('cake');
+      if (cake || !this.st.flags.includes(THREAD_FLAG)) this.playOpening(cake);
       else {
         if (!this.st.quests['main-meadow']) this.wakeToast();
         this.celebration.invite();
@@ -1072,18 +1074,29 @@ export class Game {
     };
   }
 
-  /** The cake under the Great Oak. Plays on a new journey; replayable from Help. */
-  playOpening(): void {
+  /**
+   * The opening under the Great Oak: the golden thread tied round each other's wrists, then the
+   * cake. Plays on a new journey; replayable from Help.
+   */
+  playOpening(cake = true): void {
     if (this.cutscene || this.inVan) return;
     this.ui.closePanel();
-    const scene = new CakeScene(this);
-    this.cutscene = scene;
-    scene.onDone = () => {
+    if (this.trav.mode !== 'walk') this.chooseVehicle('walk');
+    const end = () => {
       this.cutscene = null;
       if (!this.st.quests['main-meadow']) this.wakeToast();
       this.celebration.invite();
       this.guide.refresh();
       this.ui.refreshTracker();
+    };
+    const thread = new ThreadScene(this);
+    this.cutscene = thread;
+    thread.onDone = () => {
+      this.cutscene = null;
+      if (!cake) return end();
+      const scene = new CakeScene(this);
+      this.cutscene = scene;
+      scene.onDone = end;
     };
   }
 

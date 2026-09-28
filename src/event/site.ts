@@ -80,7 +80,7 @@ export function celebrationObjective(st: GameState, chariot: { x: number; z: num
   };
 }
 
-export interface Lines { ride: string[]; wardrobe: string[]; venue: string[]; cake: [string, string, string, string] }
+export interface Lines { ride: string[]; wardrobe: string[]; venue: string[]; cake: [string, string, string, string]; joy: string }
 
 /** Every caption of the evening. */
 export function lines(st: GameState): Lines {
@@ -100,11 +100,12 @@ export function lines(st: GameState): Lines {
       `Congratulations, ${girl}, on your new job!`,
     ],
     cake: [
-      'A chocolate cake, as tall as a lantern.',
+      `A chocolate cake as tall as a lantern — and her friends, Musadiq, Farzan, Zaid, Zidane, Varna, Srushti, the twins Shruti and Smruti, and Shifa, circling ${girl} as though she were the bride.`,
       `From across the table, ${boy} cuts it with the thread's light.`,
       `${boy} offers ${girl} the first piece…`,
       '…and everyone cheers, under the aurora and the rainbows.',
     ],
+    joy: `${girl} tastes it — and twirls, round and round, amazed and laughing, as her friends circle and the sparks rise.`,
   };
 }
 

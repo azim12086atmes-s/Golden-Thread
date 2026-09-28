@@ -1,6 +1,8 @@
 import * as THREE from 'three';
 import type { Game } from '../Game';
 import { surfaceAt } from '../world/terrain';
+import { BODY_RADIUS } from '../characters/follow';
+import { FriendsRing } from '../event/Friends';
 
 /**
  * The opening: under the Great Oak, a small celebration before the road. A blade of the golden
@@ -23,6 +25,8 @@ export interface CakeOptions {
   lines?: [string, string, string, string];
   /** Flag recorded once the piece is tasted (it grants a little light the first time). */
   flag?: string;
+  /** The party: her friends circle round her while it is cut, and after tasting it she twirls for joy (this caption). */
+  joy?: string;
 }
 const WEDGE = Math.PI / 4;
 
@@ -97,8 +101,14 @@ export class CakeScene {
   onDone?: () => void;
 
   static readonly LENGTH = 17;
+  /** With the twirl of joy at the end. */
+  static readonly PARTY_LENGTH = 24;
 
   private flag: string;
+  private friends: FriendsRing | null = null;
+  private length = CakeScene.LENGTH;
+  /** Where she stands, and the way she faces, when the twirl begins. */
+  private herYaw = 0;
 
   constructor(private g: Game, opts: CakeOptions = {}) {
     const pal = opts.palette ?? VANILLA;
@@ -112,6 +122,13 @@ export class CakeScene {
       { at: 12.8, text: L[3] },
       { at: 16.2 },
     ];
+    if (opts.joy) {
+      // The party: the friends' ring, and her twirl of joy after the first taste.
+      this.length = CakeScene.PARTY_LENGTH;
+      this.beats.splice(4, 1, { at: 14.4, text: opts.joy }, { at: 22.6 });
+      this.friends = new FriendsRing();
+      g.scene.add(this.friends.group);
+    }
 
     // Where: in front of the two travellers, between them.
     const tr = g.trav;
@@ -315,14 +332,56 @@ export class CakeScene {
     const height = THREE.MathUtils.lerp(5.5, 1.9, k);
     const dir = this.fwd.clone().multiplyScalar(Math.cos(arc)).addScaledVector(side, Math.sin(arc));
     const shot = look.clone().addScaledVector(dir, dist).setY(look.y + height);
-    const back = THREE.MathUtils.smoothstep(t, 14.2, 16.4);
+    if (this.friends) this.party(dt, t, camera, shot, look);
+    else {
+      const back = THREE.MathUtils.smoothstep(t, 14.2, 16.4);
+      if (back > 0) {
+        tr.camYaw = this.savedYaw;
+        camera.position.lerpVectors(shot, camera.position, back);
+      } else camera.position.copy(shot);
+      camera.lookAt(look.lerp(this.mid.clone().setY(this.mid.y + 1.2), back));
+    }
+
+    if (t >= this.length) this.finish();
+  }
+
+  /**
+   * The party's own ending: all through the cutting her friends walk round her, and after the
+   * first taste she twirls for joy — arms out, turning round and round — while the camera circles
+   * the other way, rising, sparks spiralling up round her; then it settles back behind them.
+   */
+  private party(dt: number, t: number, camera: THREE.PerspectiveCamera, shot: THREE.Vector3, look: THREE.Vector3): void {
+    const S = THREE.MathUtils.smoothstep, tr = this.g.trav, girl = tr.girl, her = tr.gPos;
+    const walk = S(t, 0, 1.5) * (1 - S(t, 20, 22.5) * 0.7);
+    this.friends!.update(dt, t, her, (x, z) => surfaceAt(x, z, her.y + 2), walk);
+    // Her wings (if the gown has them) fold to the room left by him and by her friends.
+    const room = Math.min(Math.hypot(her.x - tr.bPos.x, her.z - tr.bPos.z) - Math.max(tr.boy.backReach(), BODY_RADIUS) - 0.2, this.friends!.nearest(her) - BODY_RADIUS - 0.3);
+    girl.setBackRoom(room);
+    // The twirl: 14.0 – 21.0 s, two and a half turns, easing in and out.
+    const spin = S(t, 14, 21);
+    if (t < 14) this.herYaw = girl.root.rotation.y;
+    girl.twirl = S(t, 13.8, 14.8) * (1 - S(t, 20.4, 21.4));
+    girl.root.rotation.y = this.herYaw + spin * Math.PI * 5;
+    girl.update(0, { speed: 0, airborne: false, riding: false, t });
+    girl.root.position.y = her.y + Math.sin(spin * Math.PI) * 0.06;
+    const joy = S(t, 13.6, 14.6) * (1 - S(t, 21, 22));
+    if (joy > 0) for (let i = 0; i < this.sparks.length; i++) {
+      const s = this.sparks[i], ph = (t * 0.6 + i / this.sparks.length) % 1, a = ph * Math.PI * 6 + i;
+      s.visible = true;
+      s.position.set(her.x + Math.cos(a) * (0.6 + ph * 0.9), her.y + 0.2 + ph * 2.6, her.z + Math.sin(a) * (0.6 + ph * 0.9));
+      s.scale.setScalar((1 - ph) * 1.6 * joy);
+    }
+    // The camera: the cake shot, then circling her against her turn, rising, and back behind them.
+    const a = -(t - 13.6) * 0.8, r = THREE.MathUtils.lerp(3.2, 5.2, S(t, 14, 21)), h = THREE.MathUtils.lerp(1.2, 3.4, S(t, 14, 21));
+    const orbit = new THREE.Vector3(her.x + Math.sin(a) * r, her.y + h, her.z + Math.cos(a) * r);
+    const into = S(t, 13.4, 14.6);
+    const pos = shot.clone().lerp(orbit, into), at = look.clone().lerp(her.clone().setY(her.y + 1.1), into);
+    const back = S(t, this.length - 2.2, this.length - 0.2);
     if (back > 0) {
       tr.camYaw = this.savedYaw;
-      camera.position.lerpVectors(shot, camera.position, back);
-    } else camera.position.copy(shot);
-    camera.lookAt(look.lerp(this.mid.clone().setY(this.mid.y + 1.2), back));
-
-    if (t >= CakeScene.LENGTH) this.finish();
+      camera.position.lerpVectors(pos, camera.position, back);
+    } else camera.position.copy(pos);
+    camera.lookAt(at.lerp(this.mid.clone().setY(this.mid.y + 1.2), back));
   }
 
   private spark(i: number, at: THREE.Vector3, t: number, spread = 1): void {
@@ -347,6 +406,8 @@ export class CakeScene {
     }
     g.trav.boy.offer = 0;
     g.trav.boy.offerLift = 0;
+    g.trav.girl.twirl = 0;
+    if (this.friends) g.scene.remove(this.friends.group);
     g.scene.remove(this.link);
     g.trav.camYaw = this.savedYaw;
     g.scene.remove(this.group);
