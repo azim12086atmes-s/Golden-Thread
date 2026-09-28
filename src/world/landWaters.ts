@@ -1,6 +1,7 @@
 import type { Ctx } from './architecture';
 import { fountainJet, waterBasin, waterChannel, waterPool } from './flowWater';
-import { box, cone, cyl, sphere, tree } from './kit';
+import * as THREE from 'three';
+import { M, box, cone, cyl, sphere, tree } from './kit';
 import type { RegionId } from './regions';
 
 /**
@@ -57,11 +58,128 @@ function spout(c: Ctx, x: number, y: number, z: number, dx: number, dz: number, 
   cyl(c.glow, ring, ring, 0.02, '#e6fbff', x + dx * 0.55, y - drop + 0.01, z + dz * 0.55, 10);
 }
 
+/** The lands where the lotus is grown in formal ponds (owner's list: India, the Mughal gardens, China, Japan, Indonesia). */
+export const LOTUS_LANDS: RegionId[] = ['japan', 'china', 'indianorth', 'indiasouth', 'mughal', 'indonesia'];
+
+/** Lotus flowers standing up out of the water on stems, pink and white, with a few buds. */
+function lotusBlooms(c: Ctx, x: number, y: number, z: number, r: number, n: number): void {
+  for (let i = 0; i < n; i++) {
+    const a = i * 2.39996 + 0.7, d = r * (0.25 + ((i * 0.41) % 1) * 0.65), px = x + Math.cos(a) * d, pz = z + Math.sin(a) * d, h = 0.35 + (i % 3) * 0.15;
+    cyl(c.g, 0.012, 0.015, h, '#4f7a3a', px, y, pz, 3);
+    if (i % 4 === 3) { c.g.add(new THREE.SphereGeometry(0.09, 6, 4).scale(1, 1.6, 1), '#ff9ac0', M(px, y + h + 0.1, pz)); continue; }
+    for (let q = 0; q < 8; q++) { const b = (q / 8) * Math.PI * 2; c.g.add(new THREE.SphereGeometry(0.09, 5, 4).scale(0.6, 1.4, 0.35), i % 2 ? '#ffc4dc' : '#fff4f8', M(px + Math.cos(b) * 0.1, y + h + 0.1, pz + Math.sin(b) * 0.1, Math.PI / 2 - b, 1, 1, 1, 0.45, 0)); }
+    sphere(c.glow, 0.05, '#ffe27a', px, y + h + 0.1, pz, 5);
+  }
+}
+
+/**
+ * A formal lotus garden, in each land's own manner: a stone-edged stroll pond with a vermilion
+ * arched bridge in Sakura Hollow; a zigzag bridge to a six-sided pavilion in Jade Terraces; a
+ * stepped kund with chhatris at its corners in Gulabi Nagar; a temple tank with a mandapa standing
+ * in the water on Kaveri Coast; a marble pool with a lotus fountain between cypresses in
+ * Bagh-e-Noor; a bale kambang — a floating pavilion — in Nusa Rinjani.
+ */
+function lotusGarden(c: Ctx, land: RegionId, x: number, z: number): Collide[] {
+  const out: Collide[] = [];
+  const g = c.g;
+  switch (land) {
+    case 'japan': {
+      waterBasin(c, x, 0, z, 7, { stone: '#8a847a', kerb: 0.35, seg: 9, speed: 0.04 });
+      for (let i = 0; i < 16; i++) { const a = (i / 16) * Math.PI * 2 + (i % 3) * 0.1; sphere(g, 0.45 + (i % 4) * 0.12, i % 2 ? '#8a847a' : '#9a948a', x + Math.cos(a) * 7.5, 0.1, z + Math.sin(a) * 7.5, 6, 0.6); }
+      lotus(c, x - 2, 0.23, z + 1.5, 3, 16); lotusBlooms(c, x - 2, 0.23, z + 1.5, 3, 10);
+      // The arched bridge across the pond, lacquered vermilion.
+      for (let i = 0; i <= 12; i++) { const u = i / 12, px = x - 7.5 + u * 15; box(g, 1.1, 0.12, 2, '#6a4a2a', px, 0.3 + Math.sin(u * Math.PI) * 1.6, z - 3, 0); }
+      for (const s of [-1, 1]) { for (let i = 0; i <= 8; i++) { const u = i / 8, px = x - 7.5 + u * 15; cyl(g, 0.05, 0.05, 0.9, '#d8342a', px, 0.3 + Math.sin(u * Math.PI) * 1.6, z - 3 + s * 0.95, 5); } }
+      // A snow-viewing lantern (yukimi-dōrō) at the water's edge.
+      for (let i = 0; i < 3; i++) { const a = (i / 3) * Math.PI * 2; box(g, 0.1, 0.8, 0.1, '#8a847a', x + 5 + Math.cos(a) * 0.4, 0, z + 5 + Math.sin(a) * 0.4); }
+      box(g, 0.5, 0.45, 0.5, '#8a847a', x + 5, 0.8, z + 5); box(c.glow, 0.3, 0.3, 0.52, '#ffcf7a', x + 5, 0.87, z + 5);
+      c.g.add(new THREE.ConeGeometry(1.1, 0.4, 6), '#8a847a', M(x + 5, 1.45, z + 5));
+      out.push({ x, z: z + 2, r: 5.5, h: 0.6 });
+      break;
+    }
+    case 'china': {
+      waterPool(c, x, 0, z, 16, 12, 0, { stone: '#b8b0a0', kerb: 0.4, speed: 0.04 });
+      lotus(c, x - 4, 0.28, z - 2, 3.4, 18); lotusBlooms(c, x - 4, 0.28, z - 2, 3.4, 12); lotus(c, x + 4.5, 0.28, z + 3, 2.4, 10);
+      // The zigzag bridge (spirits go only in straight lines) out to a six-sided pavilion.
+      const zig: Array<[number, number, number]> = [[x - 7, z + 5, 0], [x - 4.5, z + 4, 0.7], [x - 2.5, z + 2.6, -0.7], [x - 0.5, z + 1.4, 0.7]];
+      for (const [bx, bz, ry] of zig) { box(g, 2.8, 0.2, 1.3, '#d8d0c0', bx, 0.45, bz, ry); for (const s of [-1, 1]) box(g, 2.8, 0.5, 0.06, '#c8c0b0', bx - Math.sin(ry) * s * 0.62, 0.65, bz + Math.cos(ry) * 0.62 * s, ry); }
+      const px = x + 2, pz = z;
+      cyl(g, 2.2, 2.4, 0.5, '#b8b0a0', px, 0.2, pz, 6);
+      for (let i = 0; i < 6; i++) { const a = (i / 6) * Math.PI * 2; cyl(g, 0.12, 0.13, 2.6, '#b0322a', px + Math.cos(a) * 1.7, 0.7, pz + Math.sin(a) * 1.7, 8); }
+      cyl(g, 2.1, 2.1, 0.3, '#2f5a9a', px, 3.3, pz, 6);
+      c.g.add(new THREE.ConeGeometry(2.9, 1.8, 6), '#2f6a5a', M(px, 4.5, pz, 0, 1, 1, 1));
+      for (let i = 0; i < 6; i++) { const a = (i / 6) * Math.PI * 2; cone(g, 0.12, 0.6, '#2f6a5a', px + Math.cos(a) * 2.7, 3.6, pz + Math.sin(a) * 2.7, 4); }
+      sphere(g, 0.25, '#d4af37', px, 5.5, pz, 8);
+      sphere(c.glow, 0.3, '#ff3a2a', px, 2.8, pz, 8, 1.3);
+      out.push({ x: x - 3, z: z - 3, r: 4.5, h: 0.6 }, { x: x + 5, z: z - 2, r: 2.5, h: 0.6 });
+      break;
+    }
+    case 'indianorth': {
+      // A kund: terraces of steps climbing to the rim, the pool within, a chhatri at each corner.
+      for (let i = 0; i < 4; i++) box(g, 18 - i * 1.6, 0.35 * (i + 1), 18 - i * 1.6, i % 2 ? '#d27466' : '#e8917a', x, 0, z);
+      waterPool(c, x, 1.4, z, 11, 11, 0, { stone: '#e8917a', kerb: 0.3, speed: 0.03 });
+      lotus(c, x, 1.58, z, 4, 20); lotusBlooms(c, x, 1.58, z, 4, 14);
+      for (const [sx, sz] of [[-1, -1], [1, -1], [-1, 1], [1, 1]]) {
+        const cx = x + sx * 7.3, cz = z + sz * 7.3;
+        for (const [dx, dz] of [[-1, -1], [1, -1], [-1, 1], [1, 1]]) cyl(g, 0.08, 0.09, 1.6, '#fbf7ee', cx + dx * 0.55, 1.4, cz + dz * 0.55, 6);
+        box(g, 1.5, 0.15, 1.5, '#fbf7ee', cx, 3.0, cz);
+        c.g.add(new THREE.SphereGeometry(0.62, 10, 5, 0, Math.PI * 2, 0, Math.PI / 2), '#e8917a', M(cx, 3.15, cz));
+        cone(g, 0.05, 0.3, '#d4af37', cx, 3.75, cz, 5);
+        for (let i = 0; i < 4; i++) sphere(c.glow, 0.05, '#ffb84a', cx - 0.3 + i * 0.2, 1.45, cz + sz * 0.8, 4); // diyas on the steps
+      }
+      for (let i = 0; i < 4; i++) out.push({ x: x + [-1, 1, 0, 0][i] * 6, z: z + [0, 0, -1, 1][i] * 6, r: 3.2, h: 1.1 });
+      out.push({ x, z, r: 5.5, h: 1.9 });
+      break;
+    }
+    case 'indiasouth': {
+      // A temple tank: steps on every side down to the water, a little mandapa standing in its middle.
+      for (let i = 0; i < 3; i++) box(g, 17 - i * 1.4, 0.3, 17 - i * 1.4, i % 2 ? '#9a948a' : '#8a847a', x, -0.02 + i * 0.001, z);
+      waterPool(c, x, 0, z, 12, 12, 0, { stone: '#9a948a', kerb: 0.35, speed: 0.03 });
+      lotus(c, x - 3, 0.23, z + 3, 2.8, 14); lotusBlooms(c, x - 3, 0.23, z + 3, 2.8, 10); lotus(c, x + 3, 0.23, z - 3, 2.4, 10);
+      box(g, 3.2, 0.5, 3.2, '#8a847a', x, 0.1, z);
+      for (const [dx, dz] of [[-1, -1], [1, -1], [-1, 1], [1, 1]]) cyl(g, 0.14, 0.16, 2.2, '#9a948a', x + dx * 1.2, 0.6, z + dz * 1.2, 8);
+      box(g, 3.4, 0.25, 3.4, '#9a948a', x, 2.8, z);
+      c.g.add(new THREE.ConeGeometry(2.3, 1.6, 4).rotateY(Math.PI / 4), '#c8483a', M(x, 3.85, z));
+      cone(g, 0.12, 0.6, '#d4af37', x, 4.65, z, 6);
+      sphere(c.glow, 0.12, '#ffb84a', x, 1.2, z, 6);
+      out.push({ x, z, r: 6.4, h: 0.5 });
+      break;
+    }
+    case 'mughal': {
+      // A marble pool between cypresses, a fountain like an opening lotus at its heart.
+      waterPool(c, x, 0, z, 14, 7, 0, { stone: '#fbf7ee', kerb: 0.5, speed: 0.06 });
+      lotus(c, x - 4, 0.38, z, 1.8, 8); lotus(c, x + 4, 0.38, z, 1.8, 8); lotusBlooms(c, x - 4, 0.38, z, 1.8, 6); lotusBlooms(c, x + 4, 0.38, z, 1.8, 6);
+      for (let q = 0; q < 12; q++) { const b = (q / 12) * Math.PI * 2; c.g.add(new THREE.SphereGeometry(0.5, 6, 4).scale(0.5, 1.2, 0.2), '#fbf7ee', M(x + Math.cos(b) * 0.65, 0.75, z + Math.sin(b) * 0.65, Math.PI / 2 - b, 1, 1, 1, 0.55, 0)); }
+      fountainJet(c, x, 0.8, z, 1.6);
+      for (const sx of [-1, 1]) for (const sz of [-1, 1]) tree(c.g, 'cypress', x + sx * 8.8, 0, z + sz * 5, 0.9, () => c.rng.next());
+      out.push({ x, z, r: 5.2, h: 0.8 });
+      break;
+    }
+    case 'indonesia': {
+      // A bale kambang: a pavilion on a platform in the middle of a lotus pond, a causeway out to it.
+      waterPool(c, x, 0, z, 17, 15, 0, { stone: '#6a6458', kerb: 0.45, speed: 0.03 });
+      lotus(c, x - 5, 0.33, z - 4, 2.6, 12); lotus(c, x + 5, 0.33, z + 4, 2.6, 12); lotusBlooms(c, x - 5, 0.33, z - 4, 2.6, 8); lotusBlooms(c, x + 5, 0.33, z + 4, 2.6, 8);
+      box(g, 2, 0.5, 5.5, '#8a8478', x, 0, z + 5.2);
+      box(g, 6, 0.6, 6, '#8a8478', x, 0, z);
+      for (const [dx, dz] of [[-1, -1], [1, -1], [-1, 1], [1, 1]]) { box(g, 0.24, 2.6, 0.24, '#5a3a22', x + dx * 2.4, 0.6, z + dz * 2.4); box(g, 0.4, 0.15, 0.4, '#d4af37', x + dx * 2.4, 3.2, z + dz * 2.4); }
+      c.g.add(new THREE.ConeGeometry(4.6, 1.2, 4).rotateY(Math.PI / 4), '#3a2e24', M(x, 3.8, z));
+      c.g.add(new THREE.ConeGeometry(2.2, 1.6, 4).rotateY(Math.PI / 4), '#3a2e24', M(x, 5.2, z));
+      box(g, 3.6, 0.4, 3.6, '#c8a86a', x, 0.6, z); // woven mat
+      for (const s of [-1, 1]) sphere(c.glow, 0.2, '#ffb86a', x + s * 2.4, 2.6, z + 2.4, 6);
+      out.push({ x: x - 5, z: z - 4, r: 3.4, h: 0.6 }, { x: x + 5, z: z + 4, r: 3.4, h: 0.6 }, { x, z, r: 3.1, h: 3.2 });
+      break;
+    }
+  }
+  return out;
+}
+
 /** Paving for a square, a pair of benches, and the land's water feature. Returns what to collide with. */
 export function buildSquare(c: Ctx, land: RegionId, k: number, x: number, z: number): Collide[] {
   const out: Collide[] = [];
   const pave = c.s.road;
   cyl(c.g, SQUARE_R, SQUARE_R + 0.4, 0.12, pave, x, -0.04, z, 28);
+  // In the lotus lands one square in four is a formal lotus garden in the land's own manner.
+  if (k === 2 && LOTUS_LANDS.includes(land)) return lotusGarden(c, land, x, z);
   for (const s of [-1, 1]) box(c.g, 2.2, 0.45, 0.6, '#8a5a36', x + s * (SQUARE_R - 2.2), 0, z, Math.PI / 2);
   const coll = (r: number, h = 1) => out.push({ x, z, r, h });
   switch (land) {
