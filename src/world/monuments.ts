@@ -9,7 +9,9 @@ import { mashrabiya, banana, kolam, kuthuvilakku, ratha, bambooFence, brassLante
 import { ANIMAL_HEAD_GAP, HEAD_GAP } from '../characters/anatomy';
 import { rangoli } from './gulabi';
 import { saduBand } from './traditions';
-import { M, archPanel, box, cone, cyl, sphere, sweptRoof, tree } from './kit';
+import { M, archPanel, box, cone, cyl, gable, sphere, sweptRoof, tree } from './kit';
+import { HABITS, growTree, type Habit } from './trees';
+import { lanternGeometry } from './lanterns';
 import type { RegionId } from './regions';
 import { SURF } from './surfaces';
 
@@ -2537,6 +2539,127 @@ const skyisles: Monument = (c, o) => {
   o.height = T.y + 60;
 };
 
+// ───────────────────────────── Wanderers' Meadow ─────────────────────────────
+
+/** The Great Tree's growth habit: an ancient oak, 30 m, forking into great limbs. */
+const GREAT_OAK: Habit = { ...HABITS.oak!, h: 30, trunk: 0.26, r: 2.6, forks: 5, spread: 0.85, lift: 0.18, limb: 0.42, shrink: 0.66, depth: 3, blob: 0.1, squash: 0.72, gnarl: 0.3 };
+
+/** A ring platform of planks round a trunk from r0 to r1 at height y (over the arc a0..a1), with a rail of posts and rope. */
+function treeDeck(c: Ctx, y: number, r0: number, r1: number, a0 = 0, a1 = Math.PI * 2, cx = 0, cz = 0): void {
+  const n = Math.round(((a1 - a0) * r1) / 0.45);
+  for (let i = 0; i < n; i++) {
+    const a = a0 + ((i + 0.5) / n) * (a1 - a0);
+    c.g.add(new THREE.BoxGeometry(r1 - r0, 0.12, 0.42), i % 3 ? '#a8784a' : '#9a6a3e', M(cx + Math.cos(a) * (r0 + r1) / 2, y, cz + Math.sin(a) * (r0 + r1) / 2, -a));
+  }
+  // Brackets under the deck, posts and a rope rail round its edge.
+  for (let i = 0; i < 8; i++) { const a = a0 + ((i + 0.5) / 8) * (a1 - a0); rod(c.g, new THREE.Vector3(cx + Math.cos(a) * r0, y - 1.6, cz + Math.sin(a) * r0), new THREE.Vector3(cx + Math.cos(a) * r1 * 0.9, y - 0.05, cz + Math.sin(a) * r1 * 0.9), 0.08, '#6b4a2a', 5); }
+  const m = Math.max(6, Math.round(((a1 - a0) * r1) / 1.3)), rail: THREE.Vector3[] = [];
+  for (let i = 0; i <= m; i++) { const a = a0 + (i / m) * (a1 - a0); cyl(c.g, 0.05, 0.05, 1, '#6b4a2a', cx + Math.cos(a) * (r1 - 0.1), y, cz + Math.sin(a) * (r1 - 0.1), 4); rail.push(new THREE.Vector3(cx + Math.cos(a) * (r1 - 0.1), y + 0.95 - (i % 2) * 0.08, cz + Math.sin(a) * (r1 - 0.1))); }
+  c.g.add(new THREE.TubeGeometry(new THREE.CatmullRomCurve3(rail), m * 3, 0.03, 4), '#d8c8a0');
+}
+
+/** A little pod house on a deck: round walls, a round door, a lit round window, a conical cap with a curl. */
+function treePod(c: Ctx, x: number, y: number, z: number, face: number, roof: string): void {
+  c.g.frame(x, y, z, face, 1, () => c.glow.frame(x, y, z, face, 1, () => {
+    cyl(c.g, 1.05, 1.15, 2, '#f4e6c8', 0, 0, 0, 14);
+    for (let i = 0; i < 5; i++) c.g.add(new THREE.CylinderGeometry(1.17, 1.17, 0.06, 14, 1, true), '#c8a878', M(0, 0.3 + i * 0.4, 0));
+    c.g.add(new THREE.CylinderGeometry(0.45, 0.45, 0.1, 16).rotateX(Math.PI / 2), '#8a4a2a', M(0, 0.7, 1.12));
+    box(c.g, 0.9, 0.7, 0.1, '#8a4a2a', 0, 0, 1.12);
+    sphere(c.g, 0.05, '#d4af37', 0.25, 0.6, 1.2, 5);
+    c.glow.add(new THREE.CylinderGeometry(0.22, 0.22, 0.06, 12).rotateX(Math.PI / 2), '#ffd27a', M(0.75, 1.3, 0.85, Math.PI / 4));
+    cone(c.g, 1.55, 1.9, roof, 0, 2, 0, 14);
+    const pts: THREE.Vector3[] = [];
+    for (let i = 0; i <= 8; i++) { const a = (i / 8) * Math.PI * 1.4; pts.push(new THREE.Vector3(Math.sin(a) * 0.25 * (1 - i / 12), 3.8 + (1 - Math.cos(a)) * 0.25, 0)); }
+    c.g.add(new THREE.TubeGeometry(new THREE.CatmullRomCurve3(pts), 10, 0.07, 5), roof);
+    for (let i = 0; i < 5; i++) sphere(c.g, 0.1, ['#ff8fb8', '#ffd24a', '#b8ff9a'][i % 3], -0.7 + i * 0.35, 0.05, 1.18, 5); // a flower box
+  }));
+}
+
+const meadow: Monument = (c, o) => {
+  const bark = '#6b4a30', rnd = () => c.rng.next();
+  // ═══ The Great Tree: an ancient oak grown branch by branch, buttress roots arching into the grass. ═══
+  c.g.leafy = true;
+  try { growTree(c.g, GREAT_OAK, 0, 0, 0, 1, rnd); } finally { c.g.leafy = false; }
+  for (let i = 0; i < 9; i++) {
+    const a = (i / 9) * Math.PI * 2 + c.rng.range(-0.2, 0.2), len = c.rng.range(5, 8);
+    c.g.add(new THREE.CylinderGeometry(0.25, 1.1, len, 7).translate(0, len / 2, 0), bark, M(Math.cos(a) * 1.6, 1.4, Math.sin(a) * 1.6, -a + Math.PI / 2, 1, 1, 1, 0, 0).multiply(new THREE.Matrix4().makeRotationZ(-1.3)));
+    // Moss and little flowers along each root.
+    for (let q = 0; q < 4; q++) sphere(c.g, 0.35, '#5a9a4a', Math.cos(a) * (3 + q * 1.1), 0.4 + (3 - q) * 0.25, Math.sin(a) * (3 + q * 1.1), 6, 0.4);
+    sphere(c.g, 0.1, ['#ff8fb8', '#ffffff', '#ffd24a'][i % 3], Math.cos(a) * 4.5, 0.75, Math.sin(a) * 4.5, 5);
+  }
+  // The door into the trunk, carved round, a lit round window above, a name board beside.
+  archPanel(c.g, 1.3, 2.2, '#4a2e1a', 0, 0, 2.95, 0, 0.12, true);
+  for (let i = 0; i < 7; i++) { const a = Math.PI * (0.1 + (i / 6) * 0.8); sphere(c.g, 0.1, '#8a5a36', Math.cos(a) * 0.72, 1.55 + Math.sin(a) * 0.72, 3.1, 5); }
+  box(c.glow, 0.12, 0.12, 0.05, '#ffd27a', 0.35, 1.1, 3.08);
+  sphere(c.glow, 0.32, c.s.glow, 0, 3.4, 2.9, 10);
+  c.g.frame(1.6, 0, 4.2, -0.3, 1, () => { box(c.g, 0.12, 1.5, 0.12, '#6b4a2a', 0, 0, 0); box(c.g, 1.8, 0.55, 0.08, '#e8c48a', 0, 1.2, 0.06); for (let i = 0; i < 7; i++) box(c.g, 0.12, 0.26, 0.03, '#6b4a2a', -0.6 + i * 0.2, 1.33, 0.11); });
+  // ═══ A spiral stair of planks winding up the trunk to the first deck, then on to the second. ═══
+  const stairR = 4.1;
+  for (let i = 0; i < 64; i++) {
+    const a = Math.PI * 0.62 + i * 0.16, y = 0.25 + i * (12 / 64);
+    c.g.add(new THREE.BoxGeometry(1.5, 0.12, 0.55), i % 2 ? '#a8784a' : '#9a6a3e', M(Math.cos(a) * stairR, y, Math.sin(a) * stairR, -a));
+    if (i % 4 === 0) rod(c.g, new THREE.Vector3(Math.cos(a) * 3, y - 1.2, Math.sin(a) * 3), new THREE.Vector3(Math.cos(a) * stairR, y - 0.05, Math.sin(a) * stairR), 0.06, '#6b4a2a', 4);
+  }
+  const rope: THREE.Vector3[] = [];
+  for (let i = 0; i <= 64; i += 2) { const a = Math.PI * 0.62 + i * 0.16; rope.push(new THREE.Vector3(Math.cos(a) * (stairR + 0.75), 1.2 + i * (12 / 64), Math.sin(a) * (stairR + 0.75))); }
+  c.g.add(new THREE.TubeGeometry(new THREE.CatmullRomCurve3(rope), 96, 0.035, 4), '#d8c8a0');
+  // ═══ Two decks round the trunk with pod houses, lanterns strung between their posts. ═══
+  treeDeck(c, 7, 3, 7, -Math.PI * 0.3, Math.PI * 1.3);
+  treeDeck(c, 12.2, 2.6, 5.6, Math.PI * 0.2, Math.PI * 1.7);
+  for (const [a, y, r, roof] of [[Math.PI * 1.1, 7.06, 5.3, '#e07a5f'], [Math.PI * 0.05, 7.06, 5.3, '#8a6ad8'], [Math.PI * 0.95, 12.26, 4.3, '#5aa84f']] as const) treePod(c, Math.cos(a) * r, y, Math.sin(a) * r, Math.PI / 2 - a, roof);
+  for (let i = 0; i < 18; i++) { const a = -Math.PI * 0.3 + (i / 18) * Math.PI * 1.6; sphere(c.glow, 0.09, ['#ffe98a', '#ffd6f0', '#c8f0ff'][i % 3], Math.cos(a) * 6.9, 8.1, Math.sin(a) * 6.9, 5); }
+  // ═══ A rope bridge from the first deck to a lookout in a companion oak. ═══
+  const ox = 15, oz = -9;
+  c.g.leafy = true;
+  try { growTree(c.g, { ...GREAT_OAK, h: 16, r: 1.6, forks: 4 }, ox, 0, oz, 1, rnd); } finally { c.g.leafy = false; }
+  treeDeck(c, 7, 1.2, 3.4, 0, Math.PI * 2, ox, oz);
+  const from = new THREE.Vector3(Math.cos(-Math.PI * 0.25) * 6.8, 7, Math.sin(-Math.PI * 0.25) * 6.8), to = new THREE.Vector3(ox - 3.2, 7, oz + 0.8);
+  const dir = to.clone().sub(from), len = dir.length(), side = new THREE.Vector3(-dir.z, 0, dir.x).normalize(), ry = Math.atan2(dir.x, dir.z);
+  for (let i = 0; i <= 16; i++) { const u = i / 16, p = from.clone().lerp(to, u); p.y -= Math.sin(u * Math.PI) * 0.9; c.g.add(new THREE.BoxGeometry(1.2, 0.08, 0.4), '#a8784a', M(p.x, p.y, p.z, ry + Math.PI / 2)); }
+  for (const s of [-1, 1]) { const pts: THREE.Vector3[] = []; for (let i = 0; i <= 12; i++) { const u = i / 12, p = from.clone().lerp(to, u).addScaledVector(side, s * 0.65); p.y += 1 - Math.sin(u * Math.PI) * 0.7; pts.push(p); } c.g.add(new THREE.TubeGeometry(new THREE.CatmullRomCurve3(pts), 24, 0.04, 4), '#d8c8a0'); }
+  void len;
+  // ═══ Round its foot: a fairy ring of glowing mushrooms, birdhouses, the wishing ribbons, a reading nook, a swing. ═══
+  for (let i = 0; i < 22; i++) {
+    const a = (i / 22) * Math.PI * 2, r = 9.5 + Math.sin(i * 2.3) * 0.4, x = Math.cos(a) * r, z = Math.sin(a) * r;
+    if (z > 7 && Math.abs(x) < 2) continue; // the path to the door
+    cyl(c.g, 0.07, 0.1, 0.35, '#f4efe4', x, 0, z, 6);
+    c.glow.add(new THREE.SphereGeometry(0.28, 10, 6, 0, Math.PI * 2, 0, Math.PI / 2), ['#ff8fb8', '#b8a4ff', '#8fd0ff', '#ffd24a'][i % 4], M(x, 0.35, z, 0, 1, 0.7, 1));
+  }
+  for (const [x, y, z] of [[-4.5, 5.2, -3.2], [3.6, 4.4, -4.4], [-2.6, 9.4, 3.8]] as const) {
+    box(c.g, 0.02, 0.8, 0.02, '#d8c8a0', x, y + 0.6, z);
+    box(c.g, 0.45, 0.5, 0.45, ['#ffd24a', '#8fd0ff', '#ff8fb8'][Math.abs(Math.round(x)) % 3], x, y, z);
+    c.g.add(new THREE.ConeGeometry(0.42, 0.3, 4).rotateY(Math.PI / 4), '#8a4a2a', M(x, y + 0.65, z));
+    box(c.g, 0.12, 0.12, 0.02, '#2a2a2e', x, y + 0.25, z + 0.23);
+  }
+  // The wishing limb: ribbons of every colour tied along a low branch, lifting in the wind.
+  rod(c.g, new THREE.Vector3(-2, 4.6, 1.5), new THREE.Vector3(-8.5, 5.4, 4.2), 0.28, bark, 7);
+  for (let i = 0; i < 16; i++) { const u = i / 16, x = -2 - u * 6.5, y = 4.6 + u * 0.8, z = 1.5 + u * 2.7; box(c.g, 0.1, 0.9 + (i % 3) * 0.3, 0.02, ['#ff5a8a', '#ffd24a', '#5ac8ff', '#8aff8a', '#b86bff', '#ff9a4a'][i % 6], x, y - 1.1 - (i % 3) * 0.3, z, u); }
+  // A reading nook in the roots: a curved bench, a little shelf of books.
+  c.g.frame(-5.5, 0, 3.5, 0.9, 1, () => { box(c.g, 2.2, 0.45, 0.6, '#8a5a36', 0, 0, 0); box(c.g, 2.2, 0.6, 0.1, '#8a5a36', 0, 0.45, -0.3); box(c.g, 0.9, 0.9, 0.3, '#6b4a2a', 1.6, 0, -0.1); for (let i = 0; i < 6; i++) box(c.g, 0.1, 0.3, 0.2, ['#8a2a3a', '#2f4a8a', '#3a7a4a'][i % 3], 1.3 + i * 0.11, 0.5, -0.1); });
+  for (const x of [-0.5, 0.5]) box(c.g, 0.04, 6.5, 0.04, '#d8c8a0', 5.6 + x, 1.2, 1.2);
+  box(c.g, 1.3, 0.1, 0.45, '#8a5a36', 5.6, 1.1, 1.2);
+  for (let i = 0; i < 26; i++) {
+    const a = c.rng.range(0, Math.PI * 2), rr = c.rng.range(5, 14), y = c.rng.range(13.5, 18), drop = c.rng.range(1, 2.5);
+    box(c.g, 0.03, drop, 0.03, '#d8c8a0', Math.cos(a) * rr, y, Math.sin(a) * rr);
+    c.glow.add(lanternGeometry('fairy').scale(0.9, 0.9, 0.9), c.rng.pick(['#ffe98a', '#ffd6f0', '#c8f0ff', '#fff4c0']), M(Math.cos(a) * rr, y - 0.9, Math.sin(a) * rr));
+  }
+  // ═══ The old well and the windmill, as before. ═══
+  c.g.frame(18, 0, 6, 0, 1, () => {
+    cyl(c.g, 1.8, 1.9, 1.2, '#a8a098', 0, 0, 0, 10);
+    cyl(c.g, 1.5, 1.5, 0.1, '#5ab4e0', 0, 1.1, 0, 10);
+    for (const x of [-1.5, 1.5]) box(c.g, 0.2, 2.8, 0.2, '#6b4a2a', x, 0, 0);
+    gable(c.g, 3.6, 3, 1.2, '#e07a5f', 0, 2.8, 0);
+  });
+  c.g.frame(-26, 0, -14, 0.4, 1, () => c.glow.frame(-26, 0, -14, 0.4, 1, () => {
+    cyl(c.g, 2.4, 3.4, 12, '#fff4e0', 0, 0, 0, 8);
+    cone(c.g, 3, 3, '#e07a5f', 0, 12, 0, 8);
+    for (let i = 0; i < 4; i++) c.g.add(new THREE.BoxGeometry(1.1, 8, 0.15).translate(0, 4.2, 0), '#f4ead8', M(0, 11, 3.5, 0, 1, 1, 1, 0, (i * Math.PI) / 2 + 0.4));
+    box(c.glow, 1, 1.4, 0.1, c.s.glow, 0, 5, 3.25);
+  }));
+  o.colliders.push({ x: 0, z: 0, r: 3.6, h: 32 }, { x: 18, z: 6, r: 2, h: 3 }, { x: -26, z: -14, r: 3.4, h: 15 }, { x: ox, z: oz, r: 1.4, h: 16 });
+  o.height = 32;
+};
+
 // ───────────────────────────── Bagh-e-Noor ─────────────────────────────
 
 const TAJ = '#fbf7ee', TAJ_SHADE = '#e6dccb', SANDSTONE = '#b5552e', SAND_LIGHT = '#c8704a';
@@ -2963,4 +3086,4 @@ const mughal: Monument = (c, o) => {
 
 // ───────────────────────────── the rebuilt monuments ─────────────────────────────
 
-export const MONUMENTS: Partial<Record<RegionId, Monument>> = { japan, korea, china, norway, switzerland, london, newyork, indianorth, renaissance, indiasouth, islamic, vintage, middleeast, egypt, desert, indonesia, aurora, skyisles, mughal };
+export const MONUMENTS: Partial<Record<RegionId, Monument>> = { japan, korea, china, norway, switzerland, london, newyork, indianorth, renaissance, indiasouth, islamic, vintage, middleeast, egypt, desert, indonesia, aurora, skyisles, mughal, meadow };
