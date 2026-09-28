@@ -122,7 +122,7 @@ checking. Detailed specifications for the open items are in `OWNER_REQUESTS_SPEC
 | Pay in opportunities (courses); certificates unlock ranks | ✅ (3e49c71) |
 | Agriculture land, supply chains, delivery workers, harbours and ships | ✅ |
 | Markets fill up for your own sales | ✅ |
-| Making and selling inventions from theses; healthcare, tech, logistics as businesses you run | ⬜ |
+| Making and selling inventions from theses; healthcare, tech, logistics as businesses you run | ✅ (manufacture.ts, inventions.ts, business.ts, services.ts) |
 | Penthouses in New Yonder | ⬜ (after Codex's model) |
 
 ## 8. Traffic and travel
