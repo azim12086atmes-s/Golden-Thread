@@ -578,7 +578,8 @@ function roundRoom(g: GeoBuilder, glow: GeoBuilder, shape: RoomShape, W: number,
       for (let i = 0; i < 12; i++) box(glow, 0.2, 0.02, 1.4, i % 2 ? '#7affc0' : '#6ad8ff', -2.4 + i * 0.45, R * 0.8 - 0.15, cz - 1 + Math.sin(i) * 0.4);
     } else {
       // Snow blocks spiralling up, a clear ice window, fur on the sleeping bench.
-      for (let k = 1; k < 7; k++) g.add(new THREE.TorusGeometry(R * Math.cos(k * 0.2), 0.02, 3, 32, Math.PI * 2 - open * 2), '#d8e8f2', M(0, R * 0.82 * Math.sin(k * 0.2), cz, Math.PI / 2 + open, 1, 1, 1, Math.PI / 2, 0).multiply(new THREE.Matrix4().makeRotationZ(0)));
+      // The courses of snow blocks, drawn as faint seams on the dome's inside.
+      for (let k = 1; k < 6; k++) g.add(inward(new THREE.SphereGeometry(R * 0.995, 24, 1, Math.PI / 2 + open, Math.PI * 2 - open * 2, Math.PI / 2 - k * 0.26, 0.012).scale(1, 0.82, 1)), '#c8dce8', M(0, 0, cz));
       glow.add(new THREE.CircleGeometry(0.5, 12), night > 0.5 ? '#6a8ad8' : '#e8f6ff', M(-R * 0.62, 1.6, cz - R * 0.62, Math.PI / 4));
     }
     box(g, 3.4, 0.5, 1.4, '#e8f0f6', 0, 0, cz - R + 1.2); box(g, 3.2, 0.12, 1.2, '#c8a882', 0, 0.5, cz - R + 1.2);
@@ -596,7 +597,7 @@ function roundRoom(g: GeoBuilder, glow: GeoBuilder, shape: RoomShape, W: number,
     const ridge = 3.6, eave = 1.7;
     for (const sx of [-1, 1]) for (let i = 0; i < 8; i++) g.add(new THREE.BoxGeometry(Math.hypot(W + 0.6, ridge - eave), 0.05, (F - B) / 8), i % 2 ? '#2a2622' : '#3a322a', M(sx * (W + 0.6) / 2, (ridge + eave) / 2, B + (i + 0.5) * ((F - B) / 8), 0, 1, 1, 1, 0, sx * -Math.atan2(ridge - eave, W + 0.6)));
     for (const sx of [-1, 1]) box(g, 0.05, eave, F - B, '#2a2622', sx * (W + 0.6), 0, (B + F) / 2);
-    for (let z = B + 1; z < F; z += 2.6) cyl(g, 0.07, 0.08, ridge, '#6b4a2a', 0, 0, z, 6);
+    for (const z of [B + 1, (B + F) / 2 - 1]) cyl(g, 0.07, 0.08, ridge, '#6b4a2a', 0, 0, z, 6); // the tent poles, back and middle, clear of the door
     box(g, (W + 0.6) * 2, ridge, 0.06, '#c23b2a', 0, 0, B);
     for (let i = 0; i < 12; i++) box(g, 0.5, 0.18, 0.07, ['#e2b43a', '#ffffff', '#2f5a9a'][i % 3], -W + 0.4 + i * 0.75, 1.2 + (i % 2) * 0.3, B + 0.02);
   }
