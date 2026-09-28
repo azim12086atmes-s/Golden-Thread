@@ -194,7 +194,12 @@ export class HouseInterior {
     const { halfW: W, back: B, front: F, height: H } = ROOM;
     const wall = '#' + new THREE.Color(spec.walls[rng.int(0, spec.walls.length - 1)]).lerp(new THREE.Color('#fff8ec'), 0.55).getHexString();
     const trim = spec.trims[rng.int(0, spec.trims.length - 1)];
-    const [fa, fb] = st.frieze;
+    // No two homes alike: each takes its accent colours, its wainscot and its floor's tones from the
+    // land's own palette, and keeps one treasured thing of its own (keepsake, below).
+    const accents: Array<[string, string]> = [st.frieze, [spec.trims[0], st.frieze[1]], [st.frieze[0], spec.trims[spec.trims.length - 1]], [spec.roofs[0], st.frieze[0]], [st.frieze[1], st.frieze[0]]];
+    const [fa, fb] = accents[rng.int(0, accents.length - 1)];
+    const wains = rng.pick(['#a8703f', '#6b4a2a', '#8a5a36', '#c8a878', trim]);
+    const [pa, pb] = rng.pick([['#9a7450', '#8a6444'], ['#b89468', '#a88458'], ['#6b4a30', '#5a3e28'], ['#c8b090', '#b8a080']] as Array<[string, string]>);
     const sky = night > 0.5 ? '#1f2a5a' : LOCALES[land].sky.day;
 
     // Floor, by family: tatami, patterned carpet over tiles, polished red floor, planks.
@@ -208,7 +213,7 @@ export class HouseInterior {
     } else if (fam === 'south') {
       box(g, W * 2, 0.05, F - B, land === 'indiasouth' ? '#b8402e' : '#8a5a36', 0, 0, 0);
     } else {
-      for (let i = 0; i < 12; i++) box(g, 0.74, 0.05, F - B, i % 2 ? '#9a7450' : '#8a6444', -W + 0.37 + i * 0.75, 0, 0);
+      for (let i = 0; i < 12; i++) box(g, 0.74, 0.05, F - B, i % 2 ? pa : pb, -W + 0.37 + i * 0.75, 0, 0);
     }
     const shape = HOUSE_SHAPE[door.kind] ?? 'box';
     const round = shape === 'dome' || shape === 'glassdome' || shape === 'cone' || shape === 'tent';
@@ -216,12 +221,12 @@ export class HouseInterior {
     // Walls: plaster over a wainscot, the land's frieze band, a cornice.
     if (!round) for (const [x, ry] of [[-W, Math.PI / 2], [W, -Math.PI / 2]] as const) {
       box(g, 0.1, H, F - B, wall, x, 0, 0);
-      box(g, 0.12, 1.0, F - B, fam === 'majlis' ? fa : '#a8703f', x * 0.998, 0, 0);
+      box(g, 0.12, 1.0, F - B, fam === 'majlis' ? fa : wains, x * 0.998, 0, 0);
       frieze(g, glow, st.motif, fa, fb, F - B, H - 0.7, x * 0.99, ry);
     }
     if (!round) {
       box(g, W * 2, H, 0.1, wall, 0, 0, B);
-      box(g, W * 2, 1.0, 0.12, fam === 'majlis' ? fa : '#a8703f', 0, 0, B + 0.01);
+      box(g, W * 2, 1.0, 0.12, fam === 'majlis' ? fa : wains, 0, 0, B + 0.01);
       frieze(g, glow, st.motif, fa, fb, W * 2, H - 0.7, B + 0.07, 0);
     }
     // Overhead: flat beams, or the roof of the building seen from inside.
@@ -240,6 +245,7 @@ export class HouseInterior {
 
     // The family's furniture and artifacts.
     FURNISH[fam](g, glow, rng, land, fa, fb, trim);
+    keepsake(g, glow, fam, land, rng, fa);
     // Kinds of building add their own heart.
     if (door.kind === 'shop' || door.kind === 'institute') {
       box(g, 4, 1.0, 0.8, '#8a5a36', 0, 0, -1.6);
@@ -626,4 +632,39 @@ function inward(geo: THREE.BufferGeometry): THREE.BufferGeometry {
   if (idx) for (let i = 0; i < idx.count; i += 3) { const t = idx.getX(i + 1); idx.setX(i + 1, idx.getX(i + 2)); idx.setX(i + 2, t); }
   geo.computeVertexNormals();
   return geo;
+}
+
+/**
+ * One treasured thing that makes a home its own, in the front corner by the door: an oud or a
+ * brass-bound chest in a majlis, a koto or a bonsai in the east, a veena or a brass uruli of flowers
+ * in the south, a spinning wheel or a carved chest by the hearth, a piano or a grandfather clock in
+ * a parlour — chosen by the house, from what its land would have.
+ */
+function keepsake(g: GeoBuilder, glow: GeoBuilder, fam: Family, land: RegionId, rng: Rng, accent: string): void {
+  const x = -3.6, z = 3.0, wood = '#6b4a2a', brass = '#d4a84a';
+  const pick = rng.int(0, 1);
+  switch (fam) {
+    case 'majlis':
+      if (pick) { // an oud on its stand
+        g.add(new THREE.SphereGeometry(0.32, 10, 8, 0, Math.PI * 2, 0, Math.PI / 2).scale(1, 0.5, 1.3).rotateX(-Math.PI / 2), '#8a5a2a', M(x, 0.7, z));
+        box(g, 0.08, 0.05, 0.6, '#3a2a1a', x, 0.72, z - 0.55); cyl(g, 0.03, 0.05, 0.55, wood, x, 0, z + 0.1, 4);
+      } else { box(g, 0.9, 0.55, 0.55, '#8a4a2a', x, 0, z); for (const dy of [0.1, 0.45]) box(g, 0.94, 0.05, 0.59, brass, x, dy, z); sphere(g, 0.05, brass, x, 0.3, z + 0.29, 5); }
+      break;
+    case 'east':
+      if (pick) { box(g, 1.6, 0.1, 0.35, '#8a6a3a', x + 0.4, 0.3, z); for (let i = 0; i < 12; i++) box(g, 0.01, 0.04, 0.3, '#f4efe0', x - 0.3 + i * 0.12, 0.4, z); for (const dx of [-0.35, 0.35]) box(g, 0.1, 0.3, 0.3, wood, x + 0.4 + dx, 0, z); } // a koto on its low stand
+      else { cyl(g, 0.3, 0.25, 0.2, land === 'china' ? '#2f6fb8' : '#6a5a4a', x, 0.5, z, 10); box(g, 0.6, 0.5, 0.6, wood, x, 0, z); g.add(new THREE.CylinderGeometry(0.03, 0.05, 0.5, 4), '#5a3e28', M(x, 0.95, z, 0, 1, 1, 1, 0.4, 0)); sphere(g, 0.22, '#3f7a3a', x + 0.1, 1.2, z - 0.1, 6, 0.6); } // a bonsai
+      break;
+    case 'south':
+      if (pick) { g.add(new THREE.SphereGeometry(0.28, 10, 8), '#8a4a2a', M(x, 0.3, z + 0.3)); box(g, 0.08, 0.06, 1.1, '#6b3a1a', x, 0.3, z - 0.3); sphere(g, 0.18, '#8a4a2a', x, 0.3, z - 0.85, 8); } // a veena laid on its cloth
+      else { cyl(g, 0.45, 0.3, 0.25, brass, x, 0, z, 14); cyl(glow, 0.4, 0.4, 0.02, '#6ac8ff', x, 0.2, z, 14); for (let i = 0; i < 8; i++) sphere(g, 0.07, ['#ff9a1f', '#ffd23a', '#e8347a'][i % 3], x + Math.cos(i) * 0.25, 0.24, z + Math.sin(i) * 0.25, 4); } // an uruli of floating flowers
+      break;
+    case 'hearth':
+      if (pick) { g.add(new THREE.TorusGeometry(0.4, 0.04, 4, 16), wood, M(x, 0.75, z, Math.PI / 2)); box(g, 0.9, 0.3, 0.3, wood, x, 0.3, z); cyl(g, 0.04, 0.04, 0.6, wood, x + 0.3, 0.3, z, 4); } // a spinning wheel
+      else { box(g, 1, 0.55, 0.55, accent, x, 0, z); for (let i = 0; i < 5; i++) sphere(g, 0.05, i % 2 ? '#ffffff' : '#f2c14e', x - 0.36 + i * 0.18, 0.3, z + 0.28, 4); } // a painted chest
+      break;
+    case 'parlour':
+      if (pick) { box(g, 1.3, 1.0, 0.6, '#1f1a1a', x + 0.2, 0, z); box(g, 1.2, 0.04, 0.2, '#f4efe6', x + 0.2, 0.75, z + 0.25); for (let i = 0; i < 8; i++) box(g, 0.05, 0.02, 0.12, '#1f1a1a', x - 0.3 + i * 0.14, 0.78, z + 0.28); } // an upright piano
+      else { box(g, 0.5, 2.0, 0.35, wood, x, 0, z); glow.add(new THREE.CircleGeometry(0.17, 14), '#fff4d8', M(x, 1.6, z + 0.18)); cyl(g, 0.01, 0.01, 0.6, brass, x, 0.7, z + 0.18, 3); sphere(g, 0.08, brass, x, 0.7, z + 0.18, 6); } // a grandfather clock
+      break;
+  }
 }
