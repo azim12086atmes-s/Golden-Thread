@@ -13,6 +13,7 @@ import { neighbours } from '../traffic/schedule';
 import { bridgesOf } from './bridges';
 import { OUTCROPS, outcrop } from './outcrops';
 import { LANDFORMS } from './landforms';
+import { drapeDisc, drapeStrip } from './roads';
 import { GARLANDS, garland } from './streetGarlands';
 import { recordDecor, resetDecor } from './decorLedger';
 import { crystalCluster } from './islands';
@@ -185,34 +186,36 @@ export function buildRegion(spec: RegionSpec, solid: THREE.Material, glowMat: TH
 
   // Roads: two avenues and a ring, laid in short segments that follow the ground.
   if (!isSky) {
-    for (let d = 56; d < CITY_RADIUS + 40; d += 12) {
-      for (const [x, z, ry] of [[0, d, 0], [0, -d, 0], [d, 0, Math.PI / 2], [-d, 0, Math.PI / 2]] as const) {
-        box(g, AVENUE * 1.6, 0.12, 12.4, spec.road, x, H(x, z) - 0.05, z, ry);
-      }
+    // Draped over the ground (roads.ts), so they follow every rise and dip without steps.
+    for (const [ax, az] of [[0, 1], [0, -1], [1, 0], [-1, 0]] as const) {
+      const pts: Array<[number, number]> = [];
+      for (let d = 48; d <= CITY_RADIUS + 40; d += 2) pts.push([ax * d, az * d]);
+      drapeStrip(g, pts, AVENUE * 1.6, spec.road, H);
     }
     // Highways: where a neighbouring land lies, the avenue runs on to the border to meet its road
     // (traffic/schedule.ts), laid in short lengths that follow the ground, with a dashed centre line.
     for (const n of neighbours(spec.id)) {
       const [ax, az] = n.dir, ry = az !== 0 ? 0 : Math.PI / 2;
-      for (let d = CITY_RADIUS + 40; d < REGION_SIZE / 2 + 4; d += 5) {
+      let run: Array<[number, number]> = [];
+      for (let d = CITY_RADIUS + 38; d < REGION_SIZE / 2 + 4; d += 2.5) {
         const x = ax * d, z = az * d, y = H(x, z);
-        if (y < WATER_Y - 0.2) continue; // a bridge carries it over the water
-        box(g, AVENUE * 1.6, 0.14, 5.6, spec.road, x, y - 0.06, z, ry);
-        if (Math.round(d / 5) % 2) box(g, 0.22, 0.02, 2.4, '#f4f0e0', x, y + 0.08, z, ry);
+        if (y < WATER_Y - 0.2) { drapeStrip(g, run, AVENUE * 1.6, spec.road, H); run = []; continue; } // a bridge carries it over the water
+        run.push([x, z]);
+        if (Math.round(d / 2.5) % 4 === 0) box(g, 0.22, 0.02, 2.4, '#f4f0e0', x, y + 0.08, z, ry);
       }
+      drapeStrip(g, run, AVENUE * 1.6, spec.road, H);
     }
-    for (let a = 0; a < Math.PI * 2; a += 0.09) {
-      const x = Math.cos(a) * RING, z = Math.sin(a) * RING;
-      box(g, 9, 0.12, 13, spec.road, x, H(x, z) - 0.04, z, -a);
-    }
-    cyl(g, 50, 50, 0.14, spec.road, 0, H(0, 0) - 0.06, 0, 36);
+    const ring: Array<[number, number]> = [];
+    for (let a = 0; a <= Math.PI * 2 + 1e-6; a += 0.02) ring.push([Math.cos(a) * RING, Math.sin(a) * RING]);
+    drapeStrip(g, ring, 9, spec.road, H);
+    drapeDisc(g, 50, spec.road, H);
     // Patterned paths in the land's own colours: a mosaic runner down each avenue, a tiled
     // border along the ring road, and a star mosaic in the plaza.
     const [pa, pb] = LAND_STYLE[spec.id].frieze;
     for (let d = 58; d < CITY_RADIUS + 36; d += 3) {
       const k = Math.round(d / 3) % 2;
       for (const [x, z, ry] of [[0, d, 0], [0, -d, 0], [d, 0, Math.PI / 2], [-d, 0, Math.PI / 2]] as const) {
-        g.frame(x, H(x, z) + 0.075, z, ry, 1, () => {
+        g.frame(x, H(x, z) + 0.1, z, ry, 1, () => {
           box(g, 0.9, 0.04, 0.9, k ? pa : pb, 0, 0, 0, Math.PI / 4);
           for (const sx of [-1, 1]) box(g, 0.35, 0.04, 0.35, k ? pb : pa, sx * 1.4, 0, 0, Math.PI / 4);
           for (const sx of [-1, 1]) box(g, 0.12, 0.035, 3, pb, sx * (AVENUE * 0.8 - 0.3), 0, 0);
@@ -221,14 +224,13 @@ export function buildRegion(spec: RegionSpec, solid: THREE.Material, glowMat: TH
     }
     for (let a = 0; a < Math.PI * 2; a += 0.045) for (const r of [RING - 5.8, RING + 5.8]) {
       const x = Math.cos(a) * r, z = Math.sin(a) * r;
-      box(g, 0.55, 0.035, 0.55, Math.round(a / 0.045) % 2 ? pa : pb, x, H(x, z) + 0.085, z, -a + Math.PI / 4);
+      box(g, 0.55, 0.035, 0.55, Math.round(a / 0.045) % 2 ? pa : pb, x, H(x, z) + 0.1, z, -a + Math.PI / 4);
     }
-    const py = H(0, 0) + 0.085;
     for (let ring = 0; ring < 5; ring++) {
       const r = 42 - ring * 3.2, n = 16 + ring * 4;
       for (let i = 0; i < n; i++) {
         const a = (i / n) * Math.PI * 2 + ring * 0.1;
-        box(g, 1.1, 0.04, 1.1, (i + ring) % 2 ? pa : pb, Math.cos(a) * r, py, Math.sin(a) * r, a + Math.PI / 4);
+        box(g, 1.1, 0.04, 1.1, (i + ring) % 2 ? pa : pb, Math.cos(a) * r, H(Math.cos(a) * r, Math.sin(a) * r) + 0.1, Math.sin(a) * r, a + Math.PI / 4);
       }
     }
   }
