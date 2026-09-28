@@ -221,7 +221,8 @@ export class ThreadScene {
     const mid = this.gPos.clone().lerp(this.bPos, 0.5);
     const along = this.bPos.clone().sub(this.gPos).setY(0).normalize();
     const side = new THREE.Vector3(-along.z, 0, along.x);
-    const wide = mid.clone().addScaledVector(side, 8 - t * 0.6).addScaledVector(along, -3).setY(mid.y + 4 - t * 0.4);
+    // The wide shot starts from behind her (where the play camera was, so clear of walls and trees) and drifts round.
+    const wide = mid.clone().addScaledVector(along, -7 + t * 0.5).addScaledVector(side, 1.5 + t * 0.4).setY(mid.y + 3.4 - t * 0.35);
     const two = mid.clone().addScaledVector(side, 3.4).setY(mid.y + 1.3);
     const knot1 = herWrist.clone().addScaledVector(side, 1.3).addScaledVector(along, -0.5).setY(herWrist.y + 0.35);
     const knot2 = hisWrist.clone().addScaledVector(side, -1.3).addScaledVector(along, 0.5).setY(hisWrist.y + 0.4);

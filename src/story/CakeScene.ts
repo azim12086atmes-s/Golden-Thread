@@ -2,7 +2,7 @@ import * as THREE from 'three';
 import type { Game } from '../Game';
 import { surfaceAt } from '../world/terrain';
 import { BODY_RADIUS } from '../characters/follow';
-import { FriendsRing } from '../event/Friends';
+import { FriendsRing, RING_R } from '../event/Friends';
 
 /**
  * The opening: under the Great Oak, a small celebration before the road. A blade of the golden
@@ -329,7 +329,7 @@ export class CakeScene {
     const k = THREE.MathUtils.smoothstep(t, 0, 4.5);
     const arc = (1 - k) * 1.1 + Math.sin(t * 0.25) * 0.08;
     const dist = THREE.MathUtils.lerp(11.5, 5.4, k) - THREE.MathUtils.smoothstep(t, 7.5, 9.5) * 0.9;
-    const height = THREE.MathUtils.lerp(5.5, 1.9, k);
+    const height = THREE.MathUtils.lerp(5.5, this.friends ? 3.6 : 1.9, k); // over the friends' ring at the party
     const dir = this.fwd.clone().multiplyScalar(Math.cos(arc)).addScaledVector(side, Math.sin(arc));
     const shot = look.clone().addScaledVector(dir, dist).setY(look.y + height);
     if (this.friends) this.party(dt, t, camera, shot, look);
@@ -372,7 +372,7 @@ export class CakeScene {
       s.scale.setScalar((1 - ph) * 1.6 * joy);
     }
     // The camera: the cake shot, then circling her against her turn, rising, and back behind them.
-    const a = -(t - 13.6) * 0.8, r = THREE.MathUtils.lerp(3.2, 5.2, S(t, 14, 21)), h = THREE.MathUtils.lerp(1.2, 3.4, S(t, 14, 21));
+    const a = -(t - 13.6) * 0.8, r = THREE.MathUtils.lerp(RING_R + 1.4, RING_R + 3, S(t, 14, 21)), h = THREE.MathUtils.lerp(2.8, 4.6, S(t, 14, 21)); // outside and above the friends' ring
     const orbit = new THREE.Vector3(her.x + Math.sin(a) * r, her.y + h, her.z + Math.cos(a) * r);
     const into = S(t, 13.4, 14.6);
     const pos = shot.clone().lerp(orbit, into), at = look.clone().lerp(her.clone().setY(her.y + 1.1), into);
