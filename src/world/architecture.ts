@@ -17,6 +17,7 @@ import { LAND_LANTERN, lanternGeometry } from './lanterns';
 import { regionCenter, type RegionId, type RegionSpec } from './regions';
 import { PYRAMIDS } from './reserved';
 import { terrainHeight } from './terrain';
+import { MONUMENTS } from './monuments';
 
 /**
  * Architecture per land. Every builder works in a local frame: origin at the building's base
@@ -1343,6 +1344,9 @@ function cylinderBarrel(r: number, len: number): THREE.BufferGeometry {
 
 export function buildLandmark(c: Ctx): LandmarkOut {
   const out: LandmarkOut = { colliders: [], platforms: [], height: 20 };
+  // A monument rebuilt in full (monuments.ts) stands in place of its first draft and that draft's detail.
+  const rebuilt = MONUMENTS[c.s.id];
+  if (rebuilt) { rebuilt(c, out); return out; }
   landmarks[c.s.id](c, out);
   // The carved, painted and inlaid detail of each monument (landmarkDetail.ts).
   detailLandmark(c, c.s.id, out);

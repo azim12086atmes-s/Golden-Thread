@@ -303,6 +303,13 @@ function monumentInside(r: R, halfW: number, back: number, h: number): boolean {
       for (let i = 0; i < 6; i++) for (const sx of [-1, 1]) { box(r.g, 1.8, 0.05, 0.9, '#c8d49a', sx * 1.4, 0, back + 1 + i * 1.8); box(r.g, 1.84, 0.06, 0.06, '#2a3a2e', sx * 1.4, 0, back + 0.55 + i * 1.8); }
       for (const sx of [-1, 1]) for (let i = 0; i < 4; i++) box(r.glow, 0.05, 2.2, 1.4, '#fff6e0', sx * (halfW - 0.3), 0.8, back + 2 + i * 2.4);
       for (let i = 0; i < 6; i++) { cyl(r.glow, 0.22, 0.22, 0.5, '#ff6a4a', -3 + (i % 3) * 3, h - 1.6, back + 2 + Math.floor(i / 3) * 5, 8); }
+      // The four vermilion inner posts round the heart pillar, tied by beams; a coffered ceiling
+      // of lacquered squares; bronze lanterns hanging on chains at the corners of the inner bay.
+      for (const [sx, sz] of [[-1, -1], [1, -1], [-1, 1], [1, 1]]) cyl(r.g, 0.26, 0.28, h, '#c8412e', sx * 2.2, 0, mid + sz * 2.2, 10);
+      for (const sz of [-1, 1]) box(r.g, 4.9, 0.3, 0.3, '#c8412e', 0, h - 1.1, mid + sz * 2.2);
+      for (const sx of [-1, 1]) box(r.g, 0.3, 0.3, 4.9, '#c8412e', sx * 2.2, h - 1.1, mid);
+      for (let i = -3; i <= 3; i++) { box(r.g, 0.12, 0.14, 7.2, '#3a2a22', i * 1.2, h - 0.3, mid); box(r.g, 7.2, 0.14, 0.12, '#3a2a22', 0, h - 0.3, mid + i * 1.2); }
+      for (const [sx, sz] of [[-1, -1], [1, -1], [-1, 1], [1, 1]]) { cyl(r.g, 0.02, 0.02, 1, '#3a3228', sx * 2.2, h - 1.8, mid + sz * 3.2, 3); cyl(r.g, 0.2, 0.26, 0.5, '#5a5a4a', sx * 2.2, h - 2.3, mid + sz * 3.2, 6); cyl(r.glow, 0.16, 0.16, 0.3, '#ffcf7a', sx * 2.2, h - 2.2, mid + sz * 3.2, 6); }
       return true;
     case 'korea':
       for (let k = 0; k < 3; k++) box(r.g, 5 - k * 1, 0.3, 3 - k * 0.6, '#b8b0a4', 0, k * 0.3, back + 1.8);
