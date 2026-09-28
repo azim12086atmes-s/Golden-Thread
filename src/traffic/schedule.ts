@@ -17,9 +17,9 @@ import { REGIONS, type RegionId, type RegionSpec } from '../world/regions';
 // ───── time of day ─────
 
 /** Traffic that comes out only after dusk. */
-export const DUSK_ONLY = new Set(['lantern-boat']);
+export const DUSK_ONLY = new Set(['lantern-boat', 'sky-lanterns']);
 /** Birds that rest at night, and the ones that fly only then. */
-const DAY_BIRDS = new Set(['pigeons', 'cranes', 'eagle', 'falcons', 'light-birds', 'ducks', 'swans']);
+const DAY_BIRDS = new Set(['pigeons', 'cranes', 'eagle', 'falcons', 'light-birds', 'ducks', 'swans', 'seagulls', 'butterflies', 'paraglider']);
 const NIGHT_BIRDS = new Set(['owls']);
 const AIRCRAFT = /plane|airliner|jet|air-taxi|drone|seaplane|biplane/;
 

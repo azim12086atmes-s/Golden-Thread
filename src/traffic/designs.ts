@@ -386,6 +386,19 @@ function ornithopter(): Design {
   };
 }
 
+/** A paraglider: a bright curved wing of cells, its lines, and the pilot's pod hanging beneath. */
+function paraglider(): Design {
+  const wing = P((s) => {
+    for (let i = -4; i <= 4; i++) {
+      const a = (i / 4) * 0.7, x = Math.sin(a) * 4.2, y = Math.cos(a) * 1.2 - 1.2;
+      s.box(0.95, 0.18, 1.4, ['#ff4a4a', '#ffd24a', '#4ac8ff', '#ffffff'][(i + 4) % 4], [x, y + 5, 0], { r: [0, 0, -a] });
+      s.rod([x * 0.95, y + 4.9, 0.3], [0, 0.4, 0], 0.01, '#e8e8e8');
+    }
+    s.box(0.5, 0.5, 0.8, '#2a3a5a', [0, 0, 0]); // the harness pod
+  });
+  return { id: 'paraglider', name: 'a paraglider', realm: 'sky', len: 2, speed: 7, alt: [60, 130], radius: [120, 300], bob: 3, bank: 0.35, pieces: [wing] };
+}
+
 function seaplane(): Design {
   return {
     id: 'seaplane', name: 'seaplane', realm: 'sky', len: 9, speed: 20, alt: [40, 80], radius: [220, 420], bob: 0.8, bank: 0.3,
@@ -866,6 +879,21 @@ export const DESIGNS: Record<string, () => Design> = {
   'phoenix': () => ({ id: 'phoenix', name: 'phoenix', realm: 'sky', len: 3, speed: 11, alt: [60, 110], radius: [150, 320], bob: 3, bank: 0.35, pieces: bird({ len: 2.4, col: '#ff6a2a', col2: '#ffd23a', beak: '#ffe9a8', span: 7, neckLen: 0.5, neckUp: 0.3, headR: 0.25, tail: 'long', crest: '#ffd23a', tip: '#ffe9a8' }) }),
   'peacock-garuda': () => ({ id: 'peacock-garuda', name: 'garuda', realm: 'sky', len: 4, speed: 10, alt: [70, 120], radius: [180, 340], bob: 3, bank: 0.3, pieces: bird({ len: 3.5, col: '#e2b43a', col2: '#c23b2a', beak: '#ffe9a8', span: 11, neckLen: 0.6, neckUp: 0.3, headR: 0.35, tail: 'fan', crest: '#2f7a5a', tip: '#2f7a5a' }) }),
   'pigeons': () => withGroup({ id: 'pigeons', name: 'pigeon flight', realm: 'sky', len: 0.4, speed: 10, alt: [25, 50], radius: [60, 160], bob: 1, bank: 0.4, pieces: bird({ len: 0.35, col: '#f4f4f4', col2: '#c8ccd6', beak: '#e8a0a0', span: 0.65, neckLen: 0.05, neckUp: 0.4, headR: 0.05, tail: 'fan' }) }, 9, 1.4),
+  // Air decorations (docs/team/handoffs/AIR_AND_SKY.md): gulls over the harbours, paragliders over
+  // the Alps, sky lanterns rising at dusk, butterflies over the Meadow.
+  'seagulls': () => withGroup({ id: 'seagulls', name: 'seagulls', realm: 'sky', len: 0.5, speed: 9, alt: [14, 40], radius: [80, 260], bob: 2, bank: 0.5, pieces: bird({ len: 0.45, col: '#f7f7f7', col2: '#b8bec8', beak: '#f2c14e', span: 1.2, neckLen: 0.06, neckUp: 0.2, headR: 0.06, tail: 'fan', tip: '#1b1b20' }) }, 6, 2.2),
+  'paraglider': () => paraglider(),
+  'sky-lanterns': () => withGroup({ id: 'sky-lanterns', name: 'sky lanterns', realm: 'sky', len: 0.6, speed: 1.6, alt: [40, 120], radius: [30, 180], bob: 3, bank: 0, pieces: [P((s) => {
+    // A kongming lantern: a tall rice-paper bell, glowing from the flame inside.
+    s.cyl(0.32, 0.26, 0.8, '#ffb84a', [0, 0.4, 0], { glow: true, seg: 8 });
+    s.cyl(0.27, 0.27, 0.04, '#6b4a2a', [0, 0.02, 0], { seg: 8 });
+  })] }, 12, 5),
+  'butterflies': () => withGroup({ id: 'butterflies', name: 'butterflies', realm: 'sky', len: 0.2, speed: 2.2, alt: [4, 10], radius: [40, 140], bob: 1, bank: 0.3, pieces: [
+    P((s) => s.box(0.03, 0.03, 0.18, '#2a2a2a', [0, 0, 0])),
+    ...[1, -1].map((sx) => P((s) => {
+      s.shape([[0, 0], [0.16, 0.12], [0.2, -0.02], [0.1, -0.14]].map(([x, y]) => [x * sx, y]), 0.005, sx > 0 ? '#ff8fb8' : '#ffb84a', [0, 0, 0.02], { r: [Math.PI / 2, 0, 0] });
+    }, sx > 0 ? 'flapL' : 'flapR', [0, 0, 0], 0.9)),
+  ] }, 7, 1.5),
   'light-birds': () => withGroup({ id: 'light-birds', name: 'birds of light', realm: 'sky', len: 0.8, speed: 9, alt: [25, 60], radius: [60, 200], bob: 1, bank: 0.35, pieces: bird({ len: 0.7, col: '#fff4c0', col2: '#e6dcff', beak: '#ffe9a8', span: 1.4, neckLen: 0.1, neckUp: 0.3, headR: 0.08, tail: 'long', tip: '#ffd6f0' }) }, 4, 2.5),
 
   // Modern and futuristic, tuk-tuks, rafts, ships and planes.

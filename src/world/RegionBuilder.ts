@@ -13,6 +13,8 @@ import { neighbours } from '../traffic/schedule';
 import { bridgesOf } from './bridges';
 import { OUTCROPS, outcrop } from './outcrops';
 import { LANDFORMS } from './landforms';
+import { GARLANDS, garland } from './streetGarlands';
+import { recordDecor, resetDecor } from './decorLedger';
 import { crystalCluster } from './islands';
 import { dressGulabi, gateTowers } from './gulabi';
 import { harbours } from './harbours';
@@ -146,6 +148,7 @@ class Grove {
 
 export function buildRegion(spec: RegionSpec, solid: THREE.Material, glowMat: THREE.Material, waterMat?: THREE.Material): RegionInstance {
   const c = regionCenter(spec);
+  resetDecor(spec.id);
   const rng = new Rng(`region:${spec.id}`);
   const g = new GeoBuilder(), glow = new GeoBuilder(), water = waterMat ? new GeoBuilder() : undefined;
   // Collect leaf cards for the tree crowns (one instanced draw for the land).
@@ -267,6 +270,7 @@ export function buildRegion(spec: RegionSpec, solid: THREE.Material, glowMat: TH
       doors.push({ id: `${spec.id}:${placed}`, land: spec.id, x: c.x + x + Math.sin(ry) * reach, z: c.z + z + Math.cos(ry) * reach, y, facing: ry, kind, r: fp.r });
     }
     placed++;
+    recordDecor(spec.id, 'town: houses');
     if (rng.chance(0.25)) spots.push({ x: x + Math.sin(ry) * (fp.r + 3), z: z + Math.cos(ry) * (fp.r + 3) });
   }
 
@@ -275,13 +279,30 @@ export function buildRegion(spec: RegionSpec, solid: THREE.Material, glowMat: TH
     const y = H(q.x, q.z);
     let cols: Collide[] = [];
     g.frame(q.x, y, q.z, 0, 1, () => glow.frame(q.x, y, q.z, 0, 1, () => { cols = buildSquare(ctx, spec.id, k, 0, 0); }));
+    recordDecor(spec.id, 'town: fountain squares');
     for (const col of cols) colliders.push({ x: c.x + q.x + col.x, z: c.z + q.z + col.z, r: col.r, h: y + col.h });
   });
   for (const sb of sebilsHere) {
     const y = H(sb.x, sb.z);
     let col: Collide | null = null;
     g.frame(0, y, 0, 0, 1, () => glow.frame(0, y, 0, 0, 1, () => { col = buildSebil(ctx, sb.x, sb.z, sb.ry); }));
+    recordDecor(spec.id, 'street: drinking fountains');
     if (col) colliders.push({ x: c.x + sb.x, z: c.z + sb.z, r: (col as Collide).r, h: y + (col as Collide).h });
+  }
+
+  // What the land hangs across its streets (streetGarlands.ts): midway between the lamps, clear of
+  // the ring road and the landmark grounds, high enough for buses beneath.
+  const gar = GARLANDS[spec.id];
+  if (gar && !isSky) {
+    const lg = LANDMARK_GROUNDS[spec.id];
+    for (const d of [71, 93, 115, 163, 185, 207]) {
+      for (const [x, z, ry] of [[0, d, 0], [0, -d, 0], [d, 0, Math.PI / 2], [-d, 0, Math.PI / 2]] as const) {
+        if (lg && x >= lg.x0 && x <= lg.x1 && z >= lg.z0 && z <= lg.z1) continue;
+        const y = H(x, z);
+        g.frame(x, y, z, ry, 1, () => glow.frame(x, y, z, ry, 1, () => garland(ctx, gar.style, gar.colours, AVENUE * 2 + 3, 7.2, Math.round(d + x + z))));
+        recordDecor(spec.id, `street: ${gar.style} string`);
+      }
+    }
   }
 
   // Lamps and street props along the avenues.
@@ -290,12 +311,14 @@ export function buildRegion(spec: RegionSpec, solid: THREE.Material, glowMat: TH
       for (const [x, z] of [[AVENUE + 2, d], [-AVENUE - 2, -d], [d, AVENUE + 2], [-d, -AVENUE - 2]] as const) {
         // The land's own street light from the 3D side (world/models/lights.ts), else its lamp post.
         if (!streetLight(ctx, x, H(x, z), z)) lampPost(ctx, x, H(x, z), z);
+        recordDecor(spec.id, 'street: lamps');
         colliders.push({ x: c.x + x, z: c.z + z, r: 0.4, h: H(x, z) + 4 });
       }
       for (const [x, z] of [[-AVENUE - 3, d + 8], [AVENUE + 3, -d - 8], [d + 8, -AVENUE - 3], [-d - 8, AVENUE + 3]] as const) {
         if (rng.chance(0.55)) {
           const ry = Math.abs(x) < Math.abs(z) ? 0 : Math.PI / 2;
           streetProp(ctx, x + (Math.abs(x) < Math.abs(z) ? Math.sign(x) * 3 : 0), H(x, z), z + (Math.abs(x) < Math.abs(z) ? 0 : Math.sign(z) * 3), ry);
+          recordDecor(spec.id, 'street: stalls and benches');
           colliders.push({ x: c.x + x, z: c.z + z, r: 1.2, h: H(x, z) + 3 });
         } else if (rng.chance(0.6)) {
           tree(g, rng.pick(spec.flora), x, H(x, z), z, rng.range(0.8, 1.2) * TREE_SCALE * 0.8, () => rng.next());
@@ -401,6 +424,7 @@ export function buildRegion(spec: RegionSpec, solid: THREE.Material, glowMat: TH
       g.frame(x, y, z, rng.range(0, Math.PI * 2), 1, () => glow.frame(x, y, z, 0, 1, () => outcrop(ctx, kind.style, s, seed)));
       colliders.push({ x: c.x + x, z: c.z + z, r: Math.min(2, s * 0.6), h: y + s * 1.5 });
       placed++;
+      recordDecor(spec.id, `land: ${kind.style} outcrops`);
     }
   }
   // Scree and fallen boulders round the feet of the land's mountains, plateaus and hills (landforms.ts).
@@ -419,6 +443,7 @@ export function buildRegion(spec: RegionSpec, solid: THREE.Material, glowMat: TH
         if (y < WATER_Y + 0.5) continue;
         g.frame(x, y - 0.3, z, lrng.range(0, Math.PI * 2), 1, () => glow.frame(x, y - 0.3, z, 0, 1, () => outcrop(ctx, STYLE[lf.kind] ?? 'crag', sz, seed)));
         colliders.push({ x: c.x + x, z: c.z + z, r: Math.min(2, sz * 0.6), h: y + sz * 1.5 });
+        recordDecor(spec.id, 'land: scree boulders');
       }
     }
   }
@@ -536,6 +561,8 @@ export function buildRegion(spec: RegionSpec, solid: THREE.Material, glowMat: TH
     nodes.push({ id: `${spec.id}:${i}`, item, x: c.x + x, y, z: c.z + z, mesh });
   }
 
+  for (const lf of LANDFORMS) if (lf.land === spec.id) recordDecor(spec.id, `land: ${lf.kind}`);
+  for (const cv of CAVES) if (cv.land === spec.id) recordDecor(spec.id, `land: ${cv.style === 'den' ? 'den' : 'cave'}`);
   return {
     spec,
     group,
