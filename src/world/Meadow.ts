@@ -7,6 +7,8 @@ import { neighbours } from '../traffic/schedule';
 import { WATER_Y, groundColor, terrainHeight } from './terrain';
 import { WIND_GLSL, WIND_UNIFORMS } from './wind';
 import { LAMP_GLSL, LAMP_UNIFORMS } from './lamplight';
+import { rockGeometry } from './rocks';
+import { mergeGeometries } from 'three/addons/utils/BufferGeometryUtils.js';
 
 /**
  * Meadows instead of plain grass. Round the travellers a dense field of grass tufts grows (a
@@ -196,9 +198,28 @@ function shardsGeo(): THREE.BufferGeometry {
   geo.computeVertexNormals();
   return geo;
 }
-const GEO = { tuft: tuftGeo(), flower: flowerGeo(), shards: shardsGeo() };
+/** A little scatter of pebbles and grit: five stones of different sizes lying together. */
+function pebblesGeo(): THREE.BufferGeometry {
+  const parts: THREE.BufferGeometry[] = [];
+  for (const [r, x, z, seed] of [[0.5, 0, 0, 3], [0.3, 0.7, 0.25, 7], [0.22, -0.55, 0.4, 11], [0.16, 0.2, -0.65, 13], [0.12, -0.35, -0.4, 17]] as const) {
+    const g = rockGeometry(r, { style: 'pebble', seed, detail: 0 }).toNonIndexed();
+    g.deleteAttribute('uv');
+    parts.push(g.translate(x, -r * 0.12, z));
+  }
+  const geo = mergeGeometries(parts)!;
+  for (const g of parts) g.dispose();
+  geo.computeVertexNormals();
+  return geo;
+}
+
+const GEO = { tuft: tuftGeo(), flower: flowerGeo(), shards: shardsGeo(), pebbles: pebblesGeo() };
+/** Pebbles: dull stone, each scatter tinted from the sand it lies on. */
+const PEBBLE_MAT = new THREE.MeshStandardMaterial({ roughness: 0.92, metalness: 0 });
+/** Pebble cells: a scatter every 1.4 m or so where the ground is sand, out to about 39 m. */
+export const PEBBLE_CELL = 1.4, PEBBLE_CELLS = 56;
 /** The crystal meadow's material: pastel, a little shiny, glowing softly from within after dusk. */
 const CRYSTAL_MAT = new THREE.MeshStandardMaterial({ roughness: 0.18, metalness: 0.05, emissive: new THREE.Color('#6a5aa0'), emissiveIntensity: 0.25, transparent: true, opacity: 0.88 });
+const PEBBLE_TINTS = { red: new THREE.Color('#9a5a3a'), grey: new THREE.Color('#8a8680') };
 const CRYSTAL_PAL = ['#bfe8ff', '#e0c8ff', '#ffd6f0', '#c8fff0', '#fff4c0', '#d6d8ff', '#ffc8e6'];
 /** Crystal meadow cells: a cluster every 1.7 m or so, out to about 60 m round the travellers. */
 export const CRYSTAL_CELL = 1.7, CRYSTAL_CELLS = 72;
@@ -274,8 +295,18 @@ const MATS = {
 
 /** Where grass may grow: green ground, above the water, off the roads and out of the plaza. */
 export function grassy(x: number, z: number, h: number, col: THREE.Color): boolean {
-  if (h < WATER_Y + 0.35) return false;
   if (!(col.g > col.r * 1.05 && col.g > col.b * 1.1)) return false;
+  return openGround(x, z, h);
+}
+
+/** Sandy, stony ground (the deserts, the Nile's edge, the pink city's hills): pebbles lie on it. */
+export function sandy(col: THREE.Color): boolean {
+  return col.r > col.b + 0.1 && col.g < col.r * 1.02 && !(col.g > col.r * 1.05 && col.g > col.b * 1.1);
+}
+
+/** Open ground: above the water, off the roads, out of the plaza and off anything built or planted. */
+export function openGround(x: number, z: number, h: number): boolean {
+  if (h < WATER_Y + 0.35) return false;
   const cx = Math.round(x / REGION_SIZE) * REGION_SIZE, cz = Math.round(z / REGION_SIZE) * REGION_SIZE;
   const lx = x - cx, lz = z - cz, d = Math.hypot(lx, lz);
   if (d < 54) return false; // the plaza and landmark
@@ -396,6 +427,7 @@ export class MeadowField {
   private farGrass: Field;
   private midFlowers: Field;
   private crystals: Field;
+  private pebbles: Field;
   private m = new THREE.Matrix4();
   private q = new THREE.Quaternion();
   private s = new THREE.Vector3();
@@ -413,8 +445,9 @@ export class MeadowField {
     this.farGrass = new Field(GEO.tuft, MATS.farGrass, FAR_CELL, FAR_CELLS, this.plantGrass(FAR_CELL, 3.6));
     this.midFlowers = new Field(GEO.flower, MATS.midFlower, MID_FLOWER_CELL, MID_FLOWER_CELLS, this.plantFlower(MID_FLOWER_CELL, 1.5, 0.6));
     this.crystals = new Field(GEO.shards, CRYSTAL_MAT, CRYSTAL_CELL, CRYSTAL_CELLS, this.plantCrystal());
+    this.pebbles = new Field(GEO.pebbles, PEBBLE_MAT, PEBBLE_CELL, PEBBLE_CELLS, this.plantPebbles());
     for (const f of [this.midGrass, this.farGrass, this.midFlowers]) f.mesh.receiveShadow = false;
-    this.group.add(this.grass.mesh, this.flowers.mesh, this.midGrass.mesh, this.farGrass.mesh, this.midFlowers.mesh, this.crystals.mesh);
+    this.group.add(this.grass.mesh, this.flowers.mesh, this.midGrass.mesh, this.farGrass.mesh, this.midFlowers.mesh, this.crystals.mesh, this.pebbles.mesh);
   }
 
   /** Plant grass tufts in a grid of `cell` metres, `size` times the near field's tufts. */
@@ -455,7 +488,35 @@ export class MeadowField {
       const s = (0.18 + Math.pow(cellHash(i, j, 34), 2.2) * 0.75) * (0.7 + drift * 0.5);
       this.q.setFromEuler(e.set((cellHash(i, j, 35) - 0.5) * 0.3, cellHash(i, j, 36) * Math.PI * 2, (cellHash(i, j, 37) - 0.5) * 0.3));
       im.setMatrixAt(k, this.m.compose(this.p.set(x, h - 0.04, z), this.q, this.s.set(s, s * (0.8 + cellHash(i, j, 38) * 0.5), s)));
-      im.setColorAt(k, this.c.set(CRYSTAL_PAL[Math.floor(cellHash(i, j, 39) * CRYSTAL_PAL.length)]));
+      // Each cluster its own hue, turned a little from the palette's.
+      im.setColorAt(k, this.c.set(CRYSTAL_PAL[Math.floor(cellHash(i, j, 39) * CRYSTAL_PAL.length)]).offsetHSL((cellHash(i, j, 40) - 0.5) * 0.12, 0, 0));
+      return true;
+    };
+  }
+
+  /**
+   * Pebbles and small stones on the sand, scattered the way the grass is on green ground: thick
+   * on stony patches, thin on the dunes, the odd fist-sized stone among the grit — each scatter
+   * the sand's own colour, a little darker or lighter, some reddish, some grey.
+   */
+  private plantPebbles() {
+    const e = new THREE.Euler();
+    return (im: THREE.InstancedMesh, k: number, i: number, j: number): boolean => {
+      const x = (i + cellHash(i, j, 51)) * PEBBLE_CELL, z = (j + cellHash(i, j, 52)) * PEBBLE_CELL;
+      const stony = smoothNoise(x * 0.04 + 3, z * 0.04 - 5) * 0.7 + smoothNoise(x * 0.17, z * 0.17) * 0.3;
+      if (cellHash(i, j, 53) > stony * 0.9 - 0.1) { im.setMatrixAt(k, this.zero); return false; }
+      const h = terrainHeight(x, z);
+      groundColor(x, z, h, this.c);
+      if (!sandy(this.c) || !openGround(x, z, h)) { im.setMatrixAt(k, this.zero); return false; }
+      const big = cellHash(i, j, 54) > 0.93;
+      const sc = big ? 0.5 + cellHash(i, j, 55) * 0.4 : 0.12 + Math.pow(cellHash(i, j, 55), 1.8) * 0.3;
+      this.q.setFromEuler(e.set(0, cellHash(i, j, 56) * Math.PI * 2, 0));
+      im.setMatrixAt(k, this.m.compose(this.p.set(x, h - 0.01, z), this.q, this.s.set(sc, sc * (0.7 + cellHash(i, j, 57) * 0.4), sc)));
+      const v = cellHash(i, j, 58);
+      if (v < 0.15) this.c.lerp(PEBBLE_TINTS.red, 0.5);
+      else if (v < 0.3) this.c.lerp(PEBBLE_TINTS.grey, 0.6);
+      this.c.offsetHSL(0, -0.08, (cellHash(i, j, 59) - 0.6) * 0.22);
+      im.setColorAt(k, this.c);
       return true;
     };
   }
@@ -487,11 +548,16 @@ export class MeadowField {
     return { tufts: this.grass.grown, flowers: this.flowers.grown };
   }
 
+  /** Pebble scatters lying round the travellers right now. */
+  get pebbled(): number {
+    return this.pebbles.grown;
+  }
+
   update(focus: THREE.Vector3, ground: number): void {
     // High in the air the meadow is too far below to matter.
     this.group.visible = this.enabled && focus.y - ground < 60;
     if (!this.group.visible) return;
-    for (const b of takeDirty()) for (const f of [this.grass, this.flowers, this.midGrass, this.farGrass, this.midFlowers, this.crystals]) f.invalidate(b.x0, b.z0, b.x1, b.z1);
+    for (const b of takeDirty()) for (const f of [this.grass, this.flowers, this.midGrass, this.farGrass, this.midFlowers, this.crystals, this.pebbles]) f.invalidate(b.x0, b.z0, b.x1, b.z1);
     GRASS_UNIFORMS.uFocus.value.copy(focus);
     GRASS_UNIFORMS.uFieldR.value = Math.min(FIELD_CELL * FIELD_CELLS, FLOWER_CELL * FLOWER_CELLS) / 2 - 1;
     this.grass.update(focus.x, focus.z);
@@ -500,6 +566,9 @@ export class MeadowField {
     this.farGrass.update(focus.x, focus.z);
     this.midFlowers.update(focus.x, focus.z);
     this.crystals.update(focus.x, focus.z);
+    this.pebbles.update(focus.x, focus.z);
+    // Only drawn where there is sand to lie on.
+    this.pebbles.mesh.visible = this.pebbles.grown > 0;
     CRYSTAL_MAT.emissiveIntensity = 0.2 + GRASS_UNIFORMS.uNight.value * 0.9;
   }
 }
@@ -558,6 +627,27 @@ export function patternGround(mat: THREE.MeshStandardMaterial): void {
           diffuseColor.rgb *= 1.0 - grit * sandish * near;
           float tint = vn(gp * 0.03 + 21.0);
           diffuseColor.rgb *= mix(vec3(1.0), mix(vec3(1.05, 0.95, 0.93), vec3(0.97, 1.0, 1.03), tint), sandish);
+        }
+        // Snow is not one white: wind-packed crust (a little greyer, with fine cracks) and fresh
+        // powder (brighter, softly pitted) lie in drifts; hollows hold a cold blue; and here and
+        // there a line of prints wanders across it — a fox's, a reindeer's — each print a soft
+        // blue-shadowed dent.
+        {
+          vec3 sc0 = vColor.rgb;
+          float snowy0 = smoothstep(0.78, 0.9, min(sc0.r, min(sc0.g, sc0.b)));
+          if (snowy0 > 0.01) {
+            float near2 = 1.0 - smoothstep(20.0, 90.0, length(vViewPosition));
+            float crust = smoothstep(0.45, 0.62, fbm(gp * 0.035 + 31.0));
+            float crack = (1.0 - smoothstep(0.0, 0.025, abs(vn(R1 * gp * 1.7) - 0.5))) * crust * near2;
+            float pits = (vn(R3 * gp * 9.0) - 0.5) * 0.06 * (1.0 - crust) * near2;
+            vec3 snowC = diffuseColor.rgb * mix(vec3(1.03, 1.03, 1.04), vec3(0.93, 0.95, 0.99), crust) * (1.0 + pits) * (1.0 - crack * 0.1);
+            float hollow = smoothstep(0.55, 0.8, fbm(gp * 0.02 + 51.0));
+            snowC = mix(snowC, snowC * vec3(0.84, 0.9, 1.04), hollow * 0.5);
+            float trail = 1.0 - smoothstep(0.0, 0.035, abs(fbm(gp * 0.018 + 77.0) - 0.5));
+            float prints = spots(R2 * gp * 2.6, 0.7, 0.34) * trail * near2;
+            snowC = mix(snowC, snowC * vec3(0.72, 0.8, 0.95), prints * 0.7);
+            diffuseColor.rgb = mix(diffuseColor.rgb, snowC, snowy0);
+          }
         }
         // Blossom speckles.
         vec2 bq = R2 * gp * 1.3;

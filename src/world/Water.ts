@@ -1,6 +1,9 @@
 import * as THREE from 'three';
 import { BANK, WATERS, type WaterBody } from './waters';
-import type { RegionId } from './regions';
+import { GRID_COLS, GRID_ROWS, HOME_COL, HOME_ROW, REGION_SIZE, type RegionId } from './regions';
+
+/** The lands' outer edge (x0, z0, x1, z1): beyond it lies the open sea, rougher than the lakes. */
+const LAND_EDGE = [(-HOME_COL - 0.5) * REGION_SIZE, (-HOME_ROW - 0.5) * REGION_SIZE, (GRID_COLS - HOME_COL - 0.5) * REGION_SIZE, (GRID_ROWS - HOME_ROW - 0.5) * REGION_SIZE].map((v) => v.toFixed(1));
 
 /**
  * Fairytale water. The sea, the lakes, the ponds and the rivers share one surface: clear
@@ -57,6 +60,21 @@ const WATER_FRAG = /* glsl */ `
     gr += vec2(0.8, 0.6) * 0.34 * 0.07 * cos(dot(vW.xz, vec2(0.8, 0.6)) * 0.34 - t * 0.9);
     gr += vec2(-0.45, 0.9) * 0.9 * 0.025 * cos(dot(vW.xz, vec2(-0.45, 0.9)) * 0.9 - t * 1.4);
     gr += vec2(0.95, -0.3) * 2.1 * 0.01 * cos(dot(vW.xz, vec2(0.95, -0.3)) * 2.1 - t * 2.2);
+    // The open sea beyond the lands (and its harbours) runs rougher: a choppy wind-sea over long
+    // swells, crests breaking into whitecaps that streak and fade; deeper, darker blue.
+    float out0 = max(max(${LAND_EDGE[0]} - vW.x, vW.x - ${LAND_EDGE[2]}), max(${LAND_EDGE[1]} - vW.z, vW.z - ${LAND_EDGE[3]}));
+    float rough = smoothstep(-60.0, 80.0, out0);
+    float crest = 0.0;
+    if (rough > 0.001) {
+      for (int k = 0; k < 5; k++) {
+        float fk = float(k);
+        vec2 d = normalize(vec2(cos(fk * 1.9 + 0.4), sin(fk * 1.9 + 0.4)) + vec2(0.9, 0.5));
+        float f = 0.22 * pow(1.55, fk), a = 0.9 / (1.0 + fk * 1.3);
+        float ph = dot(vW.xz, d) * f - t * (1.1 + fk * 0.35) + h2(vec2(fk, 3.0)).x * 6.28;
+        gr += d * f * a * 0.12 * rough * cos(ph);
+        crest += a * sin(ph);
+      }
+    }
     vec3 wn = normalize(vec3(-gr.x, 1.0, -gr.y));
     vec3 rf = reflect(-normalize(cameraPosition - vW), wn);
     float sunA = max(dot(rf, normalize(sunDir)), 0.0) * step(0.0, sunDir.y);
@@ -69,12 +87,16 @@ const WATER_FRAG = /* glsl */ `
     glint += pow(sunA, 160.0) * 1.6 * (1.0 - night);
     float fres = 0.5 + 0.5 * sin(p.x * 0.05 + t * 0.3) * sin(p.y * 0.043 - t * 0.21);
     vec3 col = mix(deep, shallow, 0.35 + fres * 0.3);
+    col = mix(col, deep * vec3(0.7, 0.85, 0.95) * (0.85 + 0.3 * dot(wn, normalize(vec3(0.3, 1.0, 0.2)))), rough * 0.6);
+    float streak = h2(floor(vec2(dot(vW.xz, vec2(0.9, 0.5)) * 0.8, dot(vW.xz, vec2(-0.5, 0.9)) * 3.0 - t))).x;
+    float whitecap = smoothstep(1.05, 1.5, crest) * (0.5 + 0.5 * streak) * rough;
     col += vec3(1.0, 0.98, 0.9) * caustic * (0.35 - night * 0.2);
     col += vec3(1.0) * ring * 0.25;
     col = mix(col, col * 0.35 + glow * 0.18, night * 0.75);
     col += glow * (caustic * 0.5 + stars * 0.7 + ring * 0.4) * (0.1 + night * 0.9);
     col += vec3(1.0) * glint * 1.5;
-    gl_FragColor = vec4(col, 0.86);
+    col = mix(col, vec3(0.94, 0.97, 1.0) * (1.0 - night * 0.6) + glow * night * 0.3, whitecap * 0.85);
+    gl_FragColor = vec4(col, 0.86 + rough * 0.08);
     #include <fog_fragment>
   }`;
 

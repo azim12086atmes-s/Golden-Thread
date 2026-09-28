@@ -113,4 +113,18 @@ describe('the meadow field', () => {
     g.update(new THREE.Vector3(d.x, 0, d.z), 0);
     expect(g.grown.tufts).toBeLessThan(FIELD_CELLS * FIELD_CELLS * 0.1);
   }, 15_000); // builds a lot of grass: slow when the whole suite runs in parallel
+
+  it('pebbles lie on the sand of the desert, never on the green meadow', async () => {
+    const { MeadowField } = await import('../src/world/Meadow');
+    const d = regionCenter(REGIONS.find((r) => r.id === 'desert')!);
+    const f = new MeadowField();
+    const p = new THREE.Vector3(d.x + 90, 0, d.z + 250);
+    f.update(p, terrainHeight(p.x, p.z));
+    expect(f.pebbled).toBeGreaterThan(200);
+    const m = regionCenter(REGIONS.find((r) => r.id === 'meadow')!);
+    const g = new MeadowField();
+    const q = new THREE.Vector3(m.x + 60, 0, m.z + 290);
+    g.update(q, terrainHeight(q.x, q.z));
+    expect(g.pebbled).toBeLessThan(40);
+  }, 15_000);
 });
