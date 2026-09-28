@@ -9,6 +9,8 @@ import { LAND_LANTERN, LANTERN_DESIGNS, LANTERN_INTENSITY, lanternGeometry, type
  * night, each flame flickering. One instanced draw per design, recycled round the travellers.
  */
 export const SKY_LANTERNS = 110;
+/** Jade Terraces keeps its lantern festival: far more lanterns rise there. */
+export const JADE_LANTERNS = 260;
 const RADIUS = 170, TOP = 170;
 
 export class SkyLanterns {
@@ -16,7 +18,7 @@ export class SkyLanterns {
   readonly mesh = new THREE.Group();
   private meshes = new Map<LanternDesign, THREE.InstancedMesh>();
   private mat = new THREE.MeshBasicMaterial({ color: '#ffffff', vertexColors: true, toneMapped: false, transparent: true, opacity: 0.9 });
-  private state = new Float32Array(SKY_LANTERNS * 5); // x, y, z offsets, speed, phase
+  private state = new Float32Array(JADE_LANTERNS * 5); // x, y, z offsets, speed, phase
   private land: RegionId | 'all' | null = null;
   private lights: string[] = [];
   /** At the celebration, lanterns of every land rise in every land's colours at once. */
@@ -26,7 +28,7 @@ export class SkyLanterns {
 
   constructor() {
     for (const d of LANTERN_DESIGNS) {
-      const im = new THREE.InstancedMesh(lanternGeometry(d), this.mat, SKY_LANTERNS);
+      const im = new THREE.InstancedMesh(lanternGeometry(d), this.mat, JADE_LANTERNS);
       im.frustumCulled = false;
       im.count = 0;
       im.setColorAt(0, this.col.set('#ffffff'));
@@ -41,6 +43,8 @@ export class SkyLanterns {
   }
 
   private focus = new THREE.Vector3();
+  /** How many lanterns are aloft now. */
+  private live = 0;
 
   /** Release a lantern somewhere around the travellers (world coordinates — you walk past them). */
   private respawn(i: number, anywhere: boolean): void {
@@ -52,7 +56,9 @@ export class SkyLanterns {
   update(dt: number, t: number, focus: THREE.Vector3, land: RegionId, night: number): void {
     const first = this.focus.lengthSq() === 0 && focus.lengthSq() > 0;
     this.focus.copy(focus);
-    if (first) for (let i = 0; i < SKY_LANTERNS; i++) this.respawn(i, true);
+    const n = land === 'china' && !this.everyLand ? JADE_LANTERNS : SKY_LANTERNS;
+    if (first || (n > this.live)) for (let i = first ? 0 : this.live; i < n; i++) this.respawn(i, true);
+    this.live = n;
     const key = this.everyLand ? 'all' : land;
     if (key !== this.land) {
       this.land = key;
@@ -63,7 +69,7 @@ export class SkyLanterns {
     const glow = 0.55 + night * 1.25;
     const counts = new Map<LanternDesign, number>();
     for (const d of LANTERN_DESIGNS) counts.set(d, 0);
-    for (let i = 0; i < SKY_LANTERNS; i++) {
+    for (let i = 0; i < n; i++) {
       const s = i * 5;
       this.state[s + 1] += this.state[s + 3] * dt;
       const far = Math.hypot(this.state[s] - focus.x, this.state[s + 2] - focus.z) > RADIUS + 60;

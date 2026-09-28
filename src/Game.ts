@@ -12,6 +12,7 @@ import './characters/wardrobe'; // registers the fusion outfits
 import { EventBus } from './core/events';
 import { Guide } from './guide/Guide';
 import { CakeScene } from './story/CakeScene';
+import { FestivalAir } from './world/FestivalAir';
 import { THREAD_FLAG, ThreadScene } from './story/ThreadScene';
 import { StoryScene } from './story/StoryScene';
 import { STORY_FLAG } from './story/storyline';
@@ -126,6 +127,8 @@ export class Game {
   readonly ambience = new Ambience();
   readonly regionFx = new RegionFX();
   readonly skyLanterns = new SkyLanterns();
+  /** What each land flies in its air on a festival day (FestivalAir.ts). */
+  private festivalAir!: FestivalAir;
   /** Each land's own sky effects (world/skies.ts). */
   readonly skyFx = new SkyFX();
   /** Each land's weather: dust, snow, mist, haze or pollen on the wind. */
@@ -212,6 +215,8 @@ export class Game {
     this.scene.add(...this.auras);
     this.chinaDragon = new ChinaDragon(this.scene);
     this.scene.add(this.world.group, this.sky.group, this.sky.sunLight, this.sky.sunLight.target, this.sky.hemi, this.ambience.points, this.regionFx.points, this.skyLanterns.mesh, this.skyFx.group, this.weather.group, this.traffic.group);
+    this.festivalAir = new FestivalAir(this.world.solid, this.world.glow);
+    this.scene.add(this.festivalAir.group);
 
     this.composer = new EffectComposer(this.renderer);
     this.composer.addPass(new RenderPass(this.scene, this.camera));
@@ -394,6 +399,7 @@ export class Game {
     this.weather.update(dt, this.t, this.region.id, this.trav.gPos, this.sky.night, surfaceAt(this.trav.gPos.x, this.trav.gPos.z, this.trav.gPos.y + 2));
     this.skyLanterns.everyLand = this.region.id === 'meadow' && this.celebration.festivities.level > 0.5;
     this.skyLanterns.update(dt, this.t, this.trav.gPos, this.region.id, this.sky.night);
+    this.festivalAir.update(dt, this.t, this.region.id, this.sky.night);
     this.skyFx.party = this.celebration.festivities.level;
     this.skyFx.partyAt.copy(this.celebration.festivities.centre);
     this.camera.getWorldDirection(this.skyFx.lookDir);
