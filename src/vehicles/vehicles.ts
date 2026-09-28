@@ -239,7 +239,7 @@ const glslColor = (c: string) => { const k = new THREE.Color(c); return `vec3(${
 
 /** The shell's paint under a clear coat, with its openings cut by the shader. */
 function shellMaterial(sp: ShellSpec): THREE.MeshPhysicalMaterial {
-  const mat = new THREE.MeshPhysicalMaterial({ color: '#ffffff', roughness: 0.36, metalness: 0.35, clearcoat: 0.85, clearcoatRoughness: 0.14, envMapIntensity: 0.5, side: THREE.DoubleSide });
+  const mat = new THREE.MeshPhysicalMaterial({ color: '#ffffff', roughness: 0.48, metalness: 0.12, clearcoat: 0.45, clearcoatRoughness: 0.3, envMapIntensity: 0.25, side: THREE.DoubleSide });
   mat.envMap = vehicleEnv;
   cache.set(sp.key, mat); // so the environment reaches it too
   const v4 = (h: Hole, a: 'x' | 'z') => `vec4(${(h[a] ?? 0).toFixed(3)}, ${h.y.toFixed(3)}, ${((a === 'x' ? h.hx : h.hz) ?? 0).toFixed(3)}, ${h.hy.toFixed(3)})`;
