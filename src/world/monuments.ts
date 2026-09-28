@@ -996,31 +996,43 @@ const london: Monument = (c, o) => {
   // ═══ The palace: a long Perpendicular front behind the yard, facing +z at z = −3. ═══
   const x0 = -15, x1 = 30, zf = -3, depth = 14, ph = 16;
   surf(c, SURF.ashlar, () => box(c.g, x1 - x0, ph, depth, stone, (x0 + x1) / 2, 0, zf - depth / 2));
-  const bays = Math.round((x1 - x0) / 3.75);
-  for (let b = 0; b <= bays; b++) {
-    const x = x0 + (b * (x1 - x0)) / bays;
-    box(c.g, 0.7, ph + 1, 0.6, dark, x, 0, zf + 0.3); // buttress
-    pinnacle(c, x, ph + 1, zf + 0.3, 3, dark);
-    if (b < bays) {
-      const cx = x + (x1 - x0) / bays / 2;
-      if (Math.abs(cx) < 2.5) continue; // the porch stands there
-      for (const [y, h] of [[1.4, 3.4], [6.4, 3.6], [11.4, 3.4]] as const) gothicWindow(c, cx, y, zf + 0.02, 1.7, h, dark);
-      // A band of blind tracery between the storeys.
-      for (const y of [5.3, 10.3]) for (let k = -2; k <= 2; k++) archPanel(c.g, 0.45, 0.8, dark, cx + k * 0.6, y, zf + 0.04, 0, 0.05, true);
+  // Every face of the palace is dressed the same: the river front and the yard front, the two
+  // gable ends — buttresses and pinnacles, three tiers of traceried windows, Perpendicular
+  // panelling, string courses and a band of shields. (`porch`: leave the middle for St Stephen's.)
+  const dress = (w: number, z: number, porch: boolean) => {
+    const xa = -w / 2, xb = w / 2, bays = Math.max(2, Math.round(w / 3.75));
+    for (let b = 0; b <= bays; b++) {
+      const x = xa + (b * w) / bays;
+      box(c.g, 0.7, ph + 1, 0.6, dark, x, 0, z + 0.3); // buttress
+      pinnacle(c, x, ph + 1, z + 0.3, 3, dark);
+      if (b < bays) {
+        const cx = x + w / bays / 2;
+        if (porch && Math.abs(cx - pc) < 2.5) continue; // the porch stands there
+        for (const [y, h] of [[1.4, 3.4], [6.4, 3.6], [11.4, 3.4]] as const) gothicWindow(c, cx, y, z + 0.02, 1.7, h, dark);
+        // A band of blind tracery between the storeys.
+        for (const y of [5.3, 10.3]) for (let k = -2; k <= 2; k++) archPanel(c.g, 0.45, 0.8, dark, cx + k * 0.6, y, z + 0.04, 0, 0.05, true);
+      }
     }
-  }
-  // Perpendicular panelling: fine vertical ribs of stone over the whole front, ogee heads at each tier.
-  for (let x = x0 + 0.3; x < x1; x += 0.55) {
-    if (Math.abs(x) < 3.6) continue;
-    box(c.g, 0.07, ph - 1.4, 0.08, dark, x, 0.8, zf + 0.05);
-  }
-  for (const y of [5.1, 10.1, 15.1]) box(c.g, x1 - x0, 0.14, 0.12, dark, (x0 + x1) / 2, y, zf + 0.06);
-  // A band of heraldic shields below the parapet.
-  for (let x = x0 + 1.9; x < x1; x += 3.75) {
-    if (Math.abs(x) < 3.6) continue;
-    const shp = new THREE.Shape([new THREE.Vector2(-0.35, 0.4), new THREE.Vector2(0.35, 0.4), new THREE.Vector2(0.35, 0), new THREE.Vector2(0, -0.45), new THREE.Vector2(-0.35, 0)]);
-    c.g.add(new THREE.ExtrudeGeometry(shp, { depth: 0.06, bevelEnabled: false }), ['#c8102e', '#012169', '#d4af37'][((Math.round(x) % 3) + 3) % 3], M(x, 15.5, zf + 0.1));
-  }
+    // Perpendicular panelling: fine vertical ribs of stone over the whole face, ogee heads at each tier.
+    for (let x = xa + 0.3; x < xb; x += 0.55) {
+      if (porch && Math.abs(x - pc) < 3.6) continue;
+      box(c.g, 0.07, ph - 1.4, 0.08, dark, x, 0.8, z + 0.05);
+    }
+    for (const y of [5.1, 10.1, 15.1]) box(c.g, w, 0.14, 0.12, dark, 0, y, z + 0.06);
+    // A band of heraldic shields below the parapet.
+    for (let x = xa + 1.9; x < xb; x += 3.75) {
+      if (porch && Math.abs(x - pc) < 3.6) continue;
+      const shp = new THREE.Shape([new THREE.Vector2(-0.35, 0.4), new THREE.Vector2(0.35, 0.4), new THREE.Vector2(0.35, 0), new THREE.Vector2(0, -0.45), new THREE.Vector2(-0.35, 0)]);
+      c.g.add(new THREE.ExtrudeGeometry(shp, { depth: 0.06, bevelEnabled: false }), ['#c8102e', '#012169', '#d4af37'][((Math.round(x) % 3) + 3) % 3], M(x, 15.5, z + 0.1));
+    }
+  };
+  const mx = (x0 + x1) / 2, mz = zf - depth / 2, pc = -mx; // the porch, at x = 0, in the front face's frame
+  const face = (ry: number, w: number, reach: number, porch: boolean) =>
+    c.g.frame(mx, 0, mz, ry, 1, () => c.glow.frame(mx, 0, mz, ry, 1, () => dress(w, reach, porch)));
+  face(0, x1 - x0, depth / 2, true); // the yard front
+  face(Math.PI, x1 - x0, depth / 2, false); // the river front
+  face(Math.PI / 2, depth, (x1 - x0) / 2, false); // the east end
+  face(-Math.PI / 2, depth, (x1 - x0) / 2, false); // the west end
   // Openwork parapet and battlements along the top.
   box(c.g, x1 - x0 + 0.6, 0.35, 0.5, dark, (x0 + x1) / 2, ph, zf);
   for (let x = x0; x <= x1; x += 0.9) box(c.g, 0.45, 0.7, 0.4, dark, x, ph + 0.35, zf);
@@ -1050,7 +1062,9 @@ const london: Monument = (c, o) => {
   c.g.frame(34, 0, -10, 0, 1, () => c.glow.frame(34, 0, -10, 0, 1, () => {
     surf(c, SURF.ashlar, () => box(c.g, 11, 44, 11, stone));
     archPanel(c.g, 5.4, 9, '#2a2224', 0, 0, 5.52, 0, 0.12, true);
-    for (let y = 12; y < 42; y += 6.5) for (const x of [-2.6, 0, 2.6]) gothicWindow(c, x, y, 5.51, 1.2, 4, dark);
+    for (let side = 0; side < 4; side++) c.g.frame(0, 0, 0, (side * Math.PI) / 2, 1, () => c.glow.frame(0, 0, 0, (side * Math.PI) / 2, 1, () => {
+      for (let y = 12; y < 42; y += 6.5) for (const x of [-2.6, 0, 2.6]) gothicWindow(c, x, y, 5.51, 1.2, 4, dark);
+    }));
     for (const [sx, sz] of [[-1, -1], [1, -1], [-1, 1], [1, 1]]) { box(c.g, 1.8, 48, 1.8, dark, sx * 5.5, 0, sz * 5.5); cyl(c.g, 0.9, 0.9, 2, dark, sx * 5.5, 48, sz * 5.5, 8); pinnacle(c, sx * 5.5, 50, sz * 5.5, 4.5, dark); }
     for (let x = -5; x <= 5; x += 1) for (const sz of [-1, 1]) box(c.g, 0.5, 0.8, 0.5, dark, x, 44, sz * 5.3);
     cyl(c.g, 0.12, 0.14, 12, iron, 0, 44, 0, 6);

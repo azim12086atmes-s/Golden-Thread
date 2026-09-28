@@ -179,6 +179,9 @@ export function cardMaterial(): THREE.MeshLambertMaterial {
           // Sunlight coming through the leaves, and a soft light within so crowns never go dead-dark.
           float back = pow(max(dot(normalize(vCW - cameraPosition), normalize(uSunDir)), 0.0), 3.0);
           totalEmissiveRadiance += diffuseColor.rgb * (back * 0.55 + 0.1) * (1.0 - uLeafNight);
+          // After dusk the leaves glow faintly, as the flowers do: some sprigs brighter than others.
+          float lum = 0.35 + 0.65 * step(0.55, fract(sin(dot(floor(vCW * 1.7), vec3(12.9898, 78.233, 37.719))) * 43758.5453));
+          totalEmissiveRadiance += mix(diffuseColor.rgb, vec3(0.75, 1.0, 0.8), 0.25) * lum * uLeafNight * 0.3;
         }`);
   };
   m.customProgramCacheKey = () => 'leaf-cards';

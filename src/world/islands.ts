@@ -108,7 +108,13 @@ function hueShift(c: string, dh: number): THREE.Color {
   out.getHSL(hsl);
   return out.setHSL((hsl.h + dh + 1) % 1, hsl.s, hsl.l);
 }
-export const CRYSTAL_PAL = ['#bfe8ff', '#e0c8ff', '#ffd6f0', '#c8fff0', '#fff4c0', '#d6d8ff'];
+/**
+ * The Sky Isles' crystals: mostly pink (rose, blush, candy, orchid-pink), with pastel colours here
+ * and there — sky blue, lavender, mint, butter yellow, peach.
+ */
+export const CRYSTAL_PINKS = ['#ffc8e6', '#ffd6f0', '#ffb8dc', '#f8c0e8', '#ffd0e4', '#ffc4dc', '#f4b8e0', '#ffdcec', '#fcc8d8'];
+export const CRYSTAL_PASTELS = ['#bfe8ff', '#e0c8ff', '#c8fff0', '#fff4c0', '#ffd8c0'];
+export const CRYSTAL_PAL = [...CRYSTAL_PINKS, ...CRYSTAL_PASTELS];
 
 let crystalTemplate: THREE.BufferGeometry | null = null;
 /** One crystal: a five-sided prism with a pointed tip, 1 m tall and 1 m across (scaled when placed). */

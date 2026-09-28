@@ -8,6 +8,7 @@ import { WATER_Y, groundColor, terrainHeight } from './terrain';
 import { WIND_GLSL, WIND_UNIFORMS } from './wind';
 import { LAMP_GLSL, LAMP_UNIFORMS } from './lamplight';
 import { rockGeometry } from './rocks';
+import { CRYSTAL_PAL } from './islands';
 import { mergeGeometries } from 'three/addons/utils/BufferGeometryUtils.js';
 
 /**
@@ -220,7 +221,7 @@ export const PEBBLE_CELL = 1.4, PEBBLE_CELLS = 56;
 /** The crystal meadow's material: pastel, a little shiny, glowing softly from within after dusk. */
 const CRYSTAL_MAT = new THREE.MeshStandardMaterial({ roughness: 0.18, metalness: 0.05, emissive: new THREE.Color('#6a5aa0'), emissiveIntensity: 0.25, transparent: true, opacity: 0.88 });
 const PEBBLE_TINTS = { red: new THREE.Color('#9a5a3a'), grey: new THREE.Color('#8a8680') };
-const CRYSTAL_PAL = ['#bfe8ff', '#e0c8ff', '#ffd6f0', '#c8fff0', '#fff4c0', '#d6d8ff', '#ffc8e6'];
+
 /** Crystal meadow cells: a cluster every 1.7 m or so, out to about 60 m round the travellers. */
 export const CRYSTAL_CELL = 1.7, CRYSTAL_CELLS = 72;
 export const GRASS_UNIFORMS = { uNight: { value: 0 }, uFocus: { value: new THREE.Vector3() }, uFieldR: { value: 40 } };

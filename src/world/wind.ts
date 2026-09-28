@@ -111,6 +111,8 @@ const LEAF_FRAG = /* glsl */ `
     float rim = 1.0 - abs(dot(normalize(vLN), normalize(cameraPosition - vLW)));
     if (rim > 0.5 && onLeaf < 0.5) discard;
     vLeafGlow = 1.0;
+    // Some leaves hold a little light of their own, which shows as dusk falls (like the flowers).
+    vLeafLum = onLeaf * (0.35 + 0.65 * step(0.55, fract(hue * 7.31 + shade * 3.1)));
   }`;
 
 /**
@@ -132,7 +134,7 @@ export function swayMaterial<T extends THREE.Material>(mat: T, amount = 0.45, le
         varying float vLeaf; varying vec3 vLW; varying vec3 vLN; uniform vec3 uSunDir; uniform float uLeafNight;
         ${LAMP_GLSL}${surfaces ? `\nvarying float vSurf;\n${SURFACE_GLSL}` : ''}`)
       .replace('#include <color_fragment>', `#include <color_fragment>
-        float vLeafGlow = 0.0;
+        float vLeafGlow = 0.0, vLeafLum = 0.0;
         ${LEAF_FRAG}
         ${surfaces ? `if (vSurf > 0.5) {
           // What the wall, roof or road is made of (surfaces.ts), fading to plain colour far away.
@@ -145,6 +147,8 @@ export function swayMaterial<T extends THREE.Material>(mat: T, amount = 0.45, le
           // Sunlight through the leaves, and a soft inner light so crowns never go dead-dark.
           float back = pow(max(dot(normalize(vLW - cameraPosition), normalize(uSunDir)), 0.0), 3.0);
           totalEmissiveRadiance += diffuseColor.rgb * (back * 0.6 + 0.07) * (1.0 - uLeafNight);
+          // After dusk the crowns glow faintly, leaf by leaf.
+          totalEmissiveRadiance += mix(diffuseColor.rgb, vec3(0.75, 1.0, 0.8), 0.25) * vLeafLum * uLeafNight * 0.3;
         }
         // Lamplight on the walls, trees and props near each lamp after dusk (lamplight.ts).
         totalEmissiveRadiance += diffuseColor.rgb * lampLight(vLW, normalize(vLN)) * 0.85;`);
