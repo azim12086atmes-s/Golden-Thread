@@ -26,8 +26,8 @@ checking. Detailed specifications for the open items are in `OWNER_REQUESTS_SPEC
 | Her crown bigger than his | ✅ |
 | Children going home at their destination | ✅ (3e49c71) |
 | Balloons: house decor, children holding them, in the skies | ✅ |
-| Starry dress: large glowing stained-glass butterfly wings — heart-shaped, twice her height, slow curving flap, intricate uneven mosaic of straight and curved lines, strokes and veins | ⬜ next after the game logic |
-| All dresses: more colour and pattern from images | ⬜ |
+| Starry dress: large glowing stained-glass butterfly wings — heart-shaped, twice her height, slow curving flap, intricate uneven mosaic | ✅ (wings.ts; Fathima's alone) |
+| All dresses: more colour and pattern from images | ✅ |
 | Safar (the van) and your own vehicles rebuilt in steel / painted metal | ✅ Safar: a split-screen bus in painted steel; the other vehicles have clear-coat paint and chrome |
 
 ## 3. Story and interface
@@ -67,7 +67,7 @@ checking. Detailed specifications for the open items are in `OWNER_REQUESTS_SPEC
 | The Nile flowing, not overlapping the path; banks, towpaths, channels | ✅ |
 | Sky Isles waterfall | ✅ |
 | Rougher sea waves at the harbours | ✅ choppy open sea with whitecaps beyond the lands (Water.ts) |
-| Water lotus ponds | 🟡 lotus in lakes and squares; formal lotus ponds by the gardens (Codex `lotusPond`) open |
+| Water lotus ponds | ✅ formal lotus gardens in the six lotus lands (fd9a4b8) |
 | Trees: textured, translucent leafy crowns → now opaque, leaf-painted, ragged outlines, more foliage, colourful foliage | ✅ (c88521c) |
 | Pine and palm revamped; new real species (palms, conifers, bamboo, banana, baobab, fantasy trees) | ✅ |
 | Nature by terrain; heights by land (small trees in deserts and Sky Isles raised) | ✅ |
@@ -77,7 +77,7 @@ checking. Detailed specifications for the open items are in `OWNER_REQUESTS_SPEC
 | Multi-coloured crystals in the Sky Isles | ✅ each crystal its own hue, root-to-tip gradients, some two-coloured |
 | Materials on tree trunks (bark by species) | ✅ furrowed, plated, lenticelled, smooth and ringed bark (surfaces.ts) |
 | Some trees look inverted; Aurora huts/tents inverted | 🔎 to check and fix |
-| Mountains and plateaus by geography (muddy desert mesas, blue-white arctic, light-grey rocky highlands) | ⬜ |
+| Mountains and plateaus by geography (muddy desert mesas, blue-white arctic, light-grey rocky highlands) | ✅ (landforms.ts) |
 | Aurora snow ground texture beyond ripples | ✅ crust and powder drifts, blue hollows, animal tracks |
 | Desert pebbles and small rocks scattered like the grass | ✅ pebble field on sandy ground (Meadow.ts) |
 
@@ -100,9 +100,9 @@ checking. Detailed specifications for the open items are in `OWNER_REQUESTS_SPEC
 | Houses less monotonous: more types, colours, textures (grainy plaster, timber, bamboo) | ✅ 3–4 traditional kinds per land (traditions.ts, traditionsMore.ts, facade.ts) |
 | Town layouts organic, not a grid | ✅ winding lanes and side lanes, houses facing them (townLayout.ts); New Yonder keeps its grid |
 | Roads, paths and canals following the terrain; no overlap or chunking | ⬜ |
-| Bridges larger and fancier in each land's architecture; boats under, vehicles over | 🟡 placed and walkable; land designs ⬜ |
+| Bridges larger and fancier in each land's architecture; boats under, vehicles over | ✅ each land's own lit bridge (645e452); wider two-way decks ⬜ |
 | Real lighting: lamps and lanterns that light the ground round them; London gas lamps, tent lamps, Gulabi Nagar diyas, Madinat an-Nur hanging lanterns, Chinese sky lanterns; lit bridges | ✅ street, lane, bank, door, gate lamps and tent fires light pools round them (lamplight.ts); lit bridges 🟡 |
-| TV panels and more cyber/solar-punk artifacts in New Yonder | ⬜ (Codex `screens.ts`) |
+| TV panels and more cyber/solar-punk artifacts in New Yonder | ✅ screen towers, avenue panels, pylon screen (ed6168b) |
 | Monuments: external detail and texturing | ✅ |
 | Interiors shaped like their building (igloo, tent, courtyard, London house…) | ✅ house rooms by kind; institutes dressed in each land's style |
 
@@ -130,7 +130,7 @@ checking. Detailed specifications for the open items are in `OWNER_REQUESTS_SPEC
 |---|---|
 | Living traffic on roads, waters and skies per land | ✅ |
 | Travel between lands without popping in; couriers, ships, buses and ferries across borders | ✅ highways between neighbouring towns, placed by the clock (traffic/schedule.ts); sea lanes |
-| Stops (bus stops, piers, airfields) and riding buses, ferries, gondolas, air taxis in separate seats | ⬜ |
+| Stops (bus stops, piers, airfields) and riding buses, ferries, gondolas, air taxis in separate seats | 🟡 bus stops and intercity coaches ✅; ferries, gondolas, air taxis ⬜ |
 | Junctions, traffic lights or roundabouts, people crossing, far traffic hidden | 🟡 lights at every avenue/ring junction, vehicles stop at the line; people crossing ⬜ |
 | Traffic by time of day: quiet nights, lantern boats at dusk, kites by day, Sky Isles gondolas | ✅ roads quiet at night, lantern boats at dusk, day and night birds, fewer aircraft at night |
 
