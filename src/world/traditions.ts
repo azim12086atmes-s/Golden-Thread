@@ -2,6 +2,7 @@ import * as THREE from 'three';
 import type { Ctx, Footprint } from './architecture';
 import { M, archPanel, box, cone, cyl, dome, gable, hip, onion, sphere, sweptRoof } from './kit';
 import { SURF } from './surfaces';
+import { chimneyTop, fireAt } from './chimneys';
 import { agraharam, andalusian, baradari, barasti, cairene, chettinad, cloudCottage, coralHouse, diaojiaolou, fellah, gassho, huizhou, jeongja, joglo, kashmiri, kasbah, majlisTent, moonHouse, neowajip, oasisHouse, pinkTownhouse, rajHut, rumahGadang, teaHouse } from './traditionsMore';
 
 /**
@@ -366,6 +367,7 @@ function bedouinTent(c: Ctx): Footprint {
   }
   // A coffee fire with a dallah by the front.
   cone(c.glow, 0.4, 0.8, '#ff8a2a', 0, 0.1, d / 2 + 2.2, 5);
+  fireAt(c.g, 0, 0.3, d / 2 + 2.2);
   for (let i = 0; i < 6; i++) sphere(c.g, 0.18, '#6b6b6b', Math.cos(i) * 0.6, 0, d / 2 + 2.2 + Math.sin(i) * 0.6, 4);
   cyl(c.g, 0.12, 0.18, 0.35, '#d4af37', 0.8, 0, d / 2 + 2.2, 8);
   sphere(c.glow, 0.14, c.s.glow, -w / 2 + 1.2, h - 0.5, d / 2 - 0.4, 6, 1.3);
@@ -567,6 +569,7 @@ function lavvu(c: Ctx): Footprint {
   for (let i = 0; i < 12; i++) box(c.g, 0.2, 0.2, 0.04, i % 2 ? '#2f5a8a' : '#f2d14e', Math.sin((i / 12) * Math.PI * 2) * r * 0.9, 0.55, Math.cos((i / 12) * Math.PI * 2) * r * 0.9, (i / 12) * Math.PI * 2);
   box(c.g, 1.1, 1.6, 0.06, '#6b4a2a', 0, 0, r * 0.66);
   sphere(c.glow, 0.5, c.s.glow, 0, 4.6, 0, 6, 0.6);
+  chimneyTop(c.g, 0, 5.2, 0);
   // Reindeer skins by the door and a sled.
   box(c.g, 1.2, 0.05, 0.8, '#b8a88a', 1.4, 0, r + 0.5);
   box(c.g, 0.7, 0.3, 1.8, '#8a5a36', -1.8, 0, r + 0.6);
@@ -583,6 +586,7 @@ function goahti(c: Ctx): Footprint {
   box(c.g, 1.0, 1.6, 0.08, '#4a3426', 0, 0, d / 2 + 0.12);
   gable(c.g, 1.4, 1.9, 0.6, '#8a7a5a', 0, 2.0, d / 2 - 0.5, Math.PI / 2);
   box(c.g, 0.4, 0.8, 0.4, '#5a5a5a', 1, 2.3, -0.5);
+  chimneyTop(c.g, 1, 3.2, -0.5);
   sphere(c.glow, 0.25, c.s.glow, 0.8, 1.2, d / 2 - 0.1, 6);
   return { r: w / 2 + 0.6, h: 3.5 };
 }
@@ -599,6 +603,7 @@ function logCabin(c: Ctx): Footprint {
   box(c.g, 1.0, 2.0, 0.1, '#6b3a22', 0, 0, d / 2 + 0.18);
   surf(c, SURF.snow, () => gable(c.g, w + 1.2, d + 1.4, 2.6, '#f4f8ff', 0, h, 0));
   box(c.g, 0.6, 1.8, 0.6, '#6b6b6b', 1.8, h + 0.6, -1);
+  chimneyTop(c.g, 1.8, h + 2.5, -1);
   // Firewood stacked by the wall.
   for (let i = 0; i < 12; i++) cyl(c.g, 0.1, 0.1, 0.6, '#8a6444', w / 2 + 0.5, (i % 4) * 0.2, -1 + Math.floor(i / 4) * 0.22, 5);
   return { r: Math.max(w, d) / 2 + 0.8, h: h + 3 };

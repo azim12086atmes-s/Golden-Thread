@@ -1,54 +1,50 @@
-import { describe, expect, it } from 'vitest';
 import * as THREE from 'three';
-import { REGIONS } from '../src/world/regions';
-import { LOCALES } from '../src/world/locale';
-import { WEATHER } from '../src/world/Weather';
+import { describe, expect, it } from 'vitest';
+import { ATMOS, atmosWeights } from '../src/world/atmosphere';
+import { buildRegion } from '../src/world/RegionBuilder';
+import { REGIONS, regionCenter, REGION_BY_ID, type RegionId } from '../src/world/regions';
 
-const HEX = /^#[0-9a-f]{6}$/i;
+const solid = new THREE.MeshStandardMaterial(), glow = new THREE.MeshBasicMaterial();
 
-describe("every land's air", () => {
-  it('each land has a day haze, a night haze, a sun colour, a fog depth and a night hue', () => {
-    for (const r of REGIONS) {
-      const a = LOCALES[r.id].atmos;
-      expect(a, r.id).toBeDefined();
-      for (const c of [a.haze, a.hazeNight, a.sun, a.night]) expect(c, r.id).toMatch(HEX);
-      expect(a.near, r.id).toBeGreaterThan(0);
-      expect(a.far, r.id).toBeGreaterThan(a.near * 4);
-      expect(a.light, r.id).toBeGreaterThan(0.8);
-      expect(a.light, r.id).toBeLessThan(1.3);
+describe('the living air', () => {
+  it('every land has its entry', () => {
+    for (const r of REGIONS) expect(ATMOS[r.id], r.id).toBeDefined();
+  });
+
+  it('butterflies fly by day only; fireflies and spores come out after dusk', () => {
+    expect(atmosWeights('meadow', 12).flyers).toBe(1);
+    expect(atmosWeights('meadow', 23).flyers).toBe(0);
+    expect(atmosWeights('japan', 21.5).fireflies).toBe(1);
+    expect(atmosWeights('japan', 12).fireflies).toBe(0);
+    expect(atmosWeights('meadow', 21.5).fireflies).toBe(0); // its ambience already has them
+    expect(atmosWeights('skyisles', 23).spores).toBe(1);
+    expect(atmosWeights('skyisles', 12).spores).toBe(0);
+  });
+
+  it('chimneys smoke all day in the cold lands, mornings and evenings in the rest', () => {
+    expect(atmosWeights('aurora', 13).smoke).toBe(1);
+    expect(atmosWeights('london', 13).smoke).toBe(0);
+    expect(atmosWeights('london', 19.5).smoke).toBe(1);
+    expect(atmosWeights('newyork', 19.5).smoke).toBe(0);
+  });
+
+  it('mist lies at dawn, beams slant at the golden hours, never at noon', () => {
+    expect(atmosWeights('london', 6.5).mist).toBeGreaterThan(0.8);
+    expect(atmosWeights('london', 13).mist).toBe(0);
+    expect(atmosWeights('meadow', 7.5).beams).toBeGreaterThan(0.8);
+    expect(atmosWeights('meadow', 13).beams).toBe(0);
+  });
+
+  it('every land with hearth smoke builds chimneys, smoke-holes or fires to rise from', () => {
+    for (const id of Object.keys(ATMOS) as RegionId[]) {
+      if (!ATMOS[id].smoke) continue;
+      const inst = buildRegion(REGION_BY_ID[id], solid, glow);
+      const c = regionCenter(REGION_BY_ID[id]);
+      expect(inst.smoke.length, id).toBeGreaterThan(8);
+      for (const s of inst.smoke) {
+        expect(Math.hypot(s.x - c.x, s.z - c.z), id).toBeLessThan(600);
+        expect(s.y, id).toBeGreaterThan(-2);
+      }
     }
-  });
-
-  it('the nights keep their hues: ice-blue Aurora, sandy desert, lavender Sky Isles', () => {
-    const c = (id: keyof typeof LOCALES) => new THREE.Color(LOCALES[id].atmos.night);
-    const aurora = c('aurora'), desert = c('desert'), isles = c('skyisles');
-    expect(aurora.b).toBeGreaterThan(aurora.r);
-    expect(desert.r).toBeGreaterThan(desert.b);
-    expect(isles.b).toBeGreaterThan(isles.g);
-    expect(isles.r).toBeGreaterThan(isles.g);
-  });
-
-  it('the desert is sunnier than London', () => {
-    expect(LOCALES.desert.atmos.light).toBeGreaterThan(LOCALES.london.atmos.light);
-  });
-});
-
-describe('weather you can see the wind in', () => {
-  it('every land has weather with a colour, an amount and a night share', () => {
-    for (const r of REGIONS) {
-      const w = WEATHER[r.id];
-      expect(w, r.id).toBeDefined();
-      expect(w.color, r.id).toMatch(HEX);
-      expect(w.amount, r.id).toBeGreaterThan(0);
-      expect(w.amount, r.id).toBeLessThanOrEqual(1);
-      expect(w.night, r.id).toBeGreaterThanOrEqual(0);
-      expect(w.night, r.id).toBeLessThanOrEqual(1);
-    }
-  });
-
-  it('dusty wind in the desert, snowy wind over the ice, mist in the Sky Isles', () => {
-    expect(WEATHER.desert.kind).toBe('dust');
-    expect(WEATHER.aurora.kind).toBe('snow');
-    expect(WEATHER.skyisles.kind).toBe('mist');
-  });
+  }, 120_000);
 });

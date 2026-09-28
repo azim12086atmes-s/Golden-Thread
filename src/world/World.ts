@@ -47,10 +47,14 @@ export class World {
   onRegionLoaded?: (r: RegionInstance) => void;
   /** Every lamp of the lands loaded now (lamplight.ts). */
   lamps(): Lamp[] {
-    const out: Lamp[] = [];
-    for (const r of this.regions.values()) for (const l of r.lamps) out.push(l);
-    return out;
+    return (this.lampCache ??= [...this.regions.values()].flatMap((r) => r.lamps));
   }
+  /** Every chimney top, smoke-hole and open fire of the lands loaded now (Atmos.ts). */
+  smokeTops(): THREE.Vector3[] {
+    return (this.smokeCache ??= [...this.regions.values()].flatMap((r) => r.smoke));
+  }
+  private lampCache: Lamp[] | null = null;
+  private smokeCache: THREE.Vector3[] | null = null;
   onRegionUnloaded?: (r: RegionInstance) => void;
 
   constructor() {
@@ -146,6 +150,7 @@ export class World {
         this.group.remove(loaded.group);
         loaded.dispose();
         this.regions.delete(r.id);
+        this.lampCache = this.smokeCache = null;
         const foam = this.foams.get(r.id);
         if (foam) { this.group.remove(foam); foam.geometry.dispose(); this.foams.delete(r.id); }
         const flow = this.flows.get(r.id);
@@ -159,6 +164,7 @@ export class World {
       if (!this.regions.has(next.id)) {
         const inst = buildRegion(next, this.solid, this.glow, this.builtWater);
         this.regions.set(next.id, inst);
+        this.lampCache = this.smokeCache = null;
         this.group.add(inst.group);
         // Foam round the land's lakes, ponds and river.
         const fg = shoreGeometry(next.id, WATER_Y);

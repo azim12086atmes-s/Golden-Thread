@@ -2,6 +2,7 @@ import * as THREE from 'three';
 import type { Ctx, Footprint } from './architecture';
 import { M, archPanel, box, cone, cyl, gable, hip } from './kit';
 import { SURF } from './surfaces';
+import { chimneyTop } from './chimneys';
 
 /**
  * The facade kit: buildings put together from the real parts of real facades (see
@@ -348,6 +349,7 @@ export function compose(c: Ctx, st: FacadeStyle, doorCol = '#4a3426'): Footprint
     box(c.g, 0.9, rh + 1.3, 0.6, st.baseCol, cx, H, cz);
     box(c.g, 1.0, 0.14, 0.7, st.trim, cx, H + rh + 1.3, cz);
     for (const px of [-0.2, 0.2]) cyl(c.g, 0.08, 0.1, 0.36, '#b5654a', cx + px, H + rh + 1.44, cz, 6);
+    chimneyTop(c.g, cx, H + rh + 1.85, cz);
   }
 
   // Varied massing: a lower wing behind, or a corner turret.
@@ -392,7 +394,7 @@ export const FACADES = {
   /** Norwegian wood (Bryggen): narrow gable fronts, clapboard, white frames, galleries. */
   norway: S({ floors: [2, 3], bays: [2, 3], bayW: 2, depth: [8, 11], win: 'casement', head: 'flat', balcony: 'wood', balconyAt: 'noble', cornice: 'none', roof: 'gablefront', chimneys: 1, wing: 0.2, trim: '#ffffff', baseCol: '#8a8a84' }),
   /** Swiss chalet: stone base, deep-eaved low gable, a carved wooden balcony on every floor, flower boxes, shutters. */
-  switzerland: S({ floors: [2, 3], bays: [3, 3], bayW: 2.1, depth: [8, 9], base: 'stone', win: 'casement', head: 'none', shutters: 0.9, balcony: 'wood', balconyAt: 'all', cornice: 'eaves', roof: 'chalet', trim: '#f3ead8', shutter: ['#c23b3b', '#2f6b3a'], baseCol: '#a8a090' }),
+  switzerland: S({ chimneys: 1, floors: [2, 3], bays: [3, 3], bayW: 2.1, depth: [8, 9], base: 'stone', win: 'casement', head: 'none', shutters: 0.9, balcony: 'wood', balconyAt: 'all', cornice: 'eaves', roof: 'chalet', trim: '#f3ead8', shutter: ['#c23b3b', '#2f6b3a'], baseCol: '#a8a090' }),
   /** New York brownstone: a high stoop, carved lintels, a bay, a bracketed cornice. */
   /** A London mews cottage: two low storeys in pastel paint, casements, a parapet. */
   londonMews: S({ floors: [2, 2], floorH: 3, bays: [2, 3], bayW: 2.1, depth: [7, 8], win: 'casement', head: 'flat', cornice: 'parapet', roof: 'parapet', chimneys: 1, walls: ['#f2d8d8', '#d8e8f2', '#f2ecc8', '#d8f0dc', '#f4f0e6'], trim: '#ffffff' }),
@@ -403,13 +405,13 @@ export const FACADES = {
   /** A Sørlandet house: white clapboard, two storeys, a porch, a steep gable. */
   sorlandet: S({ floors: [2, 2], bays: [3, 4], bayW: 2.1, depth: [7, 8], win: 'casement', head: 'hood', cornice: 'none', roof: 'gable', chimneys: 1, porch: 0.8, walls: ['#fbfbf6', '#f4f4ee'], roofCol: '#3a2a26', trim: '#ffffff' }),
   /** An Engadin house: thick white stucco walls, small deep windows under grey sgraffito arches, a broad low gable. */
-  engadin: S({ floors: [2, 3], floorH: 3.1, bays: [3, 3], bayW: 2.2, depth: [9, 10], base: 'stucco', win: 'casement', head: 'arch', shutters: 0.3, cornice: 'none', roof: 'gable', walls: ['#f4f0e6', '#ece6d8'], trim: '#7a7a7a', baseCol: '#e8e2d4', shutter: ['#6a4a2a'] }),
+  engadin: S({ chimneys: 1, floors: [2, 3], floorH: 3.1, bays: [3, 3], bayW: 2.2, depth: [9, 10], base: 'stucco', win: 'casement', head: 'arch', shutters: 0.3, cornice: 'none', roof: 'gable', walls: ['#f4f0e6', '#ece6d8'], trim: '#7a7a7a', baseCol: '#e8e2d4', shutter: ['#6a4a2a'] }),
   /** A Bernese farmhouse: a vast hipped roof over timber walls, galleries on every floor. */
-  bernese: S({ floors: [2, 2], bays: [4, 5], bayW: 2.1, depth: [10, 12], base: 'stone', win: 'casement', head: 'none', shutters: 0.6, balcony: 'wood', balconyAt: 'all', cornice: 'none', roof: 'hip', walls: ['#a8743a', '#9a6a36'], trim: '#f3ead8', shutter: ['#c23b3b'], baseCol: '#b8b0a0' }),
+  bernese: S({ chimneys: 1, floors: [2, 2], bays: [4, 5], bayW: 2.1, depth: [10, 12], base: 'stone', win: 'casement', head: 'none', shutters: 0.6, balcony: 'wood', balconyAt: 'all', cornice: 'none', roof: 'hip', walls: ['#a8743a', '#9a6a36'], trim: '#f3ead8', shutter: ['#c23b3b'], baseCol: '#b8b0a0' }),
   /** A Tuscan townhouse (casa a schiera): tall and narrow, green shutters, iron balconies. */
   tuscanTown: S({ floors: [3, 4], floorH: 3.3, bays: [2, 3], bayW: 2, depth: [8, 10], win: 'tall', head: 'flat', shutters: 0.9, balcony: 'iron', balconyAt: 'noble', cornice: 'bracket', strings: true, roof: 'hip', shutter: ['#3a5a3a', '#4a6a4a'], trim: '#f4ead8' }),
   /** A Tuscan farmhouse (casa colonica): stone walls, a hipped roof, a dovecote tower at the corner. */
-  tuscanFarm: S({ floors: [2, 2], bays: [3, 4], bayW: 2.3, depth: [9, 10], base: 'stone', win: 'arched', head: 'none', shutters: 0.6, cornice: 'none', roof: 'hip', turret: 0.6, walls: ['#c8a878', '#b89868', '#d8b888'], shutter: ['#6a4a2a'], baseCol: '#a89878', trim: '#e8dcc0' }),
+  tuscanFarm: S({ chimneys: 1, floors: [2, 2], bays: [3, 4], bayW: 2.3, depth: [9, 10], base: 'stone', win: 'arched', head: 'none', shutters: 0.6, cornice: 'none', roof: 'hip', turret: 0.6, walls: ['#c8a878', '#b89868', '#d8b888'], shutter: ['#6a4a2a'], baseCol: '#a89878', trim: '#e8dcc0' }),
   /** A Florentine bottega: a palazzo with quoins and a shop on the ground floor. */
   bottega: S({ floors: [3, 3], floorH: 3.5, bays: [3, 4], bayW: 2.3, depth: [9, 10], base: 'shop', win: 'arched', head: 'pediment', cornice: 'bracket', quoins: true, strings: true, roof: 'hip', trim: '#fbf3e0', shop: ['#5a3a1a', '#2f4a6a', '#6a2a2a'] }),
   /** A Craftsman bungalow: one and a half storeys, a deep porch, a low wide gable. */

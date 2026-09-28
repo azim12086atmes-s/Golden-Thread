@@ -2,6 +2,7 @@ import type { Ctx, Footprint } from './architecture';
 import { waterBasin } from './flowWater';
 import { archPanel, box, cone, cyl, dome, gable, hip, onion, sphere, sweptRoof, tree } from './kit';
 import type { RegionId } from './regions';
+import { chimneyTop } from './chimneys';
 
 /**
  * More kinds of building in every town, beside each land's own houses: a tall townhouse with a
@@ -142,7 +143,7 @@ const BUILD: Record<Archetype, Builder> = {
     for (let i = 0; i < 9; i++) box(c.g, 0.05, 1.0, 0.05, trim, -1.5 + i * 0.375, STOREY + 0.1, d / 2 + 1.05);
     frieze(c, st, w, h - 0.7, d / 2 + 0.02);
     const rh = landRoof(c, st, w, d, h, pick(c, c.s.roofs));
-    if (st.roof === 'gable' || st.roof === 'hip') box(c.g, 0.7, 1.8, 0.7, '#b5654a', 1.6, h + rh * 0.3, -1.2); // chimney
+    if (st.roof === 'gable' || st.roof === 'hip') { box(c.g, 0.7, 1.8, 0.7, '#b5654a', 1.6, h + rh * 0.3, -1.2); chimneyTop(c.g, 1.6, h + rh * 0.3 + 1.9, -1.2); } // chimney
     return { r: 4.6, h: h + rh };
   },
 

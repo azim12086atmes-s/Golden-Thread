@@ -2,6 +2,7 @@ import * as THREE from 'three';
 import type { Ctx, Footprint } from './architecture';
 import { M, archPanel, box, cone, cyl, dome, gable, hip, onion, sphere, sweptRoof } from './kit';
 import { SURF } from './surfaces';
+import { fireAt } from './chimneys';
 import { barjeel, chhatriKiosk, doorLeaf, glass, jharokha, lattice, merlons, surf } from './traditions';
 
 /**
@@ -409,6 +410,7 @@ export function majlisTent(c: Ctx): Footprint {
   for (let i = 0; i < 4; i++) box(c.g, 2.3, 0.04, 2.8, ['#c23b2a', '#2f5a9a', '#e2b43a', '#8a2a4a'][i], -w / 2 + 1.25 + i * 2.5, 0.01, 0);
   for (let i = 0; i < 8; i++) box(c.g, 1, 0.3, 0.6, i % 2 ? '#c23b2a' : '#e2b43a', -w / 2 + 0.7 + i * 1.2, 0, -d / 2 + 0.5);
   cyl(c.g, 0.5, 0.6, 0.3, '#6a5a44', 0, 0, 1.4, 10); cone(c.glow, 0.25, 0.5, '#ff8a2a', 0, 0.3, 1.4, 6);
+  fireAt(c.g, 0, 0.4, 1.4, false); // under the roof: its light, not its smoke
   for (const x of [-0.8, 0.8]) { cyl(c.g, 0.12, 0.18, 0.35, '#c9a24a', x, 0, 1.4, 8); cone(c.g, 0.12, 0.25, '#c9a24a', x, 0.35, 1.4, 8); }
   return { r: w / 2 + 0.8, h: 3.8 };
 }

@@ -19,6 +19,7 @@ import { PYRAMIDS } from './reserved';
 import { terrainHeight } from './terrain';
 import { MONUMENTS } from './monuments';
 import { SURF } from './surfaces';
+import { chimneyTop } from './chimneys';
 
 /**
  * Architecture per land. Every builder works in a local frame: origin at the building's base
@@ -363,6 +364,7 @@ function storyCottage(c: Ctx): Footprint {
   win(c, 1.4, h + 1.1, d / 2 + 0.32, 0.7, 0.7);
   // A crooked chimney.
   withSurf(c, SURF.brick, () => { for (let i = 0; i < 4; i++) box(c.g, 0.8, 0.9, 0.8, '#b5654a', -1.8 + i * 0.12, h + 1.4 + i * 0.9, -0.8); });
+  chimneyTop(c.g, -1.44, h + 5.1, -0.8);
   // A round-topped door and round windows.
   archPanel(c.g, 1.2, 2.1, '#7a4a2a', 0, 0, d / 2 + 0.05, 0, 0.1, true);
   sphere(c.glow, 0.45, c.s.glow, -2.3, 1.7, d / 2 + 0.02, 10, 1);

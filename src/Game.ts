@@ -80,6 +80,7 @@ import { surfaceAt, terrainHeight } from './world/terrain';
 import { World } from './world/World';
 import { FOLIAGE_UNIFORMS, updateWind } from './world/wind';
 import { setLamps } from './world/lamplight';
+import { Atmos } from './world/Atmos';
 
 /** Real seconds per game minute: a day lasts 16 real minutes. */
 const MINUTES_PER_SECOND = DAY_MINUTES / (16 * 60);
@@ -221,6 +222,7 @@ export class Game {
     this.scene.fog = this.sky.fog;
     this.scene.add(...this.auras);
     this.chinaDragon = new ChinaDragon(this.scene);
+    this.scene.add(this.atmos.group);
     this.scene.add(this.world.group, this.sky.group, this.sky.sunLight, this.sky.sunLight.target, this.sky.hemi, this.ambience.points, this.regionFx.points, this.skyLanterns.mesh, this.skyFx.group, this.weather.group, this.traffic.group);
     this.festivalAir = new FestivalAir(this.world.solid, this.world.glow);
     this.cityScreens = new CityScreens(this.world.solid);
@@ -357,6 +359,8 @@ export class Game {
   // ───────────────────────── main loop ─────────────────────────
 
   private lampTick = 1;
+  /** Butterflies, dragonflies, fireflies, chimney smoke, dawn mist and sunbeams (Atmos.ts). */
+  private readonly atmos = new Atmos();
 
   private frame(): void {
     const dt = Math.min(0.05, this.clock.getDelta());
@@ -404,6 +408,7 @@ export class Game {
     // Lamplight: the nearest lamps light the ground and walls round them after dusk (a few times a second).
     if ((this.lampTick += dt) > 0.15) { this.lampTick = 0; setLamps(this.world.lamps(), this.trav.gPos, this.sky.night); }
     this.sky.update(this.hour, this.trav.gPos, this.t, this.region.id);
+    this.atmos.update(dt, this.t, this.trav.gPos, this.region.id, this.hour, this.sky.night, this.sky.sunDirection, this.world.smokeTops(), this.sky.fog.color);
     this.ambience.setMode(this.region.ambient);
     this.ambience.update(dt, this.trav.gPos, this.t, this.sky.night);
     this.regionFx.setRegion(this.region.id);

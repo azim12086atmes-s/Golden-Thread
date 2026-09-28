@@ -27,6 +27,7 @@ import { INSTITUTE_SITES, SITE_SIZE } from '../institutions/sites';
 import { buildHouse, lampPost, streetProp, type Ctx } from './architecture';
 import { houseLights, streetLight } from './models/lights';
 import type { Lamp } from './lamplight';
+import { collectChimneys, takeChimneys } from './chimneys';
 import { LOCALES } from './locale';
 import { CIVIC_R, buildMarket, buildWorship, civicColliders, civicOf } from './neighbourhood';
 import { SQUARE_R, buildSebil, buildSquare, sebilsOf, squaresOf, type Collide } from './landWaters';
@@ -63,6 +64,8 @@ export interface RegionInstance {
   wild: Array<{ x: number; z: number }>;
   /** Every lamp that lights its surroundings after dusk (world coordinates): see lamplight.ts. */
   lamps: Lamp[];
+  /** Chimney tops, smoke-holes and open fires smoke rises from (world coordinates): see Atmos.ts. */
+  smoke: THREE.Vector3[];
   dispose(): void;
 }
 
@@ -171,6 +174,7 @@ export function buildRegion(spec: RegionSpec, solid: THREE.Material, glowMat: TH
   const lamps: Lamp[] = [];
   const lightCols = LOCALES[spec.id]?.lights ?? ['#ffd98a'];
   const lamp = (x: number, y: number, z: number, r: number, i = 0) => lamps.push({ x: c.x + x, y, z: c.z + z, r, color: lightCols[i % lightCols.length] });
+  collectChimneys();
   /** Buildings' full footprints (local), so nothing gatherable ends up inside a wall. */
   const buildings: Array<{ x: number; z: number; r: number }> = [];
   const wild: Array<{ x: number; z: number }> = [];
@@ -622,6 +626,10 @@ export function buildRegion(spec: RegionSpec, solid: THREE.Material, glowMat: TH
     nodes.push({ id: `${spec.id}:${i}`, item, x: c.x + x, y, z: c.z + z, mesh });
   }
 
+  // Where smoke rises; and each open fire lights the ground round it, flame-orange.
+  const chim = takeChimneys();
+  const smoke = chim.smoke.map((p) => new THREE.Vector3(c.x + p.x, p.y, c.z + p.z));
+  for (const f of chim.fires) lamps.push({ x: c.x + f.x, y: f.y + 0.8, z: c.z + f.z, r: 6.5, color: '#ff9a4a' });
   // A lamp by every front door (half a metre out, above the lintel): porch light on the wall and step.
   for (const d of doors) lamps.push({ x: d.x + Math.sin(d.facing) * 0.6, y: d.y + 2.3, z: d.z + Math.cos(d.facing) * 0.6, r: 4.8, color: lightCols[0] });
   for (const lf of LANDFORMS) if (lf.land === spec.id) recordDecor(spec.id, `land: ${lf.kind}`);
@@ -636,6 +644,7 @@ export function buildRegion(spec: RegionSpec, solid: THREE.Material, glowMat: TH
     caves,
     wild,
     lamps,
+    smoke,
     dispose() {
       clearPaved(spec.id);
       solidMesh?.geometry.dispose();
