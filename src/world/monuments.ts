@@ -1,7 +1,8 @@
 import * as THREE from 'three';
 import type { Ctx, LandmarkOut } from './architecture';
-import { waterBasin, waterPool } from './flowWater';
-import { bambooFence, brassLantern, bronzeLantern, emaRack, maple, merlonRow, muqarnas, offeringBox, plantedTree, sebka, shimenawa, starDoor, starWindow, stoneGroup, stucco, tsukubai, voussoirs, zellige, zelligeBand } from './monumentKit';
+import { waterBasin, waterChannel, waterPool } from './flowWater';
+import { bambooFence, brassLantern, bronzeLantern, deumeu, guardianLion, headstone, ironHinges, ironLantern, stabbur, rankStone, redLantern, redPine, emaRack, maple, merlonRow, muqarnas, offeringBox, plantedTree, sebka, shimenawa, starDoor, starWindow, stoneGroup, stucco, tsukubai, voussoirs, zellige, zelligeBand } from './monumentKit';
+import { ANIMAL_HEAD_GAP, HEAD_GAP } from '../characters/anatomy';
 import { M, archPanel, box, cone, cyl, sphere, sweptRoof, tree } from './kit';
 import type { RegionId } from './regions';
 import { SURF } from './surfaces';
@@ -509,6 +510,13 @@ const korea: Monument = (c, o) => {
   for (const sx of [-1, 1]) { box(c.g, 0.7, 1.2, 0.7, ridge, sx * 7.9, e2 + 4.5, 0); c.g.add(new THREE.ConeGeometry(0.35, 1, 6), ridge, M(sx * 8.1, e2 + 6.1, 0, 0, 1, 1, 1, 0, -sx * 0.4)); }
   const height = e2 + 6.6;
 
+  // ── The forecourt's rank stones in two rows, bronze fire-water cauldrons, red pines.
+  for (const sx of [-1, 1]) for (let k = 0; k < 5; k++) { rankStone(c, sx * 3.6, 12 + k * 2.6); }
+  for (const sx of [-1, 1]) { deumeu(c, sx * 9, 8.2); o.colliders.push({ x: sx * 9, z: 8.2, r: 1.1, h: 2 }); }
+  for (const [x, z] of [[-24, 12], [26, 16], [-30, 22], [31, 8]] as const) redPine(c, x, z, 1.1, () => c.rng.next());
+  // A moat channel along the front, crossed by a stone footbridge on the gate's axis.
+  for (const sx of [-1, 1]) waterChannel(c, sx * 13.5, 0, 31, 23, 2.2, Math.PI / 2, { speed: 0.3, flow: null });
+  surf(c, SURF.ashlar, () => { box(c.g, 4.6, 0.5, 3.4, '#b8b0a4', 0, 0, 31); for (const sx of [-1, 1]) box(c.g, 0.3, 0.7, 3.4, '#a8a094', sx * 2.2, 0.5, 31); });
   // ── Haetae guardians before the gate, facing out.
   haetae(c, -13, 13, 0); haetae(c, 13, 13, 0);
   o.colliders.push({ x: -13, z: 13, r: 1.9, h: 4.5 }, { x: 13, z: 13, r: 1.9, h: 4.5 });
@@ -694,6 +702,20 @@ const china: Monument = (c, o) => {
     sphere(c.glow, 0.2, '#ff9a4a', 0, 1.75, 0, 6);
   });
   o.colliders.push({ x: 0, z: 0, r: 11, h: tip + 4 }, { x: -6, z: 14, r: 1, h: y0 + 3 }, { x: 6, z: 14, r: 1, h: y0 + 3 });
+  // Red silk lanterns hung all round under each of the three eaves.
+  for (const [r, yy, n] of [[12.6, y0 + 0.4 + 5.6 + 1.2, 16], [10.4, y0 + 13.4, 12], [7.6, y0 + 19.3, 8]] as const) for (let i = 0; i < n; i++) { const a = (i / n) * Math.PI * 2 + 0.2; redLantern(c, Math.cos(a) * r, yy, Math.sin(a) * r, 1.1); }
+  // Guardian lions either side of the south stair, on the ground before the terraces.
+  for (const sx of [-1, 1]) guardianLion(c, sx * 5.4, 26.6, Math.PI / 2 - Math.PI / 2, 1.2, '#c8c0b0', ANIMAL_HEAD_GAP);
+  o.colliders.push({ x: -5.4, z: 26.6, r: 1.6, h: 4 }, { x: 5.4, z: 26.6, r: 1.6, h: 4 });
+  // The processional way from the south gate: white marble slabs, red lanterns on posts along it.
+  surf(c, SURF.marble, () => box(c.g, 6, 0.24, 6, '#f4f0e6', 0, 0, 28));
+  for (const sx of [-1, 1]) for (const z of [26, 29.5]) { cyl(c.g, 0.1, 0.12, 3.2, '#b3262a', sx * 3.6, 0, z, 8); box(c.g, 1, 0.1, 0.1, '#b3262a', sx * 3.6 - sx * 0.4, 3.2, z); redLantern(c, sx * 3.6 - sx * 0.8, 3.2, z, 0.9); }
+  // Groves of old cypresses in the enclosure's four corners.
+  for (const [sx, sz] of [[-1, -1], [1, -1], [-1, 1], [1, 1]]) for (let i = 0; i < 3; i++) for (let j = 0; j < 3; j++) {
+    const x = sx * (24.5 + i * 2.4), z = sz * (18 + j * 3.6);
+    if (Math.hypot(x, z) < 24.5) continue;
+    tree(c.g, 'cypress', x, 0, z, 1 + ((i + j) % 2) * 0.15, () => c.rng.next());
+  }
   o.height = tip + 4;
 };
 
@@ -812,6 +834,13 @@ const norway: Monument = (c, o) => {
     pitched(c, 4, 2.6, 1.6, shingle, trim, 0, 2.6, 0, Math.PI / 2);
     scroll(c, 1.4, 4.1, 0, 1, 0.4, trim);
   });
+  // ── Iron hinges on the portal, a stone path from the lych-gate lit by iron lanterns, headstones, a stabbur.
+  ironHinges(c, 0, y0, pz + 0.18, 1.8, 2.8);
+  surf(c, SURF.flagstone, () => box(c.g, 2.2, 0.08, 7.5, '#8a8680', 0, 0, 13));
+  for (const sx of [-1, 1]) for (const z of [11, 15]) ironLantern(c, sx * 1.7, z);
+  for (let i = 0; i < 4; i++) for (let j = 0; j < 3; j++) headstone(c, -12.5 + i * 1.6, -7 + j * 2.4, 0.9 + ((i + j) % 3) * 0.1);
+  stabbur(c, 10, -10, 0.3, tar);
+  o.colliders.push({ x: 10, z: -10, r: 2.4, h: 6 });
   // ── Pines and birches round the yard.
   for (const [x, z, k] of [[-13, -12, 'pine'], [13, -13, 'pine'], [-14, 4, 'pine'], [-12, 13, 'oak'], [14, -2, 'pine']] as const) tree(c.g, k, x, 0, z, 1.1, () => c.rng.next());
   o.height = height;
@@ -888,6 +917,30 @@ const switzerland: Monument = (c, o) => {
   cyl(c.g, 0.03, 0.03, 1.4, '#2a2a2a', 0, ly + 7.5, 0, 4);
   box(c.g, 0.7, 0.35, 0.03, gold, 0.3, ly + 8.5, 0);
   const height = ly + 9;
+  // The gilded bell-striker beside the bell, hammer raised (a robed figure; its head floats free).
+  cone(c.g, 0.35, 1.2, gold, 0.55, ly, 0, 8); sphere(c.g, 0.16, gold, 0.55, ly + 1.2 + HEAD_GAP + 0.18, 0, 8);
+  c.g.add(new THREE.CylinderGeometry(0.03, 0.03, 0.9, 5), gold, M(0.3, ly + 1.1, 0, 0, 1, 1, 1, 0, 0.8)); box(c.g, 0.25, 0.14, 0.14, gold, 0.02, ly + 1.4, 0);
+  // A painted band of heraldic shields round the tower at the string course.
+  for (let side = 0; side < 4; side++) c.g.frame(0, 16.4, 0, (side * Math.PI) / 2, 1, () => {
+    for (let k = -2; k <= 2; k++) {
+      const sh = new THREE.Shape([new THREE.Vector2(-0.45, 0.5), new THREE.Vector2(0.45, 0.5), new THREE.Vector2(0.45, 0), new THREE.Vector2(0, -0.55), new THREE.Vector2(-0.45, 0)]);
+      c.g.add(new THREE.ExtrudeGeometry(sh, { depth: 0.06, bevelEnabled: false }), ['#c23b2a', '#e2b43a', '#1f1f24', '#2f5a9a', '#2f7a4a'][(k + 2 + side) % 5], M(k * 2, 0.7, W / 2 + 0.26));
+      box(c.g, 0.2, 0.7, 0.03, '#f4efe4', k * 2, 0.4, W / 2 + 0.33);
+    }
+  });
+  // ── The square round the tower: a cobbled rosette, geranium planters, benches, Bernese lamp standards.
+  for (let ring = 0; ring < 4; ring++) c.g.add(new THREE.TorusGeometry(10 + ring * 3, 0.12, 3, 64), '#8a8278', M(0, 0.04, 0, 0, 1, 1, 1, Math.PI / 2, 0));
+  for (let i = 0; i < 16; i++) { const a = (i / 16) * Math.PI * 2; c.g.add(new THREE.BoxGeometry(0.16, 0.04, 9), '#8a8278', M(Math.cos(a) * 14.5, 0.04, Math.sin(a) * 14.5, Math.PI / 2 - a)); }
+  for (const [x, z] of [[-9, 10], [9, 10], [-9, -10], [9, -10]] as const) {
+    box(c.g, 2.4, 0.7, 1, '#6a4a32', x, 0, z);
+    for (let k = 0; k < 7; k++) { sphere(c.g, 0.2, k % 2 ? '#e8242a' : '#ff5a6a', x - 0.9 + k * 0.3, 0.85, z, 5); sphere(c.g, 0.18, '#3f7a3a', x - 0.9 + k * 0.3, 0.7, z + 0.3, 4); }
+    box(c.g, 2.2, 0.1, 0.6, '#8a5a36', x, 0.45, z + 1.4); box(c.g, 2.2, 0.6, 0.08, '#8a5a36', x, 0.5, z + 1.72); for (const sx of [-1, 1]) box(c.g, 0.08, 0.45, 0.5, '#2a2a2a', x + sx, 0, z + 1.4);
+  }
+  for (const [x, z] of [[-13, 4], [13, 4], [-13, -6], [13, -6]] as const) {
+    cyl(c.g, 0.1, 0.16, 4, '#2a3a2a', x, 0, z, 8);
+    for (const sx of [-1, 1]) { box(c.g, 0.6, 0.05, 0.05, '#2a3a2a', x + sx * 0.3, 3.9, z); box(c.glow, 0.3, 0.42, 0.3, '#ffe6a0', x + sx * 0.6, 3.4, z); cone(c.g, 0.24, 0.3, '#2a3a2a', x + sx * 0.6, 3.82, z, 4, Math.PI / 4); }
+    o.colliders.push({ x, z, r: 0.4, h: 4 });
+  }
   // Colliders on the two walls beside the passage, so the gate can be walked through.
   for (const sx of [-1, 1]) for (const z of [-3.8, 0, 3.8]) o.colliders.push({ x: sx * 3.9, z, r: 1.75, h: height });
   // ── A column fountain before the tower: an octagonal trough, a spouting column, a gilded crown and flowers.
@@ -1502,6 +1555,15 @@ function arcade(c: Ctx, len: number, h: number, depth: number, bay: number, open
   return xs;
 }
 
+/** A zellige dado on an arcade's piers only — the arch openings stay clear to walk through. */
+function pierDado(c: Ctx, len: number, xs: number[], open: number, z: number, h: number, cols: string[]): void {
+  const edges = [-len / 2, ...xs.flatMap((x) => [x - open / 2, x + open / 2]), len / 2];
+  for (let i = 0; i < edges.length; i += 2) {
+    const a = edges[i], b = edges[i + 1];
+    if (b - a > 0.2) zellige(c, (a + b) / 2, 0, z, b - a, h, cols, h * 0.9);
+  }
+}
+
 const islamic: Monument = (c, o) => {
   const white = '#f4efe4', stuccoC = '#ece2cc', shade = '#d8c8a8', green = '#2f7a4a', gold = '#d4af37', cedar = '#6b3a22';
   const ZEL = ['#f4efe4', '#2f7f9f', '#3a9a6a', '#1f4f7a', '#e8b84a', '#c23b2a'];
@@ -1533,7 +1595,7 @@ const islamic: Monument = (c, o) => {
   // ═══ The riwaq: arcades of horseshoe arches round three sides, red-and-white voussoirs, domed bays. ═══
   const riwaq = (len: number, gate: boolean) => c.glow.frame(0, 0, 0, 0, 1, () => {
     const xs = arcade(c, len, 7, 0.9, 4, 2.8, 3.6, white, true);
-    zelligeBand(c, len, 0, 0.47, 1.1, ZEL);
+    pierDado(c, len, xs, 2.8, 0.47, 1.1, ZEL);
     for (const bx of xs) {
       voussoirs(c, bx, 3.6, 0.5, 1.49, 0.3, RED, true, 13);
       for (const sx of [-1, 1]) { cyl(c.g, 0.2, 0.2, 2.9, '#e8e0d0', bx + sx * 1.6, 1.1, 0.55, 10); box(c.g, 0.55, 0.35, 0.55, gold, bx + sx * 1.6, 3.9, 0.55); }
@@ -1579,7 +1641,7 @@ const islamic: Monument = (c, o) => {
     for (const sx of [-1, 1]) { zellige(c, sx * 4.1, 0.2, fz, 3, 8.4, ZEL, 0.5); box(c.g, 0.35, 10.6, 0.3, gold, sx * 5.8, 0, fz + 0.05); }
     box(c.g, 11.95, 0.35, 0.3, gold, 0, 10.4, fz + 0.05);
     voussoirs(c, 0, sp, fz + 0.1, R, 0.3, RED, true, 19);
-    zellige(c, 0, 0.2, fz - 0.01, 11.2, 0.9, ZEL, 0.45);
+    for (const sx of [-1, 1]) zellige(c, sx * (j + 1.7), 0.2, fz - 0.01, 3.4, 0.9, ZEL, 0.45); // the dado, stopping at the jambs
     stucco(c, 11.2, 8.9, fz + 0.03, stuccoC, shade);
     // The carved band and the cedar canopy on its brackets, green tiles on top.
     box(c.g, 14, 1.2, 0.3, gold, 0, 11, fz + 0.1);
@@ -1607,7 +1669,7 @@ const islamic: Monument = (c, o) => {
   surf(c, SURF.plaster, () => box(c.g, 64, HH, hz1 - hz0, white, 0, 0, (hz0 + hz1) / 2));
   c.g.frame(0, 0.2, N, 0, 1, () => c.glow.frame(0, 0.2, N, 0, 1, () => {
     const xs = arcade(c, 64, 10.5, 1, 5.8, 3.8, 5.4, white, true);
-    zelligeBand(c, 64, 0, 0.52, 1.3, ZEL);
+    pierDado(c, 64, xs, 3.8, 0.52, 1.3, ZEL);
     for (const bx of xs) {
       if (Math.abs(bx) < 1) continue;
       voussoirs(c, bx, 5.4, 0.55, 2.02, 0.3, RED, true, 15);

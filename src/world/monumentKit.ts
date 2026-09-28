@@ -249,3 +249,103 @@ export function maple(c: Ctx, x: number, z: number, s: number): void {
   cyl(c.g, 0.08 * s, 0.12 * s, 1.6 * s, '#5a3a2a', x, 0, z, 6);
   for (let k = 0; k < 4; k++) { const a = k * 1.7; sphere(c.g, 0.7 * s, k % 2 ? '#d8442a' : '#e8783a', x + Math.cos(a) * 0.5 * s, (1.8 + (k % 2) * 0.4) * s, z + Math.sin(a) * 0.5 * s, 7, 0.55); }
 }
+
+/** A red silk lantern (Chinese): gold caps top and bottom, a glowing round body ribbed in red, a gold tassel. */
+export function redLantern(c: Ctx, x: number, y: number, z: number, s = 1): void {
+  cyl(c.g, 0.015 * s, 0.015 * s, 0.4 * s, '#3a2a22', x, y - 0.4 * s, z, 3);
+  cyl(c.g, 0.16 * s, 0.16 * s, 0.07 * s, '#d4af37', x, y - 0.47 * s, z, 10);
+  sphere(c.glow, 0.36 * s, '#e8242a', x, y - 0.86 * s, z, 12, 0.82);
+  for (let i = 0; i < 6; i++) { const a = (i / 6) * Math.PI; c.g.add(new THREE.TorusGeometry(0.36 * s, 0.01 * s, 3, 16), '#b3102a', M(x, y - 0.86 * s, z, a, 1, 0.82, 1)); }
+  cyl(c.g, 0.16 * s, 0.16 * s, 0.07 * s, '#d4af37', x, y - 1.24 * s, z, 10);
+  cyl(c.g, 0.04 * s, 0.015 * s, 0.4 * s, '#ffd24a', x, y - 1.64 * s, z, 6);
+}
+
+/**
+ * A guardian lion on a plinth (shishi): a seated body with its mane in curls, a paw on a ball,
+ * its head floating just clear (no face) — `ry` turns it.
+ */
+export function guardianLion(c: Ctx, x: number, z: number, ry: number, s: number, stone: string, headGap: number): void {
+  c.g.frame(x, 0, z, ry, 1, () => {
+    box(c.g, 1.8 * s, 1.2 * s, 2.4 * s, '#b8b0a4');
+    for (let k = 0; k < 3; k++) box(c.g, (1.9 - k * 0.12) * s, 0.12 * s, (2.5 - k * 0.12) * s, '#a8a094', 0, (0.2 + k * 0.4) * s, 0);
+    const y0 = 1.2 * s;
+    c.g.add(new THREE.SphereGeometry(0.62 * s, 12, 8).scale(1, 1.3, 0.9), stone, M(0, y0 + 0.9 * s, -0.2 * s));
+    for (const sx of [-1, 1]) { cyl(c.g, 0.16 * s, 0.2 * s, 1 * s, stone, sx * 0.38 * s, y0, 0.45 * s, 8); sphere(c.g, 0.2 * s, stone, sx * 0.38 * s, y0 + 0.08 * s, 0.6 * s, 8, 0.6); cyl(c.g, 0.24 * s, 0.28 * s, 0.5 * s, stone, sx * 0.45 * s, y0, -0.6 * s, 8); }
+    sphere(c.g, 0.26 * s, stone, 0.38 * s, y0 + 0.2 * s, 0.9 * s, 10); // the ball under its paw
+    for (let i = 0; i < 12; i++) { const a = (i / 12) * Math.PI * 2; sphere(c.g, 0.13 * s, '#a8a094', Math.cos(a) * 0.45 * s, y0 + 1.55 * s + Math.sin(a) * 0.45 * s, 0.1 * s, 6); } // curls of the mane
+    sphere(c.g, 0.42 * s, stone, 0, y0 + 1.55 * s + headGap * 4 * s + 0.2 * s, 0.35 * s, 12); // the head, floating free
+    for (let i = 0; i < 5; i++) sphere(c.g, 0.1 * s, '#a8a094', -0.3 * s + i * 0.15 * s, y0 + 0.9 * s, -0.95 * s - (i % 2) * 0.05 * s, 5); // the curled tail
+  });
+}
+
+/** A rank stone (pumgyeseok): a little stele on a stepped base where officials once stood in order. */
+export function rankStone(c: Ctx, x: number, z: number): void {
+  box(c.g, 0.7, 0.18, 0.5, '#a8a094', x, 0, z);
+  box(c.g, 0.4, 0.9, 0.18, '#b8b0a4', x, 0.18, z);
+  c.g.add(new THREE.ConeGeometry(0.28, 0.16, 4).rotateY(Math.PI / 4), '#b8b0a4', M(x, 1.16, z, 0, 1, 1, 0.5));
+}
+
+/** A deumeu: a great bronze cauldron of water kept against fire, on a carved stone base, handles like rings. */
+export function deumeu(c: Ctx, x: number, z: number): void {
+  box(c.g, 1.6, 0.5, 1.6, '#a8a094', x, 0, z);
+  for (let k = 0; k < 4; k++) { const a = (k / 4) * Math.PI * 2 + Math.PI / 4; cyl(c.g, 0.12, 0.16, 0.4, '#3a3a2e', x + Math.cos(a) * 0.5, 0.5, z + Math.sin(a) * 0.5, 6); }
+  c.g.add(new THREE.LatheGeometry([[0.3, 0], [0.75, 0.15], [0.85, 0.6], [0.8, 0.9], [0.72, 0.92]].map(([a, b]) => new THREE.Vector2(a, b)), 16), '#4a4a3a', M(x, 0.85, z));
+  cyl(c.g, 0.7, 0.7, 0.03, '#3a5a6a', x, 1.7, z, 16);
+  for (const sx of [-1, 1]) c.g.add(new THREE.TorusGeometry(0.16, 0.04, 5, 12), '#5a5a44', M(x + sx * 0.86, 1.45, z, Math.PI / 2));
+}
+
+/** A Korean red pine: a leaning, twisting reddish trunk and flat layered crowns of dark needles. */
+export function redPine(c: Ctx, x: number, z: number, s: number, rng: () => number): void {
+  const pts: THREE.Vector3[] = [];
+  let px = x, pz = z;
+  for (let i = 0; i <= 5; i++) { pts.push(new THREE.Vector3(px, i * 1.3 * s, pz)); px += (rng() - 0.3) * 0.6 * s; pz += (rng() - 0.5) * 0.5 * s; }
+  c.g.add(new THREE.TubeGeometry(new THREE.CatmullRomCurve3(pts), 12, 0.2 * s, 6), '#9a4a2a');
+  for (let k = 0; k < 4; k++) {
+    const p = pts[2 + Math.min(3, k)], a = rng() * Math.PI * 2;
+    c.g.add(new THREE.SphereGeometry(1.4 * s, 10, 5).scale(1, 0.32, 1), '#2f4a2a', M(p.x + Math.cos(a) * 0.8 * s, p.y + 0.4 * s, p.z + Math.sin(a) * 0.8 * s));
+  }
+}
+
+// ───────────────────────────── Northern parts ─────────────────────────────
+
+/** An iron lantern on a post: a square glowing box with a little pyramid cap, on a black post. */
+export function ironLantern(c: Ctx, x: number, z: number, h = 2.4): void {
+  cyl(c.g, 0.06, 0.08, h, '#1f1f24', x, 0, z, 6);
+  box(c.g, 0.34, 0.04, 0.34, '#1f1f24', x, h, z);
+  box(c.glow, 0.26, 0.4, 0.26, '#ffcf7a', x, h + 0.04, z);
+  for (const [sx, sz] of [[-1, -1], [1, -1], [-1, 1], [1, 1]]) box(c.g, 0.03, 0.42, 0.03, '#1f1f24', x + sx * 0.14, h + 0.02, z + sz * 0.14);
+  c.g.add(new THREE.ConeGeometry(0.26, 0.24, 4).rotateY(Math.PI / 4), '#1f1f24', M(x, h + 0.56, z));
+}
+
+/** Scrolling iron strap hinges and a ring on a door (on the plane z, the door's bottom centre (x, y), w × h). */
+export function ironHinges(c: Ctx, x: number, y: number, z: number, w: number, h: number): void {
+  for (const yy of [h * 0.22, h * 0.72]) {
+    box(c.g, w * 0.9, 0.08, 0.04, '#1f1f24', x, y + yy, z);
+    for (const sx of [-1, 1]) {
+      const pts: THREE.Vector3[] = [];
+      for (let k = 0; k <= 8; k++) { const a = (k / 8) * Math.PI * 1.5; pts.push(new THREE.Vector3(x + sx * (w * 0.2 + Math.sin(a) * 0.18 * (1 - k / 10)), y + yy + 0.05 + (1 - Math.cos(a)) * 0.16, z + 0.02)); }
+      c.g.add(new THREE.TubeGeometry(new THREE.CatmullRomCurve3(pts), 10, 0.025, 4), '#1f1f24');
+    }
+  }
+  c.g.add(new THREE.TorusGeometry(0.14, 0.025, 5, 14), '#1f1f24', M(x + w * 0.2, y + h * 0.48, z + 0.05));
+}
+
+/** A rounded headstone: a plain slab with a curved top on a low base. */
+export function headstone(c: Ctx, x: number, z: number, s: number): void {
+  box(c.g, 0.7 * s, 0.12, 0.4 * s, '#8a8680', x, 0, z);
+  box(c.g, 0.55 * s, 0.7 * s, 0.14, '#9a968e', x, 0.12, z);
+  c.g.add(new THREE.CylinderGeometry(0.275 * s, 0.275 * s, 0.14, 12, 1, false, -Math.PI / 2, Math.PI).rotateX(Math.PI / 2), '#9a968e', M(x, 0.12 + 0.7 * s, z));
+}
+
+/** A stabbur: a little log storehouse raised on posts on stones, a turf roof with grass. */
+export function stabbur(c: Ctx, x: number, z: number, ry: number, tar: string): void {
+  c.g.frame(x, 0, z, ry, 1, () => {
+    for (const [sx, sz] of [[-1, -1], [1, -1], [-1, 1], [1, 1], [0, -1], [0, 1]]) { sphere(c.g, 0.3, '#8a8680', sx * 1.6, 0.1, sz * 1.3, 6, 0.6); cyl(c.g, 0.14, 0.16, 1.3, tar, sx * 1.6, 0.2, sz * 1.3, 6); }
+    for (let k = 0; k < 9; k++) { c.g.add(new THREE.CylinderGeometry(0.14, 0.14, 3.8, 6).rotateZ(Math.PI / 2), tar, M(0, 1.6 + k * 0.28, 1.4)); c.g.add(new THREE.CylinderGeometry(0.14, 0.14, 3.8, 6).rotateZ(Math.PI / 2), tar, M(0, 1.6 + k * 0.28, -1.4)); c.g.add(new THREE.CylinderGeometry(0.14, 0.14, 3.0, 6).rotateX(Math.PI / 2), tar, M(1.8, 1.6 + k * 0.28, 0)); c.g.add(new THREE.CylinderGeometry(0.14, 0.14, 3.0, 6).rotateX(Math.PI / 2), tar, M(-1.8, 1.6 + k * 0.28, 0)); }
+    box(c.g, 0.9, 1.7, 0.1, '#5a4230', 0, 1.6, 1.52);
+    for (let k = 0; k < 4; k++) box(c.g, 1.1, 0.12, 0.35, '#6a4e36', 0, 0.25 + k * 0.35, 2.1 + (3 - k) * 0.3); // the steps up
+    const sh = new THREE.Shape([new THREE.Vector2(-2.3, 0), new THREE.Vector2(2.3, 0), new THREE.Vector2(0, 1.6)]);
+    c.g.add(new THREE.ExtrudeGeometry(sh, { depth: 4.4, bevelEnabled: false }).rotateY(Math.PI / 2).translate(-2.2, 0, 0), '#4f7a3a', M(0, 4.1, 0, Math.PI / 2));
+    for (let k = 0; k < 14; k++) cone(c.g, 0.08, 0.35, '#5a9a44', -1.9 + (k % 7) * 0.62, 4.6 + Math.floor(k / 7) * 0.4, (k % 2 ? 0.6 : -0.6) * (1 - Math.floor(k / 7) * 0.5), 4);
+  });
+}
