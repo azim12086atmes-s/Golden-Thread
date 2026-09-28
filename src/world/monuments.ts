@@ -2547,10 +2547,10 @@ const GREAT_OAK: Habit = { ...HABITS.oak!, h: 30, trunk: 0.26, r: 2.6, forks: 5,
 /** A ring platform of planks round a trunk from r0 to r1 at height y (over the arc a0..a1), with a rail of posts and rope. */
 function treeDeck(c: Ctx, y: number, r0: number, r1: number, a0 = 0, a1 = Math.PI * 2, cx = 0, cz = 0): void {
   const n = Math.round(((a1 - a0) * r1) / 0.45);
-  for (let i = 0; i < n; i++) {
+  surf(c, SURF.boards, () => { for (let i = 0; i < n; i++) {
     const a = a0 + ((i + 0.5) / n) * (a1 - a0);
     c.g.add(new THREE.BoxGeometry(r1 - r0, 0.12, 0.42), i % 3 ? '#a8784a' : '#9a6a3e', M(cx + Math.cos(a) * (r0 + r1) / 2, y, cz + Math.sin(a) * (r0 + r1) / 2, -a));
-  }
+  } });
   // Brackets under the deck, posts and a rope rail round its edge.
   for (let i = 0; i < 8; i++) { const a = a0 + ((i + 0.5) / 8) * (a1 - a0); rod(c.g, new THREE.Vector3(cx + Math.cos(a) * r0, y - 1.6, cz + Math.sin(a) * r0), new THREE.Vector3(cx + Math.cos(a) * r1 * 0.9, y - 0.05, cz + Math.sin(a) * r1 * 0.9), 0.08, '#6b4a2a', 5); }
   const m = Math.max(6, Math.round(((a1 - a0) * r1) / 1.3)), rail: THREE.Vector3[] = [];
@@ -2561,13 +2561,13 @@ function treeDeck(c: Ctx, y: number, r0: number, r1: number, a0 = 0, a1 = Math.P
 /** A little pod house on a deck: round walls, a round door, a lit round window, a conical cap with a curl. */
 function treePod(c: Ctx, x: number, y: number, z: number, face: number, roof: string): void {
   c.g.frame(x, y, z, face, 1, () => c.glow.frame(x, y, z, face, 1, () => {
-    cyl(c.g, 1.05, 1.15, 2, '#f4e6c8', 0, 0, 0, 14);
+    surf(c, SURF.plaster, () => cyl(c.g, 1.05, 1.15, 2, '#f4e6c8', 0, 0, 0, 14));
     for (let i = 0; i < 5; i++) c.g.add(new THREE.CylinderGeometry(1.17, 1.17, 0.06, 14, 1, true), '#c8a878', M(0, 0.3 + i * 0.4, 0));
     c.g.add(new THREE.CylinderGeometry(0.45, 0.45, 0.1, 16).rotateX(Math.PI / 2), '#8a4a2a', M(0, 0.7, 1.12));
     box(c.g, 0.9, 0.7, 0.1, '#8a4a2a', 0, 0, 1.12);
     sphere(c.g, 0.05, '#d4af37', 0.25, 0.6, 1.2, 5);
     c.glow.add(new THREE.CylinderGeometry(0.22, 0.22, 0.06, 12).rotateX(Math.PI / 2), '#ffd27a', M(0.75, 1.3, 0.85, Math.PI / 4));
-    cone(c.g, 1.55, 1.9, roof, 0, 2, 0, 14);
+    surf(c, SURF.slate, () => cone(c.g, 1.55, 1.9, roof, 0, 2, 0, 14)); // a cap of shingles
     const pts: THREE.Vector3[] = [];
     for (let i = 0; i <= 8; i++) { const a = (i / 8) * Math.PI * 1.4; pts.push(new THREE.Vector3(Math.sin(a) * 0.25 * (1 - i / 12), 3.8 + (1 - Math.cos(a)) * 0.25, 0)); }
     c.g.add(new THREE.TubeGeometry(new THREE.CatmullRomCurve3(pts), 10, 0.07, 5), roof);

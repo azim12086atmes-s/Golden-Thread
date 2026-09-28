@@ -18,6 +18,7 @@ import { regionCenter, type RegionId, type RegionSpec } from './regions';
 import { PYRAMIDS } from './reserved';
 import { terrainHeight } from './terrain';
 import { MONUMENTS } from './monuments';
+import { SURF } from './surfaces';
 
 /**
  * Architecture per land. Every builder works in a local frame: origin at the building's base
@@ -282,11 +283,19 @@ function nyLoft(c: Ctx): Footprint {
  * --------------------------------------------------------------------------------------------- */
 const PENNANTS = ['#ff6fb8', '#5ac8ff', '#ffd24a', '#a67bff', '#5affa0'];
 
+/** Draw with a given surface (stone courses, plaster, thatch, slate…) whatever the colour. */
+function withSurf(c: Ctx, s: number, fn: () => void): void {
+  const prev = c.g.surface;
+  c.g.surface = s;
+  try { fn(); } finally { c.g.surface = prev; }
+}
+
 /** A round turret: stone drum, a tall cone roof and a pennant on top. */
 function turret(c: Ctx, x: number, z: number, r: number, h: number, y = 0): void {
   const wall = pick(c, c.s.walls), roof = pick(c, c.s.roofs);
-  cyl(c.g, r, r * 1.04, h, wall, x, y, z, 12);
-  cone(c.g, r * 1.3, r * 2.6, roof, x, y + h, z, 12);
+  withSurf(c, SURF.ashlar, () => cyl(c.g, r, r * 1.04, h, wall, x, y, z, 12));
+  box(c.g, r * 2.2, 0.25, r * 2.2, '#e8e0cc', x, y + h - 0.25, z); // a corbelled string course under the roof
+  withSurf(c, SURF.slate, () => cone(c.g, r * 1.3, r * 2.6, roof, x, y + h, z, 12));
   cyl(c.g, 0.04, 0.04, 1.4, '#6b5a4a', x, y + h + r * 2.6 - 0.2, z, 4);
   box(c.g, 0.9, 0.35, 0.03, pick(c, PENNANTS), x + 0.45, y + h + r * 2.6 + 0.8, z);
   win(c, x, y + h * 0.55, z + r + 0.02, 0.5, 0.9, 0, true);
@@ -294,14 +303,20 @@ function turret(c: Ctx, x: number, z: number, r: number, h: number, y = 0): void
 
 /** A crenellated parapet round a w × d top at height y. */
 function battlements(c: Ctx, w: number, d: number, y: number, col: string): void {
-  for (let x = -w / 2; x <= w / 2 + 0.01; x += 1.2) for (const z of [-d / 2, d / 2]) box(c.g, 0.6, 0.7, 0.5, col, x, y, z);
-  for (let z = -d / 2 + 1.2; z < d / 2; z += 1.2) for (const x of [-w / 2, w / 2]) box(c.g, 0.5, 0.7, 0.6, col, x, y, z);
+  withSurf(c, SURF.ashlar, () => {
+    for (let x = -w / 2; x <= w / 2 + 0.01; x += 1.2) for (const z of [-d / 2, d / 2]) box(c.g, 0.6, 0.7, 0.5, col, x, y, z);
+    for (let z = -d / 2 + 1.2; z < d / 2; z += 1.2) for (const x of [-w / 2, w / 2]) box(c.g, 0.5, 0.7, 0.6, col, x, y, z);
+  });
 }
 
 /** A little castle keep: battlements, four corner turrets with banners, an arched gate. */
 function fairyKeep(c: Ctx): Footprint {
   const w = 8, d = 8, h = 7, wall = pick(c, c.s.walls);
-  box(c.g, w, h, d, wall);
+  withSurf(c, SURF.ashlar, () => box(c.g, w, h, d, wall));
+  // A plinth of rougher stone, quoins up the corners, a moulded gate surround.
+  withSurf(c, SURF.cobble, () => box(c.g, w + 0.3, 0.8, d + 0.3, '#9a9488'));
+  for (const sx of [-1, 1]) for (let y = 0.8, k = 0; y < h - 0.3; y += 0.5, k++) box(c.g, k % 2 ? 0.4 : 0.7, 0.44, 0.12, '#e8e0cc', sx * (w / 2 - (k % 2 ? 0.2 : 0.35)), y, d / 2 + 0.02);
+  archPanel(c.g, 2.7, 3.6, '#e8e0cc', 0, 0, d / 2 + 0.01, 0, 0.1, true);
   battlements(c, w, d, h, wall);
   for (const [x, z] of [[-w / 2, -d / 2], [w / 2, -d / 2], [-w / 2, d / 2], [w / 2, d / 2]]) turret(c, x, z, 1.3, h + 2);
   archPanel(c.g, 2.2, 3.2, DOOR, 0, 0, d / 2 + 0.02, 0, 0.12, true);
@@ -314,9 +329,11 @@ function fairyKeep(c: Ctx): Footprint {
 /** A round stone tower with a steep turret roof, a smaller side turret and climbing roses. */
 function fairyTower(c: Ctx): Footprint {
   const r = 2.8, h = c.rng.range(8, 11), wall = pick(c, c.s.walls), roof = pick(c, c.s.roofs);
-  cyl(c.g, r, r * 1.06, h, wall, 0, 0, 0, 16);
+  withSurf(c, SURF.ashlar, () => cyl(c.g, r, r * 1.06, h, wall, 0, 0, 0, 16));
+  withSurf(c, SURF.cobble, () => cyl(c.g, r * 1.1, r * 1.14, 0.9, '#9a9488', 0, 0, 0, 16));
+  for (let y = 3; y < h - 1; y += 3) cyl(c.g, r * 1.05, r * 1.05, 0.18, '#e8e0cc', 0, y, 0, 16); // string courses
   box(c.g, r * 2.3, 0.35, 0.35, '#e8e0cc', 0, h - 0.4, r - 0.1);
-  cone(c.g, r * 1.3, r * 2.8, roof, 0, h, 0, 16);
+  withSurf(c, SURF.slate, () => cone(c.g, r * 1.3, r * 2.8, roof, 0, h, 0, 16));
   cyl(c.g, 0.05, 0.05, 1.8, '#6b5a4a', 0, h + r * 2.8 - 0.3, 0, 4);
   box(c.g, 1.2, 0.45, 0.03, pick(c, PENNANTS), 0.6, h + r * 2.8 + 1, 0);
   turret(c, r * 0.95, -r * 0.3, 1.1, h * 0.7);
@@ -329,19 +346,23 @@ function fairyTower(c: Ctx): Footprint {
 
 /** A storybook cottage: steep roof, crooked chimney, half-timbering, a round door and a dormer. */
 function storyCottage(c: Ctx): Footprint {
-  const w = 7, d = 6, h = 3.4, wall = pick(c, c.s.walls), roof = pick(c, c.s.roofs), timber = '#5a4030';
-  box(c.g, w, h, d, wall);
+  const w = 7, d = 6, h = 3.4, wall = pick(c, c.s.walls), roof = pick(c, ['#c8a060', '#b8904a', c.s.roofs[0]]), timber = '#5a4030';
+  withSurf(c, SURF.plaster, () => box(c.g, w, h, d, wall));
+  withSurf(c, SURF.cobble, () => box(c.g, w + 0.2, 0.6, d + 0.2, '#9a9488'));
   // Half-timbering on the front.
-  for (const x of [-w / 2 + 0.1, -1.2, 1.2, w / 2 - 0.1]) box(c.g, 0.2, h, 0.08, timber, x, 0, d / 2 + 0.03);
+  withSurf(c, SURF.boards, () => { for (const x of [-w / 2 + 0.1, -1.2, 1.2, w / 2 - 0.1]) box(c.g, 0.2, h, 0.08, timber, x, 0, d / 2 + 0.03); });
   box(c.g, w, 0.2, 0.08, timber, 0, h * 0.55, d / 2 + 0.03);
   for (const s of [-1, 1]) c.g.add(new THREE.BoxGeometry(0.16, 2.2, 0.08).translate(0, 1.1, 0), timber, M(s * 2.4, h * 0.55, d / 2 + 0.04, 0, 1, 1, 1, 0, s * 0.6));
-  gable(c.g, w + 1.2, d + 1.2, 3.8, roof, 0, h, 0);
+  // A deep thatch (or slate) roof, its ridge bound in a darker band.
+  const thatched = roof !== c.s.roofs[0];
+  withSurf(c, thatched ? SURF.thatch : SURF.slate, () => gable(c.g, w + 1.2, d + 1.2, 3.8, roof, 0, h, 0));
+  if (thatched) box(c.g, w + 1.3, 0.3, 0.6, '#7a5a30', 0, h + 3.6, 0);
   // A dormer with its own little roof.
-  box(c.g, 1.6, 1.3, 1.4, wall, 1.4, h + 0.9, d / 2 - 0.4);
-  gable(c.g, 2, 1.8, 0.9, roof, 1.4, h + 2.2, d / 2 - 0.4, Math.PI / 2);
+  withSurf(c, SURF.plaster, () => box(c.g, 1.6, 1.3, 1.4, wall, 1.4, h + 0.9, d / 2 - 0.4));
+  withSurf(c, thatched ? SURF.thatch : SURF.slate, () => gable(c.g, 2, 1.8, 0.9, roof, 1.4, h + 2.2, d / 2 - 0.4, Math.PI / 2));
   win(c, 1.4, h + 1.1, d / 2 + 0.32, 0.7, 0.7);
   // A crooked chimney.
-  for (let i = 0; i < 4; i++) box(c.g, 0.8, 0.9, 0.8, '#b5654a', -1.8 + i * 0.12, h + 1.4 + i * 0.9, -0.8);
+  withSurf(c, SURF.brick, () => { for (let i = 0; i < 4; i++) box(c.g, 0.8, 0.9, 0.8, '#b5654a', -1.8 + i * 0.12, h + 1.4 + i * 0.9, -0.8); });
   // A round-topped door and round windows.
   archPanel(c.g, 1.2, 2.1, '#7a4a2a', 0, 0, d / 2 + 0.05, 0, 0.1, true);
   sphere(c.glow, 0.45, c.s.glow, -2.3, 1.7, d / 2 + 0.02, 10, 1);
@@ -353,8 +374,9 @@ function storyCottage(c: Ctx): Footprint {
 /** A toadstool house: a stout stem with a door and round windows under a spotted cap. */
 function toadstool(c: Ctx): Footprint {
   const r = c.rng.range(2, 2.6), h = c.rng.range(3, 4), cap = c.rng.pick(['#e0473a', '#e07a5f', '#c38fd9', '#f2c14e']);
-  cyl(c.g, r, r * 1.15, h, '#f4ecd8', 0, 0, 0, 14);
-  dome(c.g, r * 2, cap, 0, h - 0.3, 0, 16, 0.75);
+  withSurf(c, SURF.plaster, () => cyl(c.g, r, r * 1.15, h, '#f4ecd8', 0, 0, 0, 14));
+  withSurf(c, SURF.glazed, () => dome(c.g, r * 2, cap, 0, h - 0.3, 0, 16, 0.75));
+  for (let k = 0; k < 16; k++) { const a = (k / 16) * Math.PI * 2; box(c.g, 0.05, 0.5, r * 0.9, '#efe2c8', Math.cos(a) * r * 1.5, h - 0.8, Math.sin(a) * r * 1.5, -a); } // gills under the cap
   cyl(c.g, r * 2.02, r * 1.9, 0.3, '#fff4e0', 0, h - 0.5, 0, 16);
   for (let i = 0; i < 9; i++) {
     const a = i * 2.4, e = 0.3 + (i % 3) * 0.3;
@@ -368,11 +390,14 @@ function toadstool(c: Ctx): Footprint {
 /** A wizard's tower: slender and tall, floating glowing crystals round a pointed hat of a roof. */
 function wizardTower(c: Ctx): Footprint {
   const r = 1.8, h = c.rng.range(11, 15), wall = pick(c, c.s.walls);
-  cyl(c.g, r * 0.9, r * 1.2, h, wall, 0, 0, 0, 14);
+  withSurf(c, SURF.ashlar, () => cyl(c.g, r * 0.9, r * 1.2, h, wall, 0, 0, 0, 14));
   for (let y = 2.5; y < h; y += 3) box(c.g, r * 2.2, 0.25, 0.25, '#e8e0cc', 0, y, r * 0.95);
   // A pointed hat, a little bent.
-  cone(c.g, r * 1.6, 3, '#4a3a8a', 0, h, 0, 14);
-  c.g.add(new THREE.ConeGeometry(r * 0.7, 3, 12).translate(0, 1.5, 0), '#4a3a8a', M(0.2, h + 2.8, 0, 0, 1, 1, 1, 0, -0.35));
+  withSurf(c, SURF.cloth, () => {
+    cone(c.g, r * 1.6, 3, '#4a3a8a', 0, h, 0, 14);
+    c.g.add(new THREE.ConeGeometry(r * 0.7, 3, 12).translate(0, 1.5, 0), '#4a3a8a', M(0.2, h + 2.8, 0, 0, 1, 1, 1, 0, -0.35));
+  });
+  for (let i = 0; i < 7; i++) { const a = (i / 7) * Math.PI * 2; box(c.g, 0.16, 0.16, 0.02, '#ffd24a', Math.cos(a) * r * 1.2, h + 1.2, Math.sin(a) * r * 1.2, -a); } // stars on the hat
   // Glowing runes spiralling up, and crystals floating round the top.
   for (let i = 0; i < 12; i++) { const a = i * 0.8, y = 1 + i * (h / 13); box(c.glow, 0.25, 0.4, 0.05, '#9ad8ff', Math.sin(a) * (r * 1.05), y, Math.cos(a) * (r * 1.05), a); }
   for (let i = 0; i < 5; i++) {
