@@ -304,12 +304,66 @@ function observatory(k: K, x: number, z: number, r: number, h: number, wall = k.
   return h + r + 0.35;
 }
 
+/** A wind turbine: a slim white pole, a nacelle and three blades facing +z. */
+function turbine(k: K, x: number, y0: number, z: number, h: number): void {
+  const { g } = k.c;
+  cyl(g, 0.1, 0.18, h, '#f2f4f6', x, y0, z, 8);
+  box(g, 0.36, 0.36, 0.9, '#e8eef4', x, y0 + h - 0.18, z);
+  for (let i = 0; i < 3; i++) g.add(new THREE.BoxGeometry(0.16, h * 0.4, 0.04).translate(0, h * 0.2, 0), '#f8f8fa', M(x, y0 + h, z + 0.5, 0, 1, 1, 1, 0, (i / 3) * Math.PI * 2 + 0.3));
+}
+/** An armillary sphere of gilded rings on a stand, a small light at its heart. */
+function armillary(k: K, x: number, y: number, z: number, r: number): void {
+  const { g, glow } = k.c;
+  cyl(g, 0.08, 0.14, 1.2, GOLD, x, y, z, 6);
+  for (const [rx, ry] of [[0, 0], [Math.PI / 2, 0], [0, Math.PI / 2], [1.15, 0.4]]) g.add(new THREE.TorusGeometry(r, 0.04, 4, 24), GOLD, M(x, y + 1.2 + r, z, ry, 1, 1, 1, rx, 0));
+  sphere(glow, r * 0.16, '#fff4c0', x, y + 1.2 + r, z, 8);
+}
+/** A date palm: a ringed, leaning trunk and a crown of drooping fronds. */
+function palm(k: K, x: number, z: number, h: number, seed = 0): void {
+  const { g } = k.c;
+  const lean = 0.05 + (seed % 3) * 0.03;
+  for (let i = 0; i < 6; i++) cyl(g, 0.22 - i * 0.02, 0.24 - i * 0.02, h / 6, i % 2 ? '#8a6a4a' : '#7a5a3a', x + i * lean, (i * h) / 6, z, 6);
+  const tx = x + 6 * lean;
+  for (let i = 0; i < 8; i++) g.add(new THREE.BoxGeometry(0.45, 0.04, 2.2).translate(0, 0, 1.1).rotateX(0.5 + (i % 2) * 0.2), i % 2 ? '#4f8c42' : '#5a9c4a', M(tx, h, z, (i / 8) * Math.PI * 2 + seed));
+  for (let i = 0; i < 4; i++) sphere(g, 0.12, '#c8883a', tx + Math.cos(i * 1.6) * 0.25, h - 0.3, z + Math.sin(i * 1.6) * 0.25, 5);
+}
+/** A snow drift: a low flattened mound. */
+function drift(k: K, x: number, z: number, r: number): void {
+  sphere(k.c.g, r, '#f4f8fc', x, 0, z, 10, 0.3);
+}
+/** A Balinese meru: a shrine of stacked, shrinking thatched roofs on a stone base. */
+function meru(k: K, x: number, z: number, tiers: number): void {
+  const { g } = k.c;
+  box(g, 2.2, 1.4, 2.2, '#8a7a6a', x, 0, z);
+  box(g, 1.4, 1.4, 1.4, '#a8584a', x, 1.4, z);
+  for (let i = 0; i < tiers; i++) {
+    const w = 2.8 - i * (1.8 / tiers), y = 2.8 + i * 0.9;
+    hip(g, w, w, 0.6, '#3a2e24', x, y, z);
+  }
+  cyl(g, 0.04, 0.08, 0.6, GOLD, x, 2.8 + tiers * 0.9 + 0.3, z, 5);
+}
+/** A holographic screen: a thin glowing panel on a slim post. */
+function holo(k: K, x: number, y: number, z: number, w: number, h: number, col: string, ry = 0): void {
+  box(k.c.glow, w, h, 0.04, col, x, y, z, ry);
+  box(k.c.g, w + 0.12, 0.08, 0.1, '#2a2a34', x, y - 0.04, z, ry);
+}
+
 // ─────────────────────────── the sciences ───────────────────────────
 
 const B: Record<string, (k: K, s: Stage) => Footprint> = {
   magic(k, s) {
     const { g, glow } = k.c;
-    if (s === 0) return stall(k, 'potions', '#8a4ad8');
+    if (s === 0) {
+      const f = stall(k, 'potions', '#8a4ad8');
+      // A cauldron bubbling beside the stall, a rack of brooms and candles floating over the counter.
+      cyl(g, 0.5, 0.35, 0.7, '#2a2a30', 2.8, 0.2, 1.4, 12); cyl(glow, 0.46, 0.46, 0.04, '#7affb0', 2.8, 0.88, 1.4, 12);
+      for (const d of [-0.4, 0.4]) cyl(g, 0.05, 0.05, 0.3, '#2a2a30', 2.8 + d, 0, 1.4, 4);
+      for (let i = 0; i < 3; i++) sphere(glow, 0.08, '#b8ffd8', 2.7 + i * 0.1, 1 + i * 0.25, 1.4, 5);
+      for (let i = 0; i < 3; i++) { g.add(new THREE.CylinderGeometry(0.03, 0.03, 1.6, 4), WOOD, M(-2.6 + i * 0.3, 0.8, -1.2, 0, 1, 1, 1, 0, 0.15)); cone(g, 0.18, 0.5, '#c8a060', -2.6 + i * 0.3 - 0.1, 0, -1.2, 6); }
+      for (let i = 0; i < 5; i++) { cyl(g, 0.04, 0.04, 0.22, '#fff4e0', -1.2 + i * 0.6, 1.9 + (i % 2) * 0.2, 0.6, 5); sphere(glow, 0.05, '#ffcf5a', -1.2 + i * 0.6, 2.16 + (i % 2) * 0.2, 0.6, 4); }
+      box(g, 1.4, 0.5, 0.05, '#6a3a8a', 0, 2.2, 1.35); for (let i = 0; i < 3; i++) sphere(glow, 0.05, '#ffe08a', -0.4 + i * 0.4, 2.45, 1.39, 4); // a sign of stars
+      return f;
+    }
     if (s === 1) { // a crooked timber workshop with a glowing kiln
       const t = block(k, 0, -1, 7, 6, 1, { door: true, wall: '#e8d8b0' });
       for (const x of [-3.4, -1, 1.4, 3.4]) box(g, 0.25, 3.3, 0.2, DARK, x, 0.45, 2.05); // half-timbering
@@ -341,6 +395,12 @@ const B: Record<string, (k: K, s: Stage) => Footprint> = {
       for (let i = 0; i < 5; i++) box(g, 0.12, 2.6, 0.14, DARK, -2.5 + i * 1.25, 0.6, 1.12);
       sweptRoof(g, 7.6, 6.6, 1.8, k.roof, 0, 3.2, -1, 0, 0.3);
       for (let i = 0; i < 5; i++) cyl(g, 0.4, 0.45, 0.12, '#9a968c', (i % 2) * 0.6 - 0.3, 0, 2 + i * 1.1, 8);
+      // A stone lantern, a low stone basin with its bamboo spout, a bamboo fence and a maple.
+      at(k, -2.4, 0, 3.4, 0, () => { cyl(g, 0.12, 0.16, 0.9, '#9a968c', 0, 0, 0, 6); box(g, 0.5, 0.4, 0.5, '#9a968c', 0, 0.9, 0); box(k.c.glow, 0.3, 0.24, 0.52, '#ffcf7a', 0, 0.98, 0); cone(g, 0.5, 0.35, '#8a867c', 0, 1.3, 0, 4, Math.PI / 4); sphere(g, 0.08, '#8a867c', 0, 1.68, 0, 5); });
+      at(k, 2.2, 0, 3.8, 0, () => { cyl(g, 0.35, 0.4, 0.4, '#8a867c', 0, 0, 0, 10); cyl(g, 0.28, 0.28, 0.02, '#4a7a8a', 0, 0.39, 0, 10); g.add(new THREE.CylinderGeometry(0.04, 0.04, 0.9, 5).rotateZ(Math.PI / 2), '#b8c070', M(-0.5, 0.55, 0)); });
+      for (let i = 0; i < 12; i++) cyl(g, 0.03, 0.03, 1, '#b8a060', -4.4 + i * 0.2, 0, 2.6, 4);
+      for (const y of [0.4, 0.8]) box(g, 2.4, 0.05, 0.05, '#6a5a3a', -3.3, y, 2.6);
+      cyl(g, 0.1, 0.14, 1.6, '#5a3a2a', 3.4, 0, 1.8, 6); for (let i = 0; i < 4; i++) sphere(g, 0.6, i % 2 ? '#d8442a' : '#e8783a', 3.4 + Math.cos(i * 1.6) * 0.4, 1.9 + (i % 2) * 0.3, 1.8 + Math.sin(i * 1.6) * 0.4, 7, 0.7);
       return { r: 5.4, h: 5.5 };
     }
     if (s === 2) { // a long timber joinery workshop under a tiled roof, joints on show
@@ -436,14 +496,50 @@ const B: Record<string, (k: K, s: Stage) => Footprint> = {
 
   tech(k, s) {
     const { g, glow } = k.c;
-    if (s === 0) { box(g, 7, 3.6, 6, '#b8b0a0', 0, 0, -1); box(g, 4, 2.8, 0.1, '#7a7a80', 0, 0.2, 2.05); box(glow, 3, 0.4, 0.08, '#ff3aa8', 0, 3.1, 2.1); box(g, 7.4, 0.3, 6.4, '#8a8a90', 0, 3.6, -1); return { r: 4.8, h: 4 }; }
-    if (s === 1) { const t = block(k, 0, -1, 10, 7, 2, { door: true, roof: false }); solar(k, 0, t, -1, 9, 6); greenWall(k, -5.1, 0.5, 2.6, 3, 5); return { r: 7.2, h: t + 1 }; }
-    if (s === 2) { const h = glassTower(k, 0, -2, 9, 38); box(glow, 9.4, 2, 9.4, '#6ad8ff', 0, h, -2); return { r: 7.5, h: h + 2 }; }
+    if (s === 0) { // a garage start-up: a roll-up door half open, a bench of glowing screens, a rooftop panel and aerial
+      box(g, 7, 3.6, 6, '#b8b0a0', 0, 0, -1);
+      for (let i = 0; i < 5; i++) box(g, 4, 0.12, 0.1, '#8a8a92', 0, 1.9 + i * 0.22, 2.06); // the door's slats, rolled half up
+      box(g, 4, 1.8, 0.04, '#2a2a30', 0, 0, 2.02);
+      box(g, 3.4, 0.9, 0.9, WOOD, 0, 0, 1.2); // the workbench in the doorway
+      for (const x of [-1.1, 0, 1.1]) { box(g, 0.6, 0.4, 0.05, '#1a1a22', x, 1.15, 1.0); box(glow, 0.52, 0.32, 0.02, ['#6ad8ff', '#b8ffcc', '#ffb8f0'][Math.round(x + 1.1) % 3], x, 1.19, 1.03); }
+      box(glow, 3, 0.4, 0.08, '#ff3aa8', 0, 3.1, 2.1);
+      box(g, 7.4, 0.3, 6.4, '#8a8a90', 0, 3.6, -1);
+      solar(k, -1.2, 3.6, -1.5, 3.6, 3.2);
+      cyl(g, 0.03, 0.03, 2.2, '#9a9aa4', 2.8, 3.9, -3, 4); sphere(glow, 0.08, '#ff3a3a', 2.8, 6.1, -3, 5);
+      for (const x of [3.9, 4.3]) cyl(g, 0.03, 0.03, 0.9, '#6a6a74', x, 0, 1.8, 4); box(g, 0.5, 0.05, 0.9, '#2a8a9a', 4.1, 0.5, 1.8); // a scooter by the door
+      return { r: 4.8, h: 6.2 };
+    }
+    if (s === 1) {
+      const t = block(k, 0, -1, 10, 7, 2, { door: true, roof: false });
+      solar(k, 0, t, -1, 9, 6); greenWall(k, -5.1, 0.5, 2.6, 3, 5);
+      holo(k, 2.6, 3.4, 2.62, 3, 1.1, '#6ad8ff');
+      turbine(k, 4.2, t, -4, 3.2);
+      for (let i = 0; i < 3; i++) box(g, 0.9, 0.45, 0.4, '#e8eef4', -1.5 + i * 1.5, 0, 4.2); // benches on the forecourt
+      return { r: 7.2, h: t + 3.4 };
+    }
+    if (s === 2) { // the research tower on a green-roofed podium, wind turbines on its crown
+      box(g, 16, 4, 7, '#e8eef4', 0, 0, -2);
+      box(g, 16.4, 0.4, 7.4, '#6aa84f', 0, 4, -2);
+      for (let i = 0; i < 6; i++) box(glow, 2, 2.2, 0.03, '#bfe8ff', -6.25 + i * 2.5, 0.8, 1.52);
+      const h = glassTower(k, 0, -2, 9, 38);
+      box(glow, 9.4, 2, 9.4, '#6ad8ff', 0, h, -2);
+      for (const x of [-3, 3]) turbine(k, x, h + 2, -2, 3);
+      box(g, 6, 0.25, 3, '#e8eef4', 0, 3, 3.4); for (const x of [-2.8, 2.8]) cyl(g, 0.08, 0.08, 3, '#c8ccd4', x, 0, 4.7, 6); // the entrance canopy
+      holo(k, -5, 5.6, 1.6, 4, 1.4, '#ff3aa8');
+      for (const x of [-6.5, 6.5]) { cyl(g, 0.1, 0.12, 1.6, '#6b5540', x, 0, 5, 5); sphere(g, 0.9, '#4f8c42', x, 2.2, 5, 7, 0.9); }
+      return { r: 8.5, h: h + 5 };
+    }
     glassTower(k, -7, -6, 7, 24); glassTower(k, 7, -6, 7, 18);
     box(g, 7, 1.2, 2.4, '#e8eef4', 0, 12, -6); box(glow, 6.8, 0.8, 2.5, '#bfe8ff', 0, 12.2, -6); // the sky bridge
     k.c.g.add(new THREE.SphereGeometry(5, 18, 10, 0, Math.PI * 2, 0, Math.PI / 2), '#9ad0f0', M(0, 0, 6)); // the solar dome
+    for (let i = 0; i < 8; i++) k.c.g.add(new THREE.TorusGeometry(5.02, 0.06, 4, 24, Math.PI), '#e8eef4', M(0, 0, 6, (i / 8) * Math.PI)); // its ribs
+    k.c.g.add(new THREE.TorusGeometry(5.02, 0.06, 4, 32), '#e8eef4', M(0, 2.5, 6, 0, 0.87, 1, 0.87, Math.PI / 2, 0));
     solar(k, 0, 0, 12, 6, 2.4);
-    return { r: 13.5, h: 26 };
+    for (const [x, h] of [[-7, 24], [7, 18]] as const) { turbine(k, x - 2, h, -6, 3.4); turbine(k, x + 2, h, -6, 3.4); }
+    holo(k, -7, 8, -2.4, 5, 2, '#6ad8ff'); holo(k, 7, 6, -2.4, 5, 2, '#ff3aa8');
+    for (let i = 0; i < 6; i++) { const a = (i / 6) * Math.PI * 2; cyl(g, 0.1, 0.12, 1.6, '#6b5540', Math.cos(a) * 7.5, 0, 6 + Math.sin(a) * 5, 5); sphere(g, 0.9, '#4f8c42', Math.cos(a) * 7.5, 2.2, 6 + Math.sin(a) * 5, 7, 0.9); }
+    for (let i = 0; i < 5; i++) box(glow, 0.5, 0.04, 0.5, '#6ad8ff', -4 + i * 2, 0.02, 12.5); // lit paving along the path
+    return { r: 13.5, h: 28 };
   },
 
   anatomy(k, s) {
@@ -498,9 +594,32 @@ const B: Record<string, (k: K, s: Stage) => Footprint> = {
 
   irrigation(k, s) {
     const { g } = k.c;
-    if (s === 0) return stall(k, 'papyrus', '#c8a060');
-    if (s === 1) { const t = block(k, 0, -1, 9, 6, 1, { door: true, wall: '#e8d0a0' }); for (let i = 0; i < 6; i++) box(g, 1.2, 1.4, 0.05, ['#3a6a9a', '#c8401a', '#e8b030'][i % 3], -3.8 + i * 1.5, 2.4, 2.07); return { r: 6.4, h: t }; }
-    if (s === 2) { nilometer(k, 0, -2, 9); shaduf(k, 6, 3, 0.5); shaduf(k, -6, 3, -0.5); waterChannel(k.c, 0, 0, 5.5, 5, 1, Math.PI / 2, { speed: 0.6 }); return { r: 9, h: 5 }; }
+    if (s === 0) {
+      const f = stall(k, 'papyrus', '#c8a060');
+      for (let i = 0; i < 3; i++) { sphere(g, 0.3, '#b8703a', 2.3, 0.3, -0.6 + i * 0.7, 8, 1.2); cyl(g, 0.12, 0.16, 0.2, '#a8603a', 2.3, 0.62, -0.6 + i * 0.7, 6); } // water jars
+      shaduf(k, -3.2, 1.2, 0.3);
+      return f;
+    }
+    if (s === 1) {
+      const t = block(k, 0, -1, 9, 6, 1, { door: true, wall: '#e8d0a0' });
+      for (let i = 0; i < 6; i++) box(g, 1.2, 1.4, 0.05, ['#3a6a9a', '#c8401a', '#e8b030'][i % 3], -3.8 + i * 1.5, 2.4, 2.07);
+      box(g, 9.4, 0.4, 0.3, '#3a6a9a', 0, t - 0.6, 2.1); // a painted cornice
+      waterChannel(k.c, 0, 0, 4, 8, 0.6, 0, { speed: 0.6 });
+      for (const x of [-5.5, 5.5]) palm(k, x, 3, 5, x > 0 ? 1 : 0);
+      for (let i = 0; i < 4; i++) box(g, 1.2, 0.2, 0.9, '#6aa84f', -3 + i * 2, 0, 5.2); // little beds watered by the channel
+      return { r: 7.4, h: Math.max(t, 5.6) };
+    }
+    if (s === 2) {
+      nilometer(k, 0, -2, 9); shaduf(k, 6, 3, 0.5); shaduf(k, -6, 3, -0.5);
+      waterChannel(k.c, 0, 0, 5.5, 5, 1, Math.PI / 2, { speed: 0.6 });
+      // A little kiosk over the measuring well, obelisk markers, palms and fields of flax.
+      for (const [x, z] of [[-4, -6.2], [4, -6.2], [-4, 2.2], [4, 2.2]] as const) cyl(g, 0.22, 0.26, 3.2, '#e0c48a', x, 0, z, 8);
+      box(g, 9, 0.5, 9, '#e0c48a', 0, 3.2, -2);
+      for (const x of [-8, 8]) { g.add(new THREE.CylinderGeometry(0.2, 0.45, 4, 4).rotateY(Math.PI / 4), '#e8d0a0', M(x, 2, -6)); cone(g, 0.32, 0.5, GOLD, x, 4, -6, 4, Math.PI / 4); }
+      palm(k, -8, 5, 6, 1); palm(k, 8, 5, 5.5, 2);
+      for (let i = 0; i < 10; i++) cone(g, 0.12, 0.9, '#7aa85a', -9 + (i % 5) * 0.4, 0, -1 + Math.floor(i / 5) * 0.6, 4);
+      return { r: 10.5, h: 5 };
+    }
     // a House of Life: a temple-like hall of papyrus columns, a pylon gate, gardens
     at(k, 0, 0, 8, 0, () => { for (const s2 of [-1, 1]) g.add(new THREE.CylinderGeometry(2.6, 3.6, 10, 4).rotateY(Math.PI / 4), '#e0c48a', M(s2 * 4.5, 5, 0, 0, 1, 1, 0.5)); });
     colonnade(k, -8, 8, 0, 7, 7, '#e0c48a', true);
@@ -514,12 +633,32 @@ const B: Record<string, (k: K, s: Stage) => Footprint> = {
     const { g, glow } = k.c;
     if (s === 0) { canopy(k, 4, 3.4, 2.2, '#c8a060'); rugs(k, 1.8, -0.8, 3); for (let i = 0; i < 8; i++) sphere(glow, 0.05, '#fff4c0', -1.6 + (i * 0.47) % 3, 2.2 + (i % 3) * 0.1, -1 + (i * 0.7) % 2, 4); return { r: 3.2, h: 3 }; }
     if (s === 1) { longTent(k, 11, 5, 3.4, '#3a2a22', '#c8401a'); rugs(k, 1.8, -1.4, 6); box(g, 2.4, 1.3, 0.1, '#2a3a2e', -4, 0.8, -2); return { r: 6.8, h: 4 }; }
-    if (s === 2) { at(k, 0, 0, -1, 0, () => { box(g, 6, 3.4, 6, '#d8b890', 0, 0, 0); dome(g, 2.6, '#d8b890', 0, 3.4, 0, 12); archPanel(g, 1.6, 2.4, DARK, 0, 0, 3.02, 0, 0.1); }); well(k, 5, 3); for (let i = 0; i < 3; i++) box(g, 2.6, 0.5, 0.8, '#b8a078', -5, 0, 1 + i * 1.3); return { r: 9, h: 7 }; }
+    if (s === 2) {
+      at(k, 0, 0, -1, 0, () => { box(g, 6, 3.4, 6, '#d8b890', 0, 0, 0); dome(g, 2.6, '#d8b890', 0, 3.4, 0, 12); archPanel(g, 1.6, 2.4, DARK, 0, 0, 3.02, 0, 0.1); for (const x of [-2, 2]) archPanel(glow, 0.5, 0.9, '#ffcf7a', x, 1.4, 3.02, 0, 0.05, true); });
+      armillary(k, 0, 6.2, -1, 0.7);
+      well(k, 5, 3);
+      for (let i = 0; i < 3; i++) box(g, 2.6, 0.5, 0.8, '#b8a078', -5, 0, 1 + i * 1.3);
+      palm(k, -6, -4, 6, 1); palm(k, 6, -4, 5.4, 2);
+      // A star-map chart laid in the sand: a ring of bright points round a pole star.
+      for (let i = 0; i < 12; i++) { const a = (i / 12) * Math.PI * 2; sphere(glow, 0.08, '#fff4c0', 2.4 + Math.cos(a) * 1.4, 0.05, 5.4 + Math.sin(a) * 1.4, 4); }
+      sphere(glow, 0.14, '#ffe08a', 2.4, 0.06, 5.4, 5);
+      return { r: 9, h: 8.8 };
+    }
     waterPool(k.c, 0, 0, 0, 9, 7, 0, { kerb: 0.3, speed: 0.04 });
-    for (const [x, z] of [[-10, -6], [10, -6], [-10, 7], [10, 7]] as const) at(k, x, 0, z, 0, () => { box(g, 5, 3.4, 4, '#d8b890', 0, 0, 0); box(g, 5.3, 0.4, 4.3, '#c8a878', 0, 3.4, 0); });
-    longTent(k, 10, 4, 3, '#3a2a22', '#c8401a');
-    at(k, 0, 0, -11, 0, () => { box(g, 3.4, 13, 3.4, '#d8b890', 0, 0, 0); box(g, 4, 0.5, 4, '#c8a878', 0, 13, 0); for (let i = 0; i < 12; i++) sphere(glow, 0.06, '#fff4c0', -1.5 + (i % 4), 13.6, -1.5 + Math.floor(i / 4), 4); });
-    return { r: 15, h: 14 };
+    for (const [x, z] of [[-10, -6], [10, -6], [-10, 7], [10, 7]] as const) at(k, x, 0, z, 0, () => {
+      box(g, 5, 3.4, 4, '#d8b890', 0, 0, 0); box(g, 5.3, 0.4, 4.3, '#c8a878', 0, 3.4, 0);
+      archPanel(g, 1.2, 2.2, DARK, 0, 0, 2.02 * Math.sign(-z), z > 0 ? Math.PI : 0, 0.08);
+      for (let i = -1; i <= 1; i++) box(g, 0.5, 0.5, 0.3, '#c8a878', i * 1.8, 3.8, 0); // merlons
+    });
+    at(k, 0, 0, -6.5, 0, () => { longTent(k, 10, 4, 3, '#3a2a22', '#c8401a'); rugs(k, 1.8, -1.4, 3); });
+    at(k, 0, 0, -11, 0, () => { box(g, 3.4, 13, 3.4, '#d8b890', 0, 0, 0); box(g, 4, 0.5, 4, '#c8a878', 0, 13, 0); for (let i = 0; i < 12; i++) sphere(glow, 0.06, '#fff4c0', -1.5 + (i % 4), 13.6, -1.5 + Math.floor(i / 4), 4); for (let y = 2; y < 12; y += 3) box(glow, 0.5, 0.9, 0.05, '#ffcf7a', 0, y, 1.72); });
+    armillary(k, 0, 13.5, -11, 0.9);
+    // Palms round the pool, a giant equinoctial sundial and a gnomon line across the court.
+    for (const [x, z, i] of [[-6, -4, 0], [6, -4, 1], [-6, 5, 2], [6, 5, 3]] as const) palm(k, x, z, 6 + (i % 2) * 0.8, i);
+    samrat(k, -12, 0, 0.8);
+    box(g, 0.1, 0.03, 5, GOLD, 0, 0.03, 6.5); // the meridian line from the pool to the gate
+    for (let i = 0; i < 5; i++) box(g, 0.8, 0.03, 0.08, GOLD, 0, 0.03, 4.5 + i);
+    return { r: 15, h: 16.3 };
   },
 
   ayurveda(k, s) {
@@ -549,7 +688,17 @@ const B: Record<string, (k: K, s: Stage) => Footprint> = {
     const sand = '#c8744a';
     if (s === 0) { chhatri(k, 0, 0, 1); box(g, 1.4, 0.8, 0.8, WOOD, 0, 0.5, 0); return { r: 2.8, h: 5 }; }
     if (s === 1) { const t = block(k, 0, -1, 9, 7, 1, { door: true, wall: sand }); for (let i = 0; i < 3; i++) for (let a = 0; a < 5; a++) for (let b = 0; b < 4; b++) box(g, 0.05, 0.05, 0.05, WHITE, -3 + i * 3 - 0.5 + a * 0.25, 1.2 + b * 0.35, 2.56); return { r: 6.6, h: t }; }
-    if (s === 2) { waterChannel(k.c, 0, 0, 0, 16, 1.6, 0, { jets: 2.5, speed: 0.6 }); waterChannel(k.c, 0, 0, 0, 12, 1.6, Math.PI / 2, { jets: 2.5, speed: 0.6 }); chhatri(k, 6, -6, 1.1, sand); return { r: 9.5, h: 5 }; }
+    if (s === 2) {
+      waterChannel(k.c, 0, 0, 0, 16, 1.6, 0, { jets: 2.5, speed: 0.6 }); waterChannel(k.c, 0, 0, 0, 12, 1.6, Math.PI / 2, { jets: 2.5, speed: 0.6 });
+      chhatri(k, 6, -6, 1.1, sand);
+      // The charbagh's quarters: sunken beds of flowers edged in stone; cypresses along the walks.
+      for (const [sx, sz] of [[-1, -1], [-1, 1], [1, 1]] as const) {
+        box(g, 4.4, 0.18, 4.4, STONE, sx * 3.6, 0, sz * 3.6); box(g, 4, 0.2, 4, '#5a9c4a', sx * 3.6, 0.02, sz * 3.6);
+        for (let i = 0; i < 16; i++) sphere(g, 0.12, ['#ff8fb8', '#ffd24a', '#ffffff', '#ff5a6a'][i % 4], sx * 3.6 - 1.5 + (i % 4), 0.28, sz * 3.6 - 1.5 + Math.floor(i / 4), 4);
+      }
+      for (const [x, z] of [[-9, -1.6], [-9, 1.6], [9, 1.6], [-1.6, -7], [1.6, -7], [-1.6, 7], [1.6, 7]] as const) { cyl(g, 0.1, 0.12, 0.6, '#6b5540', x, 0, z, 5); g.add(new THREE.SphereGeometry(0.6, 8, 6).scale(1, 3.2, 1), '#2f5a32', M(x, 2.4, z)); }
+      return { r: 9.8, h: 5 };
+    }
     const t = block(k, 0, -11, 16, 5, 2, { wall: WHITE });
     pishtaq(k, 0, -8.5, 7, 12);
     waterChannel(k.c, 0, 0, 1, 16, 1.4, 0, { jets: 2.6, speed: 0.6 });
@@ -561,31 +710,116 @@ const B: Record<string, (k: K, s: Stage) => Footprint> = {
 
   subak(k, s) {
     const { g } = k.c;
-    if (s === 0) { bale(k, 0, 0, 3.4, 2.6); for (let i = 0; i < 3; i++) box(g, 0.8, 1.6, 0.03, ['#3a2a6a', '#8a3a1a', '#1a4a6a'][i], -1 + i, 1.2, 1.3); return { r: 3.4, h: 5 }; }
-    if (s === 1) { bale(k, 0, -1, 6, 4.5); for (let i = 0; i < 4; i++) cyl(g, 0.5, 0.45, 0.8, i % 2 ? '#1a3a6a' : '#6a2a1a', -3 + i * 2, 0, 3.5, 10); return { r: 6.4, h: 6.5 }; }
-    if (s === 2) { for (let i = 0; i < 3; i++) waterPool(k.c, -3 + i * 3, i * 0.3, -2 + i * 0.4, 2.5, 5, 0, { kerb: 0.25, speed: 0.1 }); bale(k, 5, 4, 4.5, 3.5); waterChannel(k.c, 0, 0, 6, 8, 0.8, Math.PI / 2, { speed: 0.7 }); return { r: 9.5, h: 6.5 }; }
-    for (let i = 0; i < 3; i++) box(g, 26 - i * 5, 1.2 + i * 1.2, 7, '#8a7a6a', 0, 0, -9 + i * 1.6);
-    bale(k, -6, -9, 6, 4); bale(k, 6, -9, 6, 4); bale(k, 0, -3, 7, 4.5);
+    const rice = (x: number, y: number, z: number, w: number, d: number) => { // a flooded paddy with rows of young rice
+      box(g, w, 0.06, d, '#5a8aa0', x, y, z);
+      for (let i = 0; i < Math.floor(w / 0.6); i++) for (let j = 0; j < Math.floor(d / 0.6); j++) cone(g, 0.08, 0.35, '#8ac85a', x - w / 2 + 0.3 + i * 0.6, y + 0.06, z - d / 2 + 0.3 + j * 0.6, 3);
+    };
+    const offering = (x: number, z: number) => { cyl(g, 0.1, 0.12, 1.1, '#8a7a6a', x, 0, z, 6); box(g, 0.5, 0.06, 0.5, '#8a7a6a', x, 1.1, z); for (let i = 0; i < 3; i++) sphere(g, 0.06, ['#ff8fb8', '#ffd24a', '#ffffff'][i], x - 0.12 + i * 0.12, 1.2, z, 4); };
+    if (s === 0) {
+      bale(k, 0, 0, 3.4, 2.6);
+      for (let i = 0; i < 3; i++) box(g, 0.8, 1.6, 0.03, ['#3a2a6a', '#8a3a1a', '#1a4a6a'][i], -1 + i, 1.2, 1.3);
+      offering(2.8, 1.8); rice(-1.6, 0, 3.6, 2.4, 1.8);
+      return { r: 3.4, h: 5 };
+    }
+    if (s === 1) {
+      bale(k, 0, -1, 6, 4.5);
+      for (let i = 0; i < 4; i++) cyl(g, 0.5, 0.45, 0.8, i % 2 ? '#1a3a6a' : '#6a2a1a', -3 + i * 2, 0, 3.5, 10);
+      meru(k, -5.5, -4, 3); offering(5, 3.6); offering(-5, 3.6);
+      palm(k, 5.5, -4, 6, 2);
+      return { r: 6.8, h: 6.5 };
+    }
+    if (s === 2) {
+      for (let i = 0; i < 3; i++) { waterPool(k.c, -3 + i * 3, i * 0.3, -2 + i * 0.4, 2.5, 5, 0, { kerb: 0.25, speed: 0.1 }); }
+      for (let i = 0; i < 3; i++) rice(-8 + i * 0.1, i * 0.4, -5 + i * 3, 2.6, 2.4);
+      bale(k, 5, 4, 4.5, 3.5);
+      waterChannel(k.c, 0, 0, 6, 8, 0.8, Math.PI / 2, { speed: 0.7 });
+      meru(k, 7, -5, 5);
+      at(k, -6, 0, 5, 0, () => { box(g, 1.6, 4, 1.6, '#a8584a', 0, 0, 0); hip(g, 2.4, 2.4, 1.2, '#3a2e24', 0, 4, 0); cyl(g, 0.15, 0.15, 1.2, DARK, 0, 2.8, 0.9, 6); }); // the kulkul drum tower
+      return { r: 9.5, h: 8 };
+    }
+    // Terraces stepping up to the back, rice along each lip, bales on the top one.
+    for (let i = 0; i < 3; i++) { const front = -2 - i * 3; box(g, 26 - i * 5, 1.2 * (i + 1), 13 + front, i % 2 ? '#8a7a6a' : '#7a6a5a', 0, 0, (front - 13) / 2); }
+    rice(0, 1.2, -3.5, 24, 2.4); rice(0, 2.4, -6.5, 19, 2.4);
+    at(k, 0, 3.6, 0, 0, () => { bale(k, -4, -10.5, 6, 4); bale(k, 4, -10.5, 6, 4); });
+    bale(k, 0, 1, 7, 4.5);
+    for (const x of [-11.8, 11.8]) at(k, x, 1.2, -10, 0, () => meru(k, 0, 0, x < 0 ? 7 : 5));
     splitGate(k, 0, 9, 8);
+    for (const x of [-8, 8]) { rice(x, 0, 4, 5, 4); offering(x > 0 ? 4.6 : -4.6, 7); }
+    for (const x of [-12, 12]) palm(k, x, 6, 7, x > 0 ? 2 : 3);
+    at(k, -12, 0, 1, 0, () => { box(g, 1.6, 4, 1.6, '#a8584a', 0, 0, 0); hip(g, 2.4, 2.4, 1.2, '#3a2e24', 0, 4, 0); cyl(g, 0.15, 0.15, 1.2, DARK, 0, 2.8, 0.9, 6); }); // the kulkul drum tower
     return { r: 15.5, h: 10 };
   },
 
   polar(k, s) {
     const { g, glow } = k.c;
     const log = '#7a5a3c';
-    if (s === 0) { box(g, 3, 2.6, 3, log, 0, 0, 0); gable(g, 3.4, 3.6, 1.2, '#e8f0f8', 0, 2.6, 0); cyl(g, 0.05, 0.05, 3, '#9a9aa4', 2.2, 0, 0, 4); cone(g, 0.3, 0.9, '#c8323a', 2.2, 3, 0, 3, Math.PI / 2); for (let i = 0; i < 3; i++) sphere(g, 0.12, '#e8e8f0', 2.2 + Math.cos(i * 2.1) * 0.4, 2.7, Math.sin(i * 2.1) * 0.4, 5); return { r: 3.2, h: 4 }; }
-    if (s === 1) { box(g, 7, 3, 5, log, 0, 0, -1); gable(g, 7.4, 5.6, 2, '#e8f0f8', 0, 3, -1); for (let i = 0; i < 8; i++) box(g, 0.1, 1.1, 0.1, log, -5 + i * 1.4, 0, 3.8); box(g, 10, 0.1, 0.1, log, -0.1, 1, 3.8); box(g, 2.4, 0.3, 0.8, '#8a5a36', 5, 0.2, -3); return { r: 6.6, h: 5 }; }
-    if (s === 2) { for (const [x, z] of [[-2.5, -2.5], [2.5, -2.5], [-2.5, 2.5], [2.5, 2.5]]) cyl(g, 0.25, 0.25, 4, '#6a6a74', x, 0, z, 8); box(g, 7, 0.4, 7, log, 0, 4, 0); cyl(g, 3.2, 3.2, 3, '#e8f0f8', 0, 4.4, 0, 18); dome(g, 3.2, '#c8d8e8', 0, 7.4, 0, 18); box(g, 1, 0.2, 3.4, '#2a2a30', 0.5, 9.8, 0.5); sphere(glow, 0.3, '#7affd0', 0, 6, 3.2, 6); return { r: 7, h: 10.6 }; }
+    const sled = (x: number, z: number, ry: number) => at(k, x, 0, z, ry, () => {
+      for (const sx of [-0.35, 0.35]) box(g, 0.06, 0.08, 1.8, '#6a4a2a', sx, 0, 0);
+      for (const zz of [-0.6, 0, 0.6]) box(g, 0.8, 0.25, 0.06, '#6a4a2a', 0, 0.08, zz);
+      box(g, 0.8, 0.05, 1.6, '#9a6a3a', 0, 0.33, 0); box(g, 0.6, 0.3, 0.8, '#c8323a', 0, 0.38, 0.1);
+    });
+    const drums = (x: number, z: number, n: number) => { for (let i = 0; i < n; i++) cyl(g, 0.3, 0.3, 0.9, i % 2 ? '#c8323a' : '#3a6a9a', x + i * 0.65, 0, z, 10); };
+    const lit = (x: number, y: number, z: number, w = 0.8, h = 0.7) => { box(glow, w, h, 0.03, '#ffcf7a', x, y, z); box(g, w + 0.16, 0.1, 0.12, '#e8f0f8', x, y - 0.06, z); };
+    if (s === 0) { box(g, 3, 2.6, 3, log, 0, 0, 0); gable(g, 3.4, 3.6, 1.2, '#e8f0f8', 0, 2.6, 0); cyl(g, 0.05, 0.05, 3, '#9a9aa4', 2.2, 0, 0, 4); cone(g, 0.3, 0.9, '#c8323a', 2.2, 3, 0, 3, Math.PI / 2); for (let i = 0; i < 3; i++) sphere(g, 0.12, '#e8e8f0', 2.2 + Math.cos(i * 2.1) * 0.4, 2.7, Math.sin(i * 2.1) * 0.4, 5); 
+      lit(-0.7, 1.2, 1.52); box(g, 0.9, 1.9, 0.05, DARK, 0.7, 0, 1.52);
+      drift(k, -2.2, 1.4, 1.3); drift(k, 1.4, -2.2, 1.1); sled(-1.3, 3, 0.4); drums(1.4, 2.4, 2);
+      box(g, 0.6, 1.4, 0.6, '#8a4a3a', -0.9, 3, -0.6); // the stove chimney
+      return { r: 3.9, h: 4.4 };
+    }
+    if (s === 1) { box(g, 7, 3, 5, log, 0, 0, -1); gable(g, 7.4, 5.6, 2, '#e8f0f8', 0, 3, -1); for (let i = 0; i < 8; i++) box(g, 0.1, 1.1, 0.1, log, -5 + i * 1.4, 0, 3.8); box(g, 10, 0.1, 0.1, log, -0.1, 1, 3.8); box(g, 2.4, 0.3, 0.8, '#8a5a36', 5, 0.2, -3); 
+      for (const x of [-2.4, 2.4]) lit(x, 1.4, 1.52, 1, 0.9); box(g, 1.1, 2.2, 0.05, DARK, 0, 0, 1.52);
+      box(g, 0.7, 2, 0.7, '#8a4a3a', 2.2, 4, -2);
+      drift(k, -4.5, -4, 1.8); drift(k, 4.5, 1.5, 1.4); sled(-5.2, 1.8, -0.3); drums(-1.6, -4.6, 3);
+      dish(k, 5, 0, -5.2, 1.1);
+      return { r: 7.4, h: 5.4 };
+    }
+    if (s === 2) { for (const [x, z] of [[-2.5, -2.5], [2.5, -2.5], [-2.5, 2.5], [2.5, 2.5]]) cyl(g, 0.25, 0.25, 4, '#6a6a74', x, 0, z, 8); box(g, 7, 0.4, 7, log, 0, 4, 0); cyl(g, 3.2, 3.2, 3, '#e8f0f8', 0, 4.4, 0, 18); dome(g, 3.2, '#c8d8e8', 0, 7.4, 0, 18); box(g, 1, 0.2, 3.4, '#2a2a30', 0.5, 9.8, 0.5); sphere(glow, 0.3, '#7affd0', 0, 6, 3.2, 6); 
+      for (let i = 0; i < 8; i++) box(g, 1.2, 0.2, 0.5, log, 0, 0.3 + i * 0.5, 7.7 - i * 0.5); // stairs up to the deck
+      for (const x of [-0.65, 0.65]) g.add(new THREE.BoxGeometry(0.06, 0.06, 5.5).rotateX(0.77), log, M(x, 3, 5.9));
+      for (let i = 0; i < 10; i++) { const a = (i / 10) * Math.PI * 2; cyl(g, 0.04, 0.04, 1, log, Math.cos(a) * 3.4, 4.4, Math.sin(a) * 3.4, 4); }
+      g.add(new THREE.TorusGeometry(3.4, 0.05, 4, 24), log, M(0, 5.4, 0, 0, 1, 1, 1, Math.PI / 2, 0)); // the deck rail
+      for (let i = 0; i < 4; i++) { const a = (i / 4) * Math.PI * 2 + 0.4; lit(Math.cos(a) * 3.22, 5.8, Math.sin(a) * 3.22, 0.7, 0.6); }
+      cyl(g, 0.04, 0.04, 3, '#9a9aa4', -2.4, 4.4, -2.4, 4); sphere(glow, 0.1, '#ff3a3a', -2.4, 7.5, -2.4, 5);
+      drift(k, -6, 3, 2); drift(k, 5.5, -5, 2.2); sled(6, 4, 0.6); drums(-7, -4, 3);
+      return { r: 8.5, h: 10.6 };
+    }
     for (const x of [-7, 7]) at(k, x, 0, -3, 0, () => { box(g, 8, 4, 14, log, 0, 0, 0); gable(g, 8.4, 14.4, 3, '#bfe8ff', 0, 4, 0, Math.PI / 2); box(glow, 7.4, 2.4, 0.05, '#bfe8ff', 0, 5, 7.21); });
     at(k, 0, 0, -9, 0, () => { box(g, 6, 5, 6, '#e8f0f8', 0, 0, 0); observatory(k, 0, 0, 2.6, 5.2, '#e8f0f8'); });
-    return { r: 15, h: 11 };
+    // A covered way joins the two halls; windows along it and along each hall's side.
+    box(g, 6, 3, 2.4, log, 0, 0, 0); gable(g, 6.2, 2.8, 1, '#bfe8ff', 0, 3, 0);
+    for (const x of [-1.6, 1.6]) lit(x, 1.4, 1.22, 1, 0.8);
+    for (const x of [-11.02, 11.02]) for (let i = 0; i < 4; i++) box(glow, 0.03, 1, 1.4, '#ffcf7a', x, 1.4, -8 + i * 3.4);
+    for (const x of [-7, 7]) { box(g, 0.8, 2.2, 1.6, '#8a4a3a', x + 2, 5.2, -6); }
+    mast(k, 12, -12, 0, 12);
+    dish(k, -12, 0, -11, 2.2);
+    drift(k, -12, 6, 2.4); drift(k, 12, 5, 2); drift(k, 4, -13, 2.2);
+    sled(-4, 8, 0.3); sled(-2.8, 8.4, 0.2); drums(8, 7.5, 4);
+    return { r: 15, h: 12.4 };
   },
 
   lightcraft(k, s) {
     const { g, glow } = k.c;
     const moon = '#f0ecff';
-    if (s === 0) return stall(k, 'lamps', '#b8a4ff');
-    if (s === 1) { const t = tower(k, 0, -1, 4, 9, 'spire', moon, '#b8a4ff'); for (let i = 0; i < 4; i++) g.add(new THREE.OctahedronGeometry(0.4), ['#9ae8ff', '#ffb8f0', '#fff08a', '#b8ffcc'][i], M(Math.cos(i * 1.57) * 2.4, 7, -1 + Math.sin(i * 1.57) * 2.4)); return { r: 5, h: t }; }
+    const rainbow = ['#ff5a5a', '#ff9a3a', '#ffd23a', '#5ad85a', '#3a9aff', '#5a5aff', '#b86bff'];
+    const crystals = (x: number, z: number, n: number, h: number) => { for (let i = 0; i < n; i++) { const a = (i / n) * Math.PI * 2; glow.add(new THREE.OctahedronGeometry(0.3).scale(0.6, 2.2 + (i % 3) * 0.6, 0.6), rainbow[i % 7], M(x + Math.cos(a) * 0.35, h * (0.5 + (i % 2) * 0.3), z + Math.sin(a) * 0.35, a, 1, 1, 1, Math.cos(a) * 0.3, Math.sin(a) * 0.3)); } };
+    if (s === 0) {
+      const f = stall(k, 'lamps', '#b8a4ff');
+      // A rainbow arching over the stall, prisms on posts either side splitting the light.
+      for (let i = 0; i < 7; i++) glow.add(new THREE.TorusGeometry(2.3 - i * 0.09, 0.045, 4, 24, Math.PI), rainbow[i], M(0, 2.9, 1.3));
+      for (const x of [-2.4, 2.4]) { cyl(g, 0.06, 0.08, 1.8, moon, x, 0, 1.8, 6); glow.add(new THREE.CylinderGeometry(0.3, 0.3, 0.5, 3).rotateZ(Math.PI / 2), '#e0f4ff', M(x, 2.05, 1.8)); }
+      crystals(-2.6, -1.4, 5, 1.2); crystals(2.6, -1.4, 4, 1);
+      return f;
+    }
+    if (s === 1) {
+      const t = tower(k, 0, -1, 4, 9, 'spire', moon, '#b8a4ff');
+      for (let i = 0; i < 4; i++) g.add(new THREE.OctahedronGeometry(0.4), ['#9ae8ff', '#ffb8f0', '#fff08a', '#b8ffcc'][i], M(Math.cos(i * 1.57) * 2.4, 7, -1 + Math.sin(i * 1.57) * 2.4));
+      glow.add(new THREE.TorusGeometry(2.9, 0.08, 5, 32), '#e0d0ff', M(0, 7, -1, 0, 1, 1, 1, Math.PI / 2, 0)); // the lens ring the crystals orbit
+      for (let i = 0; i < 7; i++) box(glow, 0.45, 2.2, 0.05, rainbow[i], -1.62 + i * 0.54, 3.9, 1.03); // a stained-glass window
+      box(g, 7, 0.3, 4, '#e0d8ff', 0, 0, 3.6); // a moonstone forecourt
+      crystals(-3.6, 3.2, 6, 1.6); crystals(3.6, 3.2, 6, 1.4); crystals(-4, -3.6, 5, 1.2);
+      for (let i = 0; i < 4; i++) sphere(glow, 0.14, '#fff0b0', -3 + i * 2, 4.4 + (i % 2) * 0.6, 5.4, 6);
+      return { r: 6.4, h: t };
+    }
     if (s === 2) {
       at(k, 0, 0, -1, 0, () => { cyl(g, 6, 6.3, 5, moon, 0, 0, 0, 24); dome(g, 5.8, '#e0d8ff', 0, 5, 0, 22); cyl(glow, 0.6, 0.6, 1, '#fff0b0', 0, 10.8, 0, 10); });
       for (let i = 0; i < 7; i++) box(glow, 0.3, 4, 0.1, ['#ff5a5a', '#ff9a3a', '#ffd23a', '#5ad85a', '#3a9aff', '#5a5aff', '#b86bff'][i], -2.7 + i * 0.9, 0.5, 5.35);
