@@ -1,7 +1,8 @@
 import * as THREE from 'three';
 import { Rng } from '../core/rng';
 import type { Collider } from '../world/RegionBuilder';
-import { GeoBuilder, archPanel, box, cone, cyl, flowers, sphere } from '../world/kit';
+import { GeoBuilder, M, archPanel, box, cone, cyl, flowers, gable, sphere } from '../world/kit';
+import { SURF } from '../world/surfaces';
 import { castleBase } from '../world/terrain';
 import { CASTLE } from './site';
 
@@ -14,6 +15,19 @@ import { CASTLE } from './site';
 const IVORY = '#fbf1f4', STONE = '#eadfe6', PINK = '#f49ac1', ROSE = '#e8588c', GOLD = '#f5c451', LILAC = '#c9b3f0';
 const FLOWERS = ['#ff8fb8', '#ffffff', '#f2d14e', '#b58ad9', '#ff6b6b', '#8fd3ff'];
 
+/**
+ * A fairy-tale spire: a steep roof that flares out at its eaves like a bell (a lathe, not a plain
+ * cone), a gold ring at its foot, a gold finial and a rose pennant on top.
+ */
+function spire(g: GeoBuilder, x: number, y: number, z: number, r: number, h: number, col: string, pennant = true): void {
+  const prof: Array<[number, number]> = [[r * 1.22, 0], [r * 1.08, h * 0.05], [r * 0.86, h * 0.18], [r * 0.6, h * 0.4], [r * 0.34, h * 0.65], [r * 0.14, h * 0.88], [0.001, h]];
+  g.add(new THREE.LatheGeometry(prof.map(([a, b]) => new THREE.Vector2(a, b)), 16), col, M(x, y, z));
+  g.add(new THREE.TorusGeometry(r * 1.2, 0.08, 4, 20).rotateX(Math.PI / 2), GOLD, M(x, y + 0.04, z));
+  cyl(g, 0.05 * Math.max(1, r / 2), 0.05 * Math.max(1, r / 2), 1.2 + r * 0.3, GOLD, x, y + h - 0.2, z, 5);
+  sphere(g, 0.18 + r * 0.05, GOLD, x, y + h + 0.2, z, 8);
+  if (pennant) g.add(new THREE.ConeGeometry(0.3 + r * 0.08, 1.4 + r * 0.3, 3).rotateZ(-Math.PI / 2), ROSE, M(x + 0.7 + r * 0.15, y + h + 0.8 + r * 0.25, z, 0, 1, 1, 0.12));
+}
+
 export interface CastleBuild {
   group: THREE.Group;
   colliders: Collider[];
@@ -23,6 +37,8 @@ export interface CastleBuild {
 
 export function buildCastle(solid: THREE.Material, glowMat: THREE.Material): CastleBuild {
   const g = new GeoBuilder(), glow = new GeoBuilder();
+  // Dressed ivory stone and rose slate, read from their colours as a land's buildings are.
+  g.surfaces = new Map([[IVORY, SURF.ashlar], [STONE, SURF.ashlar], [PINK, SURF.slate], [ROSE, SURF.slate], ['#f6e9ef', SURF.marble]]);
   const rng = new Rng('castle');
   const y = castleBase();
   const K = CASTLE.keep, V = CASTLE.venue, A = CASTLE.aisle;
@@ -38,18 +54,39 @@ export function buildCastle(solid: THREE.Material, glowMat: THREE.Material): Cas
     box(g, 1.1, 1.3, 1.1, IVORY, x, y + 19.2, K.z - K.d / 2 - 0.2);
   }
   // Great hall roof and the central tower with its spire.
-  box(g, K.w - 8, 6, K.d - 8, PINK, K.x, y + 19.2, K.z);
+  // The upper hall, set back behind the parapet, under a steep rose roof with dormers and gold cresting.
+  const uw = K.w - 8, ud = K.d - 8, uf = K.z + ud / 2;
+  box(g, uw, 6, ud, IVORY, K.x, y + 19.2, K.z);
+  gable(g, uw + 1, ud + 1.2, 9, PINK, K.x, y + 25.2, K.z);
+  for (let i = 0; i < 14; i++) cone(g, 0.18, 0.7, GOLD, K.x - uw / 2 + 1 + i * (uw - 2) / 13, y + 34.1, K.z, 5);
+  for (const side of [1, -1]) for (let i = 0; i < 4; i++) {
+    const x = K.x - uw / 2 + 3.5 + i * (uw - 7) / 3, z = K.z + side * (ud / 2 - 1.1);
+    box(g, 1.6, 2, 1.8, IVORY, x, y + 26.4, z);
+    gable(g, 1.9, 2.1, 1.2, ROSE, x, y + 28.4, z, Math.PI / 2);
+    archPanel(glow, 0.9, 1.4, '#ffd9a8', x, y + 26.6, z + side * 0.92, side > 0 ? 0 : Math.PI, 0.04, true);
+  }
+  // An arcaded gallery along the upper hall's front, lit from within: where the two may step out.
+  for (let i = 0; i < 9; i++) {
+    const x = K.x - 8 + i * 2;
+    cyl(g, 0.16, 0.18, 3, STONE, x, y + 19.2, uf + 0.1, 8);
+    if (i < 8) { archPanel(glow, 1.4, 2.6, '#ffe2b8', x + 1, y + 19.3, uf + 0.02, 0, 0.04, true); g.add(new THREE.TorusGeometry(0.9, 0.1, 4, 12, Math.PI), STONE, M(x + 1, y + 21.4, uf + 0.12)); }
+  }
+  box(g, 17, 0.25, 0.6, STONE, K.x, y + 22.3, uf + 0.2);
   cyl(g, 5, 5.5, 36, IVORY, K.x, y, K.z - 2, 16);
-  cone(g, 6.4, 16, PINK, K.x, y + 36, K.z - 2, 16);
-  cyl(g, 0.25, 0.25, 3, GOLD, K.x, y + 52, K.z - 2, 6);
-  sphere(g, 0.6, GOLD, K.x, y + 55.4, K.z - 2, 8);
+  spire(g, K.x, y + 36, K.z - 2, 5.3, 17, PINK);
+  // Four turrets clustered round the great tower's gallery.
+  for (let k = 0; k < 4; k++) {
+    const a = (k / 4) * Math.PI * 2 + Math.PI / 4, tx = K.x + Math.cos(a) * 5.6, tz = K.z - 2 + Math.sin(a) * 5.6;
+    cyl(g, 1, 1, 6, IVORY, tx, y + 30.6, tz, 10);
+    for (const h of [32, 34.2]) archPanel(glow, 0.4, 0.9, '#ffd9a8', tx + Math.cos(a) * 1.01, y + h, tz + Math.sin(a) * 1.01, Math.PI / 2 - a, 0.03, true);
+    spire(g, tx, y + 36.6, tz, 1.1, 4.6, ROSE, false);
+  }
   // Four corner towers and two slender gate towers.
   for (const [dx, dz, r, h] of [[-1, 1, 3.6, 26], [1, 1, 3.6, 26], [-1, -1, 3.2, 24], [1, -1, 3.2, 24]] as const) {
     const x = K.x + dx * K.w / 2, z = K.z + dz * K.d / 2;
     cyl(g, r, r + 0.4, h, IVORY, x, y, z, 14);
     cyl(g, r + 0.5, r + 0.5, 1, STONE, x, y + h, z, 14);
-    cone(g, r + 0.9, r * 3.2, PINK, x, y + h + 1, z, 14);
-    sphere(g, 0.35, GOLD, x, y + h + 1 + r * 3.2 + 0.3, z, 6);
+    spire(g, x, y + h + 1, z, r, r * 3.4, PINK);
     colliders.push({ x, z, r: r + 0.4, h: y + h });
     // Tall arched windows, lit from within.
     for (let k = 0; k < 3; k++) archPanel(glow, 1.2, 2.4, '#ffd9a8', x, y + 6 + k * 6, z + r + 0.05, 0, 0.08, true);
@@ -57,8 +94,8 @@ export function buildCastle(solid: THREE.Material, glowMat: THREE.Material): Cas
   for (const s of [-1, 1]) {
     const x = K.x + s * 5.5;
     cyl(g, 2, 2.2, 24, IVORY, x, y, front + 1, 12);
-    cone(g, 2.6, 8, ROSE, x, y + 24, front + 1, 12);
-    sphere(g, 0.3, GOLD, x, y + 32.3, front + 1, 6);
+    cyl(g, 2.4, 2.2, 0.6, STONE, x, y + 24, front + 1, 12);
+    spire(g, x, y + 24.6, front + 1, 2.1, 8.5, ROSE);
     colliders.push({ x, z: front + 1, r: 2.2, h: y + 24 });
   }
   // The great doors under a pointed arch, and rows of glowing windows along the front.
@@ -127,8 +164,7 @@ export function buildCastle(solid: THREE.Material, glowMat: THREE.Material): Cas
     g.add(new THREE.ConeGeometry(1.2, 2.2, 12).rotateX(Math.PI), STONE, new THREE.Matrix4().makeTranslation(x, y + 15.9, z));
     cyl(g, 1.2, 1.2, 4, IVORY, x, y + 17, z, 12);
     for (let k = 0; k < 4; k++) { const a = (k / 4) * Math.PI * 2 + Math.PI / 4; archPanel(glow, 0.45, 1, '#ffd9a8', x + Math.sin(a) * 1.21, y + 18.2, z + Math.cos(a) * 1.21, a, 0.04, true); }
-    cone(g, 1.5, 4.2, ROSE, x, y + 21, z, 12);
-    sphere(g, 0.22, GOLD, x, y + 25.3, z, 6);
+    spire(g, x, y + 21, z, 1.25, 4.6, ROSE, false);
   }
   // The great tower: a gallery round it, lit lancets up its height, dormers on its spire.
   cyl(g, 6.4, 6, 0.6, STONE, K.x, y + 30, K.z - 2, 20);
@@ -146,9 +182,36 @@ export function buildCastle(solid: THREE.Material, glowMat: THREE.Material): Cas
     const x = K.x + dx * K.w / 2, z = K.z + dz * K.d / 2;
     for (let k = 0; k < 16; k++) { const a = (k / 16) * Math.PI * 2; box(g, 0.45, 0.8, 0.5, STONE, x + Math.cos(a) * (r + 0.3), y + h - 0.8, z + Math.sin(a) * (r + 0.3), Math.PI / 2 - a); }
     for (let k = 0; k < 3; k++) { const a = (k / 3) * Math.PI * 2 + (dx > 0 ? 0.5 : 2.6); box(g, 0.9, 1.2, 0.9, IVORY, x + Math.cos(a) * r * 0.7, y + h + 2.2, z + Math.sin(a) * r * 0.7, Math.PI / 2 - a); cone(g, 0.75, 1, PINK, x + Math.cos(a) * r * 0.7, y + h + 3.4, z + Math.sin(a) * r * 0.7, 4, Math.PI / 4 - a); }
-    const top = y + h + 1 + r * 3.2;
-    cyl(g, 0.06, 0.06, 3, GOLD, x, top + 0.6, z, 4);
-    g.add(new THREE.ConeGeometry(0.6, 2.4, 3).rotateZ(-Math.PI / 2), ROSE, new THREE.Matrix4().makeScale(1, 1, 0.1).setPosition(x + 1.2, top + 3.2, z));
+  }
+  // ── The wings: lower halls either side of the keep, stepped gables to the front, a stair turret each ──
+  for (const s of [-1, 1]) {
+    const wx = K.x + s * (K.w / 2 + 8), ww = 12, wd = 16, wh = 12, wz = K.z + 2;
+    box(g, ww, wh, wd, IVORY, wx, y, wz);
+    box(g, ww + 0.5, 0.35, wd + 0.5, STONE, wx, y + 6, wz);
+    gable(g, wd + 0.8, ww + 1, 7, PINK, wx, y + wh, wz, Math.PI / 2);
+    // The stepped gable to the courtyard, its windows in two rows with tracery.
+    for (let k = 0; k < 5; k++) box(g, ww - k * 2.3, 1.4, 0.8, IVORY, wx, y + wh + k * 1.4, wz + wd / 2 - 0.2);
+    for (let k = 0; k < 5; k++) sphere(g, 0.16, GOLD, wx - (ww - k * 2.3) / 2 + 0.1, y + wh + k * 1.4 + 1.55, wz + wd / 2 - 0.2, 5);
+    for (const row of [2.2, 7.6]) for (const dx of [-3.2, 0, 3.2]) {
+      archPanel(glow, 1.3, 2.8, '#ffd9a8', wx + dx, y + row, wz + wd / 2 + 0.03, 0, 0.05, true);
+      box(g, 0.08, 2.9, 0.08, STONE, wx + dx, y + row, wz + wd / 2 + 0.1);
+      box(g, 1.8, 0.16, 0.3, STONE, wx + dx, y + row - 0.12, wz + wd / 2 + 0.15);
+    }
+    archPanel(glow, 1.4, 1.8, '#ffc4dc', wx, y + wh + 2, wz + wd / 2 + 0.2, 0, 0.04, true);
+    // Its round stair turret on the outer corner, windows winding up it.
+    const tx = wx + s * (ww / 2), tz = wz + wd / 2 - 1.5;
+    cyl(g, 1.8, 2, 20, IVORY, tx, y, tz, 12);
+    for (let k = 0; k < 6; k++) { const a = k * 0.9; archPanel(glow, 0.4, 0.9, '#ffd9a8', tx + Math.sin(a) * 1.82, y + 3 + k * 2.6, tz + Math.cos(a) * 1.82, a, 0.03, true); }
+    spire(g, tx, y + 20, tz, 1.8, 7.5, ROSE);
+    for (let x = -ww / 2 + 2; x <= ww / 2 - 2; x += 4) for (const z of [wz - wd / 2 + 2.5, wz, wz + wd / 2 - 2.5]) colliders.push({ x: wx + x, z, r: 2.8, h: y + wh });
+    colliders.push({ x: tx, z: tz, r: 2.1, h: y + 20 });
+  }
+  // ── Curtain walls: crenellated walls closing the back, from tower to wing ──
+  for (const s of [-1, 1]) {
+    const x0 = K.x + s * (K.w / 2), z0 = K.z - K.d / 2, x1 = K.x + s * (K.w / 2 + 8), z1 = K.z + 2 - 8;
+    const len = Math.hypot(x1 - x0, z1 - z0), mx = (x0 + x1) / 2, mz = (z0 + z1) / 2, ang = Math.atan2(x1 - x0, z1 - z0);
+    g.add(new THREE.BoxGeometry(1.2, 9, len).translate(0, 4.5, 0), IVORY, M(mx, y, mz, ang));
+    for (let k = 0; k < Math.floor(len / 1.4); k++) { const t = (k + 0.5) / Math.floor(len / 1.4) - 0.5; box(g, 1.3, 0.9, 0.7, IVORY, mx + Math.sin(ang) * t * len, y + 9, mz + Math.cos(ang) * t * len, ang); }
   }
   // ── The grand stair: balustrades of little columns, urns of roses at the foot, heart-shaped topiaries ──
   for (const s of [-1, 1]) {
