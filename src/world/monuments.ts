@@ -2532,6 +2532,430 @@ const skyisles: Monument = (c, o) => {
   o.height = T.y + 60;
 };
 
+// ───────────────────────────── Bagh-e-Noor ─────────────────────────────
+
+const TAJ = '#fbf7ee', TAJ_SHADE = '#e6dccb', SANDSTONE = '#b5552e', SAND_LIGHT = '#c8704a';
+const INLAY_G = '#2f7a5a', INLAY_R = '#b83a3a', INLAY_K = '#2a2622', GILT = '#d4af37';
+
+/** Trace a pointed Mughal arch into a path: `ow` wide at cx, from its sill y0 up the jambs to the springing `sh`, then to the apex `ah`. */
+function archPath(p: THREE.Path, ow: number, y0: number, sh: number, ah: number, cx = 0): THREE.Path {
+  const k = sh + (ah - sh) * 0.8;
+  p.moveTo(cx - ow / 2, y0); p.lineTo(cx + ow / 2, y0); p.lineTo(cx + ow / 2, sh);
+  p.quadraticCurveTo(cx + ow / 2, k, cx, ah); p.quadraticCurveTo(cx - ow / 2, k, cx - ow / 2, sh);
+  p.lineTo(cx - ow / 2, y0);
+  return p;
+}
+
+/** Points along a pointed arch, springing to springing, on the plane z (f: how full its shoulders are). */
+function archLine(ow: number, sh: number, ah: number, z: number, cx = 0, n = 10, f = 0.8): THREE.Vector3[] {
+  const k = sh + (ah - sh) * f, q = (t: number, a: number, b: number, e: number) => (1 - t) * (1 - t) * a + 2 * (1 - t) * t * b + t * t * e;
+  const half: THREE.Vector3[] = [];
+  for (let i = 0; i <= n; i++) { const t = i / n; half.push(new THREE.Vector3(cx + q(t, -ow / 2, -ow / 2, 0), q(t, sh, k, ah), z)); }
+  return [...half, ...half.slice(0, -1).reverse().map((p) => new THREE.Vector3(2 * cx - p.x, p.y, z))];
+}
+
+/** A moulding (a round bead) along a line of points. */
+function moulding(g: Ctx['g'], pts: THREE.Vector3[], r: number, col: string): void {
+  g.add(new THREE.TubeGeometry(new THREE.CatmullRomCurve3(pts), pts.length * 2, r, 4), col);
+}
+
+/** An arch moulding with its jambs, from the ground line y0 on both sides. */
+function archBead(g: Ctx['g'], ow: number, y0: number, sh: number, ah: number, z: number, r: number, col: string, cx = 0, f = 0.8): void {
+  moulding(g, [new THREE.Vector3(cx - ow / 2, y0, z), ...archLine(ow, sh, ah, z, cx, 10, f), new THREE.Vector3(cx + ow / 2, y0, z)], r, col);
+}
+
+/** Extrude a facing shape `depth` thick, centred on z = 0. */
+function slab(sh: THREE.Shape, depth: number): THREE.ExtrudeGeometry {
+  const g = new THREE.ExtrudeGeometry(sh, { depth, bevelEnabled: false, curveSegments: 8 });
+  g.translate(0, 0, -depth / 2);
+  return g;
+}
+
+/** A wall 2·hw wide and h high (a raised middle 2·pw wide up to ph, if ph > h) with an arch `ow` wide opening from the ground through it. */
+function iwanShape(hw: number, h: number, pw: number, ph: number, ow: number, sh: number, ah: number): THREE.Shape {
+  const s = new THREE.Shape(), k = sh + (ah - sh) * 0.8;
+  s.moveTo(-hw, 0); s.lineTo(-ow / 2, 0); s.lineTo(-ow / 2, sh);
+  s.quadraticCurveTo(-ow / 2, k, 0, ah); s.quadraticCurveTo(ow / 2, k, ow / 2, sh);
+  s.lineTo(ow / 2, 0); s.lineTo(hw, 0); s.lineTo(hw, h);
+  if (ph > h) { s.lineTo(pw, h); s.lineTo(pw, ph); s.lineTo(-pw, ph); s.lineTo(-pw, h); }
+  s.lineTo(-hw, h); s.lineTo(-hw, 0);
+  return s;
+}
+
+/** A band of black-marble calligraphy set in white, `len` along x (or up, if `up`) and h across, bottom centre (x, y) on the plane z. */
+function callig(c: Ctx, x: number, y: number, z: number, len: number, h: number, up: boolean, rnd: () => number): void {
+  const rot = up ? Math.PI / 2 : 0;
+  const P = (t: number, v: number): [number, number] => (up ? [x + h / 2 - v, y + t] : [x - len / 2 + t, y + v]);
+  if (up) box(c.g, h, len, 0.05, TAJ, x, y, z); else box(c.g, len, h, 0.05, TAJ, x, y, z);
+  const put = (geo: THREE.BufferGeometry, t: number, v: number, rz = 0) => { const [px, py] = P(t, v); c.g.add(geo, INLAY_K, M(px, py, z + 0.04, 0, 1, 1, 1, 0, rot + rz)); };
+  put(new THREE.BoxGeometry(len, 0.04, 0.03), len / 2, 0.06);
+  put(new THREE.BoxGeometry(len, 0.04, 0.03), len / 2, h - 0.06);
+  for (let t = 0.2 * h; t < len - 0.2 * h;) {
+    const r = rnd();
+    if (r < 0.45) { const s = h * (0.3 + rnd() * 0.42); put(new THREE.BoxGeometry(0.045 * h + 0.01, s, 0.03), t, 0.16 * h + s / 2, (rnd() - 0.5) * 0.25); t += 0.13 * h; }
+    else if (r < 0.8) { const rr = h * (0.09 + rnd() * 0.08); put(new THREE.TorusGeometry(rr, 0.022 * h + 0.005, 3, 10, Math.PI * 1.25), t + rr, 0.18 * h + rr, Math.PI * 0.95); t += rr * 2 + 0.07 * h; }
+    else { put(new THREE.BoxGeometry(0.05 * h, 0.05 * h, 0.03), t, (0.68 + rnd() * 0.12) * h, Math.PI / 4); t += 0.1 * h; }
+  }
+}
+
+/** A flowering plant in pietra dura — or, given one colour, carved in relief: stem, leaves, a five-petalled flower; bottom at (x, y) on the plane z. */
+function inlayFlower(c: Ctx, x: number, y: number, z: number, s: number, carved?: string): void {
+  const stem = carved ?? INLAY_G, petal = carved ?? INLAY_R;
+  c.g.add(new THREE.BoxGeometry(0.04 * s, 0.9 * s, 0.03), stem, M(x, y + 0.45 * s, z));
+  for (const [sx, h] of [[-1, 0.3], [1, 0.5], [-1, 0.65]] as const) c.g.add(new THREE.SphereGeometry(0.16 * s, 6, 4), stem, M(x + sx * 0.13 * s, y + h * s, z, 0, 1, 0.4, 0.15, 0, sx * 0.6));
+  for (let k = 0; k < 5; k++) { const a = (k / 5) * Math.PI * 2 + Math.PI / 2; c.g.add(new THREE.SphereGeometry(0.1 * s, 6, 4), petal, M(x + Math.cos(a) * 0.12 * s, y + 0.98 * s + Math.sin(a) * 0.12 * s, z, 0, 0.55, 1, 0.15, 0, a - Math.PI / 2)); }
+  sphere(c.g, 0.05 * s, carved ?? GILT, x, y + 0.98 * s, z + 0.02, 5);
+}
+
+/** A pietra-dura rosette: a green roundel ringed in black, eight red petals, a gilt heart; on the plane z. */
+function rosette(c: Ctx, x: number, y: number, z: number, r: number): void {
+  c.g.add(new THREE.CylinderGeometry(r, r, 0.04, 20).rotateX(Math.PI / 2), INLAY_G, M(x, y, z + 0.02));
+  c.g.add(new THREE.TorusGeometry(r, r * 0.07, 3, 24), INLAY_K, M(x, y, z + 0.04));
+  for (let k = 0; k < 8; k++) { const a = (k / 8) * Math.PI * 2; c.g.add(new THREE.SphereGeometry(r * 0.3, 6, 4), INLAY_R, M(x + Math.cos(a) * r * 0.5, y + Math.sin(a) * r * 0.5, z + 0.05, 0, 0.45, 1, 0.12, 0, a - Math.PI / 2)); }
+  sphere(c.g, r * 0.16, GILT, x, y, z + 0.06, 6);
+}
+
+/** A jali: a lit pointed window behind a lattice of marble octagons, beaded round; bottom centre (x, y) on the plane z. */
+function jali(c: Ctx, x: number, y: number, z: number, w: number, h: number): void {
+  archPanel(c.glow, w, h, '#ffcf9a', x, y, z, 0, 0.04, true);
+  const n = 5, cell = w / n, r = w / 2;
+  for (let i = 0; i < n; i++) for (let j = 0; (j + 0.5) * cell < h; j++) {
+    const px = x - r + cell * (i + 0.5), py = y + cell * (j + 0.5), up = py - (y + h - r);
+    if (up > 0 && Math.hypot(px - x, up) > r * 0.8) continue;
+    c.g.add(new THREE.TorusGeometry(cell * 0.4, cell * 0.08, 3, 8), TAJ, M(px, py, z + 0.07, 0, 1, 1, 1, 0, Math.PI / 8));
+  }
+  archBead(c.g, w + 0.12, y, y + h - r, y + h + r * 0.15, z + 0.08, 0.06, TAJ_SHADE, x, 0.7);
+}
+
+/** A Mughal parapet: little blind-arched merlons (kanguras) from x0 to x1 at height y, on the wall face z. */
+function kanguras(c: Ctx, x0: number, x1: number, y: number, z: number, col: string): void {
+  const n = Math.max(1, Math.round((x1 - x0) / 0.9));
+  for (let k = 0; k < n; k++) archPanel(c.g, 0.62, 0.55, col, x0 + ((x1 - x0) * (k + 0.5)) / n, y, z - 0.16, 0, 0.16, true);
+  box(c.g, x1 - x0, 0.12, 0.3, col, (x0 + x1) / 2, y - 0.06, z - 0.15);
+}
+
+/** A bulbous Mughal dome, r at its widest, rising from y, with a ring of lotus petals round its crown. */
+function bulb(c: Ctx, x: number, y: number, z: number, r: number, col: string, seg = 20): void {
+  const prof = [[0.001, 0], [0.9, 0], [1, 0.22], [1.06, 0.5], [1.0, 0.8], [0.82, 1.08], [0.55, 1.32], [0.28, 1.5], [0.1, 1.6], [0.001, 1.64]];
+  c.g.add(new THREE.LatheGeometry(prof.map(([a, b]) => new THREE.Vector2(a * r, b * r)), seg), col, M(x, y, z));
+  for (let k = 0; k < 12; k++) { const a = (k / 12) * Math.PI * 2; c.g.add(new THREE.SphereGeometry(r * 0.1, 6, 4), col, M(x + Math.cos(a) * r * 0.3, y + r * 1.47, z + Math.sin(a) * r * 0.3, Math.PI / 2 - a, 1, 1.9, 0.4)); }
+}
+
+/** A chhatri: an octagonal kiosk of eight slim columns, a sloping chhajja eave, a lotus-crowned bulb and a gilt finial; r its radius. */
+function chhatri8(c: Ctx, x: number, y: number, z: number, r: number, col = TAJ, domeCol = TAJ): void {
+  cyl(c.g, r * 1.05, r * 1.12, r * 0.22, col, x, y, z, 8);
+  for (let k = 0; k < 8; k++) { const a = (k / 8) * Math.PI * 2 + Math.PI / 8; cyl(c.g, r * 0.07, r * 0.08, r * 1.05, col, x + Math.cos(a) * r * 0.86, y + r * 0.22, z + Math.sin(a) * r * 0.86, 6); }
+  cyl(c.g, r * 0.95, r * 0.95, r * 0.2, col, x, y + r * 1.27, z, 8);
+  cyl(c.g, r * 0.95, r * 1.3, r * 0.16, col, x, y + r * 1.3, z, 8);
+  cyl(c.g, r * 0.72, r * 0.72, r * 0.2, domeCol, x, y + r * 1.47, z, 12);
+  bulb(c, x, y + r * 1.67, z, r * 0.7, domeCol, 12);
+  cone(c.g, r * 0.06, r * 0.5, GILT, x, y + r * 1.67 + r * 0.7 * 1.6, z, 5);
+}
+
+/** A guldasta: a slender engaged pinnacle up a corner, ringed, ending above the parapet in a lotus bud. */
+function guldasta(c: Ctx, x: number, z: number, y0: number, h: number, r: number, col = TAJ): void {
+  cyl(c.g, r, r * 1.1, h, col, x, y0, z, 8);
+  for (let y = y0 + 2; y < y0 + h - 1; y += 3) cyl(c.g, r * 1.25, r * 1.25, 0.2, TAJ_SHADE, x, y, z, 8);
+  cyl(c.g, r * 1.5, r * 1.2, 0.3, col, x, y0 + h, z, 8);
+  c.g.add(new THREE.LatheGeometry([[0.001, 0], [r * 1.1, 0.2], [r * 1.2, r * 1.5], [r * 0.6, r * 2.6], [0.001, r * 3.2]].map(([a, b]) => new THREE.Vector2(a, b)), 10), TAJ, M(x, y0 + h + 0.3, z));
+  cone(c.g, r * 0.2, r * 1.4, GILT, x, y0 + h + 0.3 + r * 3.1, z, 5);
+}
+
+/** A minaret: an octagonal foot, a shaft tapering in three stages lined in black inlay, a bracketed balcony on each, a chhatri on top. */
+function minaret(c: Ctx, x: number, y: number, z: number, h: number, r: number): void {
+  surf(c, SURF.marble, () => cyl(c.g, r * 1.55, r * 1.65, 2.4, TAJ, x, y, z, 8));
+  cyl(c.g, r * 1.75, r * 1.75, 0.3, TAJ_SHADE, x, y + 2.4, z, 8);
+  const stage = (h - 2.7) / 3;
+  let yy = y + 2.7, rr = r * 1.3;
+  for (let s = 0; s < 3; s++) {
+    const r2 = rr * 0.88, base = yy, bot = rr;
+    surf(c, SURF.marble, () => cyl(c.g, r2, bot, stage, TAJ, x, base, z, 16));
+    // Black inlay between the blocks: lines up the shaft, rings round it.
+    for (let k = 0; k < 8; k++) { const a = (k / 8) * Math.PI * 2; rod(c.g, new THREE.Vector3(x + Math.cos(a) * (rr + 0.01), yy, z + Math.sin(a) * (rr + 0.01)), new THREE.Vector3(x + Math.cos(a) * (r2 + 0.01), yy + stage, z + Math.sin(a) * (r2 + 0.01)), 0.035, INLAY_K, 3); }
+    for (let q = 1; q < 4; q++) { const t = q / 4, rq = rr + (r2 - rr) * t + 0.015; c.g.add(new THREE.CylinderGeometry(rq, rq, 0.07, 16, 1, true), INLAY_K, M(x, yy + stage * t, z)); }
+    yy += stage;
+    // The balcony: corbels under a ring floor, a low parapet of posts round it.
+    const rb = r2 + 0.75;
+    for (let k = 0; k < 12; k++) { const a = (k / 12) * Math.PI * 2; c.g.add(new THREE.BoxGeometry(0.22, 0.7, 0.8), TAJ, M(x + Math.cos(a) * (r2 + 0.35), yy - 0.45, z + Math.sin(a) * (r2 + 0.35), Math.PI / 2 - a)); }
+    cyl(c.g, rb, rb - 0.2, 0.3, TAJ, x, yy - 0.1, z, 16);
+    c.g.add(new THREE.CylinderGeometry(rb, rb, 0.2, 16, 1, true), TAJ, M(x, yy + 1.0, z));
+    for (let k = 0; k < 16; k++) { const a = (k / 16) * Math.PI * 2; cyl(c.g, 0.06, 0.06, 0.9, TAJ_SHADE, x + Math.cos(a) * rb, yy + 0.2, z + Math.sin(a) * rb, 4); }
+    rr = r2 * 0.97;
+  }
+  chhatri8(c, x, yy + 0.2, z, r * 1.6);
+}
+
+/**
+ * One main face of the tomb, on the plane z = s: a marble facing `d` proud of the core with the great
+ * iwan opening through it and two stacked niches either side, the pishtaq's frame standing prouder
+ * still round the iwan — calligraphy round the arch, rosettes in the spandrels, a jali and a door
+ * at the back of the iwan under a muqarnas hood, carved flowers along the dado, kanguras along the top.
+ */
+function tajFace(c: Ctx, s: number, hw: number, d: number, wh: number, rnd: () => number): void {
+  const PW = 8.3, PH = wh + 4, OW = 10, SH = 13, AH = 20;
+  const NICHES = [[2.2, 6.5, 8.2], [11, 16.5, 18.2]] as const;
+  const sh = iwanShape(hw, wh, PW, PH, OW, SH, AH);
+  for (const sx of [-1, 1]) for (const [y0, s1, a1] of NICHES) sh.holes.push(archPath(new THREE.Path(), 2, y0, s1, a1, sx * 9.75));
+  const f = slab(sh, d); f.translate(0, 0, s + d / 2);
+  surf(c, SURF.marble, () => c.g.add(f, TAJ));
+  const p = slab(iwanShape(PW, PH, 0, 0, OW, SH, AH), 0.3); p.translate(0, 0, s + d + 0.15);
+  surf(c, SURF.marble, () => c.g.add(p, TAJ));
+  const fz = s + d + 0.3;
+  // The arch: a bead round it, a black line outside that; the calligraphy framing it; rosettes; a frieze above.
+  archBead(c.g, OW + 0.3, 0, SH, AH + 0.2, fz, 0.14, TAJ_SHADE);
+  moulding(c.g, archLine(OW + 1.2, SH, AH + 0.8, fz + 0.01), 0.05, INLAY_K);
+  for (const sx of [-1, 1]) callig(c, sx * 6.5, 0.6, fz, 21.7, 0.9, true, rnd);
+  callig(c, 0, 21.4, fz, 13.9, 0.9, false, rnd);
+  for (const sx of [-1, 1]) rosette(c, sx * 4.5, 19.3, fz, 0.75);
+  for (let x = -6; x <= 6; x += 2) rosette(c, x, 23.9, fz, 0.5);
+  for (const sx of [-1, 1]) box(c.g, 0.08, 25.2, 0.04, INLAY_K, sx * 7.9, 0.4, fz + 0.02);
+  box(c.g, 15.88, 0.08, 0.04, INLAY_K, 0, 25.6, fz + 0.02);
+  kanguras(c, -PW, PW, PH, fz, TAJ);
+  for (const sx of [-1, 1]) guldasta(c, sx * PW, s + d + 0.15, 0, PH, 0.35);
+  // At the back of the iwan: the door, niches beside it, the jali over it, the muqarnas hood.
+  archPanel(c.g, 3.6, 5.6, '#4a3222', 0, 0, s, 0, 0.1, true);
+  for (let r = 0; r < 5; r++) for (let q = -1; q <= 1; q++) sphere(c.g, 0.06, GILT, q * 0.9, 0.8 + r * 1.0, s + 0.12, 4);
+  archBead(c.g, 3.9, 0, 3.8, 5.9, s + 0.12, 0.1, TAJ_SHADE, 0, 0.7);
+  for (const sx of [-1, 1]) for (const y of [0.8, 4.2]) { archPanel(c.g, 1.4, 2.6, TAJ_SHADE, sx * 3.4, y, s, 0, 0.05, true); inlayFlower(c, sx * 3.4, y + 0.3, s + 0.07, 1.6, TAJ); }
+  jali(c, 0, 7, s, 3.4, 4.6);
+  c.g.frame(0, SH + 0.1, s, 0, 1.6, () => muqarnas(c, 0, 0, 0, 5.6, 4, [TAJ, TAJ_SHADE]));
+  // Either side of the pishtaq: the stacked niches (a jali in the upper, a carved plant in the lower), a dado of carved flowers.
+  for (const sx of [-1, 1]) {
+    const nx = sx * 9.75;
+    jali(c, nx, 12.2, s, 1.2, 3.2);
+    inlayFlower(c, nx, 2.8, s + 0.02, 2.4, TAJ_SHADE);
+    for (const [y0, s1, a1] of NICHES) archBead(c.g, 2.2, y0, s1, a1 + 0.1, s + d + 0.02, 0.07, TAJ_SHADE, nx);
+    inlayFlower(c, nx, 0.4, s + d + 0.02, 1.4, TAJ_SHADE);
+    box(c.g, 3.5, 0.08, 0.06, INLAY_G, sx * 10.05, 2.0, s + d + 0.02);
+    kanguras(c, Math.min(sx * PW, sx * hw), Math.max(sx * PW, sx * hw), wh, s + d, TAJ);
+    guldasta(c, sx * hw, s + d, 0, wh, 0.45);
+  }
+}
+
+/** A chamfered face of the tomb on the plane z = b: two great niches stacked, each with a jali under a muqarnas hood. */
+function tajChamfer(c: Ctx, b: number, hw: number, d: number, wh: number): void {
+  const NICHES = [[2.2, 7.8, 10.4], [12, 17.6, 20.2]] as const;
+  const sh = new THREE.Shape();
+  sh.moveTo(-hw, 0); sh.lineTo(hw, 0); sh.lineTo(hw, wh); sh.lineTo(-hw, wh); sh.lineTo(-hw, 0);
+  for (const [y0, s1, a1] of NICHES) sh.holes.push(archPath(new THREE.Path(), 6, y0, s1, a1));
+  const f = slab(sh, d); f.translate(0, 0, b + d / 2);
+  surf(c, SURF.marble, () => c.g.add(f, TAJ));
+  const fz = b + d;
+  for (const [y0, s1, a1] of NICHES) {
+    archBead(c.g, 6.3, y0, s1, a1 + 0.15, fz + 0.02, 0.1, TAJ_SHADE);
+    jali(c, 0, y0 + 1.4, b, 2.4, 3.8);
+    c.g.frame(0, s1 + 0.1, b, 0, 1.1, () => muqarnas(c, 0, 0, 0, 5, 3, [TAJ, TAJ_SHADE]));
+    for (const sx of [-1, 1]) { rosette(c, sx * 3.7, a1 - 0.6, fz, 0.55); box(c.g, 0.06, a1 - y0 + 0.6, 0.04, INLAY_K, sx * 3.55, y0 - 0.25, fz + 0.02); }
+    box(c.g, 7.16, 0.06, 0.04, INLAY_K, 0, a1 + 0.35, fz + 0.02);
+  }
+  for (const x of [-2.4, 0, 2.4]) inlayFlower(c, x, 0.3, fz + 0.02, 1.5, TAJ_SHADE);
+  kanguras(c, -hw, hw, wh, fz, TAJ);
+}
+
+/** A red sandstone hall (the mosque, or its twin the jawab) facing +z: an arcade under three marble domes, a pishtaq in the middle, towers at the corners. */
+function sandstoneHall(c: Ctx, rnd: () => number): void {
+  const L = 26, H = 10;
+  surf(c, SURF.ashlar, () => box(c.g, L, H, 6, SANDSTONE, 0, 0, -1.5));
+  surf(c, SURF.flagstone, () => box(c.g, L, 0.22, 2.6, SAND_LIGHT, 0, 0, 2.7));
+  box(c.g, L, 0.4, 2.8, SANDSTONE, 0, H - 0.4, 2.3); // the veranda's ceiling
+  let xs: number[] = [];
+  c.g.frame(0, 0, 3.5, 0, 1, () => { xs = arcade(c, L, H, 1, 5.2, 3.2, 5, SANDSTONE); });
+  for (const x of xs) {
+    archBead(c.g, 3.5, 0.2, 5, 5 + 3.2 * 0.72 + 0.15, 4.02, 0.1, TAJ, x);
+    archPanel(c.g, 1.8, 3.6, '#8e3f22', x, 0.22, 1.5, 0, 0.06, true); // a niche on the back wall
+    cyl(c.g, 0.02, 0.02, H - 0.4 - 4.2, '#3a2a22', x, 4.2, 2.3, 4);
+    sphere(c.glow, 0.24, '#ffcf7a', x, 4.0, 2.3, 6, 1.3);
+  }
+  box(c.g, L, 0.18, 0.08, TAJ, 0, H - 0.8, 4.02);
+  kanguras(c, -L / 2, L / 2, H, 4, TAJ);
+  // The pishtaq, framed in white marble and calligraphy.
+  const pg = slab(iwanShape(4.4, 13.5, 0, 0, 5.4, 7, 11), 0.8); pg.translate(0, 0, 4.4);
+  surf(c, SURF.ashlar, () => c.g.add(pg, SANDSTONE));
+  archBead(c.g, 5.7, 0.2, 7, 11.2, 4.82, 0.14, TAJ);
+  for (const sx of [-1, 1]) callig(c, sx * 3.6, 0.6, 4.82, 12.1, 0.7, true, rnd);
+  callig(c, 0, 11.9, 4.82, 7.9, 0.7, false, rnd);
+  for (const sx of [-1, 1]) { rosette(c, sx * 2.9, 10.9, 4.82, 0.45); guldasta(c, sx * 4.4, 4.8, 0, 13.5, 0.3); }
+  kanguras(c, -4.4, 4.4, 13.5, 4.8, TAJ);
+  // Three marble domes on drums, a crescent on the middle one.
+  for (const [x, r] of [[-8.5, 2.6], [0, 3.4], [8.5, 2.6]] as const) {
+    cyl(c.g, r * 0.92, r * 0.92, 1.6, TAJ, x, H, -1.5, 20);
+    c.g.add(new THREE.CylinderGeometry(r * 0.93, r * 0.93, 0.12, 20, 1, true), INLAY_K, M(x, H + 0.8, -1.5));
+    bulb(c, x, H + 1.6, -1.5, r, TAJ, 24);
+    if (x === 0) crescent(c, x, H + 1.6 + r * 1.6, -1.5, 0.9); else cone(c.g, 0.1, 1, GILT, x, H + 1.6 + r * 1.6, -1.5, 5);
+  }
+  // Octagonal towers at the corners, each crowned with a chhatri.
+  for (const sx of [-1, 1]) for (const z of [-4.5, 4]) {
+    cyl(c.g, 0.85, 0.95, H + 2, SANDSTONE, sx * 13.2, 0, z, 8);
+    for (const y of [4, 8]) cyl(c.g, 1, 1, 0.2, TAJ, sx * 13.2, y, z, 8);
+    chhatri8(c, sx * 13.2, H + 2, z, 1.1, SANDSTONE, TAJ);
+  }
+}
+
+/** One face of the great gate, on the plane z0: the pishtaq with its iwan, stacked niches either side, eleven chhatris on top, a corner tower each end. */
+function gateFace(c: Ctx, z0: number, gw: number, gh: number, rnd: () => number): void {
+  const p = slab(iwanShape(8, gh + 2, 0, 0, 10, 9.5, 15.5), 1.2); p.translate(0, 0, z0 + 0.6);
+  surf(c, SURF.ashlar, () => c.g.add(p, SANDSTONE));
+  const fz = z0 + 1.22;
+  archBead(c.g, 10.3, 0, 9.5, 15.7, fz, 0.15, TAJ);
+  moulding(c.g, archLine(11.4, 9.5, 16.4, fz), 0.06, TAJ);
+  for (const sx of [-1, 1]) { callig(c, sx * 6.3, 0.6, fz, 18, 0.9, true, rnd); rosette(c, sx * 4.4, 15.6, fz, 0.8); box(c.g, 0.25, 21.4, 0.06, TAJ, sx * 7.75, 0, fz); }
+  callig(c, 0, 17.7, fz, 13.5, 0.9, false, rnd);
+  box(c.g, 15.75, 0.25, 0.06, TAJ, 0, 21.3, fz);
+  for (let k = 0; k < 11; k++) chhatri8(c, -7 + k * 1.4, gh + 2, z0 + 0.6, 0.6);
+  // At the back of the iwan: a bead round the passage, a jali above it.
+  archBead(c.g, 6.3, 0, 7, 11.2, z0 + 0.02, 0.12, TAJ);
+  jali(c, 0, 11.6, z0, 2.4, 2.4);
+  // The flanking bays: two storeys of arched niches outlined in white, string courses, a tower at the corner.
+  for (const sx of [-1, 1]) {
+    for (const y of [1, 10]) {
+      const x = sx * 12.5;
+      archPanel(c.g, 3.6, 6, '#8e3f22', x, y, z0, 0, 0.05, true);
+      archBead(c.g, 3.8, y, y + 4.2, y + 6.35, z0 + 0.06, 0.09, TAJ, x, 0.7);
+      inlayFlower(c, x, y + 0.6, z0 + 0.07, 2.2, TAJ);
+    }
+    for (const y of [9.3, gh - 0.5]) box(c.g, 9, 0.2, 0.2, TAJ, sx * 12.5, y, z0 + 0.05);
+    kanguras(c, Math.min(sx * 8, sx * gw), Math.max(sx * 8, sx * gw), gh, z0, TAJ);
+    cyl(c.g, 1.6, 1.8, gh + 2, SANDSTONE, sx * gw, 0, z0, 8);
+    for (let y = 4; y < gh; y += 4) cyl(c.g, 1.85, 1.85, 0.2, TAJ, sx * gw, y, z0, 8);
+    chhatri8(c, sx * gw, gh + 2, z0, 2.2, SANDSTONE, TAJ);
+    // The gate's great doors, folded back against the passage walls, studded.
+    box(c.g, 0.2, 6.5, 2.6, '#5a3a22', sx * 2.85, 0, z0 - 1.5);
+    for (let r = 0; r < 5; r++) for (let q = 0; q < 3; q++) sphere(c.g, 0.07, GILT, sx * 2.72, 0.8 + r * 1.2, z0 - 2.4 + q * 0.8, 4);
+  }
+}
+
+const mughal: Monument = (c, o) => {
+  const rnd = () => c.rng.next();
+  const TZ = -30, PH = 4; // the tomb's centre and the height of its marble plinth
+  const at = (lx: number, lz: number, ry: number) => ({ x: lx * Math.cos(ry) + lz * Math.sin(ry), z: TZ - lx * Math.sin(ry) + lz * Math.cos(ry) });
+  // ═══ The red sandstone forecourt, and on it the marble plinth: a blind arcade round its sides, a stair up the front. ═══
+  surf(c, SURF.flagstone, () => box(c.g, 106, 0.2, 76, SAND_LIGHT, 0, 0, TZ));
+  surf(c, SURF.marble, () => box(c.g, 70, PH, 70, TAJ, 0, 0, TZ));
+  box(c.g, 71, 0.5, 71, TAJ_SHADE, 0, 0, TZ);
+  box(c.g, 70.8, 0.35, 70.8, TAJ_SHADE, 0, PH - 0.35, TZ);
+  for (let side = 0; side < 4; side++) c.g.frame(0, 0, TZ, (side * Math.PI) / 2, 1, () => {
+    for (let k = 0; k < 20; k++) {
+      const x = -33.25 + k * 3.5;
+      if (side === 0 && Math.abs(x) < 5.5) continue;
+      archPanel(c.g, 2.4, 2.4, TAJ_SHADE, x, 0.7, 35, 0, 0.06, true);
+      inlayFlower(c, x, 0.95, 35.08, 1.2, TAJ);
+    }
+    for (const [y, col] of [[0.55, INLAY_G], [PH - 0.5, INLAY_R]] as const) box(c.g, 70.1, 0.1, 0.1, col, 0, y, 35.01);
+  });
+  for (let k = 0; k < 4; k++) {
+    const y = (k + 1) * 0.8, z = TZ + 35 + 0.55 + (3 - k) * 1.1;
+    surf(c, SURF.marble, () => box(c.g, 8.8, y, 1.1, TAJ, 0, 0, z));
+    for (const sx of [-1, 1]) box(c.g, 0.6, y + 0.6, 1.1, TAJ_SHADE, sx * 4.7, 0, z);
+    for (const x of [-2.8, 0, 2.8]) o.platforms.push({ x, z, r: 1.45, y });
+  }
+  o.platforms.push({ x: 0, z: TZ, r: 34, y: PH });
+  for (const sx of [-1, 1]) for (const sz of [-1, 1]) o.platforms.push({ x: sx * 24, z: TZ + sz * 24, r: 11, y: PH });
+  for (let side = 0; side < 4; side++) for (let t = -33; t <= 33; t += 3) {
+    if (side === 0 && Math.abs(t) < 5) continue;
+    o.colliders.push({ ...at(t, 33.1, (side * Math.PI) / 2), r: 1.9, h: PH - 0.2 });
+  }
+  for (const sx of [-1, 1]) for (const z of [6.2, 8.4]) o.colliders.push({ x: sx * 4.9, z, r: 0.6, h: PH + 0.6 });
+
+  // ═══ The tomb: a chamfered square core, faced in marble with a great iwan on each face and stacked niches on each chamfer. ═══
+  const S = 17.8, K = 6.5, WH = 22, D = 1.2;
+  const B = (2 * S - K) / Math.SQRT2, MF = S - K + D * (Math.SQRT2 - 1), CF = (K * Math.SQRT2) / 2 + D * (Math.SQRT2 - 1);
+  both(c, 0, PH, TZ, 0, () => {
+    const core = new THREE.Shape();
+    ([[-S + K, -S], [S - K, -S], [S, -S + K], [S, S - K], [S - K, S], [-S + K, S], [-S, S - K], [-S, -S + K]] as const).forEach(([x, y], i) => (i ? core.lineTo(x, y) : core.moveTo(x, y)));
+    const cg = new THREE.ExtrudeGeometry(core, { depth: WH, bevelEnabled: false });
+    cg.rotateX(-Math.PI / 2);
+    surf(c, SURF.marble, () => c.g.add(cg, TAJ));
+    for (let side = 0; side < 4; side++) both(c, 0, 0, 0, (side * Math.PI) / 2, () => {
+      tajFace(c, S, MF, D, WH, rnd);
+      both(c, 0, 0, 0, Math.PI / 4, () => tajChamfer(c, B, CF, D, WH));
+    });
+    // The drum, ringed with blind arches and black inlay, and the great bulb dome with its lotus and crescent.
+    const DR = 10.4;
+    surf(c, SURF.marble, () => cyl(c.g, DR, DR, 6.5, TAJ, 0, WH, 0, 32));
+    cyl(c.g, DR + 0.6, DR + 0.6, 0.4, TAJ_SHADE, 0, WH, 0, 32);
+    for (let k = 0; k < 24; k++) { const a = (k / 24) * Math.PI * 2; c.g.frame(Math.cos(a) * DR, WH, Math.sin(a) * DR, Math.PI / 2 - a, 1, () => archPanel(c.g, 1.4, 3.2, TAJ_SHADE, 0, 1.3, -0.05, 0, 0.1, true)); }
+    for (const y of [WH + 0.9, WH + 5.4]) c.g.add(new THREE.CylinderGeometry(DR + 0.02, DR + 0.02, 0.12, 32, 1, true), INLAY_K, M(0, y, 0));
+    cyl(c.g, DR + 0.3, DR + 0.5, 0.5, TAJ_SHADE, 0, WH + 6.5, 0, 32);
+    bulb(c, 0, WH + 7, 0, 11.2, TAJ, 40);
+    crescent(c, 0, WH + 7 + 11.2 * 1.62, 0, 3.5);
+    for (const sx of [-1, 1]) for (const sz of [-1, 1]) chhatri8(c, sx * 11.8, WH, sz * 11.8, 3);
+    // Four minarets at the plinth's corners.
+    for (const sx of [-1, 1]) for (const sz of [-1, 1]) minaret(c, sx * 31, 0, sz * 31, 36, 1.4);
+  });
+  o.colliders.push({ x: 0, z: TZ, r: 18.2, h: 60 });
+  for (let side = 0; side < 4; side++) {
+    const a = (side * Math.PI) / 2;
+    for (const lx of [-10.2, -7.1, 7.1, 10.2]) o.colliders.push({ ...at(lx, 18.6, a), r: 1.6, h: 60 });
+    for (const lx of [-3, 0, 3]) o.colliders.push({ ...at(lx, B + D - 1.7, a + Math.PI / 4), r: 1.7, h: 60 });
+  }
+  for (const sx of [-1, 1]) for (const sz of [-1, 1]) o.colliders.push({ x: sx * 31, z: TZ + sz * 31, r: 2.4, h: 50 });
+
+  // ═══ The mosque and its twin, the jawab, either side of the plinth, facing the tomb. ═══
+  for (const sx of [-1, 1]) {
+    both(c, sx * 46, 0, TZ, -sx * Math.PI / 2, () => sandstoneHall(c, rnd));
+    for (let t = -12; t <= 12; t += 4) o.colliders.push({ x: sx * 46, z: TZ + t, r: 4.8, h: 13 });
+  }
+
+  // ═══ The charbagh: four channels from a raised marble tank, walks of red sandstone, sunken beds of roses. ═══
+  waterPool(c, 0, 0, 44, 11, 11, 0, { stone: TAJ, kerb: 0.9, speed: 0.12, jets: 1, jetHeight: 2.4 });
+  o.colliders.push({ x: 0, z: 44, r: 6.2, h: 1 });
+  for (const [x, z, len, ry, jets] of [[0, 25, 27, 0, 2], [0, 68.5, 38, Math.PI, 3], [27, 44, 43, -Math.PI / 2, 0], [-27, 44, 43, Math.PI / 2, 0]] as const) {
+    waterChannel(c, x, 0, z, len, 3.2, ry, { stone: TAJ, flow: [0, -1], speed: 0.55, jets, jetHeight: 1.2 });
+  }
+  const walk = (x: number, z: number, w: number, d: number) => {
+    surf(c, SURF.flagstone, () => box(c.g, w, 0.18, d, SAND_LIGHT, x, 0, z));
+    const n = Math.floor(Math.max(w, d) / 3);
+    for (let k = 0; k < n; k++) { const t = -Math.max(w, d) / 2 + 1.5 + k * 3; cyl(c.g, 0.35, 0.35, 0.03, TAJ, x + (w > d ? t : 0), 0.18, z + (w > d ? 0 : t), 8); }
+  };
+  for (const sx of [-1, 1]) { walk(sx * 3.5, 24, 2.6, 27); walk(sx * 3.5, 70, 2.6, 39); }
+  for (const sz of [-1, 1]) for (const sx of [-1, 1]) walk(sx * 27.5, 44 + sz * 3.5, 41, 2.6);
+  // Sixteen beds: a clipped hedge round a lawn, rose bushes in rows, an orange tree in the middle.
+  const bed = (bx: number, bz: number, w: number, d: number) => {
+    box(c.g, w, 0.2, d, '#5f9a44', bx, 0, bz);
+    for (const [x, z, bw, bd] of [[bx, bz - d / 2, w, 0.4], [bx, bz + d / 2, w, 0.4], [bx - w / 2, bz, 0.4, d], [bx + w / 2, bz, 0.4, d]]) box(c.g, bw, 0.6, bd, '#2f6a32', x, 0, z);
+    for (let i = 0; i < 5; i++) for (let j = 0; j < 3; j++) {
+      if (i === 2 && j === 1) continue;
+      const x = bx - w / 2 + 1.6 + i * ((w - 3.2) / 4), z = bz - d / 2 + 1.6 + j * ((d - 3.2) / 2);
+      sphere(c.g, 0.45, '#3f7a3a', x, 0.4, z, 6, 0.8);
+      for (let f = 0; f < 4; f++) sphere(c.g, 0.13, ['#d1284a', '#ff6b8b', '#ffffff', '#ff9ab0'][(i + j + f) % 4], x + Math.cos(f * 1.6) * 0.35, 0.72, z + Math.sin(f * 1.6) * 0.35, 5);
+    }
+    tree(c.g, 'orange', bx, 0.2, bz, 1.0, rnd);
+  };
+  for (const sx of [-1, 1]) for (const bx of [16, 36]) {
+    for (const bz of [17, 32]) bed(sx * bx, bz, 17, 13);
+    for (const bz of [57, 75]) bed(sx * bx, bz, 17, 15);
+  }
+  // Cypresses down the long walk, marble lamp pillars at the tank's corners, lamps afloat on the channel.
+  for (let z = 12; z < 88; z += 6.5) {
+    if (Math.abs(z - 44) < 8) continue;
+    for (const x of [-5.8, 5.8]) tree(c.g, 'cypress', x, 0, z, 1.2, rnd);
+  }
+  for (const sx of [-1, 1]) for (const sz of [-1, 1]) {
+    const x = sx * 7.8, z = 44 + sz * 7.8;
+    box(c.g, 0.9, 0.3, 0.9, TAJ_SHADE, x, 0, z);
+    cyl(c.g, 0.25, 0.3, 1.5, TAJ, x, 0.3, z, 8);
+    for (let k = 0; k < 4; k++) { const a = (k / 4) * Math.PI * 2 + Math.PI / 4; cyl(c.g, 0.04, 0.04, 0.5, TAJ, x + Math.cos(a) * 0.22, 1.8, z + Math.sin(a) * 0.22, 4); }
+    sphere(c.glow, 0.14, '#ffcf7a', x, 2.0, z, 6, 1.4);
+    bulb(c, x, 2.3, z, 0.3, TAJ, 10);
+  }
+  for (const z of [14, 21, 30, 35, 55, 62, 72, 80]) sphere(c.glow, 0.25, '#fff0c0', 0, 0.55, z, 5);
+
+  // ═══ The great gate: red sandstone framed in white marble, an iwan on each face, a passage right through. ═══
+  const GZ = 96, GW = 17, GH = 20, GD = 12;
+  both(c, 0, 0, GZ, 0, () => {
+    const body = slab(iwanShape(GW, GH, 0, 0, 6, 7, 11), GD);
+    surf(c, SURF.ashlar, () => c.g.add(body, SANDSTONE));
+    for (const ry of [0, Math.PI]) both(c, 0, 0, 0, ry, () => gateFace(c, GD / 2, GW, GH, rnd));
+    cyl(c.g, 0.03, 0.03, 1.6, '#3a2a22', 0, 9.4, 0, 4);
+    sphere(c.glow, 0.4, '#ffcf7a', 0, 9.1, 0, 8, 1.3);
+  });
+  for (const sx of [-1, 1]) {
+    for (const x of [5.2, 9, 13]) for (const dz of [-4.5, 0, 4.5]) o.colliders.push({ x: sx * x, z: GZ + dz, r: 2.2, h: GH + 2 });
+    for (const sz of [-1, 1]) { o.colliders.push({ x: sx * 6.6, z: GZ + sz * 6.6, r: 1.5, h: GH + 2 }, { x: sx * GW, z: GZ + sz * GD / 2, r: 2.2, h: GH + 4 }); }
+  }
+  o.height = PH + WH + 7 + 11.2 * 1.64 + 7;
+};
+
 // ───────────────────────────── the rebuilt monuments ─────────────────────────────
 
-export const MONUMENTS: Partial<Record<RegionId, Monument>> = { japan, korea, china, norway, switzerland, london, newyork, indianorth, renaissance, indiasouth, islamic, vintage, middleeast, egypt, desert, indonesia, aurora, skyisles };
+export const MONUMENTS: Partial<Record<RegionId, Monument>> = { japan, korea, china, norway, switzerland, london, newyork, indianorth, renaissance, indiasouth, islamic, vintage, middleeast, egypt, desert, indonesia, aurora, skyisles, mughal };
