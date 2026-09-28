@@ -51,12 +51,6 @@ function win(c: Ctx, x: number, y: number, z: number, w = 0.9, h = 1.1, ry = 0, 
   else box(c.glow, w, h, 0.1, c.s.glow, x, y, z, ry);
 }
 
-function door(c: Ctx, w: number, d: number, arched = false, col = DOOR): void {
-  if (arched) archPanel(c.g, 1.3, 2.3, col, 0, 0, d / 2 + 0.01, 0, 0.1, true);
-  else box(c.g, 1.2, 2.1, 0.12, col, 0, 0, d / 2);
-  void w;
-}
-
 /** A square pyramid (base 2·half, height h) with flat faces, base centred on the origin. */
 export function pyramidGeometry(half: number, h: number): THREE.BufferGeometry {
   const a = [-half, 0, -half], b = [half, 0, -half], cc = [half, 0, half], d = [-half, 0, half], t = [0, h, 0];
@@ -82,7 +76,8 @@ function lanternHanging(c: Ctx, x: number, y: number, z: number, col?: string): 
 
 type HouseFn = (c: Ctx) => Footprint;
 
-const houses: Record<RegionId, HouseFn> = {
+/** The lands still built from their own builders (the others build from their tradition kit, traditions.ts). */
+const houses: Partial<Record<RegionId, HouseFn>> = {
   meadow(c) {
     // Wanderers' Meadow: a storybook land. Five kinds of fantasy house.
     const k = c.rng.next();
@@ -91,49 +86,6 @@ const houses: Record<RegionId, HouseFn> = {
     if (k < 0.7) return storyCottage(c);
     if (k < 0.85) return toadstool(c);
     return wizardTower(c);
-  },
-
-  japan(c) {
-    const wall = pick(c, c.s.walls), roof = pick(c, c.s.roofs), wood = '#4a3426';
-    const two = c.rng.chance(0.4);
-    box(c.g, 7.4, 0.5, 6.4, '#8a8078');
-    box(c.g, 6.6, 3, 5.6, wall, 0, 0.5, 0);
-    for (const x of [-3.3, 0, 3.3]) box(c.g, 0.25, 3, 0.25, wood, x, 0.5, 2.8);
-    box(c.g, 6.8, 0.25, 0.25, wood, 0, 3.3, 2.8);
-    for (let i = 0; i < 3; i++) box(c.glow, 1.4, 1.8, 0.08, c.s.glow, -2.2 + i * 2.2, 0.9, 2.84);
-    sweptRoof(c.g, 8.8, 7.8, 2.4, roof, 0, 3.5, 0);
-    if (two) {
-      box(c.g, 4.6, 2.2, 4, wall, 0, 4.6, 0);
-      box(c.glow, 1.6, 1.2, 0.08, c.s.glow, 0, 5.2, 2.02);
-      sweptRoof(c.g, 6.6, 5.8, 2, roof, 0, 6.7, 0);
-    }
-    if (c.rng.chance(0.4)) lanternHanging(c, 2.6, 3.3, 3.4, '#ffb070');
-    return { r: 4.2, h: two ? 8.7 : 6 };
-  },
-
-  korea(c) {
-    const wall = pick(c, c.s.walls), roof = pick(c, c.s.roofs), wood = '#7a4a2a';
-    box(c.g, 8, 0.9, 6, '#a8a098');
-    box(c.g, 7, 2.8, 5, wall, 0, 0.9, 0);
-    for (const x of [-3.5, -1.2, 1.2, 3.5]) box(c.g, 0.3, 2.8, 0.3, wood, x, 0.9, 2.5);
-    box(c.g, 7.2, 0.3, 0.3, wood, 0, 3.4, 2.5);
-    for (const x of [-2.35, 0, 2.35]) box(c.glow, 1.3, 1.5, 0.08, c.s.glow, x, 1.4, 2.54);
-    sweptRoof(c.g, 10, 8, 2.6, roof, 0, 3.7, 0, 0, 0.5);
-    return { r: 4.6, h: 6.3 };
-  },
-
-  china(c) {
-    const roof = pick(c, c.s.roofs), red = '#b3262a';
-    box(c.g, 8, 0.6, 7, '#cfc8b8');
-    box(c.g, 6.6, 3.2, 5.6, '#f2e6cc', 0, 0.6, 0);
-    for (const x of [-3.3, -1.1, 1.1, 3.3]) cyl(c.g, 0.2, 0.2, 3.2, red, x, 0.6, 3, 8);
-    box(c.g, 7.2, 0.4, 0.4, red, 0, 3.6, 3);
-    box(c.glow, 1.6, 2, 0.08, c.s.glow, -1.9, 1, 2.84);
-    box(c.glow, 1.6, 2, 0.08, c.s.glow, 1.9, 1, 2.84);
-    sweptRoof(c.g, 9.4, 8.2, 2.4, roof, 0, 3.8, 0, 0, 0.45);
-    lanternHanging(c, -2.2, 3.6, 3.4, '#ff4a2a');
-    lanternHanging(c, 2.2, 3.6, 3.4, '#ff4a2a');
-    return { r: 4.4, h: 6.2 };
   },
 
   norway(c) {
@@ -168,162 +120,6 @@ const houses: Record<RegionId, HouseFn> = {
   vintage(c) {
     // A Queen Anne "Painted Lady".
     return compose(c, FACADES.vintage, pick(c, ['#5a8ab5', '#e07a5f', '#6ab58a', '#d9467a']));
-  },
-
-  islamic(c) {
-    const wall = pick(c, c.s.walls), trim = pick(c, c.s.trims);
-    const w = c.rng.range(7, 10), d = c.rng.range(7, 10), h = c.rng.range(4, 7);
-    box(c.g, w, h, d, wall);
-    box(c.g, w + 0.2, 0.5, d + 0.2, trim, 0, h, 0);
-    archPanel(c.g, 1.6, 2.8, trim, 0, 0, d / 2 + 0.01, 0, 0.1, true);
-    for (const x of [-w / 3, w / 3]) win(c, x, 1.4, d / 2 + 0.02, 0.9, 1.6, 0, true);
-    box(c.g, 1.6, 1.2, 0.5, '#8a5a36', w / 3, h - 2.2, d / 2 + 0.2);
-    if (c.rng.chance(0.4)) {
-      cyl(c.g, 1.8, 1.8, 0.8, wall, 0, h + 0.5, 0, 12);
-      dome(c.g, 1.8, pick(c, c.s.roofs), 0, h + 1.3, 0, 12);
-    }
-    if (c.rng.chance(0.5)) lanternHanging(c, -1.6, 2.8, d / 2 + 0.5);
-    return { r: Math.max(w, d) / 2 + 0.5, h: h + 3 };
-  },
-
-  middleeast(c) {
-    const wall = pick(c, c.s.walls);
-    const w = c.rng.range(7, 10), d = c.rng.range(7, 10), h = c.rng.range(4.5, 7.5);
-    box(c.g, w, h, d, wall);
-    for (let i = 0; i < 5; i++) cyl(c.g, 0.1, 0.1, 0.8, '#6b4a2a', -w / 2 + 1 + i * (w - 2) / 4, h - 0.8, d / 2 + 0.3, 4);
-    box(c.g, w + 0.2, 0.5, d + 0.2, wall, 0, h, 0);
-    if (c.rng.chance(0.6)) {
-      box(c.g, 2.2, 5, 2.2, wall, w / 2 - 1.4, h, -d / 2 + 1.4);
-      for (let i = 0; i < 2; i++) box(c.g, 0.4, 2.6, 2.3, '#4a3426', w / 2 - 1.9 + i * 1, h + 1.8, -d / 2 + 1.4);
-    }
-    archPanel(c.g, 1.4, 2.5, '#6b4a2a', 0, 0, d / 2 + 0.01);
-    win(c, -w / 3, 2.4, d / 2 + 0.02, 0.7, 1);
-    win(c, w / 3, 2.4, d / 2 + 0.02, 0.7, 1);
-    if (c.rng.chance(0.5)) {
-      box(c.g, 4, 0.1, 2.4, pick(c, ['#c23b2a', '#2f6f9a', '#e2b43a']), 0, 2.9, d / 2 + 1.2);
-      lanternHanging(c, 1.4, 2.9, d / 2 + 2.2);
-    }
-    return { r: Math.max(w, d) / 2 + 0.6, h: h + 5 };
-  },
-
-  desert(c) {
-    const a = pick(c, c.s.roofs), b = pick(c, ['#f1d3a2', '#8c3b2a', '#d9a066']);
-    if (c.rng.chance(0.5)) {
-      box(c.g, 7, 0.02, 5, pick(c, ['#8c3b2a', '#2f6f9a', '#d9a066']), 0, 0.02, 3);
-      gable(c.g, 7, 6, 3, a, 0, 0, 0);
-      box(c.g, 7.2, 0.3, 0.3, b, 0, 1.2, 0);
-    } else {
-      tent(c.g, 3.4, 4.2, a, b);
-    }
-    // campfire
-    cone(c.glow, 0.45, 0.9, '#ff8a2a', 3.8, 0.1, 3.8, 5);
-    for (let i = 0; i < 6; i++) sphere(c.g, 0.2, '#6b6b6b', 3.8 + Math.cos(i) * 0.7, 0, 3.8 + Math.sin(i) * 0.7, 4);
-    return { r: 3.8, h: 4.3 };
-  },
-
-  egypt(c) {
-    const wall = pick(c, c.s.walls);
-    const w = c.rng.range(6, 9), d = c.rng.range(6, 9), h = c.rng.range(3.5, 6.5);
-    box(c.g, w, h, d, wall);
-    box(c.g, w + 0.3, 0.4, d + 0.3, '#c9a86a', 0, h, 0);
-    box(c.g, 1.2, 2.2, 0.12, pick(c, ['#2f6f9a', '#6b4a2a']), 0, 0, d / 2);
-    win(c, -w / 3, 2, d / 2 + 0.02, 0.6, 0.8);
-    win(c, w / 3, 2, d / 2 + 0.02, 0.6, 0.8);
-    if (c.rng.chance(0.3)) {
-      cone(c.g, 1.4, 4, '#e8d6b0', -w / 4, h, -d / 4, 10);
-    }
-    return { r: Math.max(w, d) / 2 + 0.5, h: h + 1 };
-  },
-
-  indianorth(c) {
-    const wall = pick(c, c.s.walls), trim = '#ffffff';
-    const floors = c.rng.int(2, 3), fh = 3.2, w = 9, d = 8;
-    box(c.g, w, floors * fh, d, wall);
-    for (let f = 1; f <= floors; f++) box(c.g, w + 0.2, 0.25, d + 0.2, trim, 0, f * fh - 0.1, 0);
-    for (let f = 0; f < floors; f++) for (let i = 0; i < 3; i++) win(c, -3 + i * 3, 0.8 + f * fh, d / 2 + 0.02, 0.9, 1.4, 0, true);
-    // jharokha balcony
-    box(c.g, 2.4, 1.6, 1.2, wall, 0, fh + 0.4, d / 2 + 0.6);
-    onion(c.g, 0.9, trim, 0, fh + 2, d / 2 + 0.6);
-    chhatri(c, w / 2 - 1.2, floors * fh, -d / 2 + 1.2, 1.1, wall, trim);
-    archPanel(c.g, 1.5, 2.6, '#6b3a2a', 0, 0, d / 2 + 0.01, 0, 0.1, true);
-    return { r: 6, h: floors * fh + 2.8 };
-  },
-
-  indiasouth(c) {
-    const wall = pick(c, c.s.walls), roof = pick(c, c.s.roofs);
-    box(c.g, 9, 0.6, 8, '#b5a58a');
-    box(c.g, 7, 3, 6, wall, 0, 0.6, 0);
-    for (const x of [-4, -1.3, 1.3, 4]) cyl(c.g, 0.18, 0.18, 2.6, '#6b4a2a', x, 0.6, 3.6, 6);
-    hip(c.g, 11, 10, 3.6, roof, 0, 3.2, 0);
-    hip(c.g, 5, 4, 1.8, roof, 0, 5.6, 0);
-    door(c, 7, 6);
-    win(c, -2.2, 1.6, 3.02);
-    win(c, 2.2, 1.6, 3.02);
-    for (let i = 0; i < 7; i++) sphere(c.g, 0.12, i % 2 ? '#ffffff' : '#f2a13a', -3 + i, 0.62, 4.3, 4);
-    return { r: 5.4, h: 7.4 };
-  },
-
-  mughal(c) {
-    const red = '#b5552e', white = '#fbf7ee';
-    const w = 9, d = 8, h = c.rng.range(5, 7);
-    box(c.g, w, h, d, red);
-    box(c.g, w + 0.2, 0.3, d + 0.2, white, 0, h, 0);
-    box(c.g, w + 0.2, 0.2, d + 0.2, white, 0, h * 0.5, 0);
-    archPanel(c.g, 2.4, 3.6, white, 0, 0, d / 2 + 0.01, 0, 0.1, true);
-    archPanel(c.g, 1.8, 3.1, '#5a2a1a', 0, 0, d / 2 + 0.06, 0, 0.1, true);
-    for (const x of [-3, 3]) win(c, x, 1.4, d / 2 + 0.02, 1, 1.6, 0, true);
-    chhatri(c, -w / 2 + 1.1, h, -d / 2 + 1.1, 1, white, white);
-    chhatri(c, w / 2 - 1.1, h, -d / 2 + 1.1, 1, white, white);
-    return { r: 6, h: h + 3 };
-  },
-
-  indonesia(c) {
-    const wood = pick(c, c.s.walls), roof = pick(c, c.s.roofs);
-    for (const x of [-3.5, 0, 3.5]) for (const z of [-2.2, 2.2]) cyl(c.g, 0.2, 0.2, 1.6, '#5a3a26', x, 0, z, 6);
-    box(c.g, 9, 3, 6, wood, 0, 1.6, 0);
-    for (let i = 0; i < 6; i++) box(c.g, 1.2, 0.3, 0.08, pick(c, c.s.trims), -3.6 + i * 1.44, 3.6, 3.02);
-    gable(c.g, 8, 8, 4, roof, 0, 4.6, 0);
-    // The horned ridge: each end sweeps up and out.
-    for (const s of [-1, 1]) {
-      const g2 = c.g;
-      g2.frame(s * 4.4, 7.4, 0, 0, 1, () => {
-        cone(g2, 1.1, 5.2, roof, 0, 0, 0, 6);
-      });
-    }
-    box(c.glow, 1, 1.2, 0.08, c.s.glow, -2, 2.4, 3.02);
-    box(c.glow, 1, 1.2, 0.08, c.s.glow, 2, 2.4, 3.02);
-    box(c.g, 1.2, 2, 0.1, DOOR, 0, 1.6, 3.02);
-    box(c.g, 1.4, 0.2, 2, '#6b4a2a', 0, 0.8, 3.9);
-    return { r: 5.4, h: 12 };
-  },
-
-  aurora(c) {
-    if (c.rng.chance(0.45)) {
-      // Glass igloo: a clear dome with a warm glow inside.
-      box(c.g, 5.4, 0.3, 5.4, '#8a5a3c');
-      dome(c.g, 2.7, '#cfe8ff', 0, 0.3, 0, 14);
-      sphere(c.glow, 0.9, c.s.glow, 0, 0.8, 0, 8, 0.6);
-      return { r: 3, h: 3 };
-    }
-    const wood = pick(c, c.s.walls);
-    gable(c.g, 7, 7, 6.4, wood, 0, 0, 0, Math.PI / 2);
-    gable(c.g, 7.4, 7.8, 6.9, '#f4f8ff', 0, 0.2, 0, Math.PI / 2);
-    box(c.glow, 2.4, 3.4, 0.1, c.s.glow, 0, 0.4, 3.55);
-    box(c.g, 0.6, 1.4, 0.6, '#6b6b6b', 1.8, 4, -1);
-    return { r: 4, h: 7 };
-  },
-
-  skyisles(c) {
-    const wall = pick(c, c.s.walls), roof = pick(c, c.s.roofs);
-    for (let i = 0; i < 6; i++) {
-      const a = (i / 6) * Math.PI * 2;
-      cyl(c.g, 0.25, 0.25, 4, wall, Math.cos(a) * 3, 0, Math.sin(a) * 3, 6);
-    }
-    cyl(c.g, 3.6, 3.6, 0.4, wall, 0, 0, 0, 12);
-    cyl(c.g, 3.6, 3.6, 0.4, wall, 0, 4, 0, 12);
-    dome(c.g, 3.4, roof, 0, 4.4, 0, 12, 0.8);
-    sphere(c.glow, 0.8, c.s.glow, 0, 2, 0, 8);
-    return { r: 3.8, h: 7.2 };
   },
 };
 
@@ -585,7 +381,7 @@ function wizardTower(c: Ctx): Footprint {
 
 export function buildHouse(c: Ctx): Footprint {
   // Lands with a traditional kit build from it (traditions.ts); the rest from their own builders.
-  const fp = buildTradition(c) ?? houses[c.s.id](c);
+  const fp = buildTradition(c) ?? houses[c.s.id]!(c);
   if (c.s.id !== 'desert' && c.s.id !== 'skyisles' && c.s.id !== 'aurora') houseDetails(c, fp);
   houseDecor(c, fp);
   return fp;

@@ -25,6 +25,7 @@ import { waterEdge } from './waters';
 import { INSTITUTE_SITES, SITE_SIZE } from '../institutions/sites';
 import { buildHouse, lampPost, streetProp, type Ctx } from './architecture';
 import { houseLights, streetLight } from './models/lights';
+import { CIVIC_R, buildMarket, buildWorship, civicColliders, civicOf } from './neighbourhood';
 import { SQUARE_R, buildSebil, buildSquare, sebilsOf, squaresOf, type Collide } from './landWaters';
 import { GeoBuilder, box, cone, cyl, flowers, rock, sphere, tree } from './kit';
 import { CITY_RADIUS, REGION_SIZE, regionCenter, type RegionSpec } from './regions';
@@ -175,8 +176,11 @@ export function buildRegion(spec: RegionSpec, solid: THREE.Material, glowMat: TH
   const squaresHere = squaresOf(spec.id), sebilsHere = sebilsOf(spec.id);
   // Gulabi Nagar's city gates stand astride its avenues (gulabi.ts).
   const gatesHere = spec.id === 'indianorth' ? gateTowers() : [];
+  // The neighbourhood's place of worship and its market (neighbourhood.ts).
+  const civicHere = civicOf(spec.id);
   const nearPlot = (x: number, z: number, pad: number) => inCastle(x, z, pad) || reservedAt(spec.id, x, z, pad) ||
     gatesHere.some((q) => Math.hypot(x - q.x, z - q.z) < q.r + pad) ||
+    civicHere.some((q) => Math.hypot(x - q.x, z - q.z) < CIVIC_R + pad) ||
     squaresHere.some((q) => Math.hypot(x - q.x, z - q.z) < SQUARE_R + pad) ||
     sebilsHere.some((q) => Math.hypot(x - q.x, z - q.z) < 2 + pad) ||
     fieldsHere.some((p) => Math.abs(x - p.x) < FIELD_SIZE / 2 + pad && Math.abs(z - p.z) < FIELD_SIZE / 2 + pad) ||
@@ -290,6 +294,17 @@ export function buildRegion(spec: RegionSpec, solid: THREE.Material, glowMat: TH
     g.frame(0, y, 0, 0, 1, () => glow.frame(0, y, 0, 0, 1, () => { col = buildSebil(ctx, sb.x, sb.z, sb.ry); }));
     recordDecor(spec.id, 'street: drinking fountains');
     if (col) colliders.push({ x: c.x + sb.x, z: c.z + sb.z, r: (col as Collide).r, h: y + (col as Collide).h });
+  }
+
+  // The neighbourhood: its place of worship and its market, each in the land's tradition, doors to the town.
+  for (const q of civicHere) {
+    const y = H(q.x, q.z), ry = Math.atan2(-q.x, -q.z);
+    g.frame(q.x, y, q.z, ry, 1, () => glow.frame(q.x, y, q.z, ry, 1, () => (q.kind === 'worship' ? buildWorship(ctx) : buildMarket(ctx))));
+    recordDecor(spec.id, q.kind === 'worship' ? 'town: place of worship' : 'town: market');
+    buildings.push({ x: q.x, z: q.z, r: CIVIC_R });
+    // Its halls, towers and walls; its courts, gates and market aisles stay open to walk.
+    const cs = Math.cos(ry), sn = Math.sin(ry);
+    for (const k of civicColliders(spec.id, q.kind)) colliders.push({ x: c.x + q.x + k.x * cs + k.z * sn, z: c.z + q.z - k.x * sn + k.z * cs, r: k.r, h: y + k.h });
   }
 
   // What the land hangs across its streets (streetGarlands.ts): midway between the lamps, clear of

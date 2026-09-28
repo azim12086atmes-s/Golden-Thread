@@ -36,55 +36,55 @@ sections C1–C7) and `3D_BUILDS_HANDOFF.md` (3D work, sections 2a and 3.x). Tic
 - [x] Agriculture land: two 40 m fields per land, eight rows of the land's own crops, barn, farmhands who water, harvest and re-sow (`economy/fields.ts`, panel on the field)
 - [x] Supply chain: couriers carry from your barns to any land's market (prices fall as a market fills, recover a fifth a day) or to your soup kitchens and clinics (`economy/supply.ts`)
 - [x] Hired couriers ride their land's traffic vehicle on the avenue while a load is on the road (`Traffic` `couriers`)
-- [ ] 3D: fields and barns in each land's farming style (`CHATGPT_3D_MODELS.md` §21; contract `world/models/fields.ts`)
+- [x] 3D: fields and barns in each land's farming style (`CHATGPT_3D_MODELS.md` §21; contract `world/models/fields.ts`)
 
 ## E. Monuments (3D; section 3.1 — 19 of 20 still early builds)
 - [x] Meadow — Great Tree
-- [ ] Meadow — celebration castle revamp (keep its ivory, rose and gold palette; `CHATGPT_3D_MODELS.md` §19)
-- [ ] Sakura Hollow — five-storey pagoda
-- [ ] Hanok Village — palace throne hall
-- [ ] Jade Terraces — Temple of Heaven
-- [ ] Fjordhavn — stave church
-- [ ] Alpenrose — Zytglogge clock tower
-- [ ] Old London — Westminster and Big Ben
-- [ ] New Yonder — art-deco crown tower (solarpunk, with screens)
-- [ ] Firenzia — cathedral dome and campanile
-- [ ] Maple Row — carousel, bandstand, pier pavilion or ferris wheel
-- [ ] Madinat an-Nur — Court of the Lions / great mosque
-- [ ] Souq al-Qamar — coral-stone fort and souq
-- [ ] Nile Crossing — pylon temple and pyramids
-- [ ] Tents of Rimal — great majlis tent and oasis
-- [ ] Gulabi Nagar — Hawa Mahal
-- [ ] Kaveri Coast — gopuram and temple tank
-- [ ] Bagh-e-Noor — Taj Mahal and charbagh
-- [ ] Nusa Rinjani — Borobudur and a Balinese pura
-- [ ] Aurora Huts — ice hall
-- [ ] The Sky Isles — Temple of the Great Lantern
+- [x] Meadow — celebration castle revamp (keep its ivory, rose and gold palette; `CHATGPT_3D_MODELS.md` §19)
+- [x] Sakura Hollow — five-storey pagoda
+- [x] Hanok Village — palace throne hall
+- [x] Jade Terraces — Temple of Heaven
+- [x] Fjordhavn — stave church
+- [x] Alpenrose — Zytglogge clock tower
+- [x] Old London — Westminster and Big Ben
+- [x] New Yonder — art-deco crown tower (solarpunk, with screens)
+- [x] Firenzia — cathedral dome and campanile
+- [x] Maple Row — carousel, bandstand, pier pavilion or ferris wheel
+- [x] Madinat an-Nur — Court of the Lions / great mosque
+- [x] Souq al-Qamar — coral-stone fort and souq
+- [x] Nile Crossing — pylon temple and pyramids
+- [x] Tents of Rimal — great majlis tent and oasis
+- [x] Gulabi Nagar — Hawa Mahal
+- [x] Kaveri Coast — gopuram and temple tank
+- [x] Bagh-e-Noor — Taj Mahal and charbagh
+- [x] Nusa Rinjani — Borobudur and a Balinese pura
+- [x] Aurora Huts — ice hall
+- [x] The Sky Isles — Temple of the Great Lantern
 
 ## F. Architecture polish (3D; sections 2a, 3.2, 3.2a)
 - [ ] Screenshot and fix houses in Hanok Village, Jade Terraces, Fjordhavn, Alpenrose, Maple Row, Souq al-Qamar, Nile Crossing, Tents of Rimal, Kaveri Coast, Bagh-e-Noor, Nusa Rinjani, the Sky Isles
-- [ ] More house types per land; corner shops, markets, neighbourhood mosques/temples/churches, courtyard houses
-- [ ] Delete the unused old per-land house builders in `architecture.ts`
+- [ ] More house types per land; courtyard houses. Done: a neighbourhood place of worship and a market in every town on the ground, each in its land's tradition (`world/neighbourhood.ts`)
+- [x] Delete the unused old per-land house builders in `architecture.ts`
 - [ ] Sky Isles: more and larger trees (own branching species, giants), ground texture, richer surfaces, floating islands with bridges and waterfalls
-- [ ] New Yonder: large display screens, TV panels, cyberpunk and solarpunk artifacts, penthouses
+- [ ] New Yonder: penthouses. Done: screen towers, avenue panels and a pylon screen with moving programmes (`world/CityScreens.ts`)
 - [x] Bridges placed and walkable: 22 bridges wherever a river crosses the line of an avenue (`world/bridges.ts`, `world/BridgesView.ts`)
-- [ ] 3D: bridges in each land's style (`buildBridge`, `CHATGPT_3D_MODELS.md` §5)
-- [ ] Lotus ponds (India, Mughal, China, Japan, Indonesia)
+- [x] 3D: bridges in each land's style (`buildBridge`, `CHATGPT_3D_MODELS.md` §5)
+- [x] Lotus ponds (India, Mughal, China, Japan, Indonesia)
 
 ## G. City lighting (3D; section 3.3)
 - [x] Logic: `houseLights` is called for every house and `streetLight` for every avenue lamp (`world/models/lights.ts`); each land's lights now only need their models
 - [x] Each land's lantern design on street posts and as sky lanterns
-- [ ] Old London gas-lamp street lighting
-- [ ] Madinat an-Nur hanging brass lanterns
-- [ ] Gulabi Nagar diyas
-- [ ] Tent lamps (desert, Aurora, tent schools)
-- [ ] Jade Terraces: many more sky lanterns, lantern strings
-- [ ] Every other land its own evening lighting (tōrō, candle lanterns, nilavilakku, lamp-lit souq, …)
+- [x] Old London gas-lamp street lighting
+- [x] Madinat an-Nur hanging brass lanterns
+- [x] Gulabi Nagar diyas
+- [x] Tent lamps (desert, Aurora, tent schools)
+- [x] Jade Terraces: many more sky lanterns, lantern strings
+- [x] Every other land its own evening lighting (tōrō, candle lanterns, nilavilakku, lamp-lit souq, …)
 
 ## H. Sky, nature and decor (3D; section 3.4)
-- [ ] More land-specific sky artifacts (lantern festivals, koinobori, Diwali lantern strings, penjor, kites, balloon clusters)
+- [x] More land-specific sky artifacts (lantern festivals, koinobori, Diwali lantern strings, penjor, kites, balloon clusters)
 - [x] Balloons (logic): children hold one at festivities, in the Meadow and Maple Row, and on market days (`caravan.ts` `balloonFor`, `CharacterModel.holdBalloon`); a Balloons decor item for everyone
-- [ ] 3D: `heldBalloon` and `balloonCluster` models (`world/models/balloons.ts`, `CHATGPT_3D_MODELS.md` §10); balloon clusters in the skies
+- [x] 3D: `heldBalloon` and `balloonCluster` models (`world/models/balloons.ts`, `CHATGPT_3D_MODELS.md` §10); balloon clusters in the skies
 - [x] Nature by terrain — logic (zones, species per zone, sizes; `world/nature.ts`)
 - [ ] Nature by terrain — models: shrubs, reeds, lotus, mangroves, alpine flowers; pines, palms and 10 more species rebuilt (3D)
 - [x] Caves — logic (placement, explore once a day; `world/caves.ts`)
