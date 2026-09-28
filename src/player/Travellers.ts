@@ -356,7 +356,7 @@ export class Travellers {
     const far = this.backGap() + 0.45;
     const stance = !wings ? undefined : this.mode === 'fly'
       ? { forward: -far * 0.8, side: far * 0.6, up: -0.5 }
-      : { forward: 0.75, side: IDEAL_GAP };
+      : { forward: 0.95, side: IDEAL_GAP };
     const out = followStep({
       boy: this.bPos, girl: this.gPos, heading: this.heading, speed: this.currentSpeed, dt, airborne,
       groundAt: (x, z) => this.mounted ? Math.max(surfaceAt(x, z, this.gPos.y + 2), WATER_Y) : surfaceAt(x, z, this.gPos.y + 2),

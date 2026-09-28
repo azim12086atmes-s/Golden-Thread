@@ -17,14 +17,14 @@ import * as THREE from 'three';
 
 /** Her height on the unscaled body (floating head included). */
 const HER_HEIGHT = 1.78;
-/** One wing: 3.5 times her height tall and broad, nearly three-quarters as wide as it is tall. */
-export const WING_H = 3.5 * HER_HEIGHT, WING_W = WING_H * 0.72;
+/** One wing: 3.8 times her height tall and 0.8 as broad — the forewing tall and vast, the hindwing vast and of middling height. */
+export const WING_H = 3.8 * HER_HEIGHT, WING_W = WING_H * 0.8;
 /** Across the pair, open flat. */
 export const WING_SPAN = 2 * WING_W;
 /** How far back the wings sweep from straight out sideways (radians): spread wide ... folded back. */
 export const MIN_BACK = 0.3, MAX_BACK = 1.35;
-/** The root: one point on her back — behind it (HINGE_Z) at mid-back height (ROOT_Y). */
-export const HINGE_Z = -0.34, ROOT_Y = 1.2;
+/** The root: one point on her back — on its surface (HINGE_Z), at mid-back height (ROOT_Y). */
+export const HINGE_Z = -0.17, ROOT_Y = 1.2;
 /** Where the root is up the wing (0 = the tails' tips, 1 = the forewing's apex): the tails then just reach the ground. */
 export const ROOT_V = (ROOT_Y + 0.06) / WING_H;
 /** How far from her centre any part of a wing can reach, in any direction (model units). */
@@ -60,15 +60,16 @@ function noise2(seed: number) {
 const R0 = ROOT_V;
 const KEY: Array<[number, number]> = [
   [0, R0],
-  [0.03, 0.28], [0.1, 0.42], [0.22, 0.6], [0.38, 0.76], [0.56, 0.88], [0.74, 0.96], [0.88, 1.0], [0.97, 0.985], [1.0, 0.93],
-  [0.97, 0.82], [0.9, 0.7], [0.82, 0.6], [0.74, 0.52], [0.66, 0.47],
-  [0.6, 0.44],
-  [0.68, 0.4], [0.73, 0.32], [0.72, 0.24], [0.66, 0.17], [0.58, 0.12],
-  [0.54, 0.07], [0.52, 0.02], [0.5, 0.0], [0.47, 0.01], [0.46, 0.06], [0.43, 0.1],
-  [0.32, 0.11], [0.2, 0.13], [0.1, 0.16], [0.03, 0.185],
+  // The leading edge leaves her back sideways, over her shoulder-blade, before it arches up — clear of her floating head.
+  [0.035, R0 + 0.008], [0.065, R0 + 0.025], [0.1, 0.3], [0.14, 0.43], [0.22, 0.59], [0.36, 0.74], [0.53, 0.87], [0.7, 0.955], [0.84, 0.995], [0.94, 0.99], [0.99, 0.94],
+  [0.97, 0.84], [0.9, 0.72], [0.82, 0.62], [0.73, 0.54], [0.66, 0.48],
+  [0.62, 0.45],
+  [0.72, 0.42], [0.83, 0.37], [0.9, 0.29], [0.91, 0.21], [0.86, 0.14], [0.77, 0.09], [0.68, 0.065],
+  [0.63, 0.035], [0.6, 0.005], [0.57, 0.0], [0.55, 0.03], [0.53, 0.07],
+  [0.42, 0.085], [0.29, 0.105], [0.17, 0.13], [0.07, 0.155], [0.02, 0.172],
 ];
 /** Where the hindwing's scalloped edge runs (indices into KEY). */
-const SCALLOP: [number, number] = [15, 20];
+const SCALLOP: [number, number] = [17, 24];
 
 /** The outline, smoothed (Catmull-Rom through KEY), scalloped along the hindwing. Closed. */
 export const OUTLINE: Array<[number, number]> = (() => {
@@ -182,7 +183,7 @@ export function wingTexture(): THREE.Texture | null {
     ctx.strokeStyle = '#f0c95e'; ctx.lineWidth = w * 0.24; ctx.stroke(path);
   };
   // Veins to the edge all round, from the leading edge over the apex to the tail.
-  const from = 2 * 10, to = 23 * 10;
+  const from = 3 * 10, to = 27 * 10;
   for (let i = 0; i < 14; i++) {
     const [u, v] = OUTLINE[Math.round(from + (i / 13) * (to - from))];
     const end: [number, number] = [px(u), py(v)];
@@ -212,7 +213,7 @@ export function wingTexture(): THREE.Texture | null {
     ctx.beginPath(); ctx.arc(px(u * 0.965), py(R0 + (v - R0) * 0.965), 3.6, 0, Math.PI * 2); ctx.fill();
   }
   // The swallowtail's eyespot beside the tail: a jewel of pink and blue ringed in black and gold.
-  const ex = px(0.4), ey = py(0.14), er = 0.04 * (W - 16);
+  const ex = px(0.5), ey = py(0.13), er = 0.035 * (W - 16);
   for (const [rr, c] of [[1, '#08060a'], [0.82, '#f2cf6a'], [0.7, '#4fa8ff'], [0.42, '#ff5fa8'], [0.16, '#fff4fa']] as const) {
     ctx.beginPath(); ctx.arc(ex, ey, er * rr, 0, Math.PI * 2); ctx.fillStyle = c; ctx.fill();
   }
@@ -300,6 +301,21 @@ const FRAG = /* glsl */ `
 
 const GLITTER = 150;
 
+/** The wing's sheet cut to its outline: only the cells that touch the wing are kept (no hidden sheet round it). */
+function trimmed(plane: THREE.PlaneGeometry): THREE.BufferGeometry {
+  const uv = plane.getAttribute('uv'), idx = plane.getIndex()!, keep: number[] = [];
+  const on = (i: number) => onWing(uv.getX(i), uv.getY(i));
+  for (let t = 0; t < idx.count; t += 3) {
+    const a = idx.getX(t), b = idx.getX(t + 1), c = idx.getX(t + 2);
+    const cu = (uv.getX(a) + uv.getX(b) + uv.getX(c)) / 3, cv = (uv.getY(a) + uv.getY(b) + uv.getY(c)) / 3;
+    if (on(a) || on(b) || on(c) || onWing(cu, cv)) keep.push(a, b, c);
+  }
+  plane.setIndex(keep);
+  const out = plane.toNonIndexed();
+  plane.dispose();
+  return out;
+}
+
 /** The pair of wings, hinged at her back, with glitter drifting off them. Call `update` every frame. */
 export class Wings {
   readonly group = new THREE.Group();
@@ -312,7 +328,7 @@ export class Wings {
 
   constructor() {
     const map = wingTexture();
-    const geo = new THREE.PlaneGeometry(WING_W, WING_H, 24, 40);
+    const geo = trimmed(new THREE.PlaneGeometry(WING_W, WING_H, 32, 48));
     geo.translate(WING_W / 2, WING_H / 2 - ROOT_V * WING_H, 0); // the root point at the origin
     const _c = new THREE.Vector3();
     for (const side of [1, -1]) {
@@ -361,6 +377,18 @@ export class Wings {
     this.glitter.userData.part = 'wing';
     this.glitter.frustumCulled = false;
     this.group.add(this.glitter);
+    // The clasp where both wings join her back: a gold setting round a dark jewel, with a pink glint.
+    const clasp = new THREE.Group();
+    const gold = new THREE.MeshStandardMaterial({ color: '#e0b64a', metalness: 1, roughness: 0.25, emissive: '#6b4a10', emissiveIntensity: 0.4 });
+    const jewel = new THREE.MeshStandardMaterial({ color: '#1a0c14', metalness: 0.3, roughness: 0.15, emissive: '#ff5fa8', emissiveIntensity: 0.35 });
+    const ring = new THREE.Mesh(new THREE.TorusGeometry(0.075, 0.018, 8, 20), gold);
+    const gem = new THREE.Mesh(new THREE.SphereGeometry(0.06, 14, 10), jewel);
+    gem.scale.set(1, 1.3, 0.55);
+    const stem = new THREE.Mesh(new THREE.CylinderGeometry(0.018, 0.018, 0.16, 8), gold);
+    stem.position.y = -0.1;
+    for (const m of [ring, gem, stem]) { m.userData.part = 'wing'; clasp.add(m); }
+    clasp.position.z = 0.01;
+    this.group.add(clasp);
     this.group.position.set(0, ROOT_Y, HINGE_Z);
   }
 
