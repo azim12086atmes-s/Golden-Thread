@@ -2366,15 +2366,20 @@ const indonesia: Monument = (c, o) => {
 
 // ───────────────────────────── Aurora Huts ─────────────────────────────
 
-/** A triangle of panes on the +z plane: base 2b at y0, apex at height h — lit panes between mullions. */
-function glassTriangle(c: Ctx, b: number, h: number, z: number, cols: string[], rng: () => number, frame: string): void {
+/**
+ * A triangle of panes on the +z plane: base 2b at y0, apex at height h, between mullions. Only
+ * `lit` of the panes glow (a window here and there lit from within); the rest are ice-blue glass,
+ * so a great glazed wall reads as glass at night rather than one blaze of light.
+ */
+function glassTriangle(c: Ctx, b: number, h: number, z: number, cols: string[], rng: () => number, frame: string, lit = 0.22): void {
   const rows = Math.round(h / 1.4);
   for (let r = 0; r < rows; r++) {
     const y = (r / rows) * h, y1 = ((r + 1) / rows) * h, half = b * (1 - y1 / h);
     const n = Math.max(1, Math.round((2 * half) / 1.2));
     for (let k = 0; k < n; k++) {
       const x = -half + ((k + 0.5) * 2 * half) / n;
-      box(c.glow, (2 * half) / n - 0.12, y1 - y - 0.12, 0.04, cols[Math.floor(rng() * cols.length)], x, y + 0.06, z);
+      const col = cols[Math.floor(rng() * cols.length)], on = rng() < lit;
+      box(on ? c.glow : c.g, (2 * half) / n - 0.12, y1 - y - 0.12, 0.04, on ? col : '#' + new THREE.Color(col).lerp(new THREE.Color('#6a8aa8'), 0.55).getHexString(), x, y + 0.06, z);
     }
     box(c.g, 2 * b * (1 - y / h), 0.1, 0.12, frame, 0, y, z + 0.03);
   }
@@ -2405,12 +2410,12 @@ const aurora: Monument = (c, o) => {
   c.g.frame(0, 0, zf + 3, 0, 1, () => c.glow.frame(0, 0, zf + 3, 0, 1, () => {
     const sh = new THREE.Shape([new THREE.Vector2(-5, 0), new THREE.Vector2(5, 0), new THREE.Vector2(0, 5.6)]);
     surf(c, SURF.steel, () => c.g.add(new THREE.ExtrudeGeometry(sh, { depth: 6, bevelEnabled: false }).translate(0, 0, -3), alu));
-    glassTriangle(c, 4.6, 5.2, 3.02, ['#fff0c8'], rng, edge);
+    glassTriangle(c, 4.6, 5.2, 3.02, ['#fff0c8'], rng, edge, 0.6);
     box(c.g, 2.2, 2.6, 0.1, '#5a6a7a', 0, 0, 3.05);
   }));
   // The mosaic window at the back: the aurora in coloured glass.
   const zb = zf - N * step - 0.02;
-  c.g.frame(0, 0, zb, Math.PI, 1, () => c.glow.frame(0, 0, zb, Math.PI, 1, () => glassTriangle(c, 7.9, 12, 0, AUR, rng, edge)));
+  c.g.frame(0, 0, zb, Math.PI, 1, () => c.glow.frame(0, 0, zb, Math.PI, 1, () => glassTriangle(c, 7.9, 12, 0, AUR, rng, edge, 0.55)));
   for (const z of [14, 6, -2, -10]) o.colliders.push({ x: 0, z, r: 10.8, h: 30 });
   o.colliders.push({ x: 0, z: zf + 3, r: 4.4, h: 6 });
   // ═══ The approach: an arch of ice blocks, snow lanterns lining the way, ice sculptures. ═══
@@ -2434,7 +2439,7 @@ const aurora: Monument = (c, o) => {
   }));
   o.colliders.push({ x: -24, z: -6, r: 2.8, h: 6 }, { x: -26, z: 4, r: 2.8, h: 6 });
   for (const [x, z, ry] of [[-10, 30, 0.3], [-8, 31, 0.1]] as const) c.g.frame(x, 0, z, ry, 1, () => { for (const sx of [-1, 1]) box(c.g, 0.05, 0.05, 2.4, '#3a3a44', sx * 0.3, 0.02, 0); box(c.g, 0.6, 0.06, 0.5, '#8a5a36', 0, 0.5, 0.3); box(c.g, 0.6, 0.6, 0.06, '#8a5a36', 0, 0.5, 0.05); for (const sx of [-1, 1]) cyl(c.g, 0.025, 0.025, 1.3, '#3a3a44', sx * 0.3, 0.05, -0.3, 4); box(c.g, 0.7, 0.05, 0.05, '#3a3a44', 0, 1.35, -0.3); });
-  c.glow.add(new THREE.CylinderGeometry(9, 9, 0.06, 36), '#bfe0f0', M(24, 0.06, 18, 0, 1, 1, 0.7));
+  c.g.add(new THREE.CylinderGeometry(9, 9, 0.2, 36), '#bfe0f0', M(24, 0.1, 18, 0, 1, 1, 0.7)); // the frozen pond: ice, not a light
   for (let k = 0; k < 24; k++) { const a = (k / 24) * Math.PI * 2; sphere(c.g, 0.4, '#f4f8fc', 24 + Math.cos(a) * 9.2, 0.1, 18 + Math.sin(a) * 6.5, 6, 0.5); }
   for (let i = 0; i < 6; i++) {
     const a = (i / 6) * Math.PI * 2 + 0.3, x = Math.cos(a) * 36, z = Math.sin(a) * 36;
