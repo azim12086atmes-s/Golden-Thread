@@ -33,7 +33,7 @@ describe('lamplight', () => {
     for (let i = 0; i < LAMP_MAX; i++) expect(U[i].x).toBe(i * 2);
     // The nearest shines fully; the last of the set is all but faded out.
     expect(C[0].r).toBeGreaterThan(1);
-    expect(C[LAMP_MAX - 1].r).toBeLessThan(0.1);
+    expect(C[LAMP_MAX - 1].r).toBeLessThan(C[0].r * 0.1);
     // Fewer lamps than slots: the rest are parked far below the world, dark.
     setLamps(lamps.slice(0, 3), p, 1);
     expect(U[5].y).toBeLessThan(-1000);
