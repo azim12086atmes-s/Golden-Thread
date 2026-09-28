@@ -6,7 +6,7 @@ import { HEAD_GAP, type Part } from './anatomy';
 import { fabricMaterial, tileUVs } from './fabric';
 import { Jetpack } from './jetpack';
 import { JET_REACH } from './jetpack';
-import { WING_REACH, Wings } from './wings';
+import { HINGE_Z, WING_REACH, Wings } from './wings';
 import type { Hem, Outfit, TopStyle } from './modesty';
 
 /**
@@ -249,8 +249,14 @@ export class CharacterModel {
   /** Fold the wings in to reach no further than `room` metres (safety whenever the two come close). */
   setBackRoom(room: number): void {
     if (!this.wings) return;
-    this.wings.group.scale.setScalar(THREE.MathUtils.clamp(room / (WING_REACH * this.scale), 0.15, 1));
+    this.wings.group.scale.setScalar(THREE.MathUtils.clamp(room / (WING_REACH * this.scale), 0.08, 1));
   }
+
+  /** Whether wings are on and shown. */
+  get hasWings(): boolean { return this.backShown && this.outfit.detail?.back === 'wings'; }
+
+  /** The plane the wings never cross (m forward of this person's centre; behind the back), or null without wings. */
+  wingPlane(): number | null { return this.hasWings ? HINGE_Z * this.scale : null; }
 
   /** How far from this person's centre their wings or jetpack reach, in metres (0 without them). */
   backReach(): number {

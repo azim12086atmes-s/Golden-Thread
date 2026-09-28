@@ -20,6 +20,8 @@ function rng(seed: number) {
   let s = seed;
   return () => ((s = (s * 16807) % 2147483647) / 2147483647);
 }
+/** From the centre outward: pink at the heart, then red, orange, yellow, green, blue, violet at the rim (k 0…1). */
+const fromCentre = (k: number) => 0.93 + Math.min(1, Math.max(0, k)) * 0.8;
 const rainbow = (k: number, l = 62) => `hsl(${Math.round((((k % 1) + 1) % 1) * 360)}, 100%, ${l}%)`;
 
 /** The etched motherboard on clear glass: honeycomb, rainbow traces fading along a gradient, gold vias and pads, black chips. */
@@ -38,11 +40,11 @@ export function boardTexture(): THREE.Texture | null {
     for (let k = 0; k < 6; k++) { const a = Math.PI / 6 + (k * Math.PI) / 3; x.lineTo(cx + Math.cos(a) * R * 0.92, cy + Math.sin(a) * R * 0.92); }
     x.closePath(); x.stroke();
   }
-  // Rainbow traces: a gradient of colour across the board, glowing.
+  // Rainbow traces: pink-red at the board's centre, out through the rainbow to its edges, glowing.
   x.lineCap = 'round'; x.lineJoin = 'round';
   for (let i = 0; i < 110; i++) {
     let px = Math.round(r() * 42) * 12, py = Math.round(r() * 42) * 12;
-    const col = rainbow(px / S * 0.6 + py / S * 0.4);
+    const col = rainbow(fromCentre(Math.hypot(px - S / 2, py - S / 2) / (S * 0.62)));
     x.strokeStyle = col; x.lineWidth = 1.2 + r() * 2.2;
     x.shadowColor = col; x.shadowBlur = 8;
     x.beginPath(); x.moveTo(px, py);
@@ -65,7 +67,7 @@ export function boardTexture(): THREE.Texture | null {
     x.strokeStyle = '#e6c15a'; x.lineWidth = 1.6; x.strokeRect(cx, cy, w, h);
     x.fillStyle = '#e6c15a';
     for (let p = 4; p < w - 3; p += 6) { x.fillRect(cx + p, cy - 4, 2, 4); x.fillRect(cx + p, cy + h, 2, 4); }
-    x.fillStyle = rainbow(r(), 65); x.fillRect(cx + 4, cy + 4, w * 0.35, 2.5);
+    x.fillStyle = rainbow(fromCentre(Math.hypot(cx + w / 2 - S / 2, cy + h / 2 - S / 2) / (S * 0.62)), 65); x.fillRect(cx + 4, cy + 4, w * 0.35, 2.5);
   }
   const t = new THREE.CanvasTexture(cv);
   t.colorSpace = THREE.SRGBColorSpace;
@@ -85,18 +87,25 @@ const ETCH = () => once('etch', () => {
 const GOLD = () => once('gold', () => new THREE.MeshStandardMaterial({ color: '#e0b64a', metalness: 1, roughness: 0.25, emissive: '#6b4a10', emissiveIntensity: 0.4 }));
 const BLACK = () => once('black', () => new THREE.MeshStandardMaterial({ color: '#0c0c10', metalness: 0.6, roughness: 0.3 }));
 
-/** Rainbow fuel: a gradient up the tank that flows slowly, brightest in the middle, gently bubbling. */
+/**
+ * Rainbow fuel: one gradient across the whole pack, pink-red at its heart (the middle of the case)
+ * turning outward through the rainbow to violet at the thrusters' ends; gently bubbling, and a
+ * glow pulsing outward from the centre.
+ */
 const FUEL_VERT = /* glsl */ `
+  uniform vec3 uOff;
   varying vec3 vP;
-  void main() { vP = position; gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0); }
+  void main() { vP = position + uOff; gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0); }
 `;
 const FUEL_FRAG = /* glsl */ `
   uniform float uTime, uH;
   varying vec3 vP;
   vec3 hue(float h) { return clamp(abs(mod(h * 6.0 + vec3(0.0, 4.0, 2.0), 6.0) - 3.0) - 1.0, 0.0, 1.0); }
   void main() {
-    float k = vP.y / uH + 0.5;
-    vec3 c = hue(fract(k * 0.85 - uTime * 0.08 + 0.02 * sin(vP.x * 60.0 + uTime * 3.0)));
+    vec2 d = (vP.xy - vec2(0.0, 1.1)) / vec2(0.24, 0.3);
+    float k = clamp(length(d), 0.0, 1.0);
+    vec3 c = hue(fract(0.93 + k * 0.8 + 0.015 * sin(vP.x * 60.0 + uTime * 3.0)));
+    c *= 0.9 + 0.25 * smoothstep(0.7, 1.0, sin(k * 12.0 - uTime * 2.5));
     float swirl = 0.85 + 0.15 * sin(vP.y * 40.0 - uTime * 4.0 + vP.x * 30.0);
     gl_FragColor = vec4(mix(c, vec3(1.0), 0.18) * 1.25 * swirl, 0.82);
   }
@@ -114,7 +123,8 @@ const FLAME_FRAG = /* glsl */ `
     float along = 1.0 - vUv.y;
     float flick = 0.75 + 0.25 * sin(uTime * 38.0 + vUv.x * 25.0) * sin(uTime * 23.0 + along * 9.0);
     float grain = n(floor(vec2(vUv.x * 18.0, vUv.y * 24.0 + uTime * 30.0)));
-    vec3 c = mix(vec3(1.0), hue(fract(along * 0.9 - uTime * 0.6)), smoothstep(0.02, 0.28, along));
+    // Pink-red at the nozzle, out through the rainbow to violet at the tip; a white-hot core.
+    vec3 c = mix(vec3(1.0, 0.75, 0.88), hue(fract(0.93 + along * 0.8 + 0.02 * sin(uTime * 9.0))), smoothstep(0.0, 0.12, along));
     float a = (1.0 - along) * flick * (0.7 + 0.3 * grain) * uPower;
     gl_FragColor = vec4(c * (1.3 + 0.6 * (1.0 - along)), a);
   }
@@ -155,8 +165,8 @@ export class Jetpack {
       g.add(mesh);
       return mesh;
     };
-    const fuel = (h: number) => {
-      const m = new THREE.ShaderMaterial({ vertexShader: FUEL_VERT, fragmentShader: FUEL_FRAG, transparent: true, depthWrite: false, toneMapped: false, uniforms: { uTime: { value: 0 }, uH: { value: h } } });
+    const fuel = (h: number, x = 0, y = 0, z = 0) => {
+      const m = new THREE.ShaderMaterial({ vertexShader: FUEL_VERT, fragmentShader: FUEL_FRAG, transparent: true, depthWrite: false, toneMapped: false, uniforms: { uTime: { value: 0 }, uH: { value: h }, uOff: { value: new THREE.Vector3(x, y, z) } } });
       this.fuelMats.push(m);
       return m;
     };
@@ -164,8 +174,10 @@ export class Jetpack {
     const tank = (hx: number, hy: number, hz: number, x: number, y: number, z: number) => {
       const n = 26, pos = new Float32Array(n * 3), col = new Float32Array(n * 3), speeds = new Float32Array(n);
       for (let i = 0; i < n; i++) {
-        pos.set([(r() - 0.5) * 2 * hx, (r() - 0.5) * 2 * hy, (r() - 0.5) * 2 * hz], i * 3);
-        const c = new THREE.Color().setHSL(r(), 1, 0.8);
+        const p = [(r() - 0.5) * 2 * hx, (r() - 0.5) * 2 * hy, (r() - 0.5) * 2 * hz];
+        pos.set(p, i * 3);
+        // Each grain takes the fuel's colour where it floats: pink at the heart, rainbow outward.
+        const c = new THREE.Color().setHSL(fromCentre(Math.hypot((x + p[0]) / 0.24, (y + p[1] - 1.1) / 0.3)) % 1, 1, 0.8);
         col.set([c.r, c.g, c.b], i * 3);
         speeds[i] = 0.03 + r() * 0.08;
       }
@@ -182,7 +194,7 @@ export class Jetpack {
 
     // The pack: a glass case holding a core of glowing fuel, the board etched on its glass.
     const PW = 0.3, PH = 0.44, PD = 0.12, py = 1.1, pz = -0.27;
-    add(new RoundedBoxGeometry(PW * 0.78, PH * 0.84, PD * 0.6, 2, 0.03), fuel(PH * 0.84), 0, py, pz, 1);
+    add(new RoundedBoxGeometry(PW * 0.78, PH * 0.84, PD * 0.6, 2, 0.03), fuel(PH * 0.84, 0, py, pz), 0, py, pz, 1);
     tank(PW * 0.36, PH * 0.4, PD * 0.26, 0, py, pz);
     add(new RoundedBoxGeometry(PW, PH, PD, 3, 0.04), GLASS(), 0, py, pz, 3);
     add(new RoundedBoxGeometry(PW + 0.004, PH + 0.004, PD + 0.004, 3, 0.042), ETCH(), 0, py, pz, 5);
@@ -201,7 +213,7 @@ export class Jetpack {
     const nozzle = new THREE.LatheGeometry([[0.05, 0.0], [0.056, -0.03], [0.07, -0.07], [0.082, -0.1], [0.078, -0.1], [0.064, -0.07], [0.05, -0.03]].map(([rr, yy]) => new THREE.Vector2(rr, yy)), 18);
     for (const s of [-1, 1]) {
       const x = s * 0.155, z = -0.31, y0 = 0.9, yc = y0 + TH / 2;
-      add(new THREE.CylinderGeometry(TR * 0.72, TR * 0.72, TH * 0.9, 16), fuel(TH * 0.9), x, yc, z, 1);
+      add(new THREE.CylinderGeometry(TR * 0.72, TR * 0.72, TH * 0.9, 16), fuel(TH * 0.9, x, yc, z), x, yc, z, 1);
       tank(TR * 0.5, TH * 0.42, TR * 0.5, x, yc, z);
       add(new THREE.CylinderGeometry(TR, TR, TH, 20, 1, true), GLASS(), x, yc, z, 3);
       add(new THREE.CylinderGeometry(TR + 0.002, TR + 0.002, TH, 20, 1, true), ETCH(), x, yc, z, 5);

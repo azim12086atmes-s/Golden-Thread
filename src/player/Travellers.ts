@@ -1,6 +1,6 @@
 import * as THREE from 'three';
 import { CharacterModel, HERO_SCALE } from '../characters/CharacterModel';
-import { BODY_RADIUS, MIN_GAP, enforceGap, followStep } from '../characters/follow';
+import { BODY_RADIUS, IDEAL_GAP, MIN_GAP, enforceGap, followStep, wingRoom } from '../characters/follow';
 import type { Outfit } from '../characters/modesty';
 import { Thread } from '../characters/Thread';
 import type { Input } from '../core/Input';
@@ -349,15 +349,24 @@ export class Travellers {
     }
     const airborne = this.mode === 'fly' || !this.grounded;
     const px = this.bPos.x, pz = this.bPos.z;
+    // With her wings on he stands beside her, a step in front of them; in flight he keeps behind
+    // her, beyond their reach, a little to the side and below. Her wings fold whenever he is
+    // anywhere else (walking round to his place as she turns), so they never reach him.
+    const wings = this.girl.hasWings && !this.mounted;
+    const far = this.backGap() + 0.45;
+    const stance = !wings ? undefined : this.mode === 'fly'
+      ? { forward: -far * 0.8, side: far * 0.6, up: -0.5 }
+      : { forward: 0.75, side: IDEAL_GAP };
     const out = followStep({
       boy: this.bPos, girl: this.gPos, heading: this.heading, speed: this.currentSpeed, dt, airborne,
       groundAt: (x, z) => this.mounted ? Math.max(surfaceAt(x, z, this.gPos.y + 2), WATER_Y) : surfaceAt(x, z, this.gPos.y + 2),
-      gap: this.backGap(),
+      gap: wings ? MIN_GAP : this.backGap(),
+      stance,
     });
     this.bPos.set(out.pos.x, out.pos.y, out.pos.z);
     this.world.resolve(this.bPos, this.mounted ? 0.9 : 0.35);
     // Collision can push him — the gap always wins.
-    const gap = Math.max(this.mounted ? MOUNT_GAP : MIN_GAP, this.backGap());
+    const gap = Math.max(this.mounted ? MOUNT_GAP : MIN_GAP, wings ? 0 : this.backGap());
     const safe = enforceGap(this.bPos, this.gPos, gap);
     this.bPos.set(safe.x, safe.y, safe.z);
     this.bSpeed = out.speed;
@@ -366,9 +375,14 @@ export class Travellers {
   }
 
   private place(dt: number, t: number): void {
-    // Her wings fold in whenever he is nearer than they reach (never touching him or his pack).
-    const apart = Math.hypot(this.gPos.x - this.bPos.x, this.gPos.z - this.bPos.z);
-    this.girl.setBackRoom(apart - Math.max(this.boy.backReach(), BODY_RADIUS) - 0.2);
+    // Her wings open fully while he is wholly in front of them; otherwise they fold in to the room
+    // between them (never touching him or his pack). Airborne she leans into her flight, tilting
+    // them, so there only the distance counts.
+    const own = Math.max(this.boy.backReach(), BODY_RADIUS) + 0.2, plane = this.girl.wingPlane();
+    const level = this.mode !== 'fly' && this.grounded;
+    this.girl.setBackRoom(plane !== null && level
+      ? wingRoom(this.bPos, this.gPos, this.heading, own, plane)
+      : Math.hypot(this.gPos.x - this.bPos.x, this.gPos.z - this.bPos.z) - own);
     const def = VEHICLES[this.mode];
     const riding = def.seats.length > 0 || def.kind === 'mount';
     const q = new THREE.Quaternion().setFromEuler(new THREE.Euler(this.pitch, this.heading, this.roll, 'YXZ'));

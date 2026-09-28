@@ -3,21 +3,22 @@ import * as THREE from 'three';
 /**
  * Her stained-glass butterfly wings (owner's brief, OWNER_REQUESTS_SPEC §6.2 and §12): a giant
  * swallowtail — great pointed forewings sweeping up above her, smaller scalloped hindwings below,
- * each ending in a long tail with a jewelled eyespot beside it — vast and expansive, three times her
- * height, reaching up far above her and down to her feet. The glass is one flowing colour, not patches: pink in the middle at her back, turning
+ * each ending in a long tail with a jewelled eyespot beside it — vast and expansive, over three times her
+ * height and broad, reaching up far above her and down to her feet. The glass is one flowing colour, not patches: pink in the middle at her back, turning
  * outward through the rainbow to the edges. It is fragmented by thick black leading with gold in it,
  * and by curved veins sweeping out from the root. It shines, a light moves over it, glitter twinkles
  * in it, and glitter drifts off it as they beat. They spread wide and flap heavily, slowly, and
  * curve as they flap — the tips lag the root.
  *
- * They are wide, so when she wears them the boy keeps further away (`WING_REACH`, Travellers,
+ * They are wide, so on the ground the boy stands in front of them (they only ever reach behind
+ * her back), and in flight he keeps behind her, beyond their reach (`WING_REACH`, Travellers,
  * tests/wings.test.ts). Riding, they are folded away.
  */
 
 /** Her height on the unscaled body (floating head included). */
 const HER_HEIGHT = 1.78;
-/** One wing: three times her height tall, half as wide. */
-export const WING_H = 3 * HER_HEIGHT, WING_W = WING_H * 0.5;
+/** One wing: 3.3 times her height tall and broad — two-thirds as wide as it is tall (owner: "even bigger and broader"). */
+export const WING_H = 3.3 * HER_HEIGHT, WING_W = WING_H * 0.68;
 /** Across the pair, open flat. */
 export const WING_SPAN = 2 * WING_W;
 /** How far back the wings sweep from straight out sideways (radians): spread wide ... folded back. */

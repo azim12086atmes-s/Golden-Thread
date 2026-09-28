@@ -30,7 +30,12 @@ export interface FollowInput {
   groundAt?: (x: number, z: number) => number;
   /** A wider gap to keep (her wings, his jetpack); never less than MIN_GAP. */
   gap?: number;
+  /** Where he stands in her frame (m forward, m to her right, m up), instead of the usual half-step behind. */
+  stance?: Stance;
 }
+
+/** A place in her frame: forward of her, to her right, and up. */
+export interface Stance { forward: number; side: number; up?: number }
 
 export interface FollowOutput {
   pos: V3;
@@ -42,13 +47,29 @@ export interface FollowOutput {
 
 const dist = (a: V3, b: V3) => Math.hypot(a.x - b.x, a.y - b.y, a.z - b.z);
 
-/** Where he wants to be: beside her, a half-step behind — walking together, never blocking the view. */
-export function followTarget(girl: V3, heading: number, ideal = IDEAL_GAP): V3 {
-  const back = -0.35, side = 1;
+/** Where he wants to be: beside her, a half-step behind — walking together, never blocking the view (or at `stance`). */
+export function followTarget(girl: V3, heading: number, ideal = IDEAL_GAP, stance?: Stance): V3 {
   const fx = Math.sin(heading), fz = Math.cos(heading);
   const rx = Math.cos(heading), rz = -Math.sin(heading);
+  if (stance) return { x: girl.x + fx * stance.forward + rx * stance.side, y: girl.y + (stance.up ?? 0), z: girl.z + fz * stance.forward + rz * stance.side };
+  const back = -0.35, side = 1;
   const k = ideal / Math.hypot(back, side);
   return { x: girl.x + (fx * back + rx * side) * k, y: girl.y, z: girl.z + (fz * back + rz * side) * k };
+}
+
+/** How far forward of her (along her heading) a point is. */
+export function aheadOf(p: V3, girl: V3, heading: number): number {
+  return (p.x - girl.x) * Math.sin(heading) + (p.z - girl.z) * Math.cos(heading);
+}
+
+/**
+ * The room her wings have: they only ever reach behind the plane of their hinge (`plane`, m forward
+ * of her centre — negative, behind her back). While all of him (his reach `own` about his centre)
+ * is in front of that plane they open fully; otherwise they fold to fit the distance between them.
+ */
+export function wingRoom(boy: V3, girl: V3, heading: number, own: number, plane: number): number {
+  if (aheadOf(boy, girl, heading) - own >= plane) return Infinity;
+  return Math.hypot(boy.x - girl.x, boy.z - girl.z) - own;
 }
 
 /** Push `p` directly away from `from` until it is at least `gap` away. */
@@ -67,12 +88,12 @@ export function followStep(i: FollowInput): FollowOutput {
   const gap = Math.max(MIN_GAP, i.gap ?? 0), ideal = Math.max(IDEAL_GAP, gap + 0.45);
 
   if (d0 > SNAP) {
-    const t = enforceGap(followTarget(girl, i.heading, ideal), girl, gap);
+    const t = enforceGap(followTarget(girl, i.heading, ideal, i.stance), girl, gap);
     const pos = i.airborne || !i.groundAt ? t : { ...t, y: i.groundAt(t.x, t.z) };
     return { pos: enforceGap(pos, girl, gap), speed: 0, tension: 0 };
   }
 
-  const target = followTarget(girl, i.heading, ideal);
+  const target = followTarget(girl, i.heading, ideal, i.stance);
   const dx = target.x - boy.x, dz = target.z - boy.z;
   const dh = Math.hypot(dx, dz);
 
