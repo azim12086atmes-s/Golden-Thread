@@ -2,7 +2,7 @@ import * as THREE from 'three';
 import { markerSprite, tendMarker } from '../world/markers';
 import { CharacterModel } from '../characters/CharacterModel';
 import type { Outfit } from '../characters/modesty';
-import { OUTFITS } from '../characters/outfits';
+import { OUTFITS, isChildOutfit } from '../characters/outfits';
 import { dressGroup, type DressGroup } from '../characters/wardrobe';
 import { Rng } from '../core/rng';
 import type { RegionInstance } from '../world/RegionBuilder';
@@ -38,9 +38,10 @@ export const HERO_ONLY = new Set(['g-kurti-jeans', 'b-kurta-jeans', 'g-starlight
 const SKINS = ['#f1c9a5', '#e0ac85', '#c68b62', '#a8704a', '#8a5a3a', '#6b4630'];
 
 /** Outfits a land's people may wear. */
-export function wardrobeFor(land: RegionId, who: 'girl' | 'boy'): Outfit[] {
+export function wardrobeFor(land: RegionId, who: 'girl' | 'boy', child = false): Outfit[] {
   const shelf = LAND_SHELF[land];
-  const all = Object.values(OUTFITS).filter((o) => o.who === who && !HERO_ONLY.has(o.id) && !o.id.startsWith('fx-'));
+  const all = Object.values(OUTFITS).filter((o) => o.who === who && !HERO_ONLY.has(o.id) && !o.id.startsWith('fx-') && isChildOutfit(o) === child);
+  if (child) { const own = all.filter((o) => dressGroup(o) === shelf); return own.length ? own : all; }
   const own = all.filter((o) => dressGroup(o) === shelf);
   return own.length >= 3 ? own : all;
 }

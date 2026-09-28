@@ -309,8 +309,18 @@ export class CharacterModel {
     this.wings.group.scale.setScalar(THREE.MathUtils.clamp(room / (WING_REACH * this.scale), 0.08, 1));
   }
 
+  /**
+   * What she or he wears on the back, whatever the outfit says: the stained-glass wings are
+   * Fathima's alone and the jetpack Azim's alone (owner: "those wings are specifically for
+   * Fathima") — anyone else in the same clothes goes without.
+   */
+  private get back(): 'wings' | 'jetpack' | undefined {
+    const b = this.outfit.detail?.back;
+    return (b === 'wings' && this.identity === 'girl') || (b === 'jetpack' && this.identity === 'boy') ? b : undefined;
+  }
+
   /** Whether wings are on and shown. */
-  get hasWings(): boolean { return this.backShown && this.outfit.detail?.back === 'wings'; }
+  get hasWings(): boolean { return this.backShown && this.back === 'wings'; }
 
   /** The plane the wings never cross (m forward of this person's centre; behind the back), or null without wings. */
   wingPlane(): number | null { return this.hasWings ? HINGE_Z * this.scale : null; }
@@ -318,7 +328,7 @@ export class CharacterModel {
   /** How far from this person's centre their wings or jetpack reach, in metres (0 without them). */
   backReach(): number {
     if (!this.backShown) return 0;
-    const back = this.outfit.detail?.back;
+    const back = this.back;
     return (back === 'wings' ? WING_REACH : back === 'jetpack' ? JET_REACH : 0) * this.scale;
   }
 
@@ -475,8 +485,8 @@ export class CharacterModel {
     if (this.band) (this.threadHand > 0 ? this.armR : this.armL).add(threadBand());
 
     this.buildOuter(b);
-    if (o.detail?.back === 'wings' && this.backShown) { this.wings = new Wings(); b.add(this.wings.group); }
-    if (o.detail?.back === 'jetpack' && this.backShown) { this.jetpack = new Jetpack(); b.add(this.jetpack.group); }
+    if (this.back === 'wings' && this.backShown) { this.wings = new Wings(); b.add(this.wings.group); }
+    if (this.back === 'jetpack' && this.backShown) { this.jetpack = new Jetpack(); b.add(this.jetpack.group); }
     this.buildHead(b);
     this.buildCrown();
     const shine = o.detail?.glow;

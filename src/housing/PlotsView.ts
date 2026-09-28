@@ -109,7 +109,7 @@ export class PlotsView {
         const key = `${p.id}:${s.id}`;
         want.add(key);
         if (this.folk.has(key)) return;
-        const pool = wardrobeFor(person.land, person.id.length % 2 ? 'girl' : 'boy');
+        const pool = wardrobeFor(person.land, person.id.length % 2 ? 'girl' : 'boy', person.kind === 'orphan');
         const model = new CharacterModel(pool[(person.name.length * 3) % pool.length], ['#f1c9a5', '#e0ac85', '#c68b62', '#a8704a', '#8a5a3a'][person.name.length % 5],
           person.kind === 'orphan' ? 0.72 : person.kind === 'elder' ? 0.94 : 1);
         // In the front garden, spread in an arc before the door (the house stands at local z −5).

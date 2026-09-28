@@ -49,7 +49,7 @@ export class NeedFolkView {
   }
 
   private add(p: Person): void {
-    const at = needSpot(p), who = p.id.length % 2 ? 'girl' : 'boy', pool = wardrobeFor(p.land, who);
+    const at = needSpot(p), who = p.id.length % 2 ? 'girl' : 'boy', pool = wardrobeFor(p.land, who, p.kind === 'orphan');
     const scale = p.kind === 'orphan' ? 0.72 : p.kind === 'elder' ? 0.94 : 1;
     const model = new CharacterModel(pool[(p.name.length * 3) % pool.length], SKINS[p.name.length % SKINS.length], scale);
     const y = surfaceAt(at.x, at.z, 1e9);

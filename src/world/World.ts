@@ -73,7 +73,7 @@ export class World {
       const wm = water.build(this.builtWater);
       if (wm) { wm.renderOrder = 1; grp.add(wm); }
       this.group.add(grp);
-      for (const col of out.colliders) this.landmarkColliders.push({ x: c.x + col.x, z: c.z + col.z, r: col.r, h: col.h });
+      for (const col of out.colliders) this.landmarkColliders.push({ x: c.x + col.x, z: c.z + col.z, r: col.r, h: col.h, y0: col.y0 });
       for (const p of out.platforms) addPlatform({ x: c.x + p.x, z: c.z + p.z, r: p.r, y: p.y });
       this.landmarkPos.set(r.id, new THREE.Vector3(c.x, 0, c.z));
       this.landmarkDoors.push(landmarkDoor(r.id, c, out.colliders));
@@ -200,7 +200,7 @@ export class World {
   /** Push a circle of radius `r` at height `y` out of any collider it overlaps. */
   resolve(p: THREE.Vector3, r: number): void {
     for (const c of this.collidersNear(p.x, p.z, r + 2)) {
-      if (p.y > c.h - 0.2) continue;
+      if (p.y > c.h - 0.2 || (c.y0 !== undefined && p.y < c.y0 - 1.6)) continue;
       const dx = p.x - c.x, dz = p.z - c.z;
       const d = Math.hypot(dx, dz), min = c.r + r;
       if (d < min) {

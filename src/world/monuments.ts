@@ -2509,7 +2509,8 @@ const skyisles: Monument = (c, o) => {
   const T = tops[15];
   c.g.frame(T.x, T.y, T.z, 0, 1, () => c.glow.frame(T.x, T.y, T.z, 0, 1, () => {
     // A stepped moonstone platform, twelve columns with crystal capitals and arches between them.
-    for (let k = 0; k < 3; k++) surf(c, SURF.marble, () => cyl(c.g, 15 - k * 0.8, 15.2 - k * 0.8, 0.4, moon, 0, k * 0.4, 0, 36));
+    // Set down into the lawn so no grass shows through its floor.
+    for (let k = 0; k < 3; k++) surf(c, SURF.marble, () => cyl(c.g, 15 - k * 0.8, 15.2 - k * 0.8, k === 0 ? 1.2 : 0.4, moon, 0, k === 0 ? -0.8 : k * 0.4, 0, 36));
     const R = 12.5, H = 13;
     for (let k = 0; k < 12; k++) {
       const a = (k / 12) * Math.PI * 2, x = Math.cos(a) * R, z = Math.sin(a) * R;
@@ -2535,7 +2536,11 @@ const skyisles: Monument = (c, o) => {
     for (let k = 0; k < 10; k++) { const a = (k / 10) * Math.PI * 2 + 0.3; c.glow.add(new THREE.OctahedronGeometry(0.7).scale(0.6, 1.6, 0.6), ['#bfe8ff', '#ffc8f0', '#fff0b0', '#c8ffe0', '#d8c8ff'][k % 5], M(Math.cos(a) * 19, 8 + Math.sin(k * 1.7) * 3, Math.sin(a) * 19, a)); }
     for (let k = 0; k < 12; k += 3) { const a = ((k + 0.5) / 12) * Math.PI * 2; box(c.glow, 1.2, 5, 0.04, ['#ffc8f0', '#bfe8ff', '#fff0b0', '#c8ffe0'][k / 3], Math.cos(a) * (R - 0.4), 8, Math.sin(a) * (R - 0.4), Math.PI / 2 - a); }
   }));
-  // No colliders: they stand from the ground up and would wall off the meadow beneath the isle.
+  // Its steps are walkable, one tread at a time; its columns, the lantern's stand and the rim of the
+  // isle stop you — standing on the isle only (y0), never walling off the meadow beneath it.
+  for (let k = 0; k < 3; k++) o.platforms.push({ x: T.x, z: T.z, r: 15.1 - k * 0.8, y: T.y + 0.4 * (k + 1) });
+  for (let k = 0; k < 12; k++) { const a = (k / 12) * Math.PI * 2; o.colliders.push({ x: T.x + Math.cos(a) * 12.5, z: T.z + Math.sin(a) * 12.5, r: 0.8, h: T.y + 16, y0: T.y }); }
+  o.colliders.push({ x: T.x, z: T.z, r: 0.9, h: T.y + 4, y0: T.y });
   o.height = T.y + 60;
 };
 

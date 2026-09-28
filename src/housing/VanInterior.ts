@@ -3,7 +3,8 @@ import { CharacterModel, DIMS, HERO_SCALE } from '../characters/CharacterModel';
 import type { Outfit } from '../characters/modesty';
 import type { GameState, VanSlot } from '../core/state';
 import { AnimalModel } from '../animals/AnimalModel';
-import { COMPANION_BY_ID } from '../caravan/caravan';
+import { COMPANION_BY_ID, type SiblingDef } from '../caravan/caravan';
+import { OUTFITS } from '../characters/outfits';
 import { wardrobeFor } from '../npc/Townsfolk';
 import { BED, BEDS, BENCH, BENCH_SEATS, BUNK, BUNKS, PET_BEDS, VAN } from '../vehicles/vanLayout';
 
@@ -119,22 +120,43 @@ export class VanInterior {
     this.boy.setOutfit(b);
   }
 
-  /** The children on their bunks and the pets in their beds. */
+  /**
+   * Everyone in their place: the brothers and sisters on the benches with the two — the sisters on
+   * her side, the brother on his — and on the lower bunks; the children sitting up on their bunks;
+   * the pets in their beds.
+   */
   private seatCrew(): void {
     this.crew.clear();
     this.kids = [];
     this.pets = [];
     const pals = this.st.caravan.map((id) => COMPANION_BY_ID[id]).filter(Boolean);
-    pals.filter((c) => c.kind === 'child').slice(0, VAN_BUNKS.length).forEach((c, i) => {
-      if (c.kind !== 'child') return;
-      const pool = wardrobeFor(c.origin, c.who);
-      const m = new CharacterModel(pool[(c.name.length * 7) % pool.length], ['#f1c9a5', '#e0ac85', '#c68b62', '#a8704a'][c.name.length % 4], 0.62);
-      const [x, y, z] = VAN_BUNKS[i];
-      // Sitting up on their bunk, legs over the edge towards the aisle.
-      m.root.position.set(x * 0.72, y + 0.12 - DIMS.hip * 0.62, z + 0.2);
+    const sit = (m: CharacterModel, x: number, seatY: number, z: number, scale: number, ph: number) => {
+      m.root.position.set(x, seatY - DIMS.hip * scale, z);
       m.root.rotation.y = x < 0 ? Math.PI / 2 : -Math.PI / 2;
       this.crew.add(m.root);
-      this.kids.push({ m, ph: i * 1.7 });
+      this.kids.push({ m, ph });
+    };
+    // The family: her side's free bench seat, his side's, then the two lower bunks.
+    const sibs = pals.filter((c): c is SiblingDef => c.kind === 'sibling');
+    const herSide: Array<[number, number, number]> = [[-BENCH.x, 0.5, BENCH.z + 0.45], [VAN_BUNKS[0][0] * 0.72, VAN_BUNKS[0][1] + 0.12, VAN_BUNKS[0][2] + 0.55]];
+    const hisSide: Array<[number, number, number]> = [[BENCH.x, 0.5, BENCH.z - 0.5], [VAN_BUNKS[2][0] * 0.72, VAN_BUNKS[2][1] + 0.12, VAN_BUNKS[2][2] + 0.55]];
+    const brothers = sibs.filter((c) => c.who === 'boy'), sisters = sibs.filter((c) => c.who === 'girl');
+    const order: Array<[SiblingDef, [number, number, number]]> = [];
+    brothers.forEach((c) => { const seat = hisSide.shift(); if (seat) order.push([c, seat]); });
+    sisters.forEach((c) => { const seat = herSide.shift() ?? hisSide.shift(); if (seat) order.push([c, seat]); });
+    order.forEach(([c, [x, y, z]], i) => {
+      const scale = HERO_SCALE.girl + (HERO_SCALE.boy - HERO_SCALE.girl) * c.rise;
+      const m = new CharacterModel(OUTFITS[c.outfit], c.skin, scale);
+      m.hideBack();
+      sit(m, x, y, z, scale, i * 1.3 + 0.4);
+    });
+    pals.filter((c) => c.kind === 'child').slice(0, VAN_BUNKS.length).forEach((c, i) => {
+      if (c.kind !== 'child') return;
+      const pool = wardrobeFor(c.origin, c.who, true);
+      const m = new CharacterModel(pool[(c.name.length * 7) % pool.length], ['#f1c9a5', '#e0ac85', '#c68b62', '#a8704a'][c.name.length % 4], 0.62);
+      // Upper bunks first; on a lower bunk they sit further along, beside whoever is there.
+      const [x, y, z] = VAN_BUNKS[[1, 3, 0, 2][i]];
+      sit(m, x * 0.72, y + 0.12, z + (y < 1 ? -0.3 : 0.2), 0.62, i * 1.7);
     });
     pals.filter((c) => c.kind === 'pet').slice(0, VAN_PET_BEDS.length).forEach((c, i) => {
       if (c.kind !== 'pet') return;

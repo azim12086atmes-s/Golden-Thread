@@ -62,7 +62,41 @@ const DESIGNS: Design[] = [
   { id: 'b-nova', who: 'boy', name: 'Nova Coat', culture: 'Sci-fi', top: 'suit', topColor: '#2a3140', trim: '#3ef0ff', sleeve: 'full', hem: 'ankle', lower: 'trousers', lowerColor: '#1b2029', head: { style: 'hair', color: '#1a1410' }, outer: { style: 'cloak', color: '#3a4458' }, pattern: 'glow', detail: { back: 'jetpack' } },
 ];
 
-const ALL: Design[] = [...DESIGNS, ...EXTENDED_DESIGNS];
+/**
+ * The children's wardrobe (owner: "change the dresses of the children"): what children really wear
+ * in each part of the world, bright and easy to run in — a pinafore over a blouse, dungarees, a
+ * sailor suit, a yellow raincoat; a cotton yukata and jinbei; the rainbow-sleeved saekdong hanbok;
+ * a red padded jacket for New Year; a silk pavadai, a little lehenga, a kurta with churidar, a
+ * veshti; an embroidered jalabiya, a small thobe with a kufi, a sirwal with a waistcoat; and a
+ * starry robe and a comet suit for the Sky Isles. Children wear only these (Townsfolk.wardrobeFor).
+ */
+const CHILD_DESIGNS: Design[] = [
+  { id: 'c-g-pinafore', who: 'girl', name: 'Pinafore & Blouse', culture: 'Europe', top: 'blouse', topColor: '#fff4e8', trim: '#e8576a', sleeve: 'full', hem: 'ankle', lower: 'skirt', lowerColor: '#e8576a', outer: { style: 'apron', color: '#ffffff' }, pattern: 'dots', head: { style: 'hijab', color: '#ffd6e0' } },
+  { id: 'c-g-raincoat', who: 'girl', name: 'Yellow Raincoat', culture: 'Europe', top: 'parka', topColor: '#f2c14e', trim: '#2f6f9a', sleeve: 'full', hem: 'knee', lower: 'trousers', lowerColor: '#3a6aa8', head: { style: 'hijab', color: '#2f6f9a' } },
+  { id: 'c-b-dungarees', who: 'boy', name: 'Dungarees', culture: 'Europe', top: 'tunic', topColor: '#e8e4da', trim: '#c8483a', sleeve: 'full', hem: 'thigh', lower: 'trousers', lowerColor: '#3a5a8a', outer: { style: 'vest', color: '#3a5a8a' }, pattern: 'stripes', head: { style: 'hair', color: '#5a3a22' } },
+  { id: 'c-b-sailor', who: 'boy', name: 'Sailor Suit', culture: 'Europe', top: 'coat', topColor: '#1f2f5a', trim: '#ffffff', sleeve: 'full', hem: 'thigh', lower: 'trousers', lowerColor: '#ffffff', pattern: 'bands', head: { style: 'cap', color: '#ffffff' } },
+  { id: 'c-g-yukata', who: 'girl', name: 'Cotton Yukata', culture: 'Japan', top: 'kimono', topColor: '#ffc4dc', trim: '#e8576a', sleeve: 'full', hem: 'ankle', lower: 'none', lowerColor: '#ffc4dc', outer: { style: 'sash', color: '#f2c14e' }, pattern: 'floral' },
+  { id: 'c-b-jinbei', who: 'boy', name: 'Jinbei', culture: 'Japan', top: 'kimono', topColor: '#3a6aa8', trim: '#e8e4da', sleeve: 'full', hem: 'thigh', lower: 'trousers', lowerColor: '#3a6aa8', pattern: 'geometric', head: { style: 'hair', color: '#1a1410' } },
+  { id: 'c-g-saekdong', who: 'girl', name: 'Saekdong Hanbok', culture: 'Korea', top: 'jeogori', topColor: '#fff4e0', trim: '#e8576a', sleeve: 'full', hem: 'floor', lower: 'skirt', lowerColor: '#e8576a', pattern: 'stripes' },
+  { id: 'c-b-kkachi', who: 'boy', name: 'Rainbow-sleeved Coat', culture: 'Korea', top: 'coat', topColor: '#6ab8e8', trim: '#f2c14e', sleeve: 'full', hem: 'knee', lower: 'trousers', lowerColor: '#f4efe0', pattern: 'stripes', head: { style: 'cap', color: '#2a2a3a' } },
+  { id: 'c-g-newyear', who: 'girl', name: 'New Year Jacket', culture: 'China', top: 'hanfu', topColor: '#d8342a', trim: '#f2c14e', sleeve: 'full', hem: 'ankle', lower: 'trousers', lowerColor: '#d8342a', pattern: 'floral' },
+  { id: 'c-b-tangzhuang', who: 'boy', name: 'Little Tang Jacket', culture: 'China', top: 'coat', topColor: '#b3262a', trim: '#f2c14e', sleeve: 'full', hem: 'thigh', lower: 'trousers', lowerColor: '#2a2a3a', pattern: 'geometric', head: { style: 'hair', color: '#1a1410' } },
+  { id: 'c-g-pavadai', who: 'girl', name: 'Silk Pavadai', culture: 'South India', top: 'blouse', topColor: '#2f8a5a', trim: '#e2b43a', sleeve: 'full', hem: 'floor', lower: 'skirt', lowerColor: '#e8347a', pattern: 'bands' },
+  { id: 'c-g-lehenga', who: 'girl', name: 'Little Lehenga', culture: 'North India', top: 'anarkali', topColor: '#ff9a1f', trim: '#e8347a', sleeve: 'full', hem: 'ankle', lower: 'skirt', lowerColor: '#e8347a', outer: { style: 'dupatta', color: '#ffd23a' }, pattern: 'floral' },
+  { id: 'c-b-kurta', who: 'boy', name: 'Kurta & Churidar', culture: 'North India', top: 'kurta', topColor: '#ffd23a', trim: '#ffffff', sleeve: 'full', hem: 'knee', lower: 'churidar', lowerColor: '#ffffff', pattern: 'bands', head: { style: 'hair', color: '#1a1410' } },
+  { id: 'c-b-veshti', who: 'boy', name: 'Veshti & Shirt', culture: 'South India', top: 'tunic', topColor: '#ffffff', trim: '#e2b43a', sleeve: 'full', hem: 'thigh', lower: 'wrap', lowerColor: '#fbf7ee', pattern: 'bands', head: { style: 'hair', color: '#1a1410' } },
+  { id: 'c-g-jalabiya', who: 'girl', name: 'Embroidered Jalabiya', culture: 'Middle East', top: 'abaya', topColor: '#6a4ad8', trim: '#f2c14e', sleeve: 'full', hem: 'floor', lower: 'none', lowerColor: '#6a4ad8', pattern: 'floral', head: { style: 'hijab', color: '#ffd6e0' } },
+  { id: 'c-g-kaftan', who: 'girl', name: 'Little Kaftan', culture: 'Morocco', top: 'abaya', topColor: '#2f8a6a', trim: '#e2b43a', sleeve: 'full', hem: 'floor', lower: 'none', lowerColor: '#2f8a6a', pattern: 'geometric', head: { style: 'hijab', color: '#f4ecd8' } },
+  { id: 'c-b-thobe', who: 'boy', name: 'Little Thobe & Kufi', culture: 'Middle East', top: 'thobe', topColor: '#fbfbf6', trim: '#d8cfbd', sleeve: 'full', hem: 'ankle', lower: 'none', lowerColor: '#fbfbf6', head: { style: 'kufi', color: '#ffffff' } },
+  { id: 'c-b-sirwal', who: 'boy', name: 'Sirwal & Waistcoat', culture: 'Morocco', top: 'tunic', topColor: '#e8dcc6', trim: '#c23b2a', sleeve: 'full', hem: 'thigh', lower: 'salwar', lowerColor: '#2f5a9a', outer: { style: 'vest', color: '#c23b2a' }, pattern: 'geometric', head: { style: 'hair', color: '#1a1410' } },
+  { id: 'c-g-starlet', who: 'girl', name: 'Starry Robe', culture: 'Fantasy', top: 'robe', topColor: '#6a5ad8', trim: '#fff4c0', sleeve: 'full', hem: 'floor', lower: 'none', lowerColor: '#6a5ad8', pattern: 'stars', head: { style: 'hijab', color: '#c9a0ff' } },
+  { id: 'c-b-comet', who: 'boy', name: 'Comet Suit', culture: 'Fantasy', top: 'suit', topColor: '#e8f4ff', trim: '#7affd0', sleeve: 'full', hem: 'thigh', lower: 'trousers', lowerColor: '#3a4a8a', pattern: 'stars', head: { style: 'hair', color: '#1a1410' } },
+];
+
+const ALL: Design[] = [...DESIGNS, ...EXTENDED_DESIGNS, ...CHILD_DESIGNS];
 export const OUTFITS: Record<string, Outfit> = Object.fromEntries(ALL.map((d) => [d.id, modestify(d)]));
 export const DESIGN_REFERENCES: readonly Design[] = ALL;
-export const outfitsFor = (who: 'girl' | 'boy') => Object.values(OUTFITS).filter((o) => o.who === who);
+/** A child's outfit (worn only by children). */
+export const isChildOutfit = (o: { id: string }) => o.id.startsWith('c-');
+/** The travellers' dressing room: everything grown-up for him or for her. */
+export const outfitsFor = (who: 'girl' | 'boy') => Object.values(OUTFITS).filter((o) => o.who === who && !isChildOutfit(o));

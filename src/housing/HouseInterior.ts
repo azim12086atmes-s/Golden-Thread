@@ -300,7 +300,7 @@ export class HouseInterior {
       this.host = null;
       // The people who live with you, each in their own place about the room.
       residents.slice(0, RESIDENT_SPOTS.length).forEach((p, i) => {
-        const who = p.id.length % 2 ? 'girl' : 'boy', pool = wardrobeFor(p.land, who);
+        const who = p.id.length % 2 ? 'girl' : 'boy', pool = wardrobeFor(p.land, who, p.kind === 'orphan');
         const m = new CharacterModel(pool[(i * 3 + p.name.length) % pool.length], ['#f1c9a5', '#e0ac85', '#c68b62', '#a8704a', '#8a5a3a'][(i + p.name.length) % 5], p.kind === 'orphan' ? 0.72 : p.kind === 'elder' ? 0.94 : 1);
         const [x, z] = RESIDENT_SPOTS[i];
         m.root.position.set(x, 0, z);
@@ -347,7 +347,7 @@ export class HouseInterior {
       this.host = person(0, pool[rng.int(0, pool.length - 1)], skins[rng.int(0, 4)], who === 'girl' ? 0.95 : 1.02);
     } else this.host = null;
     residents.slice(0, Math.max(0, b.spots.length - (home ? 0 : 1))).forEach((p, i) => {
-      const pool = wardrobeFor(p.land, p.id.length % 2 ? 'girl' : 'boy');
+      const pool = wardrobeFor(p.land, p.id.length % 2 ? 'girl' : 'boy', p.kind === 'orphan');
       this.residents.push(person(i + (home ? 0 : 1), pool[(i * 3 + p.name.length) % pool.length], skins[(i + p.name.length) % 5], p.kind === 'orphan' ? 0.72 : p.kind === 'elder' ? 0.94 : 1));
     });
     if (b.gather) this.mote.position.set(b.gather[0], b.gather[1] + 1.2, b.gather[2]);

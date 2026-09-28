@@ -8,7 +8,7 @@ import { REGION_BY_ID, regionCenter, type RegionId } from '../world/regions';
 import { surfaceAt } from '../world/terrain';
 import { Carpet } from './Carpet';
 import { DIMS } from '../characters/CharacterModel';
-import { PET_BEDS, RIDE_CHILD_SEATS, VAN } from '../vehicles/vanLayout';
+import { BUNKS, PET_BEDS, RIDE_CHILD_SEATS, VAN } from '../vehicles/vanLayout';
 
 /** Children are drawn at this scale of an adult. */
 const CHILD_SCALE = 0.62;
@@ -92,7 +92,7 @@ export class CaravanView {
       body.child = new CharacterModel(OUTFITS[def.outfit], def.skin, HERO_SCALE.girl + (HERO_SCALE.boy - HERO_SCALE.girl) * def.rise);
       this.g.scene.add(body.child.root);
     } else if (def.kind === 'child') {
-      const pool = wardrobeFor(def.origin, def.who);
+      const pool = wardrobeFor(def.origin, def.who, true);
       const outfit = pool[(def.name.length * 7) % pool.length];
       body.child = new CharacterModel(outfit, ['#f1c9a5', '#e0ac85', '#c68b62', '#a8704a'][def.name.length % 4], CHILD_SCALE);
       this.g.scene.add(body.child.root);
@@ -308,23 +308,30 @@ export class CaravanView {
     }
   }
 
-  /** Driving: the children sit on the benches by the big windows, the pets curl up in their beds. */
+  /**
+   * Driving: the two are up front in the cab; the brothers and sisters sit on the benches by the big
+   * windows (the brother on his side), the children sit up on their bunks, the pets curl up in their
+   * beds — everyone in a seat of their own.
+   */
   private rideInVan(dt: number, t: number, van: THREE.Object3D): void {
     van.updateMatrixWorld();
-    let ci = 0, pi = 0;
+    let pi = 0, ki = 0;
+    // Bench seats: his side ([2], [3]) for a brother first, her side ([0], [1]) for the sisters.
+    const hisSeats = [RIDE_CHILD_SEATS[2], RIDE_CHILD_SEATS[3]], herSeats = [RIDE_CHILD_SEATS[0], RIDE_CHILD_SEATS[1]];
     for (const b of this.bodies) {
       const r = (b.child ?? b.pet)!.root;
-      if (b.def.kind === 'sibling') {
-        // The brothers and sisters follow in their own car (the van's benches are sized for the
-        // children), and are beside the two again the moment they step out.
-        r.visible = false;
-        continue;
-      }
-      if (b.child) {
-        const s = RIDE_CHILD_SEATS[ci++ % RIDE_CHILD_SEATS.length];
-        // Sitting: the hips rest on the cushion (0.5 m up), legs forward.
-        r.position.set(s[0], VAN.floorY + 0.5 - DIMS.hip * CHILD_SCALE, s[2]);
+      if (b.def.kind === 'sibling' && b.child) {
+        const s = b.def.who === 'boy' ? hisSeats.shift() ?? herSeats.shift() : herSeats.shift() ?? hisSeats.shift();
+        if (!s) { r.visible = false; continue; }
+        const scale = HERO_SCALE.girl + (HERO_SCALE.boy - HERO_SCALE.girl) * b.def.rise;
+        r.position.set(s[0], VAN.floorY + 0.5 - DIMS.hip * scale, s[2]);
         r.rotation.set(0, s[0] < 0 ? Math.PI / 2 : -Math.PI / 2, 0);
+        b.child.update(dt, { speed: 0, airborne: false, riding: true, t: t + b.ph });
+      } else if (b.child) {
+        // Sitting up on a bunk, upper ones first, legs over the edge towards the aisle.
+        const [x, y, z] = BUNKS[[1, 3, 0, 2][ki++ % 4]];
+        r.position.set(x * 0.72, VAN.floorY + y + 0.12 - DIMS.hip * CHILD_SCALE, z + (y < 1 ? -0.3 : 0.2));
+        r.rotation.set(0, x < 0 ? Math.PI / 2 : -Math.PI / 2, 0);
         b.child.update(dt, { speed: 0, airborne: false, riding: true, t: t + b.ph });
       } else {
         const [x, z] = PET_BEDS[pi++ % PET_BEDS.length];

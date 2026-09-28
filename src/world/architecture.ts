@@ -587,7 +587,7 @@ export function streetProp(c: Ctx, x: number, y: number, z: number, ry: number):
 // ───────────────────────── landmarks ─────────────────────────
 
 export interface LandmarkOut {
-  colliders: Array<{ x: number; z: number; r: number; h: number }>;
+  colliders: Array<{ x: number; z: number; r: number; h: number; y0?: number }>;
   platforms: Array<{ x: number; z: number; r: number; y: number }>;
   /** Height of the landmark, for the map and far-view. */
   height: number;

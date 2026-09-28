@@ -35,7 +35,8 @@ import { HABITS, speciesHeight } from './trees';
 import { blobMaterial, leafCardMesh } from './foliage';
 import { surfacesByColour } from './surfaces';
 
-export interface Collider { x: number; z: number; r: number; h: number }
+/** A round obstacle up to height h; with y0 it stands on something raised (a floating isle) and blocks only from there up. */
+export interface Collider { x: number; z: number; r: number; h: number; y0?: number }
 
 export interface ResourceNode {
   id: string;
