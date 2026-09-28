@@ -44,7 +44,15 @@ export interface InstituteDef {
   stages: [Stage, Stage, Stage, Stage];
 }
 
-const RADII = [5, 8, 12, 16] as const;
+/**
+ * How far each stage reaches (m). A founded institution is a public building, far bigger than a
+ * house: the builders draw each stage to BASE_RADII and it is set up in the world at RADII, so a
+ * stall stays human-sized while a full institution stands some 50 m across and 30 m high.
+ */
+export const BASE_RADII = [5, 8, 12, 16] as const;
+export const RADII = [5, 10, 17, 25] as const;
+/** The scale a stage's building is set up at (RADII / BASE_RADII). */
+export const stageScale = (stage: 0 | 1 | 2 | 3): number => RADII[stage] / BASE_RADII[stage];
 const S = (i: 0 | 1 | 2 | 3, name: string, what: string, coins: number, goods: Record<string, number>): Stage =>
   ({ name, what, coins, goods, days: [1, 2, 3, 5][i], level: [1, 2, 3, 4][i], radius: RADII[i] });
 const D = (kind: InstituteKind, name: string, land: RegionId | null, skill: SkillId, blurb: string, st: [string, string][], goods: string): InstituteDef => ({

@@ -1,6 +1,7 @@
 import * as THREE from 'three';
 import type { Ctx, Footprint } from './architecture';
 import { LAND_STYLE, doorway, frieze, landRoof, win, type LandStyle } from './buildings';
+import { dressWalls, entrance } from './instituteFronts';
 import { waterBasin } from './flowWater';
 import { M, archPanel, box, cone, cyl, dome, sphere } from './kit';
 
@@ -64,7 +65,10 @@ export function block(k: K, x: number, z: number, w: number, d: number, storeys:
         for (const sx of [-1, 1]) win(c, st, sx * (w / 2 + 0.02), y, wz, sx * Math.PI / 2);
       }
     }
-    if (o.door) doorway(c, st, 0, d / 2 + 0.02, k.trim);
+    // The public façade in the land's tradition, and its entrance (instituteFronts.ts).
+    dressWalls(k, w, d, h + 0.45, storeys, STOREY, !!o.door);
+    // A stall or cabin keeps a plain door; a real building gets the land's institutional entrance.
+    if (o.door) { if (w < 7) doorway(c, st, 0, d / 2 + 0.02, k.trim); else entrance(k, w, d / 2 + 0.02); }
     // Round roof forms (cones, domes, onions, pyramids) suit square blocks; a long block takes a hip roof.
     const round = st.roof === 'cone' || st.roof === 'pyramid' || st.roof === 'dome' || st.roof === 'onion';
     const rs = round && Math.max(w, d) / Math.min(w, d) > 1.3 ? { ...st, roof: 'hip' as const } : st;

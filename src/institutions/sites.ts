@@ -4,13 +4,14 @@ import { REGIONS, REGION_BY_ID, regionCenter, type RegionId } from '../world/reg
 export interface Site {
   id: string;
   land: RegionId;
-  /** World position of the site's centre (40 × 40 m). */
+  /** World position of the site's centre (SITE_SIZE square). */
   x: number;
   z: number;
   /** The land's own institute (already running), or open ground to found one. */
   established: boolean;
 }
-export const SITE_SIZE = 40;
+/** A site holds a full institution (radius 25 m) with its railings and forecourt. */
+export const SITE_SIZE = 56;
 
 /** Where institutes stand in each land: clear of the avenues, the ring road, the plots and the castle. */
 export const INSTITUTE_SITES: Site[] = REGIONS.filter((r) => r.id !== 'skyisles').flatMap((r) => {

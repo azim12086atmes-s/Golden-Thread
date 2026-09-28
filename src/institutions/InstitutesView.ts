@@ -10,7 +10,7 @@ import type { World } from '../world/World';
 import { SKILLS } from '../economy/items';
 import { markerSprite, tendMarker } from '../world/markers';
 import { INSTITUTE_BY_KIND } from './catalogue';
-import { INSTITUTE_SITES, instituteAt, isBuilding, landScience, standingStage } from './institutions';
+import { INSTITUTE_SITES, SITE_SIZE, instituteAt, isBuilding, landScience, standingStage } from './institutions';
 
 /**
  * Draws the institute sites of the lands that are loaded: each town's established institute (its
@@ -43,13 +43,13 @@ export class InstitutesView {
       if (!sig) continue;
       const g = new GeoBuilder(), glow = new GeoBuilder(), y = surfaceAt(site.x, site.z);
       const c: Ctx = { g, glow, rng: new Rng(`inst:${site.id}`), s: REGION_BY_ID[site.land] };
-      let r = 0, h = 0;
+      let r = 0, h = 0, fence: Array<{ x: number; z: number; r: number; h: number }> = [];
       if (site.established) {
         const fp = buildInstitute(c, landScience(site.land), 3);
-        r = fp.r; h = fp.h;
+        r = fp.r; h = fp.h; fence = fp.fence;
       } else if (inst) {
         const stage = standingStage(this.st, inst);
-        if (stage >= 0) { const fp = buildInstitute(c, inst.kind, stage as 0 | 1 | 2 | 3); r = fp.r; h = fp.h; }
+        if (stage >= 0) { const fp = buildInstitute(c, inst.kind, stage as 0 | 1 | 2 | 3); r = fp.r; h = fp.h; fence = fp.fence; }
         if (isBuilding(this.st, inst)) {
           // Scaffolding and stacked timber round the stage going up.
           const R = INSTITUTE_BY_KIND[inst.kind].stages[inst.stage].radius;
@@ -59,9 +59,10 @@ export class InstitutesView {
         }
       } else {
         // An open site: corner stakes and a signpost at the front.
-        for (const [sx, sz] of [[-1, -1], [1, -1], [-1, 1], [1, 1]]) cyl(g, 0.1, 0.1, 1, '#8a6444', sx * 19, 0, sz * 19, 4);
-        cyl(g, 0.08, 0.08, 2, '#6b4a2a', 0, 0, 17, 5);
-        box(g, 1.6, 0.8, 0.1, '#e8c48a', 0, 1.6, 17);
+        const e = SITE_SIZE / 2 - 1;
+        for (const [sx, sz] of [[-1, -1], [1, -1], [-1, 1], [1, 1]]) cyl(g, 0.1, 0.1, 1, '#8a6444', sx * e, 0, sz * e, 4);
+        cyl(g, 0.08, 0.08, 2, '#6b4a2a', 0, 0, e - 2, 5);
+        box(g, 1.6, 0.8, 0.1, '#e8c48a', 0, 1.6, e - 2);
       }
       const grp = new THREE.Group();
       const m1 = g.build(this.world.solid), m2 = glow.build(this.world.glow);
@@ -78,7 +79,7 @@ export class InstitutesView {
         this.scene.add(marker);
       }
       this.groups.set(site.id, { grp, sig, marker });
-      if (r > 0) this.world.setColliders(`inst:${site.id}`, [{ x: site.x, z: site.z, r: r * 0.85, h: y + h }]);
+      if (r > 0) this.world.setColliders(`inst:${site.id}`, [{ x: site.x, z: site.z, r: r * 0.85, h: y + h }, ...fence.map((f) => ({ x: site.x + f.x, z: site.z + f.z, r: f.r, h: y + f.h }))]);
     }
   }
 }

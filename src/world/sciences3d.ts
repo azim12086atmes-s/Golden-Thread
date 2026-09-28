@@ -342,6 +342,71 @@ function meru(k: K, x: number, z: number, tiers: number): void {
   }
   cyl(g, 0.04, 0.08, 0.6, GOLD, x, 2.8 + tiers * 0.9 + 0.3, z, 5);
 }
+/** A pagoda: storeys of posts under swept eaves, each narrower than the last, and a spire of rings. Returns its top. */
+function pagoda(k: K, x: number, z: number, w: number, storeys: number, post: string, sides: 4 | 8 = 4): number {
+  const { g, glow } = k.c;
+  box(g, w + 1.2, 0.9, w + 1.2, STONE, x, 0, z);
+  let y = 0.9;
+  for (let i = 0; i < storeys; i++) {
+    const ww = w * (1 - i * 0.1), hh = i === 0 ? 3 : 2.3;
+    if (sides === 8) cyl(g, ww * 0.52, ww * 0.55, hh, post, x, y, z, 8); else box(g, ww, hh, ww, post, x, y, z);
+    for (const ry of [0, Math.PI / 2, Math.PI, -Math.PI / 2]) archPanel(glow, ww * 0.22, hh * 0.45, k.c.s.glow, x + Math.sin(ry) * (ww / 2 + 0.02), y + hh * 0.3, z + Math.cos(ry) * (ww / 2 + 0.02), ry, 0.04);
+    box(g, ww + 0.5, 0.25, ww + 0.5, DARK, x, y + hh, z);
+    sweptRoof(g, ww + 2.4, ww + 2.4, 0.9, k.roof, x, y + hh + 0.25, z, sides === 8 ? Math.PI / 8 : 0, 0.55);
+    y += hh + 1.15;
+  }
+  cyl(g, 0.12, 0.18, 3.2, GOLD, x, y - 0.5, z, 8);
+  for (let i = 0; i < 7; i++) cyl(g, 0.34 - i * 0.03, 0.34 - i * 0.03, 0.08, GOLD, x, y + i * 0.38, z, 10);
+  sphere(g, 0.22, GOLD, x, y + 2.8, z, 8);
+  return y + 3;
+}
+/** A tiered pavilion (a Korean nugak): tiers of red posts, painted beams and swept roofs. Returns its top. */
+function tieredPavilion(k: K, x: number, z: number, w: number, d: number, tiers: number, post: string): number {
+  const { g } = k.c;
+  box(g, w + 1.4, 1.2, d + 1.4, STONE, x, 0, z);
+  let y = 1.2;
+  for (let t = 0; t < tiers; t++) {
+    const ww = w * (1 - t * 0.18), dd = d * (1 - t * 0.18), hh = 3.2 - t * 0.3;
+    for (const sx of [-1, -0.33, 0.33, 1]) for (const sz of [-1, 1]) cyl(g, 0.18, 0.2, hh, post, x + sx * ww / 2, y, z + sz * dd / 2, 8);
+    for (const [yy, col] of [[hh - 0.5, '#2f8a5a'], [hh - 0.25, '#3a6aa8']] as const) box(g, ww + 0.3, 0.25, dd + 0.3, col, x, y + yy, z);
+    if (t > 0) for (let i = 0; i < 9; i++) box(g, 0.06, 0.8, 0.06, post, x - ww / 2 + (ww / 8) * i, y, z + dd / 2 + 0.05); // gallery rail
+    sweptRoof(g, ww + 2.6, dd + 2.4, 1.3, k.roof, x, y + hh, z, 0, 0.5);
+    y += hh + 1.1;
+  }
+  return y + 0.4;
+}
+/** A gopuram: a gateway tower of storeys stepping in, crowded with painted niches, a barrel roof with finials. Returns its top. */
+function gopuram(k: K, x: number, z: number, w: number, d: number, tiers: number): number {
+  const { g, glow } = k.c;
+  const cols = ['#e8b84a', '#c8483a', '#3a8ab8', '#5aa85a', '#e8e0d0'];
+  box(g, w, 4.2, d, '#c8a878', x, 0, z);
+  archPanel(g, 2.4, 3.2, DARK, x, 0, z + d / 2 + 0.02, 0, 0.1);
+  let y = 4.2;
+  for (let t = 0; t < tiers; t++) {
+    const ww = w * (1 - t * 0.11), dd = d * (1 - t * 0.09), hh = 1.5;
+    box(g, ww, hh, dd, cols[t % 5], x, y, z);
+    box(g, ww + 0.3, 0.2, dd + 0.3, '#e8e0d0', x, y + hh, z);
+    const n = Math.max(2, Math.floor(ww / 1.1));
+    for (let i = 0; i < n; i++) for (const sz of [-1, 1]) {
+      const px = x - ww / 2 + (ww / n) * (i + 0.5);
+      archPanel(g, 0.6, 1, cols[(t + i + 2) % 5], px, y + 0.25, z + sz * (dd / 2 + 0.02), sz > 0 ? 0 : Math.PI, 0.1);
+      if ((i + t) % 3 === 0) sphere(glow, 0.06, '#ffcf8a', px, y + 1.2, z + sz * (dd / 2 + 0.1), 4);
+    }
+    y += hh + 0.2;
+  }
+  const top = w * (1 - tiers * 0.11);
+  k.c.g.add(new THREE.CylinderGeometry(d * 0.3, d * 0.3, top, 12, 1, false, 0, Math.PI).rotateZ(Math.PI / 2), '#c8483a', M(x, y, z));
+  for (let i = 0; i < 5; i++) { const px = x - top / 2 + 0.3 + (i * (top - 0.6)) / 4; cyl(g, 0.12, 0.2, 0.3, GOLD, px, y + d * 0.28, z, 8); cone(g, 0.12, 0.6, GOLD, px, y + d * 0.28 + 0.3, z, 8); }
+  return y + d * 0.3 + 1;
+}
+/** An obelisk: a tall tapering shaft on a plinth, its tip gilded. */
+function obelisk(k: K, x: number, z: number, h: number): void {
+  const { g } = k.c;
+  box(g, 1.8, 0.8, 1.8, STONE, x, 0, z);
+  g.add(new THREE.CylinderGeometry(0.42, 0.7, h, 4, 1).rotateY(Math.PI / 4).translate(0, h / 2, 0), '#d8c08a', M(x, 0.8, z));
+  g.add(new THREE.ConeGeometry(0.6, 1, 4).rotateY(Math.PI / 4), GOLD, M(x, 0.8 + h + 0.5, z));
+  for (let i = 0; i < 6; i++) box(g, 0.5, 0.08, 0.04, '#2f6fb8', x, 0.8 + h * (0.3 + i * 0.1), z + 0.62 - i * 0.02);
+}
 /** A holographic screen: a thin glowing panel on a slim post. */
 function holo(k: K, x: number, y: number, z: number, w: number, h: number, col: string, ry = 0): void {
   box(k.c.glow, w, h, 0.04, col, x, y, z, ry);
@@ -417,7 +482,9 @@ const B: Record<string, (k: K, s: Stage) => Footprint> = {
     pagodaGate(k, 0, 8, 6);
     courtGarden(k, 0, -1, 12, 9);
     sphere(glow, 0.3, '#ffb84a', 0, 3.6, 8, 6, 1.3);
-    return { r: 14.5, h: 9 };
+  
+    const pg = pagoda(k, 0, -15.2, 3.2, 5, '#b0322a'); // on the axis, behind the back range
+    return { r: 14.5, h: pg };
   },
 
   celadon(k, s) {
@@ -435,7 +502,9 @@ const B: Record<string, (k: K, s: Stage) => Footprint> = {
     at(k, 0, 1.2, -8, 0, () => block(k, 0, 0, 12, 5.5, 1, { door: true }));
     block(k, -9.5, 1, 5, 10, 1); block(k, 9.5, 1, 5, 10, 1);
     at(k, 0, 0, 9, 0, () => { for (const s2 of [-1, 1]) cyl(g, 0.25, 0.28, 3.6, '#b0322a', s2 * 2, 0, 0, 10); sweptRoof(g, 6, 2.6, 1.2, k.roof, 0, 3.6, 0, 0, 0.45); });
-    return { r: 14, h: 8 };
+    // A three-tiered pavilion rising behind the lecture hall, the academy's landmark.
+    const pv = tieredPavilion(k, 0, -13.5, 5.5, 3.4, 3, '#b0322a');
+    return { r: 14, h: pv };
   },
 
   tcm(k, s) {
@@ -453,7 +522,9 @@ const B: Record<string, (k: K, s: Stage) => Footprint> = {
     block(k, -11, 3, 5, 9, 1); block(k, 11, 3, 5, 9, 1);
     for (let i = 0; i < 8; i++) box(g, 1.6, 0.25, 1.1, '#5a8a3a', -6 + (i % 4) * 4, 0, 5 + Math.floor(i / 4) * 2.4);
     herbLeaf(k, 0, 1.5 + 5, -1.3, 0.8);
-    return { r: 15, h: t + 1.5 };
+    // An octagonal seven-storey pagoda beside the hall.
+    const pg = pagoda(k, -11, -10.2, 3, 7, '#e8dcc6', 8);
+    return { r: 15, h: Math.max(t + 1.5, pg) };
   },
 
   shipwright(k, s) {
@@ -621,12 +692,13 @@ const B: Record<string, (k: K, s: Stage) => Footprint> = {
       return { r: 10.5, h: 5 };
     }
     // a House of Life: a temple-like hall of papyrus columns, a pylon gate, gardens
-    at(k, 0, 0, 8, 0, () => { for (const s2 of [-1, 1]) g.add(new THREE.CylinderGeometry(2.6, 3.6, 10, 4).rotateY(Math.PI / 4), '#e0c48a', M(s2 * 4.5, 5, 0, 0, 1, 1, 0.5)); });
+    at(k, 0, 0, 8, 0, () => { for (const s2 of [-1, 1]) { g.add(new THREE.CylinderGeometry(2.6, 3.6, 13, 4).rotateY(Math.PI / 4), '#e0c48a', M(s2 * 4.5, 6.5, 0, 0, 1, 1, 0.5)); box(g, 4.4, 0.6, 2.2, '#c8a86a', s2 * 4.5, 13, 0); cyl(g, 0.12, 0.14, 6, '#8a6a4a', s2 * 6.2, 13, 1.2, 5); box(g, 1.2, 0.7, 0.04, '#2f6fb8', s2 * 6.8, 18, 1.2); } });
+    for (const s2 of [-1, 1]) obelisk(k, s2 * 2.6, 12, 11);
     colonnade(k, -8, 8, 0, 7, 7, '#e0c48a', true);
     colonnade(k, -8, 8, -4, 7, 7, '#e0c48a', true);
     box(g, 20, 8, 5, '#e0c48a', 0, 0, -10);
     for (let i = 0; i < 6; i++) box(g, 2.4, 5, 0.05, ['#3a6a9a', '#c8401a', '#e8b030'][i % 3], -7.5 + i * 3, 1.5, -7.47);
-    return { r: 15, h: 10 };
+    return { r: 15, h: 19 };
   },
 
   starlore(k, s) {
@@ -666,9 +738,14 @@ const B: Record<string, (k: K, s: Stage) => Footprint> = {
     if (s === 0) { for (let i = 0; i < 4; i++) if (i !== 3) box(g, i % 2 ? 7 : 0.4, 1.4, i % 2 ? 0.4 : 7, '#e8917a', i === 0 ? -3.5 : i === 2 ? 3.5 : 0, 0, i === 1 ? -3.5 : 0); for (const x of [-2.4, 2.4]) box(g, 2.3, 1.4, 0.4, '#e8917a', x, 0, 3.5); chhatri(k, 0, -1.5, 0.8); well(k, 2, 1.8); for (let i = 0; i < 4; i++) box(g, 1.4, 0.25, 1, '#5a8a3a', -2.2 + (i % 2) * 4.4, 0, 0.5 + Math.floor(i / 2) * -2.6); return { r: 4.9, h: 4.5 }; }
     if (s === 1) { const t = block(k, 0, -1, 8, 6, 2, { door: true }); box(g, 2.4, 1.6, 1, '#d27466', 0, 4.4, 2.5); dome(g, 1, WHITE, 0, 6, 2.5, 10, 0.6); herbLeaf(k, 3, 3, 2.1, 0.45); return { r: 6.2, h: t }; }
     if (s === 2) { for (const [x, z, w, d] of [[0, -6, 14, 4], [-6, 1, 3.5, 10], [6, 1, 3.5, 10]] as const) block(k, x, z, w, d, 2); for (let i = 0; i < 4; i++) { box(g, 1.8, 1.2, 0.8, '#d27466', -4.5 + i * 3, 4, -3.6); dome(g, 0.6, WHITE, -4.5 + i * 3, 5.2, -3.6, 8, 0.6); } courtGarden(k, 0, 0, 8, 6); return { r: 10.5, h: 9 }; }
-    const t = block(k, 0, -10, 18, 5, 2, { door: true });
+    const t = block(k, 0, -10, 18, 5, 3, { door: true });
     samrat(k, -6, 2, 1.5); ramYantra(k, 7, 5, 3); ramYantra(k, 7, -3, 2.2);
-    return { r: 15, h: Math.max(t, 7) };
+    // A tall tower of jharokhas at the back corner, crowned with a chhatri.
+    const tw = tower(k, -11, -11, 3.6, 15, 'flat', '#e8917a');
+    for (let y = 3; y < 14; y += 3.3) for (const [dx, dz, ry] of [[0, 1.82, 0], [1.82, 0, Math.PI / 2]] as const) at(k, -11 + dx, y, -11 + dz, ry, () => { box(g, 1.6, 1.4, 0.7, '#d27466', 0, 0, 0.35); dome(g, 0.55, WHITE, 0, 1.4, 0.35, 8, 0.6); });
+    chhatri(k, -11, -11, 1, WHITE);
+    at(k, -11, tw, -11, 0, () => chhatri(k, 0, 0, 0.9, WHITE));
+    return { r: 15, h: Math.max(t, tw + 5) };
   },
 
   siddha(k, s) {
@@ -680,7 +757,9 @@ const B: Record<string, (k: K, s: Stage) => Footprint> = {
     at(k, 0, -0.2, 0, 0, () => { for (let i = 0; i < 4; i++) box(g, 12 - i * 1.6, 0.4, 10 - i * 1.6, i % 2 ? '#c8a878' : '#b8987a', 0, -i * 0.4, 0); });
     waterPool(k.c, 0, -1.4, 0, 6, 4, 0, { kerb: 0.2, speed: 0.04 });
     for (const [x, z, w, d] of [[0, -10, 20, 5], [-11, 0, 5, 12], [11, 0, 5, 12]] as const) block(k, x, z, w, d, 1);
-    return { r: 15, h: 7 };
+    // A gopuram at the front: the gateway you walk in through, its tiers crowded with painted niches.
+    const gp = gopuram(k, 0, 10, 8, 4, 7);
+    return { r: 15, h: gp };
   },
 
   gardens(k, s) {
@@ -742,12 +821,12 @@ const B: Record<string, (k: K, s: Stage) => Footprint> = {
     rice(0, 1.2, -3.5, 24, 2.4); rice(0, 2.4, -6.5, 19, 2.4);
     at(k, 0, 3.6, 0, 0, () => { bale(k, -4, -10.5, 6, 4); bale(k, 4, -10.5, 6, 4); });
     bale(k, 0, 1, 7, 4.5);
-    for (const x of [-11.8, 11.8]) at(k, x, 1.2, -10, 0, () => meru(k, 0, 0, x < 0 ? 7 : 5));
+    for (const x of [-11.8, 11.8]) at(k, x, 1.2, -10, 0, () => meru(k, 0, 0, x < 0 ? 11 : 9));
     splitGate(k, 0, 9, 8);
     for (const x of [-8, 8]) { rice(x, 0, 4, 5, 4); offering(x > 0 ? 4.6 : -4.6, 7); }
     for (const x of [-12, 12]) palm(k, x, 6, 7, x > 0 ? 2 : 3);
     at(k, -12, 0, 1, 0, () => { box(g, 1.6, 4, 1.6, '#a8584a', 0, 0, 0); hip(g, 2.4, 2.4, 1.2, '#3a2e24', 0, 4, 0); cyl(g, 0.15, 0.15, 1.2, DARK, 0, 2.8, 0.9, 6); }); // the kulkul drum tower
-    return { r: 15.5, h: 10 };
+    return { r: 15.5, h: 1.2 + 2.8 + 11 * 0.9 + 1 };
   },
 
   polar(k, s) {
