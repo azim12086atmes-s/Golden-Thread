@@ -1,4 +1,5 @@
 import * as THREE from 'three';
+import { detailLandmark } from './landmarkDetail';
 import { fountainJet, waterBasin, waterChannel, waterfall, waterPool } from './flowWater';
 import { crystalCluster, floatingIsland as craggyIsland } from './islands';
 import type { Rng } from '../core/rng';
@@ -982,7 +983,6 @@ const landmarks: Record<RegionId, LandmarkFn> = {
     for (let i = 0; i < 12; i++) {
       const a = (i / 12) * Math.PI * 2;
       cyl(c.g, 0.1, 0.1, 6, '#e2b43a', Math.cos(a) * 7, 1, Math.sin(a) * 7, 5);
-      sphere(c.g, 0.7, i % 3 === 0 ? '#ffffff' : i % 3 === 1 ? '#ffc4dc' : '#bfe3d9', Math.cos(a) * 7, 3, Math.sin(a) * 7, 6, 0.7);
     }
     cyl(c.g, 10.6, 10.6, 1, '#e07a5f', 0, 7, 0, 20);
     for (let i = 0; i < 20; i++) {
@@ -1344,5 +1344,7 @@ function cylinderBarrel(r: number, len: number): THREE.BufferGeometry {
 export function buildLandmark(c: Ctx): LandmarkOut {
   const out: LandmarkOut = { colliders: [], platforms: [], height: 20 };
   landmarks[c.s.id](c, out);
+  // The carved, painted and inlaid detail of each monument (landmarkDetail.ts).
+  detailLandmark(c, c.s.id, out);
   return out;
 }

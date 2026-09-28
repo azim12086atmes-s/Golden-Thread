@@ -190,15 +190,159 @@ function landmarkHall(r: R): InteriorBuild {
     cyl(r.g, 0.3, 0.34, h - 0.4, s.trims[0], sx * (halfW - 1.6), 0, z, 10);
     archPanel(r.glow, 1.2, 2.6, r.night > 0.5 ? s.glow : '#e8f4ff', sx * (halfW - 0.01), 1.6, z + 1.5, sx * -Math.PI / 2, 0.05, st.arch === 'pointed');
   }
-  dome(r.glow, 2.6, s.glow, 0, h - 1.6, back + 5, 16, 0.4);
-  // A patterned carpet down the middle in the land's frieze colours; a fountain or brazier at the heart.
+  // A patterned carpet down the middle in the land's frieze colours.
   const [fa, fb] = st.frieze;
   for (let i = 0; i < 12; i++) box(r.g, 2.2, 0.03, 1.2, i % 2 ? fa : fb, 0, 0, back + 1 + i * 1.3);
-  cyl(r.g, 1.4, 1.5, 0.6, s.trims[0], 0, 0, back + 3.5, 16);
-  r.glow.add(new THREE.CircleGeometry(1.25, 18).rotateX(-Math.PI / 2), '#7affe0', M(0, 0.62, back + 3.5));
-  cone(r.glow, 0.15, 1.2, '#dff6ff', 0, 0.6, back + 3.5, 6);
+  // What is inside this monument (monumentInside): each its own.
+  if (!monumentInside(r, halfW, back, h)) {
+    dome(r.glow, 2.6, s.glow, 0, h - 1.6, back + 5, 16, 0.4);
+    cyl(r.g, 1.4, 1.5, 0.6, s.trims[0], 0, 0, back + 3.5, 16);
+    r.glow.add(new THREE.CircleGeometry(1.25, 18).rotateX(-Math.PI / 2), '#7affe0', M(0, 0.62, back + 3.5));
+    cone(r.glow, 0.15, 1.2, '#dff6ff', 0, 0.6, back + 3.5, 6);
+  }
   for (const sx of [-1, 1]) bench(r, sx * 3.2, 0.6, 1.8, Math.PI / 2);
   return finish(r, { halfW, back, front: 5, height: h }, [[-3.2, 0.45, 0.6], [3.2, 0.45, 0.6]], [[0, back + 6.5], [-4, back + 3], [4, back + 3]], { pos: [0, 2.6, 7], look: [0, 2, back + 3] }, [4.5, 0, back + 1.5]);
+}
+
+/** A gear: a wheel with teeth, facing +z. */
+function gear(r: R, x: number, y: number, z: number, rad: number, col: string): void {
+  r.g.add(new THREE.TorusGeometry(rad, rad * 0.12, 5, 24), col, M(x, y, z));
+  for (let i = 0; i < 16; i++) { const a = (i / 16) * Math.PI * 2; box(r.g, rad * 0.18, rad * 0.22, 0.12, col, x + Math.cos(a) * rad * 1.1, y + Math.sin(a) * rad * 1.1 - rad * 0.11, z, 0); }
+  for (let i = 0; i < 4; i++) r.g.add(new THREE.BoxGeometry(rad * 2, rad * 0.1, 0.08), col, M(x, y, z, 0, 1, 1, 1, 0, (i * Math.PI) / 4));
+}
+
+/** A robed statue on a plinth, its head floating free (no face). */
+function statue(r: R, x: number, z: number, col: string): void {
+  box(r.g, 0.9, 1, 0.9, '#d8d0c0', x, 0, z);
+  cone(r.g, 0.35, 1.5, col, x, 1, z, 8);
+  sphere(r.g, 0.17, col, x, 2.72, z, 8);
+}
+
+/**
+ * Inside each monument (owner: "interiors for monuments"): the room of what the monument is —
+ * a pagoda's central pillar over tatami, the Temple of Heaven's ring of pillars under a coffered
+ * sky, the clockworks inside the clock towers, the prayer hall with its mihrab and lamps, the
+ * tomb chamber behind jali screens, the burial chamber in the pyramid, the gopuram's pillared hall,
+ * the hollow inside the Great Tree… Returns false for a land without its own (the plain hall).
+ */
+function monumentInside(r: R, halfW: number, back: number, h: number): boolean {
+  const mid = back + 3.5, gold = '#d4af37';
+  switch (r.land) {
+    case 'japan':
+      cyl(r.g, 0.5, 0.55, h, '#6b4a2a', 0, 0, mid, 10); // the shinbashira, the pagoda's heart pillar
+      for (let i = 0; i < 6; i++) for (const sx of [-1, 1]) { box(r.g, 1.8, 0.05, 0.9, '#c8d49a', sx * 1.4, 0, back + 1 + i * 1.8); box(r.g, 1.84, 0.06, 0.06, '#2a3a2e', sx * 1.4, 0, back + 0.55 + i * 1.8); }
+      for (const sx of [-1, 1]) for (let i = 0; i < 4; i++) box(r.glow, 0.05, 2.2, 1.4, '#fff6e0', sx * (halfW - 0.3), 0.8, back + 2 + i * 2.4);
+      for (let i = 0; i < 6; i++) { cyl(r.glow, 0.22, 0.22, 0.5, '#ff6a4a', -3 + (i % 3) * 3, h - 1.6, back + 2 + Math.floor(i / 3) * 5, 8); }
+      return true;
+    case 'korea':
+      for (let k = 0; k < 3; k++) box(r.g, 5 - k * 1, 0.3, 3 - k * 0.6, '#b8b0a4', 0, k * 0.3, back + 1.8);
+      box(r.g, 1.4, 1.2, 0.9, '#c23b2a', 0, 0.9, back + 1.8);
+      // The sun, moon and five peaks screen.
+      box(r.g, 5.6, 3, 0.1, '#2a4a8a', 0, 0.9, back + 0.15);
+      for (let k = 0; k < 5; k++) cone(r.g, 0.55, 1.4 + (k % 2) * 0.5, '#2f8a6a', -2 + k, 1, back + 0.22, 3);
+      sphere(r.glow, 0.3, '#ff5a3a', -1.8, 3.2, back + 0.25, 10); sphere(r.glow, 0.26, '#fff4d0', 1.8, 3.2, back + 0.25, 10);
+      for (let i = 0; i < 30; i++) box(r.g, 0.5, 0.25, 0.1, ['#2f8a6a', '#3a6aa8', '#c23b2a', '#e2b43a'][i % 4], -halfW + 0.3 + i * 0.47, h - 0.4, back + 0.2);
+      return true;
+    case 'china':
+      for (let i = 0; i < 12; i++) { const a = (i / 12) * Math.PI * 2; cyl(r.g, 0.28, 0.3, h - 0.3, '#b3262a', Math.cos(a) * 4.8, 0, mid + Math.sin(a) * 3.6, 10); }
+      for (let i = 0; i < 4; i++) { const a = (i / 4) * Math.PI * 2 + Math.PI / 4; cyl(r.g, 0.34, 0.36, h - 0.3, gold, Math.cos(a) * 2, 0, mid + Math.sin(a) * 1.6, 10); }
+      for (let k = 0; k < 5; k++) r.glow.add(new THREE.TorusGeometry(1 + k * 0.9, 0.12, 5, 32), ['#3a6aa8', '#2f8a6a', gold, '#3a6aa8', '#c23b2a'][k], M(0, h - 0.25, mid, 0, 1, 1, 1, Math.PI / 2, 0));
+      cyl(r.g, 1.2, 1.3, 0.5, '#fbf8f0', 0, 0, mid, 24);
+      return true;
+    case 'norway':
+      for (const sx of [-1, 1]) for (let i = 0; i < 5; i++) cyl(r.g, 0.35, 0.4, h, '#3a2a22', sx * 3.4, 0, back + 1.5 + i * 3, 8);
+      for (let i = 0; i < 12; i++) { const a = (i / 12) * Math.PI * 2; cyl(r.g, 0.04, 0.04, 0.25, '#fbf7ee', Math.cos(a) * 1.3, h - 2.2, mid + Math.sin(a) * 1.3, 4); sphere(r.glow, 0.06, '#ffd88a', Math.cos(a) * 1.3, h - 1.9, mid + Math.sin(a) * 1.3, 4); }
+      r.g.add(new THREE.TorusGeometry(1.3, 0.05, 4, 24), '#3a3a3a', M(0, h - 2.2, mid, 0, 1, 1, 1, Math.PI / 2, 0));
+      return true;
+    case 'switzerland':
+    case 'london': {
+      // The clockworks: great gears on the back wall, a pendulum, the clock faces glowing on the walls.
+      const brass = '#c9a24a';
+      gear(r, -2.2, 4.2, back + 0.4, 1.4, brass); gear(r, 0.6, 5.4, back + 0.5, 0.9, '#a88a3a'); gear(r, 2.4, 3.6, back + 0.4, 1.1, brass);
+      cyl(r.g, 0.04, 0.04, 4, '#3a3a3a', 0, 1.6, mid, 4); cyl(r.g, 0.5, 0.5, 0.12, brass, 0, 1.4, mid, 16);
+      for (const [x, z, ry] of [[0, back + 0.12, 0], [-halfW + 0.12, back + 5, Math.PI / 2], [halfW - 0.12, back + 5, -Math.PI / 2]] as const) {
+        r.glow.add(new THREE.CircleGeometry(1.5, 32), '#fff4d8', M(x, h - 2.2, z, ry));
+        for (let i = 0; i < 12; i++) { const a = (i / 12) * Math.PI * 2; r.g.add(new THREE.BoxGeometry(0.08, 0.3, 0.05), '#2a2a2a', M(x + Math.cos(ry) * Math.cos(a) * 1.25, h - 2.2 + Math.sin(a) * 1.25, z - Math.sin(ry) * Math.cos(a) * 1.25, ry, 1, 1, 1, 0, a)); }
+      }
+      return true;
+    }
+    case 'newyork':
+      for (let i = 0; i < 12; i++) for (let j = 0; j < 7; j++) box(r.g, 1.2, 0.02, 1.2, (i + j) % 2 ? '#e8e4da' : '#2a2a30', -halfW + 0.6 + j * 2.1, 0.02, back + 0.6 + i * 1.3);
+      for (const x of [-3, 0, 3]) box(r.g, 1.6, 3, 0.1, gold, x, 0, back + 0.15);
+      for (let i = 0; i < 9; i++) { const a = Math.PI * (0.1 + i * 0.1); r.glow.add(new THREE.BoxGeometry(0.1, 2.4, 0.04), '#ffe08a', M(Math.cos(a) * 1.3, 4.6 + Math.sin(a) * 1.3, back + 0.2, 0, 1, 1, 1, 0, a - Math.PI / 2)); }
+      return true;
+    case 'renaissance':
+      for (let k = 0; k < 8; k++) { const a = (k / 8) * Math.PI * 2; r.glow.add(new THREE.CircleGeometry(1.4, 3, a, Math.PI / 4), ['#b5552e', '#3a6aa8', '#e2b43a', '#6a8a4a'][k % 4], M(0, h - 0.15, mid, 0, 1, 1, 1, Math.PI / 2, 0)); }
+      for (const [x, z] of [[-4.6, back + 1.5], [4.6, back + 1.5]] as const) statue(r, x, z, '#f4eee2');
+      for (const sx of [-1, 1]) for (let i = 0; i < 3; i++) box(r.glow, 0.05, 1.8, 2.2, ['#d8a878', '#8ab0d0', '#c89aa0'][i], sx * (halfW - 0.08), 3.4, back + 2 + i * 3.2);
+      for (let k = 0; k < 4; k++) r.g.add(new THREE.TorusGeometry(0.6 + k * 0.5, 0.05, 4, 24), k % 2 ? '#3a6a52' : '#d88a8a', M(0, 0.03, mid, 0, 1, 1, 1, Math.PI / 2, 0));
+      return true;
+    case 'vintage':
+      box(r.g, 6, 0.6, 3, '#8a5a36', 0, 0, back + 1.6);
+      box(r.g, 1.8, 1, 0.7, '#1f1f24', -1.5, 0.6, back + 1.2); box(r.g, 1.6, 0.05, 0.3, '#fbf7ee', -1.5, 1.6, back + 1.45);
+      for (let i = 0; i < 30; i++) sphere(r.glow, 0.06, ['#ff8fb8', '#ffd24a', '#8fd0ff'][i % 3], -halfW + 0.5 + i * 0.47, h - 0.6 - Math.sin(i * 0.5) * 0.3, back + 0.3, 4);
+      return true;
+    case 'islamic':
+      // The mihrab: a glowing gilded niche in the back wall; the minbar's steps; lamps hanging in rows.
+      archPanel(r.glow, 1.6, 2.8, gold, 0, 0, back + 0.12, 0, 0.1, true);
+      archPanel(r.g, 2.2, 3.4, '#2f6f9a', 0, 0, back + 0.08, 0, 0.05, true);
+      for (let k = 0; k < 6; k++) box(r.g, 0.8, 0.3 * (k + 1), 0.45, '#8a5a36', 2.4, 0, back + 0.5 + k * 0.45);
+      for (let i = 0; i < 12; i++) { const x = -4.5 + (i % 4) * 3, z = back + 2 + Math.floor(i / 4) * 3.2; cyl(r.g, 0.01, 0.01, 1.4, '#3a2a22', x, h - 1.4, z, 3); sphere(r.glow, 0.18, i % 2 ? '#ffd27a' : '#7affd0', x, h - 1.55, z, 6, 1.3); }
+      return true;
+    case 'middleeast':
+    case 'desert':
+      for (const sx of [-1, 1]) for (let i = 0; i < 5; i++) box(r.g, 0.8, 0.45, 1.6, ['#c23b2a', '#e2b43a', '#2f6f9a'][i % 3], sx * (halfW - 0.6), 0, back + 1 + i * 2);
+      cyl(r.g, 0.9, 0.7, 0.4, '#6a5a44', 0, 0, mid, 10); cone(r.glow, 0.45, 0.8, '#ff8a2a', 0, 0.4, mid, 6);
+      for (const x of [-1.3, 1.3]) { cyl(r.g, 0.18, 0.25, 0.45, '#c9a24a', x, 0, mid + 1.3, 8); cone(r.g, 0.16, 0.3, '#c9a24a', x, 0.45, mid + 1.3, 8); }
+      for (let i = 0; i < 6; i++) { cyl(r.g, 0.01, 0.01, 1, '#3a2a22', -4 + i * 1.6, h - 1, back + 4, 3); sphere(r.glow, 0.16, '#ffb84a', -4 + i * 1.6, h - 1.2, back + 4, 6, 1.3); }
+      return true;
+    case 'egypt':
+      box(r.g, 2.4, 1.1, 1.2, '#c9a878', 0, 0, back + 2);
+      box(r.g, 2.5, 0.2, 1.3, '#b8966a', 0, 1.1, back + 2);
+      for (const sx of [-1, 1]) for (let y = 1; y < h - 1; y += 1.2) box(r.glow, 0.04, 0.35, halfW * 1.6, '#e8c46a', sx * (halfW - 0.08), y, back + 5);
+      for (const sx of [-1, 1]) { box(r.g, 0.2, 0.5, 0.2, '#6b4a2a', sx * (halfW - 0.3), 2.2, back + 2); cone(r.glow, 0.15, 0.4, '#ff9a3a', sx * (halfW - 0.3), 2.7, back + 2, 5); }
+      return true;
+    case 'indianorth':
+      for (const sx of [-1, 1]) for (let i = 0; i < 5; i++) for (let j = 0; j < 2; j++) archPanel(r.glow, 0.7, 1.1, ['#ff5a8a', '#ffd24a', '#5ad8ff', '#7aff9a'][(i + j) % 4], sx * (halfW - 0.05), 2 + j * 2.2, back + 1.5 + i * 2.2, sx * -Math.PI / 2, 0.04, true);
+      cyl(r.g, 1.2, 1.3, 0.5, '#e8917a', 0, 0, mid, 12); r.glow.add(new THREE.CircleGeometry(1.05, 16).rotateX(-Math.PI / 2), '#7affe0', M(0, 0.52, mid));
+      return true;
+    case 'indiasouth':
+      for (const sx of [-1, 1]) for (let i = 0; i < 4; i++) {
+        const x = sx * 4.4, z = back + 1.5 + i * 3;
+        for (let k = 0; k < 4; k++) box(r.g, 0.7 - (k % 2) * 0.15, h / 4, 0.7 - (k % 2) * 0.15, ['#c9bfa8', '#b8ae96'][k % 2], x, k * (h / 4), z);
+      }
+      for (const x of [-1.6, 1.6]) { cyl(r.g, 0.08, 0.3, 1.6, '#c9a24a', x, 0, mid, 8); for (let k = 0; k < 5; k++) { const a = (k / 5) * Math.PI * 2; sphere(r.glow, 0.07, '#ffb84a', x + Math.cos(a) * 0.3, 1.65, mid + Math.sin(a) * 0.3, 4); } }
+      for (let i = 0; i < 40; i++) sphere(r.g, 0.05, '#fbf7ee', Math.cos(i * 0.9) * (0.6 + (i % 5) * 0.25), 0.03, mid + Math.sin(i * 0.9) * (0.6 + (i % 5) * 0.25), 4);
+      return true;
+    case 'mughal':
+      // The cenotaph behind an octagon of pierced marble jali screens, glowing.
+      box(r.g, 1.2, 0.8, 2.4, '#fbf7ee', 0, 0, mid);
+      for (let k = 0; k < 3; k++) box(r.g, 1.25, 0.04, 2.45, ['#2f7a5a', '#b5552e', '#2a2a2a'][k], 0, 0.2 + k * 0.2, mid);
+      for (let i = 0; i < 8; i++) { const a = (i / 8) * Math.PI * 2; r.glow.frame(Math.sin(a) * 3, 0, mid + Math.cos(a) * 2.6, a, 1, () => { for (let k = 0; k < 16; k++) box(r.glow, 0.12, 0.12, 0.03, '#fff0c8', -0.9 + (k % 4) * 0.6, 0.4 + Math.floor(k / 4) * 0.5, 0); }); box(r.g, 2.2, 2.4, 0.06, '#f2eee4', Math.sin(a) * 3.02, 0, mid + Math.cos(a) * 2.62, a); }
+      return true;
+    case 'indonesia':
+      for (let i = 0; i < 8; i++) { const a = (i / 8) * Math.PI * 2; dome(r.g, 0.8, '#8a8478', Math.cos(a) * 4, 0, mid + Math.sin(a) * 3.2, 10, 1.3); cone(r.g, 0.12, 0.6, '#8a8478', Math.cos(a) * 4, 1.05, mid + Math.sin(a) * 3.2, 5); }
+      for (let i = 0; i < 6; i++) { cyl(r.g, 0.3, 0.25, 0.2, '#c9a86a', -2.5 + i, 0, mid + 1.5, 8); sphere(r.g, 0.12, ['#ff6b8b', '#f2d14e', '#ffffff'][i % 3], -2.5 + i, 0.25, mid + 1.5, 5); }
+      return true;
+    case 'aurora':
+      cyl(r.g, 0.3, 0.4, 1.2, '#3a3a44', 0, 0, mid, 10);
+      r.g.add(new THREE.CylinderGeometry(0.35, 0.5, 4, 14), '#6a7a8a', M(0, 2.6, mid, 0, 1, 1, 1, -0.7, 0));
+      for (let i = 0; i < 80; i++) sphere(r.glow, 0.04, '#e8f4ff', r.rng.range(-halfW, halfW), h - 0.1, r.rng.range(back, 4), 4);
+      return true;
+    case 'meadow':
+      // Inside the Great Tree: a trunk core with a stair winding round it, roots, shelves, lanterns.
+      cyl(r.g, 1, 1.3, h, '#6b4a30', 0, 0, mid, 12);
+      for (let k = 0; k < 16; k++) { const a = k * 0.55; box(r.g, 1, 0.12, 0.5, '#8a6a44', Math.cos(a) * 1.6, 0.4 + k * 0.42, mid + Math.sin(a) * 1.6, -a); }
+      for (let i = 0; i < 8; i++) { const a = (i / 8) * Math.PI * 2; r.g.add(new THREE.CylinderGeometry(0.15, 0.3, 3, 5), '#5a3e28', M(Math.cos(a) * 2.2, 0.3, mid + Math.sin(a) * 2.2, 0, 1, 1, 1, Math.sin(a) * 1.2, -Math.cos(a) * 1.2)); }
+      for (let i = 0; i < 6; i++) sphere(r.glow, 0.15, ['#ffd24a', '#ff8fb8', '#8fd0ff'][i % 3], -4 + i * 1.6, h - 1.4, back + 1.5, 6);
+      return true;
+    case 'skyisles':
+      sphere(r.glow, 1.2, '#fff0b0', 0, 3.5, mid, 16, 1.3);
+      for (let i = 0; i < 10; i++) { const a = (i / 10) * Math.PI * 2; crystalCluster(r.g, r.glow, Math.cos(a) * 3.6, 0, mid + Math.sin(a) * 3, 0.9, () => r.rng.next(), CRYSTAL_PAL); }
+      return true;
+    default:
+      return false;
+  }
 }
 
 /** Build the interior asked for, or null (the game then uses the land's standard room). */
