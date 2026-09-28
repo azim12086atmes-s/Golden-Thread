@@ -11,8 +11,8 @@ const parts = (c: CharacterModel) => { const out: string[] = []; c.root.traverse
 
 describe('her stained-glass wings and his jetpack', () => {
   it('the wings are over three times her height and broad, spreading wide and sweeping back', () => {
-    expect(WING_H).toBeCloseTo(3.8 * 1.78, 1);
-    expect(WING_W).toBeGreaterThan(5);
+    expect(WING_H).toBeCloseTo(4.3 * 1.78, 1);
+    expect(WING_W).toBeGreaterThan(6);
     expect(MIN_BACK).toBeLessThan(0.5); // spread wide
     expect(MAX_BACK).toBeGreaterThan(1.2);
     expect(WING_REACH).toBeCloseTo(WING_W + Math.abs(HINGE_Z));
@@ -59,20 +59,20 @@ describe('her stained-glass wings and his jetpack', () => {
 
 describe('with her wings on, he stands in front of them; in flight, behind her', () => {
   const plane = HINGE_Z * HERO_SCALE.girl, own = JET_REACH * HERO_SCALE.boy + 0.2;
-  it('on the ground he walks round to his place a step in front of her wings, whichever way she turns', () => {
+  it('on the ground he walks round to his place beside her, clear of her swept-back wings, whichever way she turns', () => {
     let b = { x: -3, y: 0, z: -3 };
     const g = { x: 0, y: 0, z: 0 };
     for (const heading of [0, 1.2, Math.PI, -2]) {
       for (let i = 0; i < 300; i++) {
-        b = followStep({ boy: b, girl: g, heading, speed: 0, dt: 1 / 30, airborne: false, gap: MIN_GAP, stance: { forward: 0.95, side: 1.95 } }).pos;
+        b = followStep({ boy: b, girl: g, heading, speed: 0, dt: 1 / 30, airborne: false, gap: MIN_GAP, stance: { forward: 0.35, side: 2.1 } }).pos;
         expect(Math.hypot(b.x - g.x, b.z - g.z)).toBeGreaterThanOrEqual(MIN_GAP - 1e-6);
         // Wherever he is on the way, her wings fit the room there is.
-        const room = wingRoom(b, g, heading, own, plane);
-        if (aheadOf(b, g, heading) - own < plane) expect(room).toBeLessThan(Math.hypot(b.x, b.z));
+        const room = wingRoom(b, g, heading, own, plane, MIN_BACK);
+        if (room !== Infinity) expect(room).toBeLessThan(Math.hypot(b.x, b.z));
       }
-      // Arrived: wholly in front of the wing plane, so they open fully.
-      expect(aheadOf(b, g, heading)).toBeCloseTo(0.95, 1);
-      expect(wingRoom(b, g, heading, own, plane)).toBe(Infinity);
+      // Arrived: beside her (hardly ahead), yet wholly clear of the glass, so they open fully.
+      expect(aheadOf(b, g, heading)).toBeCloseTo(0.35, 1);
+      expect(wingRoom(b, g, heading, own, plane, MIN_BACK)).toBe(Infinity);
     }
   });
   it('in flight he keeps behind her, beyond the wings\' reach', () => {

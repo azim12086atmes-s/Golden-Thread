@@ -97,12 +97,17 @@ export const SURFACE_GLSL = /* glsl */ `
       return vec2(0.75 + (1.0 - g.y) * 0.5 + sh1(floor(st / vec2(1.5, 1.2))) * 0.15, mull * 0.6); } // glass curtain wall
     if (id < 12.5) return vec2(0.86 + sn2(st * 30.0) * 0.12 + step(0.97, sh1(floor(st * 40.0))) * 0.2, 0.0); // asphalt
     if (id < 13.5) { float v = abs(sin(st.x * 2.3 + st.y * 1.1 + sfbm(st * 1.6) * 7.0)); return vec2(1.02 - (1.0 - smoothstep(0.0, 0.06, v)) * 0.16, 0.0); } // marble
-    if (id < 14.5) { float fleck = step(0.985, sh1(floor(st * vec2(90.0, 30.0)))); return vec2(0.93 + sfbm(st * 2.5) * 0.12 + fleck * 0.12, 0.0); } // adobe
+    if (id < 14.5) { float fleck = step(0.985, sh1(floor(st * vec2(90.0, 30.0)))), dark = step(0.975, sh1(floor(st * vec2(70.0, 70.0)) + 5.0)), sand = sh1(floor(st * 55.0)) * 0.07;
+      float trowel = sn2(vec2(st.x * 2.0 + st.y * 0.7, st.y * 6.0)) * 0.07;
+      return vec2(0.9 + sfbm(st * 2.5) * 0.12 + sand + trowel + fleck * 0.12 - dark * 0.14, 0.0); } // adobe: sandy grain, trowel sweeps, flecks of straw and grit
     if (id < 15.5) { vec2 b = courses(st, vec2(0.58, 0.44), 0.42, 0.02, 0.2); return vec2(b.x * (0.93 + n * 0.1), b.y); } // flagstones
     if (id < 16.5) { vec2 g = fract(st / 0.15); float gl = 0.5 + 0.5 * sin(fract(st.x / 0.15) * 3.1416); float edge = 1.0 - smoothstep(0.0, 0.06, min(min(g.x, 1.0 - g.x), min(g.y, 1.0 - g.y)));
       return vec2((0.86 + gl * 0.24) * (0.92 + sh1(floor(st / 0.15)) * 0.16), edge * 0.7); } // glazed tiles
-    if (id < 17.5) { float w = step(0.5, fract(st.x * 25.0)) * step(0.5, fract(st.y * 25.0)) + step(fract(st.x * 25.0), 0.5) * step(fract(st.y * 25.0), 0.5); float stripe = step(0.82, fract(st.y / 0.45));
-      return vec2((0.9 + w * 0.1) * (1.0 - stripe * 0.35), 0.0); } // woven cloth with stripes
+    if (id < 17.5) { float strip = fract(st.y / 0.62); float seam = 1.0 - smoothstep(0.0, 0.06, min(strip, 1.0 - strip));
+      float fib = sn2(vec2(st.x * 45.0, st.y * 11.0)) * 0.55 + sh1(floor(st * vec2(110.0, 34.0))) * 0.45;
+      float slub = sn2(vec2(st.x * 3.0, st.y * 26.0)) * 0.12;
+      float stripe = step(0.86, fract(st.y / 0.62 + 0.4));
+      return vec2((0.8 + fib * 0.26 + slub) * (1.0 - seam * 0.32) * (1.0 - stripe * 0.2), seam * 0.5); } // hand-spun woven strips: coarse grainy fibres, slubs, sewn seams
     vec2 b = courses(st, vec2(0.55, 0.32), 0.5, 0.02, 0.06); return vec2(b.x, b.y * 0.5); // snow blocks
   }
   // The size of each surface's smallest repeating detail (metres), for fading it out before it aliases.
@@ -111,7 +116,7 @@ export const SURFACE_GLSL = /* glsl */ `
     if (id < 5.5) return 0.17; if (id < 6.5) return 0.19; if (id < 7.5) return 0.05; if (id < 8.5) return 0.19;
     if (id < 9.5) return 0.19; if (id < 10.5) return 0.6; if (id < 11.5) return 1.2; if (id < 12.5) return 0.05;
     if (id < 13.5) return 0.5; if (id < 14.5) return 0.2; if (id < 15.5) return 0.44; if (id < 16.5) return 0.15;
-    if (id < 17.5) return 0.04; return 0.32;
+    if (id < 17.5) return 0.12; return 0.32;
   }
   vec2 surface(float id, vec3 wp, vec3 wn) {
     vec3 an = abs(wn);

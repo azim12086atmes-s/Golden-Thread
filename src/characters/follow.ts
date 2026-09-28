@@ -63,12 +63,16 @@ export function aheadOf(p: V3, girl: V3, heading: number): number {
 }
 
 /**
- * The room her wings have: they only ever reach behind the plane of their hinge (`plane`, m forward
- * of her centre — negative, behind her back). While all of him (his reach `own` about his centre)
- * is in front of that plane they open fully; otherwise they fold to fit the distance between them.
+ * The room her wings have. They only ever reach behind the plane of their hinge (`plane`, m forward
+ * of her centre — negative, behind her back), and sweep back at least `sweep` radians from straight
+ * out, so beside her, `L` metres out, the nearest glass is `L·tan(sweep)` further back still. While
+ * all of him (his reach `own` about his centre, `half` his half-width) is in front of the glass
+ * beside him, they open fully; otherwise they fold to fit the distance between them.
  */
-export function wingRoom(boy: V3, girl: V3, heading: number, own: number, plane: number): number {
-  if (aheadOf(boy, girl, heading) - own >= plane) return Infinity;
+export function wingRoom(boy: V3, girl: V3, heading: number, own: number, plane: number, sweep = 0, half = 0.45): number {
+  const side = Math.abs((boy.x - girl.x) * Math.cos(heading) - (boy.z - girl.z) * Math.sin(heading));
+  const glass = plane - Math.max(0, side - half) * Math.tan(sweep);
+  if (aheadOf(boy, girl, heading) - own >= glass) return Infinity;
   return Math.hypot(boy.x - girl.x, boy.z - girl.z) - own;
 }
 

@@ -1,8 +1,9 @@
 import * as THREE from 'three';
 import { CharacterModel, HERO_SCALE } from '../characters/CharacterModel';
-import { BODY_RADIUS, IDEAL_GAP, MIN_GAP, enforceGap, followStep, wingRoom } from '../characters/follow';
+import { BODY_RADIUS, MIN_GAP, enforceGap, followStep, wingRoom } from '../characters/follow';
 import type { Outfit } from '../characters/modesty';
 import { Thread } from '../characters/Thread';
+import { MIN_BACK } from '../characters/wings';
 import type { Input } from '../core/Input';
 import { clamp, damp } from '../core/rng';
 import type { GameState } from '../core/state';
@@ -349,14 +350,14 @@ export class Travellers {
     }
     const airborne = this.mode === 'fly' || !this.grounded;
     const px = this.bPos.x, pz = this.bPos.z;
-    // With her wings on he stands beside her, a step in front of them; in flight he keeps behind
+    // With her wings on he stands beside her, just clear of where they sweep back; in flight he keeps behind
     // her, beyond their reach, a little to the side and below. Her wings fold whenever he is
     // anywhere else (walking round to his place as she turns), so they never reach him.
     const wings = this.girl.hasWings && !this.mounted;
     const far = this.backGap() + 0.45;
     const stance = !wings ? undefined : this.mode === 'fly'
       ? { forward: -far * 0.8, side: far * 0.6, up: -0.5 }
-      : { forward: 0.95, side: IDEAL_GAP };
+      : { forward: 0.35, side: 2.1 };
     const out = followStep({
       boy: this.bPos, girl: this.gPos, heading: this.heading, speed: this.currentSpeed, dt, airborne,
       groundAt: (x, z) => this.mounted ? Math.max(surfaceAt(x, z, this.gPos.y + 2), WATER_Y) : surfaceAt(x, z, this.gPos.y + 2),
@@ -381,7 +382,7 @@ export class Travellers {
     const own = Math.max(this.boy.backReach(), BODY_RADIUS) + 0.2, plane = this.girl.wingPlane();
     const level = this.mode !== 'fly' && this.grounded;
     this.girl.setBackRoom(plane !== null && level
-      ? wingRoom(this.bPos, this.gPos, this.heading, own, plane)
+      ? wingRoom(this.bPos, this.gPos, this.heading, own, plane, MIN_BACK)
       : Math.hypot(this.gPos.x - this.bPos.x, this.gPos.z - this.bPos.z) - own);
     const def = VEHICLES[this.mode];
     const riding = def.seats.length > 0 || def.kind === 'mount';

@@ -322,6 +322,21 @@ function nubian(c: Ctx): Footprint {
   return { r: Math.max(w, d) / 2 + 0.5, h: h + 2.4 };
 }
 
+
+/** A sadu band woven into a tent strip: black ground, white and red triangles, a chain of diamonds, lines either side — `len` along x. */
+function saduBand(c: Ctx, len: number, h: number, colA = '#f4efe6', colB = '#b8322a'): void {
+  const n = Math.max(2, Math.round(len / (h * 0.9)));
+  for (let i = 0; i < n; i++) {
+    const x = -len / 2 + (i + 0.5) * (len / n), w = len / n;
+    // Teeth along the top and bottom edges, diamonds between them.
+    c.g.add(new THREE.ConeGeometry(w * 0.5, h * 0.3, 3).rotateZ(Math.PI), i % 2 ? colB : colA, M(x, h * 0.85, 0, 0, 1, 1, 0.08));
+    c.g.add(new THREE.ConeGeometry(w * 0.5, h * 0.3, 3), i % 2 ? colA : colB, M(x, h * 0.15, 0, 0, 1, 1, 0.08));
+    c.g.add(new THREE.BoxGeometry(w * 0.34, w * 0.34, 0.02), i % 3 === 0 ? colB : colA, M(x, h * 0.5, 0.01, 0, 1, 1, 1, 0, Math.PI / 4));
+    c.g.add(new THREE.BoxGeometry(w * 0.12, w * 0.12, 0.02), '#2a2220', M(x, h * 0.5, 0.025, 0, 1, 1, 1, 0, Math.PI / 4));
+  }
+  for (const y of [0, h]) box(c.g, len, 0.03, 0.025, colA, 0, y, 0);
+}
+
 function bedouinTent(c: Ctx): Footprint {
   const black = pick(c, ['#2a2220', '#3a2e28']), qata = pick(c, ['#8c3b2a', '#c23b2a', '#2f6f9a']), w = c.rng.range(10, 13), d = 5.5, h = 2.4;
   // Rows of poles under a long, low roof of woven strips.
@@ -333,6 +348,11 @@ function bedouinTent(c: Ctx): Footprint {
     for (const s of [-1, 1]) box(c.g, 0.05, h * 0.72, d * 0.8, black, s * w / 2, 0, -0.3);
   });
   for (let i = 0; i < Math.round(w / 0.9); i++) box(c.g, 0.06, 0.03, d * 0.55, '#8a7a6a', -w / 2 + 0.45 + i * 0.9, h - 0.3, 0, 0);
+  // Sadu bands woven into the roof's front edge and across the back wall; tassels along the eaves.
+  c.g.frame(0, h - 0.62, d * 0.52 + 0.02, 0, 1, () => saduBand(c, w, 0.34));
+  c.g.frame(0, 0.55, -d / 2 + 0.14, Math.PI, 1, () => saduBand(c, w, 0.42, '#f4efe6', qata));
+  for (const sx of [-1, 1]) c.g.frame(sx * (w / 2 + 0.04), 0.5, -0.3, sx * Math.PI / 2, 1, () => saduBand(c, d * 0.8, 0.36));
+  for (let i = 0; i < Math.round(w / 0.5); i++) { const x = -w / 2 + 0.25 + i * 0.5; cyl(c.g, 0.01, 0.01, 0.3, '#c9b08a', x, h - 0.95, d * 0.52, 3); sphere(c.g, 0.05, i % 2 ? qata : '#f4efe6', x, h - 1.0, d * 0.52, 4); }
   // The qata: a decorated curtain dividing the inside, and rugs and cushions in the open side.
   surf(c, SURF.cloth, () => box(c.g, 0.06, h * 0.8, d * 0.7, qata, w * 0.12, 0, -0.2));
   for (let i = 0; i < 6; i++) box(c.g, 0.07, 0.1, d * 0.7, i % 2 ? '#f1d3a2' : '#2a2220', w * 0.12, 0.3 + i * 0.28, -0.2);
@@ -359,6 +379,13 @@ function roundTent(c: Ctx): Footprint {
   });
   cyl(c.g, r * 1.01, r * 1.01, 0.3, band, 0, 1.3, 0, 12);
   for (let i = 0; i < 12; i++) cone(c.g, 0.2, 0.35, band, Math.cos((i / 12) * Math.PI * 2) * r * 1.02, 0.95, Math.sin((i / 12) * Math.PI * 2) * r * 1.02, 3);
+  // A woven band of diamonds round the wall and a zigzag round the roof's rim.
+  for (let i = 0; i < 24; i++) {
+    const a = (i / 24) * Math.PI * 2, x = Math.cos(a) * r * 1.02, z = Math.sin(a) * r * 1.02;
+    c.g.add(new THREE.BoxGeometry(0.34, 0.34, 0.03), i % 2 ? '#2a2220' : band, M(x, 0.62, z, Math.PI / 2 - a, 1, 1, 1, 0, Math.PI / 4));
+    c.g.add(new THREE.ConeGeometry(0.28, 0.3, 3).rotateZ(Math.PI), i % 2 ? band : '#2a2220', M(Math.cos(a) * r * 1.1, 1.72, Math.sin(a) * r * 1.1, Math.PI / 2 - a, 1, 1, 0.1));
+  }
+  for (const y of [0.4, 0.84]) cyl(c.g, r * 1.015, r * 1.015, 0.04, '#2a2220', 0, y, 0, 24);
   box(c.g, 1.3, 1.7, 0.08, band, 0, 0, r - 0.02);
   cyl(c.g, 0.05, 0.05, 1.2, '#8a6444', 0, 4.1, 0, 4);
   sphere(c.g, 0.12, '#d4af37', 0, 5.35, 0, 6);

@@ -1,6 +1,7 @@
 import * as THREE from 'three';
 import type { Ctx, LandmarkOut } from './architecture';
-import { fountainJet, waterPool } from './flowWater';
+import { waterBasin, waterPool } from './flowWater';
+import { bambooFence, brassLantern, bronzeLantern, emaRack, maple, merlonRow, muqarnas, offeringBox, plantedTree, sebka, shimenawa, starDoor, starWindow, stoneGroup, stucco, tsukubai, voussoirs, zellige, zelligeBand } from './monumentKit';
 import { M, archPanel, box, cone, cyl, sphere, sweptRoof, tree } from './kit';
 import type { RegionId } from './regions';
 import { SURF } from './surfaces';
@@ -291,6 +292,12 @@ const japan: Monument = (c, o) => {
     } else y = eaveY + 3;
   }
   for (const b of bells) windBell(c, b);
+  // Bronze lanterns hanging under the ground storey's eaves, and at the corners above.
+  for (const [sx, sz] of [[-1, -1], [1, -1], [-1, 1], [1, 1]]) bronzeLantern(c, sx * 5.4, P + 4.8, sz * 5.4, 1.2);
+  for (const x of [-2.2, 2.2]) bronzeLantern(c, x, P + 4.8, 5.6, 1.1);
+  // At the pagoda's door: the offering box and the bell on its rope; a rope of straw over the door.
+  offeringBox(c, 0, 5.1, P + 3.6);
+  shimenawa(c, 3.4, P + 3.55, 4.05, 0.1);
 
   // ── The spire (sōrin): dew basin, inverted bowl, lotus, nine rings, water-flame, dragon-car, jewel.
   const sy = y - 0.2;
@@ -320,6 +327,7 @@ const japan: Monument = (c, o) => {
 
   // ── The torii at the gate of the precinct, on the path.
   torii(c, 30, 8, 8.4);
+  shimenawa(c, 7.6, 6.1, 30.35, 0.16);
   o.colliders.push({ x: -4, z: 30, r: 0.9, h: 10 }, { x: 4, z: 30, r: 0.9, h: 10 });
   // ── Kasuga lanterns lining the path.
   for (const z of [11, 16, 21, 26]) for (const x of [-3.4, 3.4]) kasuga(c, x, z);
@@ -369,6 +377,15 @@ const japan: Monument = (c, o) => {
   });
   o.colliders.push({ x: 15, z: -12, r: 0.5, h: 14 });
 
+  // ── Gravel stone groups, moss and maples, an ema rack by the bell tower, bamboo fences, a tsukubai.
+  stoneGroup(c, -11, 6, 1, () => c.rng.next());
+  stoneGroup(c, 12, -4, 0.8, () => c.rng.next());
+  stoneGroup(c, -6, -15, 0.9, () => c.rng.next());
+  for (const [x, z] of [[-17.5, -3], [18, 2], [-9, 14], [10, 20]] as const) maple(c, x, z, 1);
+  emaRack(c, 9.5, 17, -0.3, () => c.rng.next());
+  o.colliders.push({ x: 9.5, z: 17, r: 1.6, h: 2.2 });
+  for (const [x, z, ry] of [[-21, 10, Math.PI / 2], [21, 10, Math.PI / 2], [-21, -10, Math.PI / 2], [21, -10, Math.PI / 2]] as const) c.g.frame(x, 0.16, z, ry, 1, () => bambooFence(c, 12, 1.4));
+  tsukubai(c, -18.5, -12);
   // ── Cherry trees at the precinct's corners, and a low clipped hedge along its sides.
   for (const [x, z] of [[-19, -19], [19, -19], [-20, 8], [20, 26], [-20, 28]] as const) tree(c.g, 'sakura', x, 0, z, 1.25, () => c.rng.next());
   for (const sx of [-1, 1]) for (let i = 0; i < 9; i++) sphere(c.g, 0.9, '#3f6a3a', sx * 22, 0.5, -18 + i * 4.4, 7, 0.7);
@@ -1458,13 +1475,21 @@ function crescent(c: Ctx, x: number, y: number, z: number, s: number): void {
  * An arcade: a wall `len` long (along x) and `h` high with pointed arches opening right through it
  * every `bay` metres, `depth` thick; drawn on the frame's +z side. Returns the arch centres.
  */
-function arcade(c: Ctx, len: number, h: number, depth: number, bay: number, open: number, spring: number, col: string): number[] {
+function arcade(c: Ctx, len: number, h: number, depth: number, bay: number, open: number, spring: number, col: string, horseshoe = false): number[] {
   const n = Math.floor(len / bay), xs: number[] = [];
   const sh = new THREE.Shape();
   sh.moveTo(-len / 2, 0);
   for (let k = 0; k < n; k++) {
-    const x = -len / 2 + bay * (k + 0.5);
+    const x = -len / 2 + (len / n) * (k + 0.5);
     xs.push(x);
+    if (horseshoe) {
+      // The Maghrebi horseshoe: the circle runs on below its centre, narrowing the opening at the jambs.
+      const R = open / 2 / Math.cos(0.35);
+      sh.lineTo(x - open / 2, 0); sh.lineTo(x - open / 2, spring - R * Math.sin(0.35));
+      sh.absarc(x, spring, R, Math.PI + 0.35, -0.35, true);
+      sh.lineTo(x + open / 2, 0);
+      continue;
+    }
     sh.lineTo(x - open / 2, 0); sh.lineTo(x - open / 2, spring);
     sh.quadraticCurveTo(x - open / 2, spring + open * 0.55, x, spring + open * 0.72);
     sh.quadraticCurveTo(x + open / 2, spring + open * 0.55, x + open / 2, spring);
@@ -1478,99 +1503,192 @@ function arcade(c: Ctx, len: number, h: number, depth: number, bay: number, open
 }
 
 const islamic: Monument = (c, o) => {
-  const white = '#f4efe4', blue = '#2f7f9f', deep = '#1f4f7a', gold = '#d4af37', zel = ['#2f7f9f', '#f4efe4', '#1f4f7a', '#3a9a7a'];
-  // ── The courtyard (sahn): arcades on three sides under rows of small domes, the gateway in the south arcade.
-  const S = 30, N = -4, E = 26;
-  surf(c, SURF.flagstone, () => box(c.g, 2 * E, 0.18, S - N, '#e8e0d0', 0, 0, (S + N) / 2));
-  const riwaq = (len: number, bayXs: (xs: number[]) => void) => { const xs = arcade(c, len, 6, 0.9, 4, 2.8, 3.2, white); bayXs(xs); };
-  const sides: Array<[number, number, number, number]> = [[0, S, Math.PI, 2 * E], [-E, (S + N) / 2, Math.PI / 2, S - N], [E, (S + N) / 2, -Math.PI / 2, S - N]];
-  for (const [x, z, ry, len] of sides) c.g.frame(x, 0, z, ry, 1, () => c.glow.frame(x, 0, z, ry, 1, () => riwaq(len, (xs) => {
-    // Behind the arches: the back wall, the roof, and a little dome over every bay; zellige round the arch feet.
-    surf(c, SURF.plaster, () => { box(c.g, len, 6.6, 0.8, white, 0, 0, -5); box(c.g, len, 0.5, 5.8, white, 0, 6, -2.4); });
+  const white = '#f4efe4', stuccoC = '#ece2cc', shade = '#d8c8a8', green = '#2f7a4a', gold = '#d4af37', cedar = '#6b3a22';
+  const ZEL = ['#f4efe4', '#2f7f9f', '#3a9a6a', '#1f4f7a', '#e8b84a', '#c23b2a'];
+  const RED: [string, string] = ['#b8483a', '#f4efe4'];
+  const E = 26, S = 30, N = -3.5, BACK = 5;
+  // ═══ The courtyard (sahn) ═══
+  // Marble paving with a zellige border round a long pool, two basins bubbling at its ends.
+  surf(c, SURF.marble, () => box(c.g, 2 * E, 0.2, S - N, '#efe8da', 0, 0, (S + N) / 2));
+  for (const sx of [-1, 1]) c.g.frame(sx * 5.2, 0.2, 11, Math.PI / 2, 1, () => c.g.frame(0, 0, 0, 0, 1, () => { for (let k = 0; k < 22; k++) { box(c.g, 0.7, 0.03, 0.7, ZEL[1 + (k % 4)], -10.5 + k, 0, 0, Math.PI / 4); } }));
+  waterPool(c, 0, 0.2, 11, 7, 15, 0, { stone: '#e8dcc6', kerb: 0.5, speed: 0.05 });
+  for (const sx of [-1, 1]) zellige(c, sx * 3.75, 0.2, 11, 0.4, 0.5, ZEL, 0.4);
+  for (const z of [4.2, 17.8]) { waterBasin(c, 0, 0.2, z, 1.1, { kerb: 0.5, jetHeight: 0.8 }); }
+  // Orange trees in zellige planters down both sides; brass lanterns on posts between them.
+  for (const sx of [-1, 1]) for (const z of [2, 8, 14, 20]) plantedTree(c, sx * 10, z, 'orange', ZEL);
+  for (const sx of [-1, 1]) for (const z of [5, 11, 17]) { cyl(c.g, 0.08, 0.12, 3.4, '#3a3228', sx * 10, 0.2, z, 6); box(c.g, 0.9, 0.08, 0.08, '#3a3228', sx * 10 - sx * 0.4, 3.5, z); brassLantern(c, sx * 10 - sx * 0.8, 3.6, z, 1.1); }
+  // The ablution fountain (a qubba): an octagon of columns on a zellige base, a green-tiled dome.
+  c.g.frame(0, 0.2, 24.5, 0, 1, () => c.glow.frame(0, 0.2, 24.5, 0, 1, () => {
+    surf(c, SURF.marble, () => cyl(c.g, 2.7, 2.8, 0.8, white, 0, 0, 0, 8));
+    for (let i = 0; i < 8; i++) { const a = (i / 8) * Math.PI * 2 + Math.PI / 8; c.g.frame(Math.sin(a) * 2.55, 0, Math.cos(a) * 2.55, a, 1, () => zellige(c, 0, 0.08, 0.02, 1.9, 0.6, ZEL, 0.3)); }
+    cyl(c.g, 2.5, 2.5, 0.05, '#4aa0c0', 0, 0.72, 0, 8);
+    for (let i = 0; i < 8; i++) { const a = (i / 8) * Math.PI * 2; cyl(c.g, 0.16, 0.18, 4, white, Math.cos(a) * 3.3, 0, Math.sin(a) * 3.3, 10); box(c.g, 0.4, 0.3, 0.4, gold, Math.cos(a) * 3.3, 4, Math.sin(a) * 3.3); cyl(c.glow, 0.03, 0.05, 0.6, '#dff6ff', Math.cos(a) * 1.4, 0.8, Math.sin(a) * 1.4, 4); }
+    for (let i = 0; i < 8; i++) { const a = (i / 8) * Math.PI * 2 + Math.PI / 8; c.g.frame(Math.sin(a) * 3.2, 0, Math.cos(a) * 3.2, a, 1, () => { voussoirs(c, 0, 3.4, 0, 1.1, 0.3, RED, true, 11); stucco(c, 2.6, 4.3, 0, stuccoC, shade); }); }
+    surf(c, SURF.glazed, () => { cyl(c.g, 3.7, 3.7, 0.4, green, 0, 5.2, 0, 8); c.g.add(new THREE.SphereGeometry(3.4, 16, 8, 0, Math.PI * 2, 0, Math.PI / 2), green, M(0, 5.6, 0)); });
+    crescent(c, 0, 9, 0, 0.8);
+    brassLantern(c, 0, 5.2, 0, 1.2);
+  }));
+  o.colliders.push({ x: 0, z: 24.5, r: 3.6, h: 10 });
+
+  // ═══ The riwaq: arcades of horseshoe arches round three sides, red-and-white voussoirs, domed bays. ═══
+  const riwaq = (len: number, gate: boolean) => c.glow.frame(0, 0, 0, 0, 1, () => {
+    const xs = arcade(c, len, 7, 0.9, 4, 2.8, 3.6, white, true);
+    zelligeBand(c, len, 0, 0.47, 1.1, ZEL);
     for (const bx of xs) {
-      c.g.add(new THREE.SphereGeometry(1.5, 12, 6, 0, Math.PI * 2, 0, Math.PI / 2), white, M(bx, 6.5, -2.4));
-      cone(c.g, 0.05, 0.5, gold, bx, 7.95, -2.4, 5);
-      for (let q = 0; q < 6; q++) box(c.g, 0.34, 0.9, 0.05, zel[q % 4], bx - 1.4 - 0.18 + q * 0.035, 0, 0.47); // dado
-      c.g.add(new THREE.TorusGeometry(1.45, 0.1, 4, 14, Math.PI), blue, M(bx, 3.2, 0.47));
-      box(c.glow, 2.4, 3, 0.04, '#ffe6b0', bx, 0.4, -4.55); // lamplit back wall seen through the arch
+      voussoirs(c, bx, 3.6, 0.5, 1.49, 0.3, RED, true, 13);
+      for (const sx of [-1, 1]) { cyl(c.g, 0.2, 0.2, 2.9, '#e8e0d0', bx + sx * 1.6, 1.1, 0.55, 10); box(c.g, 0.55, 0.35, 0.55, gold, bx + sx * 1.6, 3.9, 0.55); }
+      brassLantern(c, bx, 6.3, -2.4, 1);
+      c.g.add(new THREE.SphereGeometry(1.6, 14, 6, 0, Math.PI * 2, 0, Math.PI / 2), white, M(bx, 7.5, -2.5));
+      for (let k = 0; k < 8; k++) { const a = (k / 8) * Math.PI * 2; c.g.add(new THREE.TorusGeometry(1.6, 0.05, 3, 12, Math.PI / 2), gold, M(bx, 7.5, -2.5, a, 1, 1, 1, 0, 0)); }
+      cone(c.g, 0.06, 0.5, gold, bx, 9.1, -2.5, 5);
+      if (!(gate && Math.abs(bx) < 1)) { starDoor(c, bx, 0, -BACK + 0.45, 1.6, 2.6, cedar); box(c.glow, 1.4, 0.9, 0.04, '#ffe6b0', bx, 3, -BACK + 0.42); }
     }
-    box(c.g, len, 0.45, 0.2, blue, 0, 5.3, 0.5); // a tiled frieze
-    for (let q = 0; q < len / 0.6; q++) box(c.g, 0.3, 0.5, 0.3, white, -len / 2 + 0.3 + q * 0.6, 6.5, 0.2); // merlons
-  })));
-  for (let x = -E + 2; x <= E - 2; x += 4) if (Math.abs(x) > 3) o.colliders.push({ x, z: S - 0.2, r: 0.8, h: 7 }, { x, z: S + 5, r: 0.8, h: 7 });
-  for (const sx of [-1, 1]) for (let z = N + 2; z <= S - 2; z += 4) o.colliders.push({ x: sx * (E - 0.2), z, r: 0.8, h: 7 }, { x: sx * (E + 5), z, r: 0.8, h: 7 });
-  // The gateway: a tall portal (pishtaq) on the outer side of the south arcade, its arch open through.
-  c.g.frame(0, 0, S + 5.4, 0, 1, () => {
-    const g2 = new THREE.Shape();
-    g2.moveTo(-5, 0); g2.lineTo(-1.9, 0); g2.lineTo(-1.9, 4.4); g2.quadraticCurveTo(-1.9, 6.4, 0, 7.2); g2.quadraticCurveTo(1.9, 6.4, 1.9, 4.4); g2.lineTo(1.9, 0); g2.lineTo(5, 0); g2.lineTo(5, 11); g2.lineTo(-5, 11); g2.lineTo(-5, 0);
-    surf(c, SURF.plaster, () => c.g.add(new THREE.ExtrudeGeometry(g2, { depth: 1.4, bevelEnabled: false, curveSegments: 6 }).translate(0, 0, -0.7), white));
-    box(c.g, 8.8, 0.6, 0.2, gold, 0, 9, 0.72); // the gold band over the arch
-    for (let k = 0; k < 12; k++) box(c.g, 0.6, 0.6, 0.06, zel[k % 4], -4.1 + (k % 6) * 1.64, 7.6 + Math.floor(k / 6) * 0.7, 0.72, Math.PI / 4);
-    for (const sx of [-1, 1]) { cyl(c.g, 0.5, 0.6, 13, white, sx * 5, 0, 0.3, 12); c.g.add(new THREE.SphereGeometry(0.6, 10, 6, 0, Math.PI * 2, 0, Math.PI / 2), blue, M(sx * 5, 13, 0.3)); crescent(c, sx * 5, 13.5, 0.3, 0.6); }
-    for (let k = 0; k < 11; k++) box(c.g, 0.5, 0.7, 0.4, white, -5 + k, 11, 0);
+    stucco(c, len, 5.7, 0.47, stuccoC, shade);
+    merlonRow(c, len, 7, 0.2, white);
+    // Behind the arches: the back wall (open at the gate), the roof.
+    surf(c, SURF.plaster, () => {
+      if (gate) for (const sx of [-1, 1]) box(c.g, len / 2 - 2.4, 8.5, 0.9, white, sx * (len / 4 + 1.2), 0, -BACK);
+      else box(c.g, len, 8.5, 0.9, white, 0, 0, -BACK);
+      box(c.g, len, 0.5, BACK - 0.4, white, 0, 7, -BACK / 2 - 0.2);
+    });
+    zelligeBand(c, len, 0, -BACK + 0.46, 1.1, ZEL);
   });
-  // ── The reflecting pool down the middle, and the ablution fountain (shadirvan) under its own dome.
-  waterPool(c, 0, 0, 10, 7, 13, 0, { stone: '#e8dcc6', kerb: 0.5, speed: 0.06 });
-  for (const z of [4.5, 15.5]) fountainJet(c, 0, 0.38, z, 0.7);
-  c.g.frame(0, 0, 23, 0, 1, () => c.glow.frame(0, 0, 23, 0, 1, () => {
-    surf(c, SURF.marble, () => cyl(c.g, 2.6, 2.7, 0.8, white, 0, 0, 0, 8));
-    cyl(c.g, 2.4, 2.4, 0.05, '#4aa0c0', 0, 0.72, 0, 8);
-    for (let i = 0; i < 8; i++) { const a = (i / 8) * Math.PI * 2; cyl(c.g, 0.16, 0.18, 4, white, Math.cos(a) * 3.2, 0, Math.sin(a) * 3.2, 8); cyl(c.glow, 0.03, 0.05, 0.6, '#dff6ff', Math.cos(a) * 1.4, 0.8, Math.sin(a) * 1.4, 4); }
-    cyl(c.g, 3.6, 3.6, 0.5, white, 0, 4, 0, 8);
-    c.g.add(new THREE.SphereGeometry(3.3, 16, 8, 0, Math.PI * 2, 0, Math.PI / 2), blue, M(0, 4.5, 0));
-    crescent(c, 0, 7.8, 0, 0.8);
+  const sides: Array<[number, number, number, number, boolean]> = [[0, S, Math.PI, 2 * E + 2 * BACK, true], [-E, (S + N) / 2, Math.PI / 2, S - N, false], [E, (S + N) / 2, -Math.PI / 2, S - N, false]];
+  for (const [x, z, ry, len, gate] of sides) c.g.frame(x, 0.2, z, ry, 1, () => c.glow.frame(x, 0.2, z, ry, 1, () => riwaq(len, gate)));
+  // The outer faces of the precinct: blind sebka nets, a zellige band, merlons; corner towers.
+  for (const [x, z, ry, len] of [[0, S + BACK + 0.46, 0, 2 * E + 2 * BACK], [-(E + BACK + 0.46), (S + N) / 2, -Math.PI / 2, S - N], [E + BACK + 0.46, (S + N) / 2, Math.PI / 2, S - N]] as const) c.g.frame(x, 0, z, ry, 1, () => {
+    for (let k = 0; k < Math.floor(len / 5); k++) { const bx = -len / 2 + 2.5 + k * 5; if (Math.abs(bx) > 9) sebka(c, bx, 3, 0, 3.4, 4.6, stuccoC, 0.85); }
+    box(c.g, len, 0.4, 0.2, green, 0, 8.1, 0.05);
+  });
+  for (const [x, z] of [[-E - BACK, S + BACK], [E + BACK, S + BACK], [-E - BACK, N - 1], [E + BACK, N - 1]] as const) {
+    surf(c, SURF.plaster, () => box(c.g, 5.4, 12, 5.4, white, x, 0, z));
+    for (let side = 0; side < 4; side++) c.g.frame(x, 0, z, (side * Math.PI) / 2, 1, () => { sebka(c, 0, 6, 2.72, 3.6, 4.4, stuccoC, 0.9); box(c.g, 5.5, 0.4, 0.2, green, 0, 11, 2.72); merlonRow(c, 5.4, 12, 2.5, white, 1.1); });
+    o.colliders.push({ x, z, r: 3.6, h: 14 });
+  }
+  for (let x = -E - 2; x <= E + 2; x += 4) if (Math.abs(x) > 3) o.colliders.push({ x, z: S + 0.2, r: 0.8, h: 8 }, { x, z: S + BACK, r: 1.2, h: 9 });
+  for (const sx of [-1, 1]) for (let z = N + 2; z <= S - 2; z += 4) o.colliders.push({ x: sx * (E + 0.2), z, r: 0.8, h: 8 }, { x: sx * (E + BACK), z, r: 1.2, h: 9 });
+
+  // ═══ The gatehouse (bab): a horseshoe passage right through, zellige and carved stucco, a cedar canopy, towers. ═══
+  c.g.frame(0, 0, S + BACK - 0.45, 0, 1, () => c.glow.frame(0, 0, S + BACK - 0.45, 0, 1, () => {
+    const GW = 16, GH = 15, GD = 9, j = 2.2, R = j / Math.cos(0.35), sp = 5.8;
+    const g2 = new THREE.Shape();
+    g2.moveTo(-GW / 2, 0); g2.lineTo(-j, 0); g2.lineTo(-j, sp - R * Math.sin(0.35)); g2.absarc(0, sp, R, Math.PI + 0.35, -0.35, true); g2.lineTo(j, 0); g2.lineTo(GW / 2, 0); g2.lineTo(GW / 2, GH); g2.lineTo(-GW / 2, GH); g2.lineTo(-GW / 2, 0);
+    surf(c, SURF.plaster, () => c.g.add(new THREE.ExtrudeGeometry(g2, { depth: GD, bevelEnabled: false, curveSegments: 16 }), white));
+    const fz = GD + 0.02;
+    // The alfiz: a raised frame round the arch, zellige in its spandrels.
+    for (const sx of [-1, 1]) { zellige(c, sx * 4.1, 0.2, fz, 3, 8.4, ZEL, 0.5); box(c.g, 0.35, 10.6, 0.3, gold, sx * 5.8, 0, fz + 0.05); }
+    box(c.g, 11.95, 0.35, 0.3, gold, 0, 10.4, fz + 0.05);
+    voussoirs(c, 0, sp, fz + 0.1, R, 0.3, RED, true, 19);
+    zellige(c, 0, 0.2, fz - 0.01, 11.2, 0.9, ZEL, 0.45);
+    stucco(c, 11.2, 8.9, fz + 0.03, stuccoC, shade);
+    // The carved band and the cedar canopy on its brackets, green tiles on top.
+    box(c.g, 14, 1.2, 0.3, gold, 0, 11, fz + 0.1);
+    for (let k = 0; k < 16; k++) box(c.g, 0.5, 0.5, 0.06, ZEL[1 + (k % 5)], -6.8 + k * 0.9, 11.35, fz + 0.28, Math.PI / 4);
+    for (let k = 0; k < 9; k++) { box(c.g, 0.35, 0.6, 2.2, cedar, -6 + k * 1.5, 12.2, fz + 1.1); }
+    surf(c, SURF.glazed, () => c.g.add(new THREE.BoxGeometry(15, 0.25, 2.8), green, M(0, 13.2, fz + 1.2, 0, 1, 1, 1, 0.35, 0)));
+    merlonRow(c, GW, GH, fz - 0.3, white);
+    // The great doors, folded back against the passage walls.
+    for (const sx of [-1, 1]) c.g.frame(sx * (j - 0.1), 0, GD - 3.4, sx * Math.PI / 2, 1, () => starDoor(c, 0, 0, 0, 3.8, 6.4, cedar));
+    for (const sx of [-1, 1]) brassLantern(c, sx * 3.2, 7.6, fz + 0.8, 1.4);
+    // The flanking towers, taller, sebka on their faces, green-tiled pyramid caps.
+    for (const sx of [-1, 1]) {
+      const tx = sx * (GW / 2 + 2.4);
+      surf(c, SURF.plaster, () => box(c.g, 4.8, 19, 6, white, tx, 0, GD / 2 + 1));
+      c.g.frame(tx, 0, GD / 2 + 4.02, 0, 1, () => c.glow.frame(tx, 0, GD / 2 + 4.02, 0, 1, () => { sebka(c, 0, 9, 0, 3.4, 6, stuccoC, 0.85); starWindow(c, 0, 3.4, 0, 1, 2.4, white, ['#ffcf7a', '#7ac8ff', '#ff8a8a']); box(c.g, 4.9, 0.5, 0.2, green, 0, 17, 0.05); }));
+      merlonRow(c, 4.8, 19, GD / 2 + 4, white, 1.2);
+      surf(c, SURF.glazed, () => c.g.add(new THREE.ConeGeometry(2.8, 2.6, 4).rotateY(Math.PI / 4), green, M(tx, 20.3, GD / 2 + 1)));
+      sphere(c.g, 0.25, gold, tx, 21.8, GD / 2 + 1, 8);
+    }
   }));
-  o.colliders.push({ x: 0, z: 23, r: 3.8, h: 9 });
-  // ── The prayer hall: a portico of domed bays across its front, the great pishtaq in the middle.
-  const hz0 = -34, hz1 = N, HH = 16;
-  surf(c, SURF.plaster, () => box(c.g, 60, HH, hz1 - hz0, white, 0, 0, (hz0 + hz1) / 2));
-  c.g.frame(0, 0, hz1 + 0.5, 0, 1, () => c.glow.frame(0, 0, hz1 + 0.5, 0, 1, () => {
-    const xs = arcade(c, 60, 8, 1, 5, 3.4, 3.8, white);
+  for (const sx of [-1, 1]) { for (const dz of [1.5, 4.5, 7.5]) o.colliders.push({ x: sx * 5.1, z: S + BACK - 0.45 + dz, r: 2.9, h: 16 }); o.colliders.push({ x: sx * 10.4, z: S + BACK + 4, r: 3.6, h: 22 }); }
+
+  // ═══ The prayer hall: a portico of horseshoe arches, the great pishtaq with its muqarnas hood, star windows. ═══
+  const hz0 = -40, hz1 = -8, HH = 20;
+  surf(c, SURF.plaster, () => box(c.g, 64, HH, hz1 - hz0, white, 0, 0, (hz0 + hz1) / 2));
+  c.g.frame(0, 0.2, N, 0, 1, () => c.glow.frame(0, 0.2, N, 0, 1, () => {
+    const xs = arcade(c, 64, 10.5, 1, 5.8, 3.8, 5.4, white, true);
+    zelligeBand(c, 64, 0, 0.52, 1.3, ZEL);
     for (const bx of xs) {
-      if (Math.abs(bx) < 5) continue;
-      archPanel(c.glow, 2, 3.4, '#ffe6b0', bx, 0.3, -0.52, 0, 0.04, true);
-      c.g.add(new THREE.TorusGeometry(1.75, 0.12, 4, 14, Math.PI), blue, M(bx, 3.8, 0.52));
+      if (Math.abs(bx) < 1) continue;
+      voussoirs(c, bx, 5.4, 0.55, 2.02, 0.3, RED, true, 15);
+      brassLantern(c, bx, 9.5, -2, 1.3);
     }
-    box(c.g, 60, 0.6, 0.3, blue, 0, 7.2, 0.55);
-    box(c.g, 60, 0.18, 0.32, gold, 0, 7.9, 0.55);
-    // The pishtaq: a tall frame round a deep pointed niche stepped in tiers (muqarnas), the doors glowing at its foot.
-    box(c.g, 12, 22, 2.4, white, 0, 0, 0.8);
-    archPanel(c.g, 8, 17, '#e8e0d0', 0, 0, 2.02, 0, 0.1, true);
-    for (let k = 0; k < 6; k++) archPanel(c.g, 7.4 - k * 1.1, 16 - k * 1.3, k % 2 ? '#dcd2c0' : '#ece4d4', 0, 0, 2.06 + k * 0.03, 0, 0.1, true);
-    archPanel(c.glow, 3.2, 5.4, '#ffe6b0', 0, 0, 2.3, 0, 0.05, true);
-    box(c.g, 11.2, 0.7, 0.1, gold, 0, 19.2, 2.05);
-    for (let k = 0; k < 14; k++) box(c.g, 0.7, 0.7, 0.06, zel[k % 4], -5.2 + k * 0.8, 20.4, 2.05, Math.PI / 4);
-    for (const sx of [-1, 1]) { cyl(c.g, 0.4, 0.45, 24, white, sx * 6, 0, 2, 12); cone(c.g, 0.5, 1.6, blue, sx * 6, 24, 2, 12); }
+    stucco(c, 64, 8.6, 0.52, stuccoC, shade);
+    surf(c, SURF.plaster, () => box(c.g, 64, 0.6, hz1 - N, white, 0, 10.5, -(hz1 - N) / 2 - 0.5));
+    merlonRow(c, 64, 11.1, 0.2, white);
+    // On the hall wall inside the portico: doors, star windows over them, a zellige dado.
+    c.g.frame(0, 0, hz1 - N + 0.02, 0, 1, () => c.glow.frame(0, 0, hz1 - N + 0.02, 0, 1, () => {
+      zelligeBand(c, 64, 0, 0, 1.3, ZEL);
+      for (const bx of xs) { starDoor(c, bx, 0, 0.05, 2, 4, cedar); starWindow(c, bx, 5.4, 0.02, 1.4, 2.6, white, ['#ffcf7a', '#7ac8ff', '#7affb0', '#ff8a8a']); }
+    }));
+    // The pishtaq: a tall frame, a deep niche hooded with muqarnas, the bronze doors glowing at its foot.
+    const PW = 15, PH = 27;
+    surf(c, SURF.plaster, () => { for (const sx of [-1, 1]) box(c.g, 3.2, PH, 3, white, sx * (PW / 2 - 1.6), 0, 0.5); box(c.g, PW, PH - 17, 3, white, 0, 17, 0.5); });
+    muqarnas(c, 0, 12.6, -0.6, PW - 6.4, 7, [white, stuccoC, '#2f7f9f', gold]);
+    starDoor(c, 0, 0, -1.2, 5, 9, cedar);
+    starWindow(c, 0, 9.6, -1.1, 3, 2.6, white, ['#ffcf7a', '#7ac8ff', '#7affb0']);
+    for (const sx of [-1, 1]) zellige(c, sx * (PW / 2 - 1.6), 0.2, 2.02, 2.8, 14, ZEL, 0.55);
+    box(c.g, PW - 5.8, 1.1, 0.2, gold, 0, 20.4, 2.05);
+    zellige(c, 0, 21.8, 2.02, PW, 2.8, ZEL, 0.7);
+    stucco(c, PW, 25, 2.05, stuccoC, shade);
+    merlonRow(c, PW, PH, 1.6, white);
+    for (const sx of [-1, 1]) { box(c.g, 1, PH + 3, 1, white, sx * PW / 2, 0, 2); cone(c.g, 0.7, 2.4, green, sx * PW / 2, PH + 3, 2, 4, Math.PI / 4); sphere(c.g, 0.2, gold, sx * PW / 2, PH + 5.5, 2, 6); }
   }));
-  // The domes: the great dome on a windowed drum, half-domes cascading from it east and west, small domes at the corners.
-  const dz = -19, DR = 11;
-  cyl(c.g, DR + 0.4, DR + 0.4, 5, white, 0, HH, dz, 16);
-  for (let i = 0; i < 16; i++) { const a = (i / 16) * Math.PI * 2; archPanel(c.glow, 1.3, 2.8, '#ffe6b0', Math.sin(a) * (DR + 0.42), HH + 1, dz + Math.cos(a) * (DR + 0.42), a, 0.04, true); box(c.g, 0.8, 5.4, 1, white, Math.sin(a + 0.2) * (DR + 0.6), HH, dz + Math.cos(a + 0.2) * (DR + 0.6), a); }
-  surf(c, SURF.glazed, () => c.g.add(new THREE.SphereGeometry(DR, 28, 14, 0, Math.PI * 2, 0, Math.PI / 2), blue, M(0, HH + 5, dz, 0, 1, 1.1, 1)));
-  for (let i = 0; i < 16; i++) { const a = (i / 16) * Math.PI * 2; const pts: THREE.Vector3[] = []; for (let k = 0; k <= 8; k++) { const t = (k / 8) * (Math.PI / 2) * 0.95; pts.push(new THREE.Vector3(Math.sin(a) * Math.cos(t) * (DR + 0.06), HH + 5 + Math.sin(t) * DR * 1.1 + 0.05, dz + Math.cos(a) * Math.cos(t) * (DR + 0.06))); } c.g.add(new THREE.TubeGeometry(new THREE.CatmullRomCurve3(pts), 10, 0.09, 3), gold); }
-  crescent(c, 0, HH + 5 + DR * 1.1, dz, 2);
+  // The upper hall walls: rows of star windows, a green band; green-tiled gabled roofs over the aisles.
+  for (const [x, z, ry, len] of [[0, hz0 - 0.02, Math.PI, 64], [-32.02, (hz0 + hz1) / 2, -Math.PI / 2, hz1 - hz0], [32.02, (hz0 + hz1) / 2, Math.PI / 2, hz1 - hz0]] as const) c.g.frame(x, 0, z, ry, 1, () => c.glow.frame(x, 0, z, ry, 1, () => {
+    for (let k = 0; k < Math.floor(len / 5); k++) { const bx = -len / 2 + 2.5 + k * 5; starWindow(c, bx, 12, 0, 1.2, 2.8, white, ['#ffcf7a', '#7ac8ff', '#7affb0']); sebka(c, bx, 3, 0, 3.4, 6.4, stuccoC, 0.9); }
+    zelligeBand(c, len, 0, 0.01, 1.3, ZEL);
+    box(c.g, len, 0.5, 0.25, green, 0, HH - 1.4, 0.1);
+  }));
+  merlonRow(c, 64, HH, hz0, white);
+  for (const x of [-28, -20, 20, 28]) surf(c, SURF.glazed, () => pitched(c, 8, hz1 - hz0, 3.2, green, '#1f5a36', x, HH, (hz0 + hz1) / 2));
+  // ═══ The great dome on its drum, half-domes east and west, domes at the corners. ═══
+  const dz = -24, DR = 12;
+  surf(c, SURF.plaster, () => cyl(c.g, DR + 0.6, DR + 0.6, 7, white, 0, HH, dz, 16));
+  for (let i = 0; i < 16; i++) {
+    const a = (i / 16) * Math.PI * 2 + Math.PI / 16;
+    c.g.frame(Math.sin(a) * (DR + 0.62), HH, dz + Math.cos(a) * (DR + 0.62), a, 1, () => c.glow.frame(Math.sin(a) * (DR + 0.62), HH, dz + Math.cos(a) * (DR + 0.62), a, 1, () => {
+      starWindow(c, 0, 1.4, 0, 1.3, 3.4, white, ['#ffcf7a', '#7ac8ff', '#7affb0', '#ff8a8a']);
+      for (const sx of [-1, 1]) cyl(c.g, 0.13, 0.13, 5.2, gold, sx * 1.5, 0.6, 0.15, 8);
+    }));
+  }
+  for (let i = 0; i < 48; i++) { const a = (i / 48) * Math.PI * 2; box(c.g, 0.6, 0.6, 0.4, i % 2 ? green : white, Math.sin(a) * (DR + 0.5), HH + 6.4, dz + Math.cos(a) * (DR + 0.5), a); }
+  surf(c, SURF.glazed, () => c.g.add(new THREE.SphereGeometry(DR, 32, 16, 0, Math.PI * 2, 0, Math.PI / 2), green, M(0, HH + 7, dz, 0, 1, 1.15, 1)));
+  for (let i = 0; i < 16; i++) { const a = (i / 16) * Math.PI * 2; const pts: THREE.Vector3[] = []; for (let k = 0; k <= 10; k++) { const t = (k / 10) * (Math.PI / 2) * 0.96; pts.push(new THREE.Vector3(Math.sin(a) * Math.cos(t) * (DR + 0.06), HH + 7 + Math.sin(t) * DR * 1.15 + 0.05, dz + Math.cos(a) * Math.cos(t) * (DR + 0.06))); } c.g.add(new THREE.TubeGeometry(new THREE.CatmullRomCurve3(pts), 12, 0.12, 4), gold); }
+  c.g.add(new THREE.TorusGeometry(2.2, 0.2, 5, 24), gold, M(0, HH + 7 + DR * 1.1, dz, 0, 1, 1, 1, Math.PI / 2, 0));
+  crescent(c, 0, HH + 7 + DR * 1.15, dz, 2.4);
   for (const sx of [-1, 1]) {
-    surf(c, SURF.glazed, () => c.g.add(new THREE.SphereGeometry(7, 20, 10, 0, Math.PI, 0, Math.PI / 2).rotateY(sx > 0 ? 0 : Math.PI), blue, M(sx * DR, HH, dz)));
-    for (const z of [hz0 + 6, hz1 - 6]) { cyl(c.g, 3.4, 3.4, 1.6, white, sx * 22, HH, z, 12); c.g.add(new THREE.SphereGeometry(3.2, 14, 7, 0, Math.PI * 2, 0, Math.PI / 2), blue, M(sx * 22, HH + 1.6, z)); crescent(c, sx * 22, HH + 4.8, z, 0.7); }
+    surf(c, SURF.glazed, () => c.g.add(new THREE.SphereGeometry(7.5, 20, 10, 0, Math.PI, 0, Math.PI / 2).rotateY(sx > 0 ? 0 : Math.PI), green, M(sx * (DR + 0.6), HH, dz)));
+    for (const z of [hz0 + 6, hz1 - 6]) { cyl(c.g, 3.4, 3.4, 2, white, sx * 20, HH, z, 12); for (let k = 0; k < 8; k++) { const a = (k / 8) * Math.PI * 2; archPanel(c.glow, 0.6, 1.2, '#ffcf7a', sx * 20 + Math.sin(a) * 3.42, HH + 0.4, z + Math.cos(a) * 3.42, a, 0.03, true); } surf(c, SURF.glazed, () => c.g.add(new THREE.SphereGeometry(3.2, 14, 7, 0, Math.PI * 2, 0, Math.PI / 2), green, M(sx * 20, HH + 2, z))); crescent(c, sx * 20, HH + 5.2, z, 0.8); }
   }
-  // ── Four pencil minarets at the corners, each with two balconies on corbels and a pointed cap.
-  for (const [x, z] of [[-33, -36], [33, -36], [-33, 34], [33, 34]] as const) {
-    surf(c, SURF.plaster, () => box(c.g, 3.4, 7, 3.4, white, x, 0, z));
-    cyl(c.g, 1.4, 1.6, 34, white, x, 7, z, 16);
-    for (const by of [22, 33]) {
-      for (let k = 0; k < 3; k++) cyl(c.g, 1.6 + k * 0.35, 1.5 + k * 0.35, 0.35, k % 2 ? blue : white, x, by - 1.2 + k * 0.35, z, 16);
-      cyl(c.g, 2.7, 2.7, 0.25, white, x, by, z, 16);
-      for (let k = 0; k < 16; k++) { const a = (k / 16) * Math.PI * 2; cyl(c.g, 0.05, 0.05, 1, gold, x + Math.cos(a) * 2.6, by + 0.25, z + Math.sin(a) * 2.6, 4); sphere(c.glow, 0.1, '#ffe6b0', x + Math.cos(a) * 2.6, by + 1.3, z + Math.sin(a) * 2.6, 4); }
-      c.g.add(new THREE.TorusGeometry(2.6, 0.05, 4, 32), gold, M(x, by + 1.25, z, 0, 1, 1, 1, Math.PI / 2, 0));
-    }
-    cyl(c.g, 1.1, 1.3, 6, white, x, 41, z, 16);
-    surf(c, SURF.glazed, () => cone(c.g, 1.4, 8, deep, x, 47, z, 16));
-    crescent(c, x, 55, z, 0.9);
-    o.colliders.push({ x, z, r: 2.6, h: 58 });
-  }
-  // Colliders for the hall.
-  for (const x of [-22, -11, 0, 11, 22]) o.colliders.push({ x, z: -19, r: 10.5, h: HH + 17 });
-  o.height = 58;
+  // ═══ The minaret: a great square tower of Koutoubia's kind — sebka panels, stacked windows, a band
+  //     of green tiles, merlons, and the lantern tower with its three golden balls. ═══
+  c.g.frame(-38, 0, -18, 0, 1, () => c.glow.frame(-38, 0, -18, 0, 1, () => {
+    const MW = 8, MH = 52;
+    surf(c, SURF.plaster, () => box(c.g, MW, MH, MW, '#ecdcc0'));
+    for (let side = 0; side < 4; side++) c.g.frame(0, 0, 0, (side * Math.PI) / 2, 1, () => c.glow.frame(0, 0, 0, (side * Math.PI) / 2, 1, () => {
+      const f = MW / 2 + 0.02;
+      for (const [y, w, h] of [[4, 1, 2.6], [11, 1.2, 3], [18, 1.4, 3.2]] as const) { starWindow(c, 0, y, f, w, h, '#ecdcc0', ['#ffcf7a']); voussoirs(c, 0, y + h - w * 0.3, f + 0.05, w * 0.6, 0.2, RED, true, 9); }
+      sebka(c, 0, 24, f, MW - 1.6, 12, '#d8c8a8', 1.1);
+      for (const x of [-1.8, 0, 1.8]) { archPanel(c.glow, 0.8, 2.4, '#ffcf7a', x, 38.5, f, 0, 0.03, true); archPanel(c.g, 1.1, 2.7, '#d8c8a8', x, 38.3, f - 0.02, 0, 0.05, true); }
+      zellige(c, 0, 45, f, MW, 2.4, ZEL, 0.6);
+      box(c.g, MW + 0.2, 0.4, 0.3, green, 0, 48, f);
+      merlonRow(c, MW, MH, f - 0.25, '#ecdcc0', 1.3);
+    }));
+    surf(c, SURF.plaster, () => box(c.g, 3.6, 9, 3.6, '#ecdcc0', 0, MH, 0));
+    for (let side = 0; side < 4; side++) c.g.frame(0, MH, 0, (side * Math.PI) / 2, 1, () => c.glow.frame(0, MH, 0, (side * Math.PI) / 2, 1, () => { archPanel(c.glow, 1, 2.6, '#ffcf7a', 0, 3.4, 1.82, 0, 0.03, true); sebka(c, 0, 0.6, 1.82, 3, 2.4, '#d8c8a8', 0.8); zellige(c, 0, 7.2, 1.82, 3.6, 1, ZEL, 0.5); }));
+    merlonRow(c, 3.6, MH + 9, 1.6, '#ecdcc0', 0.9);
+    surf(c, SURF.glazed, () => c.g.add(new THREE.SphereGeometry(1.6, 12, 6, 0, Math.PI * 2, 0, Math.PI / 2), green, M(0, MH + 9, 0)));
+    cyl(c.g, 0.06, 0.06, 4.6, gold, 0, MH + 10.4, 0, 6);
+    for (const [y, r] of [[MH + 11.2, 0.55], [MH + 12.5, 0.45], [MH + 13.6, 0.35]] as const) sphere(c.g, r, gold, 0, y, 0, 12);
+    crescent(c, 0, MH + 14.2, 0, 0.7);
+  }));
+  o.colliders.push({ x: -38, z: -18, r: 5.4, h: 70 });
+  // Colliders for the hall and its portico piers.
+  for (const x of [-24, -12, 0, 12, 24]) for (const z of [-17, -31]) o.colliders.push({ x, z, r: 8.8, h: HH + 22 });
+  for (let k = 0; k <= 11; k++) { const x = -32 + k * (64 / 11); if (Math.abs(x) > 3) o.colliders.push({ x, z: N, r: 0.9, h: 11 }); }
+  for (const sx of [-1, 1]) o.colliders.push({ x: sx * 6, z: N + 0.5, r: 1.8, h: 28 });
+  o.height = 70;
 };
 
 // ───────────────────────────── the rebuilt monuments ─────────────────────────────

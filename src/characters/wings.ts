@@ -17,14 +17,14 @@ import * as THREE from 'three';
 
 /** Her height on the unscaled body (floating head included). */
 const HER_HEIGHT = 1.78;
-/** One wing: 3.8 times her height tall and 0.8 as broad — the forewing tall and vast, the hindwing vast and of middling height. */
-export const WING_H = 3.8 * HER_HEIGHT, WING_W = WING_H * 0.8;
+/** One wing: 4.3 times her height tall and 0.8 as broad — the forewing tall and vast, the hindwing vast and of middling height. */
+export const WING_H = 4.3 * HER_HEIGHT, WING_W = WING_H * 0.8;
 /** Across the pair, open flat. */
 export const WING_SPAN = 2 * WING_W;
 /** How far back the wings sweep from straight out sideways (radians): spread wide ... folded back. */
 export const MIN_BACK = 0.3, MAX_BACK = 1.35;
-/** The root: one point on her back — on its surface (HINGE_Z), at mid-back height (ROOT_Y). */
-export const HINGE_Z = -0.17, ROOT_Y = 1.2;
+/** The root: one point set into her back (HINGE_Z, just inside its surface, under the clasp), at mid-back height (ROOT_Y). */
+export const HINGE_Z = -0.12, ROOT_Y = 1.2;
 /** Where the root is up the wing (0 = the tails' tips, 1 = the forewing's apex): the tails then just reach the ground. */
 export const ROOT_V = (ROOT_Y + 0.06) / WING_H;
 /** How far from her centre any part of a wing can reach, in any direction (model units). */
@@ -66,7 +66,7 @@ const KEY: Array<[number, number]> = [
   [0.62, 0.45],
   [0.72, 0.42], [0.83, 0.37], [0.9, 0.29], [0.91, 0.21], [0.86, 0.14], [0.77, 0.09], [0.68, 0.065],
   [0.63, 0.035], [0.6, 0.005], [0.57, 0.0], [0.55, 0.03], [0.53, 0.07],
-  [0.42, 0.085], [0.29, 0.105], [0.17, 0.13], [0.07, 0.155], [0.02, 0.172],
+  [0.42, 0.085], [0.29, 0.1], [0.17, 0.12], [0.07, R0 - 0.022], [0.02, R0 - 0.01],
 ];
 /** Where the hindwing's scalloped edge runs (indices into KEY). */
 const SCALLOP: [number, number] = [17, 24];
@@ -387,7 +387,7 @@ export class Wings {
     const stem = new THREE.Mesh(new THREE.CylinderGeometry(0.018, 0.018, 0.16, 8), gold);
     stem.position.y = -0.1;
     for (const m of [ring, gem, stem]) { m.userData.part = 'wing'; clasp.add(m); }
-    clasp.position.z = 0.01;
+    clasp.position.z = -0.02;
     this.group.add(clasp);
     this.group.position.set(0, ROOT_Y, HINGE_Z);
   }
