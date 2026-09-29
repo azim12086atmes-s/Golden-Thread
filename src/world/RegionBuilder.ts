@@ -29,7 +29,8 @@ import { houseLights, streetLight } from './models/lights';
 import type { Lamp } from './lamplight';
 import { chimneyMark, chimneyRollback, collectChimneys, takeChimneys } from './chimneys';
 import { GRID_TOWNS, LANE_W, laneDistance, laneLots, townLanes } from './townLayout';
-import { stopShelters } from '../travel/bus';
+import { busStops, stopShelters } from '../travel/bus';
+import { airPointAtStop } from '../travel/air';
 import { TRAM_TOWNS, tramShelters } from '../travel/streetTram';
 import { ZEBRA_D } from '../traffic/schedule';
 import { LOCALES } from './locale';
@@ -297,6 +298,29 @@ export function buildRegion(spec: RegionSpec, solid: THREE.Material, glowMat: TH
     recordDecor(spec.id, 'street: bus stops');
   }
 
+  // Air-taxi landing marks: where the air taxi settles on the avenue beside each bus stop
+  // (travel/air.ts), a yellow ring painted on the road with four arrows pointing in, and small
+  // lights round its edge.
+  for (const s of busStops(spec.id)) {
+    const p = airPointAtStop(s), px = p.x - c.x, pz = p.z - c.z;
+    for (let i = 0; i < 24; i++) {
+      const a = (i / 24) * Math.PI * 2, x = px + Math.cos(a) * 2.8, z = pz + Math.sin(a) * 2.8;
+      box(g, 0.2, 0.03, 0.78, '#f2d14e', x, H(x, z) + 0.09, z, -a);
+    }
+    for (let i = 0; i < 4; i++) {
+      const a = (i / 4) * Math.PI * 2 + Math.PI / 4, x = px + Math.cos(a) * 1.5, z = pz + Math.sin(a) * 1.5;
+      g.frame(x, H(x, z) + 0.09, z, Math.PI / 2 - a, 1, () => {
+        box(g, 0.14, 0.03, 0.8, '#f4f4f0', 0.22, 0, 0, 0.6);
+        box(g, 0.14, 0.03, 0.8, '#f4f4f0', -0.22, 0, 0, -0.6);
+      });
+    }
+    for (let i = 0; i < 6; i++) {
+      const a = (i / 6) * Math.PI * 2, x = px + Math.cos(a) * 3.15, z = pz + Math.sin(a) * 3.15;
+      box(glow, 0.12, 0.05, 0.12, '#7fd4ff', x, H(x, z) + 0.09, z);
+    }
+    recordDecor(spec.id, 'street: air-taxi landing marks');
+  }
+
   // Tram stops: a platform along the kerb under a long canopy in the tram's colour, a bench, a lit
   // departures board, and a sign on a pole showing the tram.
   const tramCol = TRAM_TOWNS[spec.id] === 'solar' ? '#3aae6a' : TRAM_TOWNS[spec.id] === 'cable' ? '#b3262a' : '#2f7a4a';
@@ -461,12 +485,17 @@ export function buildRegion(spec: RegionSpec, solid: THREE.Material, glowMat: TH
         colliders.push({ x: c.x + x, z: c.z + z, r: 0.4, h: H(x, z) + 4 });
       }
       for (const [x, z] of [[-AVENUE - 3, d + 8], [AVENUE + 3, -d - 8], [d + 8, -AVENUE - 3], [-d - 8, AVENUE + 3]] as const) {
+        // Never a stall or a tree inside a building that already stands here (the draws are made
+        // either way, so the rest of the land keeps its places).
+        const free = !buildings.some((b) => Math.hypot(b.x - x, b.z - z) < b.r + 1.6);
         if (rng.chance(0.55)) {
+          if (!free) continue;
           const ry = Math.abs(x) < Math.abs(z) ? 0 : Math.PI / 2;
           streetProp(ctx, x + (Math.abs(x) < Math.abs(z) ? Math.sign(x) * 3 : 0), H(x, z), z + (Math.abs(x) < Math.abs(z) ? 0 : Math.sign(z) * 3), ry);
           recordDecor(spec.id, 'street: stalls and benches');
           colliders.push({ x: c.x + x, z: c.z + z, r: 1.2, h: H(x, z) + 3 });
         } else if (rng.chance(0.6)) {
+          if (!free) continue;
           tree(g, rng.pick(spec.flora), x, H(x, z), z, rng.range(0.8, 1.2) * TREE_SCALE * 0.8, () => rng.next());
         }
         spots.push({ x: x * 0.95, z: z * 0.95 });

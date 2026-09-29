@@ -59,6 +59,10 @@ export interface Habit {
   gnarl: number;
   /** Weeping: blobs hang below the tips. */
   weep?: boolean;
+  /** Curtains of long leafy strands hanging from the crown (the willow). */
+  curtain?: boolean;
+  /** Keep the crown as one smooth blob per branch (the Sky Isles' owner-approved trees). */
+  classic?: boolean;
   bark: string;
   /** Bark marks or bands (birch, plane). */
   marks?: string;
@@ -90,13 +94,13 @@ export const HABITS: Partial<Record<Flora, Habit>> = {
   jacaranda: H({ h: 5.8, trunk: 0.3, r: 0.21, forks: 4, spread: 0.5, lift: 0.02, limb: 0.46, shrink: 0.78, blob: 0.17, squash: 0.58, bark: '#6b5040', leaves: ['#9a7ae0', '#b08aef', '#8a6ad6'], card: LeafKind.Blossom }),
   flame: H({ h: 5.2, trunk: 0.36, r: 0.25, forks: 5, spread: 1.15, lift: 0.04, limb: 0.46, shrink: 0.7, blob: 0.16, squash: 0.46, bark: '#6b5040', leaves: ['#3f8a3a', '#4a9a44'], flowers: ['#ff4a1f', '#ff9a1f', '#ff6a2a'] }),
   ginkgo: H({ h: 6.6, trunk: 0.3, r: 0.2, leader: true, tiers: 4, forks: 3, spread: 0.9, lift: 0.3, limb: 0.28, shrink: 0.6, blob: 0.14, squash: 1, bark: '#7a6a52', leaves: ['#f2c230', '#ffd84a', '#e8b422'], card: LeafKind.Small }),
-  willow: H({ h: 5.8, trunk: 0.3, r: 0.31, forks: 5, spread: 0.72, lift: -0.12, limb: 0.42, shrink: 0.7, blob: 0.14, squash: 1.9, weep: true, bark: '#6b5a44', leaves: ['#9cc56a', '#a8d078', '#8ab85c'], card: LeafKind.Small }),
+  willow: H({ curtain: true, h: 5.8, trunk: 0.3, r: 0.31, forks: 5, spread: 0.72, lift: -0.12, limb: 0.42, shrink: 0.7, blob: 0.14, squash: 1.9, weep: true, bark: '#6b5a44', leaves: ['#9cc56a', '#a8d078', '#8ab85c'], card: LeafKind.Small }),
   rainbowgum: H({ h: 9.5, trunk: 0.55, r: 0.34, leader: true, tiers: 3, forks: 3, spread: 0.8, lift: 0.3, limb: 0.24, shrink: 0.6, blob: 0.12, squash: 0.8, bark: '#5aa05a', leaves: ['#4f9a4a', '#62ae52'], card: LeafKind.Small, bands: ['#5aa05a', '#ff9a4a', '#4a7ad0', '#9a3a5a', '#e8d05a'] }),
   dragonblood: H({ h: 4.8, trunk: 0.44, r: 0.24, forks: 3, spread: 0.5, lift: 0.1, limb: 0.26, shrink: 0.8, depth: 3, blob: 0.13, squash: 0.36, bark: '#8a7a6a', leaves: ['#3f6a3a', '#4a7a42'], card: LeafKind.Needles }),
   // The Sky Isles: cloud willows trailing pale foliage, candy-blossom trees, glow trees.
-  cloud: H({ h: 6.2, trunk: 0.32, r: 0.22, forks: 5, spread: 0.8, lift: -0.1, limb: 0.42, shrink: 0.7, blob: 0.15, squash: 1.8, gnarl: 0.4, weep: true, bark: '#e8e4f4', leaves: ['#f4f4ff', '#e8f0ff', '#fff4fa'], card: LeafKind.Small }),
-  candy: H({ h: 5, trunk: 0.26, r: 0.22, forks: 5, spread: 1, lift: 0.08, limb: 0.46, shrink: 0.68, blob: 0.18, squash: 0.7, gnarl: 0.3, bark: '#e8d0e8', leaves: ['#ffb8d8', '#b8d8ff', '#d8b8ff', '#fff0a8', '#b8ffd8'], card: LeafKind.Blossom }),
-  glowtree: H({ h: 5.6, trunk: 0.3, r: 0.2, leader: true, tiers: 4, forks: 3, spread: 0.85, lift: 0.2, limb: 0.34, shrink: 0.62, blob: 0.16, squash: 0.8, bark: '#4a4a6a', leaves: ['#7affd0', '#9ad8ff', '#c8a8ff'], card: LeafKind.Crystal }),
+  cloud: H({ classic: true, h: 6.2, trunk: 0.32, r: 0.22, forks: 5, spread: 0.8, lift: -0.1, limb: 0.42, shrink: 0.7, blob: 0.15, squash: 1.8, gnarl: 0.4, weep: true, bark: '#e8e4f4', leaves: ['#f4f4ff', '#e8f0ff', '#fff4fa'], card: LeafKind.Small }),
+  candy: H({ classic: true, h: 5, trunk: 0.26, r: 0.22, forks: 5, spread: 1, lift: 0.08, limb: 0.46, shrink: 0.68, blob: 0.18, squash: 0.7, gnarl: 0.3, bark: '#e8d0e8', leaves: ['#ffb8d8', '#b8d8ff', '#d8b8ff', '#fff0a8', '#b8ffd8'], card: LeafKind.Blossom }),
+  glowtree: H({ classic: true, h: 5.6, trunk: 0.3, r: 0.2, leader: true, tiers: 4, forks: 3, spread: 0.85, lift: 0.2, limb: 0.34, shrink: 0.62, blob: 0.16, squash: 0.8, bark: '#4a4a6a', leaves: ['#7affd0', '#9ad8ff', '#c8a8ff'], card: LeafKind.Crystal }),
   wisteria: H({ h: 4.6, trunk: 0.34, r: 0.2, forks: 4, spread: 0.9, lift: -0.05, limb: 0.4, shrink: 0.7, blob: 0.15, squash: 1.5, gnarl: 0.7, weep: true, bark: '#6b5040', leaves: ['#b58ae0', '#d9b8ff', '#a47ad6'], card: LeafKind.Blossom }),
 };
 
@@ -214,10 +218,62 @@ export function growTree(g: GeoBuilder, hb: Habit, x: number, y: number, z: numb
   for (const t of tips) {
     const leafCol = hb.leaves[Math.floor(rng() * hb.leaves.length)];
     const c = t.p.clone();
+    if (hb.curtain) { curtainCrown(g, hb, c, t.r, leafCol, y, h, rng); continue; }
+    if (!hb.classic) { openCrown(g, hb, c, t.r, leafCol, y, h, rng); continue; }
     if (hb.weep) c.y -= t.r * hb.squash * 0.55;
     const geo = clumpGeometry(Math.floor(rng() * CLUMPS));
     g.add(geo, col.set(leafCol).multiplyScalar(0.86), tmpM.compose(c, tmpQ.setFromAxisAngle(UP, rng() * Math.PI * 2), new THREE.Vector3(t.r, t.r * hb.squash, t.r)).clone());
     leafCards(g, hb, c, t.r, leafCol, y, h, rng);
+  }
+}
+
+/**
+ * An open crown: a branch's foliage as three smaller leaf clusters set off-centre round its tip
+ * (more of them up and out, towards the light), so the crown has lobes and gaps with the sky
+ * showing through and a broken outline, not one round ball; leaves stand a little proud of each
+ * cluster so its edge is ragged.
+ */
+function openCrown(g: GeoBuilder, hb: Habit, c: THREE.Vector3, r: number, leafCol: string, baseY: number, h: number, rng: () => number): void {
+  const col = new THREE.Color();
+  const cen = hb.weep ? c.clone().add(new THREE.Vector3(0, -r * hb.squash * 0.45, 0)) : c;
+  const n = 3, a0 = rng() * Math.PI * 2;
+  for (let i = 0; i < n; i++) {
+    const a = a0 + (i / n) * Math.PI * 2 + (rng() - 0.5) * 0.8;
+    const rr = r * (0.52 + rng() * 0.18), off = r * (0.42 + rng() * 0.18);
+    const p = cen.clone().add(new THREE.Vector3(Math.cos(a) * off, (hb.weep ? -0.2 : 0.15 + rng() * 0.3) * r * hb.squash, Math.sin(a) * off));
+    if (p.y - rr * hb.squash < baseY + 0.8) p.y = baseY + 0.8 + rr * hb.squash;
+    const lc = hb.leaves[Math.floor(rng() * hb.leaves.length)];
+    g.add(clumpGeometry(Math.floor(rng() * CLUMPS)), col.set(lc).multiplyScalar(0.86), tmpM.compose(p, tmpQ.setFromAxisAngle(UP, rng() * Math.PI * 2), new THREE.Vector3(rr, rr * hb.squash, rr)).clone());
+    leafCards(g, hb, p, rr, lc, baseY, h, rng, 1.12);
+  }
+  void leafCol;
+}
+
+/**
+ * The willow's crown: a low canopy over the branch tip and a curtain of long leafy strands
+ * hanging from its rim nearly to the ground, each with leaves down its length that swing in the
+ * wind.
+ */
+const strandGeo = new THREE.IcosahedronGeometry(1, 0);
+function curtainCrown(g: GeoBuilder, hb: Habit, c: THREE.Vector3, r: number, leafCol: string, baseY: number, h: number, rng: () => number): void {
+  const col = new THREE.Color(leafCol);
+  g.add(clumpGeometry(Math.floor(rng() * CLUMPS)), col.clone().multiplyScalar(0.86), tmpM.compose(c, tmpQ.setFromAxisAngle(UP, rng() * Math.PI * 2), new THREE.Vector3(r * 0.8, r * 0.45, r * 0.8)).clone());
+  leafCards(g, { ...hb, squash: 0.45, weep: false }, c, r * 0.8, leafCol, baseY, h, rng);
+  const n = 7;
+  for (let i = 0; i < n; i++) {
+    const a = (i / n) * Math.PI * 2 + rng() * 0.6, out = new THREE.Vector3(Math.cos(a), 0, Math.sin(a));
+    const rim = c.clone().addScaledVector(out, r * (0.6 + rng() * 0.25));
+    const L = r * hb.squash * (0.9 + rng() * 0.7), bottom = Math.max(baseY + 0.7, rim.y - L), len = rim.y - bottom;
+    if (len < 0.4) continue;
+    const sc = col.clone().offsetHSL((rng() - 0.5) * 0.03, 0, (rng() - 0.5) * 0.1);
+    g.add(strandGeo.clone(), sc.clone().multiplyScalar(0.86), tmpM.compose(new THREE.Vector3(rim.x, rim.y - len / 2, rim.z), tmpQ.setFromAxisAngle(UP, a), new THREE.Vector3(r * 0.16, len / 2, r * 0.12)).clone());
+    if (!g.cards) continue;
+    const m = Math.max(2, Math.round(len / (r * 0.4)));
+    for (let j = 0; j < m; j++) {
+      const p = rim.clone().add(new THREE.Vector3(0, -len * (j + 0.5) / m, 0)).addScaledVector(out, r * 0.08);
+      const nrm = out.clone().add(new THREE.Vector3(0, -0.15, 0)).normalize();
+      g.card(p.x, p.y, p.z, nrm.x, nrm.y, nrm.z, Math.min(1.6, r * 0.42) * (0.8 + rng() * 0.4), sc, hb.card, 0.8 + (j / m) * 0.2, Math.PI / 2 + (rng() - 0.5) * 0.4, (rng() - 0.5) * 0.6);
+    }
   }
 }
 
@@ -248,7 +304,7 @@ function clumpGeometry(k: number): THREE.BufferGeometry {
 }
 
 /** Cover one foliage blob with overlapping leaf cards, facing outwards. */
-function leafCards(g: GeoBuilder, hb: Habit, c: THREE.Vector3, r: number, leafCol: string, baseY: number, h: number, rng: () => number): void {
+function leafCards(g: GeoBuilder, hb: Habit, c: THREE.Vector3, r: number, leafCol: string, baseY: number, h: number, rng: () => number, proud = 1): void {
   if (!g.cards) return;
   const size = Math.min(3, Math.max(0.6, r * 0.62));
   const n = Math.max(14, Math.min(52, Math.round((4 * Math.PI * r * r * (0.6 + hb.squash * 0.4)) / (size * size * 0.38))));
@@ -265,7 +321,7 @@ function leafCards(g: GeoBuilder, hb: Habit, c: THREE.Vector3, r: number, leafCo
     if (yk < -0.8 && !hb.weep) continue;
     const rk = Math.sqrt(1 - yk * yk), ph = i * 2.39996 + rng() * 0.8;
     const dx = Math.cos(ph) * rk, dz = Math.sin(ph) * rk;
-    const out = 0.88 + rng() * 0.24;
+    const out = (0.88 + rng() * 0.24) * proud;
     const px = c.x + dx * r * out, py = c.y + yk * r * hb.squash * out, pz = c.z + dz * r * out;
     // The outward normal of the (squashed) blob.
     const nx = dx / r, ny = yk / (r * hb.squash), nz = dz / r, nl = Math.hypot(nx, ny, nz);

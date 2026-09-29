@@ -112,7 +112,7 @@ sections C1–C7) and `3D_BUILDS_HANDOFF.md` (3D work, sections 2a and 3.x). Tic
 - [ ] Walk-around interiors (rooms are dioramas now)
 - [x] Children going home at their destination (caravan limit) (`caravan.bringHome`)
 - [x] Robes and headscarves swaying in the wind
-- [ ] Instanced party guests at the celebration (performance)
+- [x] Instanced party guests at the celebration (performance): one instanced crowd, the nearest twelve as full animated figures (`event/Festivities.ts`)
 - [ ] Real-GPU frame-rate measurement
 
 ## K. Interiors (NEW)
