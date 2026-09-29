@@ -18,7 +18,7 @@ sections C1–C7) and `3D_BUILDS_HANDOFF.md` (3D work, sections 2a and 3.x). Tic
 - [x] Every stage needs a skilled person: you, someone you pay, or someone you sponsor and teach / sponsor to learn
 - [x] Clinics that grow into hospitals; libraries; tent school → madrasa/college → university; the Meadow's castle school of wizardry (logic and stages in `institutions/catalogue.ts`; buildings are 3D §2)
 - [x] Each land's own science and four-stage ladder (Chinese medicine, Ayurveda, Swiss watchmaking, Islamic sciences, London engineering, New Yonder tech, Meadow magic, and the rest)
-- [ ] Cite real-world sources for each land's science in `docs/research/` (owner: "search what every place has")
+- [x] Cite real-world sources for each land's science in `docs/research/land-sciences.md` (owner: "search what every place has") — UNESCO, museums, Ayush, NOAA and Britannica, checked 2026-09-29
 - [x] Build time; payment in coins or in kind (wood, the land's goods, food)
 
 ## C. Work, skills and learning (C3, C4)
@@ -94,7 +94,7 @@ sections C1–C7) and `3D_BUILDS_HANDOFF.md` (3D work, sections 2a and 3.x). Tic
 - [x] ~85 designs moving on every land's roads, waters and skies
 - [x] Real lamplight (`lamplight.ts`); the living air: butterflies, dragonflies, fireflies, spores, chimney smoke, dawn mist, sunbeams (`atmosphere.ts`, `Atmos.ts`); bark by species; per-crystal hues; desert pebbles; Aurora snow tracks; a rough open sea
 - [ ] Screenshot and polish most designs
-- [ ] Vehicles entering and leaving; travel between lands; no pop-in at borders
+- [x] Vehicles entering and leaving; travel between lands; no pop-in at borders — highway loops run from each town's ring road to its neighbour's, placed by the clock so crossing a border never moves them (`traffic/schedule.ts` `highwayU`, `Traffic.ts`)
 - [x] Junctions, turning, traffic lights, roundabouts
 - [x] Dragons, creatures of legend and fantasy and sci-fi vehicles on shared kits (DRAGONS_FANTASY_SCIFI_PLAN.md): every land's dragon, the festival dragon, the little meadow dragons and the rideable Night Dragon on the dragon kit; 18 fantasy and mech creatures and an eagle bird plan; 19 fantasy and sci-fi craft including a starlight whale, cloud galleon and drone fish
 - [ ] Stops: bus stops, taxi ranks, ferry piers, jetties, harbours, airports, drone docks; take-off, landing, docking. Done: bus stops in every town; ferries dock at every harbour pier; air taxis land beside every stop and on the Sky Isles stage
