@@ -28,6 +28,11 @@ function halfW(h: HullSpec, z: number): number {
   if (t < 0 || t > 1) return 0;
   return (h.beam / 2) * (t < 0.4 ? b + (1 - b) * Math.sin((t / 0.4) * Math.PI / 2) : Math.pow(Math.max(0, Math.cos(((t - 0.4) / 0.6) * Math.PI / 2)), 0.75));
 }
+/** The deck line's height at z (it rises toward bow and stern with the sheer). */
+function deckY(h: HullSpec, z: number): number {
+  const t = z / h.len + 0.5;
+  return h.free + (h.sheer ?? 0.4) * Math.pow(2 * t - 1, 2) * (t > 0.5 ? 1.4 : 1);
+}
 /** How far out the side is at z, `dy` below the deck line. */
 function sideX(h: HullSpec, z: number, dy: number): number {
   const t = z / h.len + 0.5, D = (h.free + h.draft) * (0.35 + 0.65 * Math.sin(Math.min(1, t * 1.2 + 0.15) * Math.PI) ** 0.6);
@@ -50,7 +55,22 @@ function portholes(s: Shaper, h: HullSpec, z0: number, z1: number, dy: number, s
   for (let z = z0; z <= z1; z += step) {
     const x = sideX(h, z, dy);
     if (x < 0.5) continue;
-    for (const sx of [-1, 1]) s.cyl(r, r, 0.08, WARM, [sx * (x * 1.015 + 0.02), h.free - dy, z], { r: [0, 0, Math.PI / 2], glow: true, seg: 6 });
+    for (const sx of [-1, 1]) s.cyl(r, r, 0.08, WARM, [sx * (x * 1.015 + 0.02), deckY(h, z) - dy, z], { r: [0, 0, Math.PI / 2], glow: true, seg: 6 });
+  }
+}
+
+/**
+ * A painted band (or rail) along both sides from z0 to z1, `dy` below the deck line, `hgt` tall:
+ * short lengths that follow the hull's curve and its sheer.
+ */
+function band(s: Shaper, h: HullSpec, z0: number, z1: number, dy: number, hgt: number, col: C, out = 0.03): void {
+  const step = 1.5;
+  for (let z = z0; z < z1; z += step) {
+    const za = z, zb = Math.min(z1, z + step), zm = (za + zb) / 2;
+    const xa = sideX(h, za, dy) * 1.015 + out, xb = sideX(h, zb, dy) * 1.015 + out;
+    if (Math.min(xa, xb) < 0.3) continue;
+    const ya = deckY(h, za) - dy, yb = deckY(h, zb) - dy, len = Math.hypot(xb - xa, zb - za);
+    for (const sx of [-1, 1]) s.box(0.06, hgt, len + 0.05, col, [sx * (xa + xb) / 2, (ya + yb) / 2, zm], { r: [-Math.atan2(yb - ya, zb - za), sx * Math.atan2(xb - xa, zb - za), 0] });
   }
 }
 
@@ -211,7 +231,7 @@ function oceanLiner(): Design {
     pieces: [P((s) => {
       hull(s, h);
       // A white band at the deck line, two rows of portholes.
-      for (const sx of [-1, 1]) s.box(0.06, 0.5, h.len * 0.8, WHITE, [sx * (halfW(h, 0) * 1.015 + 0.02), h.free - 0.3, -4]);
+      band(s, h, -h.len * 0.46, h.len * 0.47, 0.3, 0.5, WHITE);
       for (const dy of [1.6, 3.2]) portholes(s, h, -h.len * 0.38, h.len * 0.34, dy, 1.5, 0.22);
       // White superstructure in tiers, stepped back fore and aft; lit promenade windows.
       tier(s, h.beam * 0.86, 2.8, h.len * 0.6, h.free, -6);
@@ -234,11 +254,11 @@ function cruiseShip(): Design {
     id: 'cruise-ship', name: 'solarpunk cruise ship', realm: 'water', len: h.len, speed: 3.4, bob: 0.06,
     pieces: [P((s) => {
       hull(s, h);
-      for (const sx of [-1, 1]) s.box(0.06, 0.6, h.len * 0.85, '#3aae6a', [sx * (halfW(h, 0) * 1.015 + 0.03), 1.4, -2]);
+      band(s, h, -h.len * 0.46, h.len * 0.46, h.free - 1.4, 0.6, '#3aae6a');
       portholes(s, h, -h.len * 0.4, h.len * 0.3, 2.6, 1.4, 0.2);
       // Six stepped decks of balcony cabins: glass, a white divider between each, lit at night.
       for (let t = 0; t < 6; t++) {
-        const w = h.beam * (0.92 - t * 0.04), d = h.len * (0.72 - t * 0.06), y = h.free + t * 2.9, zc = -6 - t * 1.5;
+        const w = h.beam * (0.86 - t * 0.04), d = h.len * (0.58 - t * 0.05), y = h.free + t * 2.9, zc = -18 - t * 1.2;
         s.box(w, 2.8, d, WHITE, [0, y + 1.4, zc]);
         for (const sx of [-1, 1]) {
           s.box(0.05, 1.6, d * 0.96, '#2a4a5a', [sx * (w / 2 + 0.02), y + 1.5, zc]);
@@ -247,47 +267,52 @@ function cruiseShip(): Design {
           s.box(0.3, 0.1, d, '#c8e8f0', [sx * (w / 2 + 0.2), y + 0.9, zc]); // the balcony rail
         }
       }
-      bridge(s, h.beam * 0.8, h.free + 17.4, 18);
+      // Forward decks narrowing with the bow: lounges looking ahead, a sun deck on top.
+      tier(s, 2 * halfW(h, 34) * 0.92, 2.8, 16, h.free, 27);
+      tier(s, 2 * halfW(h, 30) * 0.9, 2.6, 10, h.free + 2.9, 24);
+      bridge(s, h.beam * 0.74, h.free + 11.6, 1);
       // The garden deck on top: lawns, trees, a pool; and three rigid solar sails.
       const top = h.free + 17.4;
-      s.box(h.beam * 0.66, 0.3, h.len * 0.36, '#5aa04a', [0, top + 0.15, -20]);
-      for (let i = 0; i < 10; i++) { const x = ((i % 2) - 0.5) * h.beam * 0.44, zz = -34 + Math.floor(i / 2) * 6; s.cyl(0.15, 0.2, 2, '#6a4a2a', [x, top + 1.2, zz], { seg: 5 }); s.ball(1.4, i % 3 ? '#3f8a3a' : '#5ab04a', [x, top + 3, zz], { seg: 7 }); }
-      s.box(4, 0.2, 8, '#4ac8e8', [0, top + 0.35, -18]);
-      for (const zz of [8, -8, -24]) {
+      s.box(h.beam * 0.6, 0.3, h.len * 0.26, '#5aa04a', [0, top + 0.15, -24]);
+      for (let i = 0; i < 10; i++) { const x = ((i % 2) - 0.5) * h.beam * 0.4, zz = -36 + Math.floor(i / 2) * 5.5; s.cyl(0.15, 0.2, 2, '#6a4a2a', [x, top + 1.2, zz], { seg: 5 }); s.ball(1.4, i % 3 ? '#3f8a3a' : '#5ab04a', [x, top + 3, zz], { seg: 7 }); }
+      s.box(4, 0.2, 8, '#4ac8e8', [0, top + 0.35, -22]);
+      for (const zz of [-4, -18, -32]) {
         s.cyl(0.35, 0.45, 26, WHITE, [0, top + 13, zz], { seg: 10 });
         s.box(0.4, 22, 9, '#1f2f5a', [0, top + 14, zz - 3]);
         for (let k = 0; k < 6; k++) s.box(0.45, 0.08, 9, '#8aa0c8', [0, top + 4 + k * 3.6, zz - 3]);
         s.box(0.46, 22, 0.14, '#8aa0c8', [0, top + 14, zz - 3]);
       }
-      funnel(s, 1.8, 5, top, -40, WHITE, '#3aae6a', 0.1);
-      lifeboats(s, h.beam * 0.47, h.free + 4.2, [10, 0, -10, -20, -30]);
-      navLights(s, h.beam * 0.5 + 1.8, top + 2.1, 18.6, -h.len / 2 + 0.3, h.free + 2);
+      funnel(s, 1.8, 5, top, -42, WHITE, '#3aae6a', 0.1);
+      lifeboats(s, h.beam * 0.47, h.free + 4.2, [0, -10, -20, -30, -40]);
+      navLights(s, h.beam * 0.5 + 1.6, h.free + 13.7, 1.6, -h.len / 2 + 0.3, h.free + 2);
     })],
   };
 }
 
 function ferryLarge(): Design {
-  const h: HullSpec = { len: 62, beam: 14, free: 5, draft: 3.5, hull: '#1f4a8a', boot: '#8a2a22', deck: '#8a8a90', bluff: 0.95, sheer: 0.6 };
+  // A ro-ro ferry stands high out of the water: the car deck is inside the hull.
+  const h: HullSpec = { len: 62, beam: 14, free: 8.5, draft: 3.5, hull: '#1f4a8a', boot: '#8a2a22', deck: '#8a8a90', bluff: 0.95, sheer: 0.6 };
   return {
     id: 'ferry-large', name: 'car ferry', realm: 'water', len: h.len, speed: 3.8, bob: 0.08,
     pieces: [P((s) => {
       hull(s, h);
-      // The car deck: a closed hull-side with the stern door, the bow visor's seam.
-      s.box(h.beam * 0.94, 4, h.len * 0.84, h.hull, [0, h.free + 2, -2]);
-      s.box(h.beam * 0.7, 3.6, 0.1, '#3a3a44', [0, h.free + 1.9, -h.len * 0.44]);
-      for (const sx of [-1, 1]) s.rod([sx * h.beam * 0.3, h.free + 4, 24], [0, h.free + 1, 28], 0.06, '#15305a');
+      // The stern door and the bow visor's seams; a white band along the car deck.
+      s.box(h.beam * 0.6, 4.2, 0.1, '#15305a', [0, h.free - 3, -h.len / 2 - 0.02]);
+      band(s, h, -h.len * 0.46, h.len * 0.44, 1.2, 0.6, WHITE);
+      for (const sx of [-1, 1]) s.rod([sx * 3.5, h.free - 0.5, 23], [0, h.free - 4, 29], 0.08, '#15305a');
+      portholes(s, h, -20, 16, 2.4, 2.2, 0.28);
       // Passenger decks in white with windows, open decks with rails, two funnels side by side.
-      tier(s, h.beam * 0.94, 2.8, h.len * 0.62, h.free + 4, 0);
-      tier(s, h.beam * 0.86, 2.6, h.len * 0.44, h.free + 6.9, 2);
-      bridge(s, h.beam * 0.8, h.free + 9.6, 12);
+      tier(s, h.beam * 0.9, 2.8, h.len * 0.6, h.free, -1);
+      tier(s, h.beam * 0.84, 2.6, h.len * 0.42, h.free + 2.9, 1);
+      bridge(s, h.beam * 0.78, h.free + 5.6, 10);
       for (const sx of [-1, 1]) {
-        for (let q = -24; q < 22; q += 1.2) s.rod([sx * h.beam * 0.46, h.free + 6.9, q], [sx * h.beam * 0.46, h.free + 7.9, q], 0.03, WHITE);
-        s.box(0.06, 0.06, 46, WHITE, [sx * h.beam * 0.46, h.free + 7.9, -1]);
-        funnel(s, 1.2, 5, h.free + 9.6, -12, WHITE, '#1f4a8a', 0.08, sx * 2.6);
+        for (let q = -21; q < 19; q += 1.2) s.rod([sx * h.beam * 0.44, h.free + 2.9, q], [sx * h.beam * 0.44, h.free + 3.9, q], 0.03, WHITE);
+        s.box(0.06, 0.06, 40, WHITE, [sx * h.beam * 0.44, h.free + 3.9, -1]);
+        funnel(s, 1.2, 5, h.free + 5.6, -12, WHITE, '#1f4a8a', 0.08, sx * 2.6);
       }
-      lifeboats(s, h.beam * 0.5, h.free + 7.4, [-6, -14]);
-      mast(s, 6, h.free + 12, 12, 1, 1);
-      navLights(s, h.beam * 0.5 + 1.2, h.free + 11.8, 12.6, -h.len / 2 + 0.3, h.free + 4.5);
+      lifeboats(s, h.beam * 0.49, h.free + 3.4, [-6, -14]);
+      mast(s, 6, h.free + 8, 10, 1, 1);
+      navLights(s, h.beam * 0.5 + 1.2, h.free + 7.8, 10.6, -h.len / 2 + 0.3, h.free + 1);
     })],
   };
 }
@@ -298,7 +323,6 @@ function fishingTrawler(): Design {
     id: 'fishing-trawler', name: 'trawler', realm: 'water', len: h.len, speed: 3, bob: 0.18,
     pieces: [P((s) => {
       hull(s, h);
-      s.box(halfW(h, 9) * 1.8, 1.4, 5, h.hull, [0, h.free + 1, 9.5]); // the high bow
       s.box(5, 2.6, 5, WHITE, [0, h.free + 1.3, 3]);
       s.box(4.6, 0.9, 0.06, '#1c2836', [0, h.free + 2, 5.52]);
       s.box(4.4, 0.7, 0.05, WARM, [0, h.free + 2, 5.56], { glow: true });
@@ -366,9 +390,9 @@ function junkLarge(): Design {
       hull(s, h);
       // Painted waves and flowers along the bow (never eyes), a red and gold rail.
       for (const sx of [-1, 1]) {
-        for (let i = 0; i < 4; i++) s.cyl(0.6, 0.6, 0.06, i % 2 ? '#e2b43a' : '#e8e0d0', [sx * (sideX(h, 20 - i * 1.6, 1) * 1.015 + 0.04), h.free - 1, 20 - i * 1.6], { r: [0, 0, Math.PI / 2], seg: 10 });
-        s.box(0.08, 0.3, h.len * 0.8, '#c23b2a', [sx * (halfW(h, 0) * 1.015 + 0.04), h.free - 0.2, -2]);
+        for (let i = 0; i < 4; i++) { const zz = 17 - i * 1.6; s.cyl(0.6, 0.6, 0.06, i % 2 ? '#e2b43a' : '#e8e0d0', [sx * (sideX(h, zz, 1) * 1.015 + 0.05), deckY(h, zz) - 1, zz], { r: [0, 0, Math.PI / 2], seg: 10 }); }
       }
+      band(s, h, -h.len * 0.45, h.len * 0.44, 0.2, 0.3, '#c23b2a');
       // The high stern castle, tiered, with lanterns at its corners.
       tier(s, h.beam * 0.8, 3, 10, h.free + 1.5, -20, '#8a3a22', '#3a2a1a');
       tier(s, h.beam * 0.66, 2.6, 7, h.free + 4.6, -21, '#8a3a22', '#3a2a1a');
@@ -389,7 +413,7 @@ function phinisiLarge(): Design {
     id: 'phinisi-large', name: 'phinisi schooner', realm: 'water', len: h.len, speed: 3.2, bob: 0.14,
     pieces: [P((s) => {
       hull(s, h);
-      for (const sx of [-1, 1]) s.box(0.06, 0.4, h.len * 0.8, '#8a5a36', [sx * (halfW(h, 0) * 1.015 + 0.04), h.free - 0.3, -1]);
+      band(s, h, -h.len * 0.45, h.len * 0.45, 0.3, 0.4, '#8a5a36');
       s.box(h.beam * 0.66, 2.2, 8, '#8a5a36', [0, h.free + 1.1, -12]);
       s.box(h.beam * 0.6, 0.8, 0.06, WARM, [0, h.free + 1.3, -7.95], { glow: true });
       // Two masts; on each a gaff mainsail and a topsail, three jibs to the long bowsprit: seven.
@@ -410,12 +434,16 @@ function kettuvallamLarge(): Design {
     id: 'kettuvallam-large', name: 'rice barge houseboat', realm: 'water', len: h.len, speed: 2, bob: 0.08,
     pieces: [P((s) => {
       hull(s, h);
-      // Thatched barrel roofs in three runs, woven screens, a verandah deck at the bow.
-      for (const [zz, d, r] of [[3, 8, 2.8], [-5, 7, 2.6], [-11, 4, 2.2]] as const) {
-        s.cyl(r, r, d, '#c8a064', [0, h.free + 0.6, zz], { r: [Math.PI / 2, 0, 0], s: [1.05, 1, 0.8], seg: 14 });
-        for (let k = 0; k <= d; k += 0.8) s.cyl(r * 1.01, r * 1.01, 0.08, '#8a6a3a', [0, h.free + 0.6, zz - d / 2 + k], { r: [Math.PI / 2, 0, 0], s: [1.05, 1, 0.8], seg: 14 });
-        for (const sx of [-1, 1]) s.box(0.05, 1.3, d * 0.9, '#a8804a', [sx * r * 0.98, h.free + 0.9, zz]);
-        for (const sx of [-1, 1]) s.box(0.04, 0.6, d * 0.6, WARM, [sx * r * 1.0, h.free + 1.1, zz], { glow: true });
+      // Thatched barrel roofs in three runs on posts, open sides with rolled screens, a verandah deck at the bow.
+      for (const [zz, d] of [[3, 8], [-5, 7], [-11, 4]] as const) {
+        const r = 2.3, y = h.free + 1.4;
+        s.cyl(r, r, d, '#c8a064', [0, y, zz], { r: [Math.PI / 2, 0, 0], s: [1, 0.62, 1], seg: 14 });
+        for (let k = 0; k <= d; k += 1.6) s.cyl(r * 1.02, r * 1.02, 0.1, '#8a6a3a', [0, y, zz - d / 2 + k], { r: [Math.PI / 2, 0, 0], s: [1, 0.63, 1], seg: 14 });
+        for (const sx of [-1, 1]) {
+          for (let k = 0; k <= d; k += d / 2) s.cyl(0.08, 0.08, 1.4, '#6a4a2a', [sx * r * 0.92, h.free + 0.7, zz - d / 2 + k], { seg: 5 });
+          s.box(0.06, 0.3, d * 0.9, '#a8804a', [sx * r * 0.95, h.free + 1.3, zz]);
+        }
+        s.box(0.6, 0.12, d * 0.6, WARM, [0, h.free + 2.2, zz], { glow: true });
       }
       s.box(h.beam * 0.8, 0.12, 5, TEAK, [0, h.free + 0.06, 10]);
       for (const sx of [-1, 1]) for (let q = 8; q <= 12; q += 1) s.rod([sx * 2.2, h.free, q], [sx * 2.2, h.free + 0.9, q], 0.05, '#6a4a2a');
@@ -435,9 +463,9 @@ function fullRigger(id: string, len: number, name: string): Design {
     pieces: [P((s) => {
       hull(s, h);
       // A yellow band with the gun-ports, the stern cabin, lanterns at the stern.
+      band(s, h, -len * 0.42, len * 0.4, 0.5 * k, 0.6 * k, '#e2b43a');
       for (const sx of [-1, 1]) {
-        s.box(0.06, 0.6 * k, len * 0.7, '#e2b43a', [sx * (halfW(h, 0) * 1.015 + 0.03), h.free - 0.5 * k, -len * 0.02]);
-        for (let q = -len * 0.3; q < len * 0.3; q += 2 * k) s.box(0.08, 0.35 * k, 0.45 * k, BLACK, [sx * (halfW(h, q) * 1.015 + 0.06), h.free - 0.5 * k, q]);
+        for (let q = -len * 0.3; q < len * 0.3; q += 2 * k) s.box(0.08, 0.35 * k, 0.45 * k, BLACK, [sx * (sideX(h, q, 0.5 * k) * 1.015 + 0.08), deckY(h, q) - 0.5 * k, q]);
       }
       s.box(h.beam * 0.8, 2 * k, len * 0.16, '#3a2a22', [0, h.free + 1 * k, -len * 0.38]);
       s.box(h.beam * 0.7, 0.8 * k, 0.06, WARM, [0, h.free + 1.2 * k, -len * 0.46 - 0.02], { glow: true });
@@ -466,14 +494,14 @@ function hospitalShip(): Design {
     pieces: [P((s) => {
       hull(s, h);
       for (const sx of [-1, 1]) {
-        s.box(0.06, 1, h.len * 0.84, '#2a9a5a', [sx * (halfW(h, 0) * 1.015 + 0.03), h.free - 2, -2]);
         // The sign: a green crescent holding a herb leaf, on each side of the wards.
         const x = sx * (h.beam * 0.45 + 0.1);
         s.cyl(2.4, 2.4, 0.1, '#2a9a5a', [x, h.free + 5, 4], { r: [0, 0, Math.PI / 2], seg: 20 });
         s.cyl(2.0, 2.0, 0.12, WHITE, [x * 1.004, h.free + 5.4, 4.9], { r: [0, 0, Math.PI / 2], seg: 20 });
         s.ball(1.1, '#2a9a5a', [x * 1.008, h.free + 5, 3.4], { s: [0.1, 1.4, 0.6], r: [0.6, 0, 0], seg: 8 });
       }
-      portholes(s, h, -30, 28, 2.4, 1.6, 0.22);
+      band(s, h, -h.len * 0.46, h.len * 0.45, 2, 1, '#2a9a5a');
+      portholes(s, h, -30, 28, 3.2, 1.6, 0.22);
       // Wide wards in three tiers with long lit windows, the bridge forward, the helipad aft.
       tier(s, h.beam * 0.9, 3, h.len * 0.56, h.free, 4);
       tier(s, h.beam * 0.86, 3, h.len * 0.5, h.free + 3.1, 5);
@@ -499,7 +527,7 @@ function researchVessel(): Design {
     pieces: [P((s) => {
       hull(s, h);
       // The ice belt at the bow: a darker band, and the name board.
-      for (const sx of [-1, 1]) s.box(0.08, 1.4, 18, '#2a2a30', [sx * (sideX(h, 16, 3.2) * 1.015 + 0.05), h.free - 3.2, 16]);
+      band(s, h, 6, h.len * 0.38, 3, 1.2, '#2a2a30');
       tier(s, h.beam * 0.84, 2.8, 18, h.free, 10);
       tier(s, h.beam * 0.76, 2.6, 14, h.free + 2.9, 11);
       tier(s, h.beam * 0.66, 2.6, 10, h.free + 5.6, 12);
@@ -530,7 +558,7 @@ function skyGalleon(): Design {
     id: 'sky-galleon', name: 'sky galleon', realm: 'sky', len, speed: 7, alt: [95, 150], radius: [200, 380], bob: 3, bank: 0.08,
     pieces: [P((s) => {
       hull(s, h);
-      for (const sx of [-1, 1]) for (let q = -14; q < 14; q += 2.2) s.ball(0.3, '#fff4c0', [sx * (sideX(h, q, 1.2) * 1.015 + 0.05), h.free - 1.2, q], { glow: true, seg: 6 });
+      for (const sx of [-1, 1]) for (let q = -14; q < 14; q += 2.2) s.ball(0.3, '#fff4c0', [sx * (sideX(h, q, 1.2) * 1.015 + 0.05), deckY(h, q) - 1.2, q], { glow: true, seg: 6 });
       s.box(h.beam * 0.8, 2.6, 7, '#5a3a7a', [0, h.free + 1.3, -15]);
       s.box(h.beam * 0.7, 0.9, 0.06, WARM, [0, h.free + 1.5, -18.55], { glow: true });
       // Three masts of sails that glow faintly, pennants, a keel of light below.
@@ -544,7 +572,6 @@ function skyGalleon(): Design {
         }
         s.shape([[0, 0], [2.4, -0.3], [0, -0.7]], 0.02, '#ff8fb8', [0, h.free + hh + 0.3, zz], { r: [0, Math.PI / 2, 0] });
       }
-      s.box(0.3, 0.3, len * 0.7, '#bfe8ff', [0, -h.draft + 0.4, 0], { glow: true });
       for (let i = 0; i < 5; i++) s.ball(0.4, '#e2b43a', [0, h.free + i * 0.35 - 0.6, len * 0.5 + 0.2], { s: [1, 1, 0.6], seg: 7 });
     }),
     ...[1, -1].map((sx) => ({ ...featheredWing('#f4f0ff', sx, [sx * h.beam * 0.45, h.free + 0.6, 2], len * 0.6, len * 0.26, '#d8c8ff'), part: 'vehicle' as const, amp: 0.25 }))],

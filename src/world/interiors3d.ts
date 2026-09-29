@@ -432,6 +432,63 @@ function monumentInside(r: R, halfW: number, back: number, h: number): boolean {
   }
 }
 
+// ─────────────────────────── the penthouse ───────────────────────────
+
+/**
+ * A New Yonder penthouse from inside: a white lounge whose back is all window between slim
+ * mullions, open to the terrace (a strip of pool, planters) and the towers of the city beyond —
+ * blue sky by day, lit windows at night. Two armchairs, well apart, with a low table between; a
+ * kitchen island, a dining table, bookshelves, rugs, plants and pendant lamps.
+ */
+function penthouseRoom(r: R): InteriorBuild {
+  const halfW = 6.5, back = -6, front = 4, h = 3.8, night = r.night > 0.5;
+  box(r.g, halfW * 2, 0.1, front - back, '#d8c8a8', 0, -0.1, (front + back) / 2); // oak floor
+  for (let x = -halfW; x < halfW; x += 0.9) box(r.g, 0.02, 0.01, front - back, '#b8a888', x, 0, (front + back) / 2);
+  for (const sx of [-1, 1]) box(r.g, 0.2, h, front - back, '#f4f2ee', sx * (halfW + 0.1), 0, (front + back) / 2);
+  // The ceiling, softly lit (so it reads white, not tinted by the light off the floor), a darker cove round it.
+  box(r.glow, halfW * 2 - 0.8, 0.05, front - back - 0.8, '#8a8478', 0, h - 0.02, (front + back) / 2);
+  box(r.g, halfW * 2 + 0.4, 0.2, front - back, '#fbfaf8', 0, h + 0.05, (front + back) / 2);
+  // The window wall: mullions and a sill; beyond it the terrace, its pool and planters.
+  for (let x = -halfW; x <= halfW + 0.01; x += halfW / 3) box(r.g, 0.12, h, 0.14, '#e8e8ec', x, 0, back);
+  box(r.g, halfW * 2, 0.12, 0.2, '#e8e8ec', 0, h - 0.12, back);
+  box(r.g, halfW * 2 + 6, 0.1, 6, '#b08a5a', 0, -0.12, back - 3);
+  box(r.glow, halfW * 1.2, 0.05, 1.6, '#6ad8f0', -1, 0, back - 2.6);
+  for (const x of [-halfW + 0.6, halfW - 0.6]) { box(r.g, 1, 0.7, 1, '#5a5a62', x, 0, back - 1.2); sphere(r.g, 0.6, '#3f8a3a', x, 1.3, back - 1.2, 7, 0.9); }
+  box(r.g, halfW * 2 + 6, 1.1, 0.05, '#bfe0f0', 0, 0, back - 6);
+  // The city beyond: towers with rows of windows, the sky behind them.
+  box(night ? r.glow : r.g, 80, 40, 0.5, night ? '#1a2248' : '#bfe0ff', 0, -8, back - 40);
+  for (let i = 0; i < 16; i++) {
+    const x = -34 + i * 4.5 + r.rng.range(-1, 1), z = back - 14 - r.rng.range(0, 18), th = r.rng.range(8, 26), tw = r.rng.range(2.5, 4.5);
+    box(r.g, tw, th, tw, night ? '#2a3040' : '#8a9ab0', x, -12, z);
+    for (let y = -10; y < th - 12; y += 1.6) if (!night || r.rng.chance(0.6)) box(night ? r.glow : r.g, tw * 0.8, 0.5, 0.05, night ? '#ffd9a0' : '#c8d8e8', x, y, z + tw / 2 + 0.03);
+  }
+  // Two armchairs apart, a low table between them, a rug under.
+  box(r.g, 5, 0.02, 3, '#c8b8a8', 0, 0, 0.4);
+  for (const sx of [-1, 1]) {
+    const x = sx * 1.3;
+    box(r.g, 1, 0.42, 0.9, '#3a4a5a', x, 0, 0.6);
+    box(r.g, 1, 0.6, 0.2, '#3a4a5a', x, 0.42, 1.0);
+    for (const ax of [-0.45, 0.45]) box(r.g, 0.14, 0.25, 0.9, '#3a4a5a', x + ax, 0.42, 0.6);
+    box(r.g, 0.8, 0.1, 0.7, '#8aa0b8', x, 0.42, 0.55);
+  }
+  box(r.g, 0.9, 0.35, 0.6, '#8a6a4a', 0, 0, 0.3);
+  sphere(r.g, 0.14, '#e2b43a', 0, 0.5, 0.3, 6);
+  // A kitchen island and stools on the left, a dining table on the right, shelves on the walls.
+  box(r.g, 2.6, 0.95, 1, '#f4f2ee', -halfW + 2, 0, -2.6);
+  box(r.g, 2.7, 0.06, 1.1, '#3a3a40', -halfW + 2, 0.95, -2.6);
+  for (let i = 0; i < 3; i++) cyl(r.g, 0.2, 0.2, 0.7, '#8a6a4a', -halfW + 1.2 + i * 0.8, 0, -1.8, 8);
+  box(r.g, 2, 0.75, 1.1, '#8a6a4a', halfW - 2, 0, -2.4);
+  for (const dz of [-0.9, 0.9]) for (const dx of [-0.5, 0.5]) box(r.g, 0.45, 0.45, 0.45, '#c8b89a', halfW - 2 + dx, 0, -2.4 + dz);
+  for (const sx of [-1, 1]) {
+    box(r.g, 0.35, 2.4, 2.2, '#8a6a4a', sx * (halfW - 0.2), 0, 2);
+    for (let k = 0; k < 4; k++) for (let i = 0; i < 6; i++) box(r.g, 0.22, 0.4, 0.12, ['#c23b2a', '#2f6f9a', '#e2b43a', '#3f8a3a'][(i + k) % 4], sx * (halfW - 0.25), 0.15 + k * 0.58, 1.2 + i * 0.3);
+  }
+  for (const [x, z] of [[-halfW + 0.6, 3.2], [halfW - 0.6, -0.6]]) { cyl(r.g, 0.3, 0.25, 0.5, '#e8e4dc', x, 0, z, 10); sphere(r.g, 0.55, '#3f8a3a', x, 0.95, z, 7); }
+  // Pendant lamps.
+  for (const [x, z] of [[-halfW + 2, -2.6], [halfW - 2, -2.4], [0, 0.4]]) { cyl(r.g, 0.01, 0.01, 1.2, '#2a2a2a', x, h - 1.2, z, 3); cone(r.glow, 0.28, 0.3, '#fff0c8', x, h - 1.5, z, 10); }
+  return finish(r, { halfW, back, front, height: h }, [[-1.3, 0.45, 0.6], [1.3, 0.45, 0.6]], [[-halfW + 2, -1.6]], { pos: [0, 2.4, 6.8], look: [0, 1.4, -4] });
+}
+
 /** Build the interior asked for, or null (the game then uses the land's standard room). */
 export function buildInterior3d(spec: InteriorSpec): InteriorBuild | null {
   const r: R = { g: new GeoBuilder(), glow: new GeoBuilder(), rng: new Rng(spec.seed), land: spec.land, night: spec.night };
@@ -440,6 +497,7 @@ export function buildInterior3d(spec: InteriorSpec): InteriorBuild | null {
     case 'institute': return institute(r, spec.ref ?? 'kitchen', spec.stage ?? 0);
     case 'castle': return castle(r);
     case 'landmark': return landmarkHall(r);
+    case 'penthouse': return penthouseRoom(r);
     default: return null;
   }
 }

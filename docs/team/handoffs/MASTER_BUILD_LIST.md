@@ -66,7 +66,7 @@ sections C1–C7) and `3D_BUILDS_HANDOFF.md` (3D work, sections 2a and 3.x). Tic
 - [x] More house types per land; courtyard houses (3–4 traditional kinds per land: `traditions.ts`, `traditionsMore.ts`, `facade.ts`); organic town layouts along winding lanes (`townLayout.ts`). Also done: a neighbourhood place of worship and a market in every town on the ground, each in its land's tradition (`world/neighbourhood.ts`)
 - [x] Delete the unused old per-land house builders in `architecture.ts`
 - [ ] Sky Isles: more and larger trees (own branching species, giants), ground texture, richer surfaces, floating islands with bridges and waterfalls
-- [ ] New Yonder: penthouses. Done: screen towers, avenue panels and a pylon screen with moving programmes (`world/CityScreens.ts`)
+- [x] New Yonder: penthouses — on the tallest glass towers (`world/models/penthouse.ts`: pavilion, pool, pergola, planters); the lift in the lobby; buy one (`housing/penthouses.ts`, 1200 coins); inside, a lounge open to the city (`interiors3d.ts` `penthouseRoom`). Also: screen towers, avenue panels and a pylon screen (`world/CityScreens.ts`)
 - [x] Bridges placed and walkable: 22 bridges wherever a river crosses the line of an avenue (`world/bridges.ts`, `world/BridgesView.ts`)
 - [x] 3D: bridges in each land's style (`buildBridge`, `CHATGPT_3D_MODELS.md` §5)
 - [x] Lotus ponds (India, Mughal, China, Japan, Indonesia)
@@ -98,15 +98,15 @@ sections C1–C7) and `3D_BUILDS_HANDOFF.md` (3D work, sections 2a and 3.x). Tic
 - [x] Junctions, turning, traffic lights, roundabouts
 - [x] Dragons, creatures of legend and fantasy and sci-fi vehicles on shared kits (DRAGONS_FANTASY_SCIFI_PLAN.md): every land's dragon, the festival dragon, the little meadow dragons and the rideable Night Dragon on the dragon kit; 18 fantasy and mech creatures and an eagle bird plan; 19 fantasy and sci-fi craft including a starlight whale, cloud galleon and drone fish
 - [ ] Stops: bus stops, taxi ranks, ferry piers, jetties, harbours, airports, drone docks; take-off, landing, docking. Done: bus stops in every town; ferries dock at every harbour pier; air taxis land beside every stop and on the Sky Isles stage
-- [ ] Riding buses, taxis, trams, ferries, gondolas, air taxis (separate seats). Done: intercity coach, coastal ferry, air taxi, Sky Isles cable car (`travel/Ride.ts`); left: trams
+- [x] Riding buses, taxis, trams, ferries, gondolas, air taxis (separate seats): intercity coach, coastal ferry, air taxi, Sky Isles cable car, and city trams in Sakura Hollow, New Yonder and Maple Row (`travel/streetTram.ts`, `travel/Ride.ts`)
 - [x] Time of day (quieter nights, evening lantern boats, daytime kites and balloons)
 - [x] Townsfolk crossing streets; Sky Isles cable gondolas; distance culling. Done: zebra crossings on the lights; far traffic culled; Sky Isles cable car (`travel/gondola.ts`, `SkyTram.ts`)
 - [x] Rebuild the travellers' own vehicles (car, truck, biplane) — keep seats and `SEAT_GAP`: Safar as a split-screen bus in painted steel (`vehicles.ts` `buildVan`); the car and truck in painted steel; the biplane as a 1930s trainer (`buildBiplane`)
 
 ## I2. Ships and the sea (NEW)
-- [ ] 3D: ships — cargo, container, ocean liner, cruise, large ferry, trawler, coastal steamer, ocean dhow, large junk, phinisi, rice barge, full-rigged tall ship, hospital ship, research vessel, sky galleon (`CHATGPT_3D_MODELS.md` §12.4)
+- [x] 3D: ships — all fourteen of §12.4 plus a full-rigger and the sky galleon, on a ship kit (`traffic/ships.ts`); no stand-ins sail
 - [x] Logic: a harbour in each of the 14 coastal lands at the real shore (walkable quay and pier), a sea lane along each coast, ships docking at the pier head, chartered shipping lines carrying 90 loads harbour to harbour (`world/harbours.ts`, `Traffic` sea routes, `supply.ts`)
-- [ ] 3D: harbours in each land's style (`CHATGPT_3D_MODELS.md` §22; contract `world/models/harbour.ts`)
+- [x] 3D: harbours in each land's style (`world/models/harbour.ts`): ports, a solarpunk terminal (New Yonder), a pier pavilion (Maple Row), fishing huts and racks, dhow slipways, a felucca landing (Nile), stilted boathouses with Chinese fishing nets (Kaveri), ghats with chhatris (Gulabi Nagar, Bagh-e-Noor), harbour gates, a lake-steamer landing
 
 ## J. Carried over from earlier sessions
 - [ ] Walk-around interiors (rooms are dioramas now)
@@ -116,11 +116,11 @@ sections C1–C7) and `3D_BUILDS_HANDOFF.md` (3D work, sections 2a and 3.x). Tic
 - [ ] Real-GPU frame-rate measurement
 
 ## K. Interiors (NEW)
-- [ ] 3D: interiors for penthouses (still the standard room). Done: monuments, the castle, every institute stage and caverns (`CHATGPT_3D_MODELS.md` §20; contract `src/world/models/interiors.ts`)
+- [x] 3D: interiors for penthouses; also monuments, the castle, every institute stage and caverns (`interiors3d.ts`)
 - [x] Institute rooms and monument halls dressed as their land's own interiors — floor, walls, ceiling, lamps (`world/interiorDress.ts`)
 - [x] House rooms shaped like their buildings (igloo and glass-igloo domes, lavvu/goahti/round-tent cones, the Bedouin tent, pitched and saddle roofs, vaults, open courts), named by their kind at the door, with per-home colour variations and a keepsake (`housing/HouseInterior.ts` `HOUSE_SHAPE`, `keepsake`)
 - [x] Logic: doors ask `buildInterior` first (monuments, institutes via “Step inside”, caverns after exploring, castle, penthouses) and use its seats, spots, gather point and camera; scenes seating the two closer than 2.2 m are refused (`HouseInterior.safeInterior`); the institute panel opens from inside
-- [ ] Logic: penthouses to buy (after their models). The castle door is done (`event/site.ts` `CASTLE_DOOR`)
+- [x] Logic: penthouses to buy (`housing/penthouses.ts`, the penthouse panel inside, Homes & Land). The castle door is done (`event/site.ts` `CASTLE_DOOR`)
 
 ## L. Claude's logic queue — still to do (in order)
 

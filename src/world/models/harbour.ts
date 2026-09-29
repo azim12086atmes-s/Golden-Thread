@@ -26,14 +26,35 @@ export const LIGHTHOUSE = { x: 12, z: -10, r: 1.7, h: 15 } as const;
  * Coast, Gulabi Nagar, Bagh-e-Noor), a tiled harbour gate hung with lanterns (Korea, China), and a
  * lake-steamer landing with flower boxes (Alpenrose).
  */
-type Style = 'port' | 'fishing' | 'dhow' | 'stilts' | 'gate' | 'lake';
+type Style = 'port' | 'terminal' | 'pavilion' | 'fishing' | 'dhow' | 'felucca' | 'stilts' | 'ghat' | 'gate' | 'lake';
 const STYLE: Partial<Record<RegionId, Style>> = {
-  london: 'port', newyork: 'port', vintage: 'port',
+  london: 'port', newyork: 'terminal', vintage: 'pavilion',
   norway: 'fishing', aurora: 'fishing',
-  middleeast: 'dhow', desert: 'dhow', egypt: 'dhow',
-  indiasouth: 'stilts', indianorth: 'stilts', mughal: 'stilts',
+  middleeast: 'dhow', desert: 'dhow', egypt: 'felucca',
+  indiasouth: 'stilts', indianorth: 'ghat', mughal: 'ghat',
   korea: 'gate', china: 'gate', switzerland: 'lake',
 };
+
+/** Steps from the quay's edge down into the water, `w` wide, centred on x. */
+function steps(c: Ctx, x: number, w: number, col: string): void {
+  for (let k = 0; k < 6; k++) box(c.g, w, 0.32, 0.8, col, x, -0.32 * (k + 1), 1.2 + k * 0.8);
+  for (const sx of [-1, 1]) box(c.g, 0.4, 0.6, 5, col, x + sx * (w / 2 + 0.2), -1.8, 3.2);
+}
+/** A chhatri: a domed pavilion on four slender pillars, on a plinth. */
+function chhatri(c: Ctx, x: number, y: number, z: number, s: number, stone: string, dome: string): void {
+  box(c.g, 2.4 * s, 0.4 * s, 2.4 * s, stone, x, y, z);
+  for (const [dx, dz] of [[-1, -1], [1, -1], [-1, 1], [1, 1]]) cyl(c.g, 0.12 * s, 0.14 * s, 2.2 * s, stone, x + dx * 0.9 * s, y + 0.4 * s, z + dz * 0.9 * s, 8);
+  box(c.g, 2.6 * s, 0.25 * s, 2.6 * s, stone, x, y + 2.6 * s, z);
+  sphere(c.g, 1.05 * s, dome, x, y + 2.85 * s, z, 12, 0.9);
+  cone(c.g, 0.12 * s, 0.6 * s, '#d4af37', x, y + 3.8 * s, z, 6);
+}
+/** A little felucca moored alongside: a slim hull and its tall lateen sail furled on the yard. */
+function felucca(c: Ctx, x: number, z: number): void {
+  c.g.add(new THREE.SphereGeometry(1, 10, 6, 0, Math.PI * 2, Math.PI / 2, Math.PI / 2).scale(0.9, 0.7, 3.6), '#f4f1e8', M(x, -1, z));
+  box(c.g, 1.4, 0.1, 6, '#8a6a4a', x, -1.05, z);
+  cyl(c.g, 0.06, 0.08, 5, '#6b4a2a', x, -1, z + 1, 5);
+  c.g.add(new THREE.CylinderGeometry(0.12, 0.12, 8, 5), '#e8e0d0', M(x, 3, z - 0.5, 0, 1, 1, 1, 0.9, 0));
+}
 
 const WOOD = '#8a6a4a', DARK = '#5a4432', IRON = '#3a3a40', STONE = '#9a948a';
 
@@ -170,6 +191,15 @@ export function buildHarbour(c: Ctx, pier: number, ground: (x: number, z: number
         box(c.glow, 0.6, 0.8, 0.05, c.s.glow, x, 1.3, z + 1.62);
       }
       for (let i = 0; i < 6; i++) sphere(c.g, 0.3, '#6a4a2a', -4 + (i % 3) * 0.6, 0.3 + Math.floor(i / 3) * 0.5, -6.5, 6);
+      // On the Kaveri Coast, Chinese fishing nets: a cantilever of poles leaning out over the water,
+      // the net hung square from its tip, stones on ropes to balance it.
+      if (c.s.id === 'indiasouth') for (const x of [-11.5, 11.5]) {
+        const tip: [number, number, number] = [x, 7, 9];
+        for (const dx of [-0.8, 0.8]) c.g.add(new THREE.CylinderGeometry(0.1, 0.14, 11, 5).translate(0, 5.5, 0), '#6b4a2a', M(x + dx, -0.3, 1, 0, 1, 1, 1, 0.85, 0));
+        c.g.add(new THREE.PlaneGeometry(6, 6, 6, 6), '#3a3a30', M(tip[0], tip[1] - 5, tip[2] + 1, 0, 1, 1, 1, -Math.PI / 2, 0));
+        for (const [dx, dz] of [[-3, -2], [3, -2], [-3, 4], [3, 4]]) cyl(c.g, 0.02, 0.02, 5, '#2a2a22', tip[0] + dx, tip[1] - 5, tip[2] + dz, 3);
+        for (let k = 0; k < 4; k++) sphere(c.g, 0.3, '#8a847a', x + (k - 1.5) * 0.3, 1.5 + k * 0.4, -1.5, 6);
+      }
       break;
     }
     case 'gate': {
@@ -179,6 +209,56 @@ export function buildHarbour(c: Ctx, pier: number, ground: (x: number, z: number
       gable(c.g, 9.6, 2.4, 1.2, '#2f3a4a', 0, 5.3, -9);
       for (const x of [-2, 0, 2]) { cyl(c.g, 0.02, 0.02, 0.5, '#3a2a22', x, 4.3, -9, 3); sphere(c.glow, 0.3, '#e8242a', x, 3.95, -9, 8, 1.2); }
       for (let i = 0; i < 6; i++) box(c.g, 0.8, 0.4, 0.5, ['#7fb35a', '#e2b43a', '#b0322a'][i % 3], -9 + (i % 3) * 0.9, Math.floor(i / 3) * 0.4, -2.5);
+      break;
+    }
+    case 'terminal': {
+      // New Yonder's ferry terminal: glass under a green roof, solar canopy over the quay, a screen.
+      const tx = 7, tz = -15, ty = ground(tx, tz);
+      box(c.g, 10, 5, 7, '#9fc8e0', tx, ty - 0.5, tz);
+      box(c.glow, 9.4, 3.6, 6.4, '#ffe2b0', tx, ty, tz);
+      for (let x = -5; x <= 5; x += 1.25) box(c.g, 0.12, 5, 0.14, '#e8e8ec', tx + x, ty - 0.5, tz + 3.5);
+      box(c.g, 10.8, 0.3, 7.8, '#e8e8ec', tx, ty + 4.5, tz);
+      box(c.g, 10.2, 0.3, 7.2, '#5aa04a', tx, ty + 4.8, tz);
+      for (let i = 0; i < 8; i++) sphere(c.g, 0.4, i % 2 ? '#3f8a3a' : '#6ab04a', tx - 4 + i * 1.15, ty + 5.3, tz + ((i % 3) - 1) * 2, 5, 0.7);
+      box(c.glow, 4, 1.4, 0.08, '#3ae8ff', tx, ty + 3, tz + 3.6);
+      for (const x of [-6, 0]) {
+        for (const dz of [-1.6, 1.6]) cyl(c.g, 0.08, 0.08, 3.2, '#c8ccd4', x, 0, -5 + dz, 6);
+        c.g.add(new THREE.BoxGeometry(4, 0.08, 4), '#1f2f5a', M(x, 3.3, -5, 0, 1, 1, 1, 0.12, 0));
+      }
+      break;
+    }
+    case 'pavilion': {
+      // Maple Row: a painted octagonal pier pavilion with a striped roof, bunting along the pier rail.
+      const px = -7, pz = -4.5;
+      box(c.g, 5.4, 0.3, 5.4, '#f4f1e8', px, 0, pz);
+      for (let i = 0; i < 8; i++) { const a = (i / 8) * Math.PI * 2; cyl(c.g, 0.1, 0.12, 3, '#f4f1e8', px + Math.cos(a) * 2.3, 0.3, pz + Math.sin(a) * 2.3, 6); }
+      for (let i = 0; i < 8; i++) c.g.add(new THREE.ConeGeometry(3.1, 2, 8, 1, true, (i / 8) * Math.PI * 2, Math.PI / 4), i % 2 ? '#c23b2a' : '#f4f1e8', M(px, 4.3, pz));
+      cone(c.g, 0.12, 0.8, '#d4af37', px, 5.3, pz, 6);
+      for (let i = 0; i < 8; i++) { const a = (i / 8) * Math.PI * 2; sphere(c.glow, 0.12, '#ffd89a', px + Math.cos(a) * 2.6, 3.2, pz + Math.sin(a) * 2.6, 5); }
+      for (let z = 1; z < pier - 1; z += 1.2) box(c.g, 0.02, 0.35, 0.45, ['#c23b2a', '#2f6f9a', '#e2b43a', '#3f8a3a'][Math.round(z) % 4], 1.97, 1.05, z);
+      box(c.g, 2, 2.2, 1.6, '#8ac8e8', 6, 0, -5.5);
+      box(c.g, 2.4, 0.2, 2, '#f4f1e8', 6, 2.2, -5.5);
+      break;
+    }
+    case 'felucca': {
+      // A felucca landing: sandstone steps down to the Nile, feluccas moored alongside, palm shades.
+      steps(c, 8, 6, '#d8b884');
+      for (const z of [3, 9]) felucca(c, -5, z);
+      for (const x of [-9, 1]) {
+        for (const [dx, dz] of [[-1.5, -1.5], [1.5, -1.5], [-1.5, 1.5], [1.5, 1.5]]) cyl(c.g, 0.08, 0.08, 2.8, '#6b4a2a', x + dx, 0, -5 + dz, 4);
+        box(c.g, 3.6, 0.2, 3.6, '#c9a86a', x, 2.8, -5);
+      }
+      break;
+    }
+    case 'ghat': {
+      // A ghat: broad stone steps into the water either side of the pier, chhatris at the top, diyas on the steps.
+      const stone = c.s.id === 'indianorth' ? '#e8a6a0' : '#e8dcc8', dome = c.s.id === 'indianorth' ? '#f2d4c8' : '#f4f1e8';
+      steps(c, 8, 7, stone);
+      steps(c, -8, 7, stone);
+      chhatri(c, -8, 0, -4, 1, stone, dome);
+      chhatri(c, 8, ground(8, -4), -4, 1, stone, dome);
+      for (let i = 0; i < 12; i++) sphere(c.glow, 0.08, '#ffb84a', (i % 2 ? 1 : -1) * (5.5 + (i % 6)), -0.32 * (1 + (i % 3)) + 0.05, 1.2 + (i % 3) * 0.8, 5);
+      for (let i = 0; i < 10; i++) sphere(c.g, 0.12, i % 2 ? '#ff9a1a' : '#ffd21a', -9.4 + i * 0.3, 2.4, -3.1, 5);
       break;
     }
     case 'lake': {

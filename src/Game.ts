@@ -86,6 +86,7 @@ import { tramBoarding } from './travel/gondola';
 import { ferryFare } from './travel/ferry';
 import { airFare, skyPadPoint, type AirPoint } from './travel/air';
 import { busFare, busStops, type BusStop } from './travel/bus';
+import { PENTHOUSE_PRICE, buyPenthouse } from './housing/penthouses';
 import { TRAM_FARE, TRAM_NAME, TRAM_TOWNS, tramStops, type TramStop } from './travel/streetTram';
 
 /** Real seconds per game minute: a day lasts 16 real minutes. */
@@ -868,6 +869,16 @@ export class Game {
     const f = busFare(stop.land, to);
     if (!f) return 'No road reaches there.';
     return this.board(f.coins, () => coachRide(this.scene, this.trav, stop, to), `🚌 All aboard for ${REGION_BY_ID[to].name} — ${f.towns === 1 ? 'the next town' : `${f.towns} towns`} down the road.`);
+  }
+
+  /** Buy the penthouse behind the tower door `id` (you are standing in it). */
+  buyPenthouse(id: string): string {
+    const r = buyPenthouse(this.st, id);
+    if (r === 'coins') return `A penthouse costs ${PENTHOUSE_PRICE} coins.`;
+    if (r === 'owned') return 'It is yours already.';
+    this.bus.emit('coins:changed', { coins: this.st.coins });
+    this.save();
+    return '🏙️ The keys are yours. A home above New Yonder — the pool, the pergola and the whole city at your feet.';
   }
 
   /** Board the city tram at `from` for the stop `to` across town. */

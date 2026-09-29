@@ -73,6 +73,8 @@ export interface GameState {
   sponsored: Array<{ id: string; since: number; paidUntil: number; wellbeing: number; home?: string; at: number; contactAt?: number }>;
   /** Floors added to homes you own (by plot id), and a floor under construction. */
   homeFloors: Record<string, { floors: number; buildingUntil?: number }>;
+  /** Penthouses you own on New Yonder's towers, by the tower's door id (housing/penthouses.ts). */
+  penthouses: string[];
   /** Institutes you founded (institutions/institutions.ts): site, kind, the stage reached, a stage being built, who runs it. */
   institutes: Array<{ site: string; kind: string & import('../institutions/catalogue').InstituteKind; stage: number; buildingUntil?: number; at: number;
     staff?: { who: 'you' } | { who: 'learner'; id: string } | { who: 'hire'; id: string } | { who: 'freelance'; id: string } }>;
@@ -157,6 +159,7 @@ export function newGame(): GameState {
     met: [],
     sponsored: [],
     homeFloors: {},
+    penthouses: [],
     institutes: [],
     learners: {},
     hires: [],

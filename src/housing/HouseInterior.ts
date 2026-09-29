@@ -62,7 +62,7 @@ export const HOUSE_SHAPE: Record<string, RoomShape> = {
 };
 /** What each kind of house is called at its door. */
 export const HOUSE_NAME: Record<string, string> = {
-  igloo: 'an igloo', glassigloo: 'a glass igloo', lavvu: 'a lavvu', goahti: 'a goahti', roundtent: 'a round tent', bedouintent: 'a Bedouin tent',
+  penthouse: 'a penthouse', igloo: 'an igloo', glassigloo: 'a glass igloo', lavvu: 'a lavvu', goahti: 'a goahti', roundtent: 'a round tent', bedouintent: 'a Bedouin tent',
   logcabin: 'a log cabin', glasscabin: 'a glass cabin', rorbu: 'a rorbu', bryggen: 'a Bryggen house', sorlandet: 'a Sørlandet house',
   chalet: 'a chalet', engadin: 'an Engadin house', bernese: 'a Bernese farmhouse', mews: 'a mews cottage', georgian: 'a terraced house',
   casa: 'a Tuscan townhouse', colonica: 'a Tuscan farmhouse', palazzo: 'a palazzo', bungalow: 'a Craftsman bungalow', colonial: 'a colonial house',
@@ -128,6 +128,7 @@ export function roomTitle(door: Door): string {
   if (door.name) return `Inside ${door.name}`;
   if (door.kind === 'landmark') return `Inside ${LANDMARK_NAME[land]} in ${place}`;
   if (door.kind === 'home') return `Your home in ${place}`;
+  if (door.kind === 'penthouse') return `A penthouse above ${place}`;
   const kind = door.kind === 'shop' ? 'a shop' : door.kind === 'tower' ? 'a tower house' : door.kind === 'courtyard' ? 'a courtyard house' : HOUSE_NAME[door.kind] ?? ROOM_NAME[land];
   return `Inside ${kind} in ${place}`;
 }
@@ -136,6 +137,7 @@ export function roomTitle(door: Door): string {
 export function doorLabel(door: Door): string {
   if (door.kind === 'home') return 'Go home';
   if (door.kind === 'castle') return 'Step inside the castle';
+  if (door.kind === 'penthouse') return 'Take the lift up to the penthouse';
   if (door.kind === 'landmark') return `Step inside ${LANDMARK_NAME[door.land as RegionId]}`;
   return `Step inside ${door.kind === 'shop' ? 'the shop' : HOUSE_NAME[door.kind] ?? ROOM_NAME[door.land as RegionId]}`;
 }

@@ -20,6 +20,7 @@ import { terrainHeight } from './terrain';
 import { MONUMENTS } from './monuments';
 import { SURF } from './surfaces';
 import { chimneyTop } from './chimneys';
+import { PENTHOUSE_MIN_TOWER, penthouse } from './models/penthouse';
 
 /**
  * Architecture per land. Every builder works in a local frame: origin at the building's base
@@ -40,6 +41,8 @@ export interface Footprint {
   r: number;
   /** Height of the top, for flight clearance. */
   h: number;
+  /** What its front door opens onto, when it is not a plain house (a tower with a penthouse). */
+  kind?: string;
 }
 
 const DOOR = '#4a3426';
@@ -231,11 +234,14 @@ function nyGlassTower(c: Ctx): Footprint {
     for (const [x, z] of [[-w / 3, d / 3], [w / 4, d / 3], [0, -d / 3]]) tree(c.g, 'oak', x, y, z, 0.5, () => c.rng.next());
   }
   box(c.g, w + 0.4, 0.6, d + 0.4, NY.steel, 0, h, 0);
-  for (const [x, z] of [[-w / 3, -d / 3], [w / 3, -d / 3], [0, d / 4]]) turbine(c, x, h + 0.6, z, 5);
+  // The tallest carry a penthouse (models/penthouse.ts), reached by the lift from the lobby; the rest turbines.
+  const top = h >= PENTHOUSE_MIN_TOWER;
+  if (top) c.g.frame(0, h + 0.6, 0, 0, 1, () => c.glow.frame(0, h + 0.6, 0, 0, 1, () => { penthouse(c, w, d); }));
+  else for (const [x, z] of [[-w / 3, -d / 3], [w / 3, -d / 3], [0, d / 4]]) turbine(c, x, h + 0.6, z, 5);
   greenWall(c, w * 0.8, d / 2, 0.5, 14);
   // A holographic billboard on the corner.
   box(c.glow, 0.1, 8, 6, c.rng.pick(NEON), w / 2 + 0.3, h * 0.35, d / 4);
-  return { r: Math.max(w, d) * 0.62, h: h + 6 };
+  return { r: Math.max(w, d) * 0.62, h: h + 6, ...(top ? { kind: 'penthouse' } : {}) };
 }
 
 /** Brownstone row house (composed from the facade kit), grown solarpunk: iron fire escapes, a green wall, a rooftop greenhouse and solar panels. */

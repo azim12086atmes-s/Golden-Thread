@@ -38,6 +38,7 @@ import { WONDERS, foundWonder, wonderHint, wonderPos } from '../world/wonders';
 import { VEHICLES, type VehicleId } from '../vehicles/vehicles';
 import { GRID_COLS, GRID_ROWS, REGIONS, REGION_BY_ID, regionCenter, type RegionId, type RegionSpec } from '../world/regions';
 import { busFare, type BusStop } from '../travel/bus';
+import { PENTHOUSE_PRICE, ownsPenthouse } from '../housing/penthouses';
 import { TRAM_FARE, TRAM_MINUTES, TRAM_NAME, TRAM_TOWNS, tramStops, type TramStop } from '../travel/streetTram';
 import { INSTITUTE_SITES } from '../institutions/sites';
 import { certificatesOf, rankCap } from '../institutions/certificates';
@@ -597,6 +598,19 @@ export class UI {
     const g = this.g, d = g.house.door;
     if (!d) return;
     if (d.kind === 'home') return this.homePanel(body, d.id.slice(5));
+    if (d.kind === 'penthouse') {
+      const own = ownsPenthouse(g.st, d.id);
+      body.append(h('p', { class: 'dim' }, own
+        ? 'Your penthouse: the glass pavilion, the pool, the pergola and the whole city below. Rest here whenever you are in New Yonder.'
+        : `The lift opens onto a glass pavilion high above New Yonder: a pool on the terrace, a pergola grown with vines, the city all round. It can be yours for ${PENTHOUSE_PRICE} coins.`),
+        h('div', { class: 'acts' },
+          own ? null : btn(`🏙️ Buy it — ${PENTHOUSE_PRICE} coins`, () => { this.houseNote = g.buyPenthouse(d.id); this.render(); }, 'primary', g.st.coins < PENTHOUSE_PRICE),
+          own ? btn('🌅 Rest until morning', () => { g.setTimeOfDay('dawn'); this.houseNote = 'You rest — each in your own room — and wake to the sun on the towers.'; this.render(); }, 'primary') : null,
+          own ? btn('🌙 Stay until night', () => { g.setTimeOfDay('night'); this.houseNote = 'The city lights up below the terrace.'; this.render(); }, 'ghost') : null,
+          btn('🚪 Take the lift down', () => g.exitHouse(), 'ghost')));
+      if (this.houseNote) body.append(h('p', { class: 'story' }, this.houseNote));
+      return;
+    }
     if (d.kind === 'institute' || d.kind === 'cavern') {
       body.append(h('p', { class: 'dim' }, d.kind === 'cavern' ? 'Your lanterns light the cavern: crystal and stone, and the sound of water somewhere below.' : 'Students at their benches, the masters at work, and the smell of ink and tea.'),
         h('div', { class: 'acts' },
@@ -742,6 +756,9 @@ export class UI {
       for (const p of owned) body.append(h('div', { class: 'quest main' }, h('b', {}, `🏡 ${REGION_BY_ID[p.region].name}`), h('small', {}, `${st.plots[p.id].decor.length} things built · stand on it and press B to build`),
         btn('Show the way', () => this.showWay(p, `Your land in ${REGION_BY_ID[p.region].name}`), 'small')));
     }
+    body.append(h('p', { class: 'dim' }, st.penthouses.length
+      ? `🏙️ Your ${st.penthouses.length === 1 ? 'penthouse' : `${st.penthouses.length} penthouses`} above New Yonder — take the lift up from the tower's lobby.`
+      : `🏙️ Penthouses crown New Yonder's tallest glass towers: take the lift up from the lobby to look round, and buy one for 🪙 ${PENTHOUSE_PRICE}.`));
     body.append(...this.buildGuide(this.g.region.id));
     body.append(h('h3', {}, 'For sale'));
     for (const p of PLOTS.filter((x) => !hs.owns(x.id))) {

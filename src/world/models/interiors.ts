@@ -11,7 +11,7 @@ import { buildInterior3d } from '../interiors3d';
  * seats), an optional spot for something to gather, and where the camera stands and looks.
  * Return null to fall back to the standard room (the game does, until a model exists).
  *
- * Penthouses still return null (the standard room) until their model exists.
+ * Penthouses: a lounge open to its terrace and the city (interiors3d.ts `penthouseRoom`).
  */
 export type InteriorKind = 'landmark' | 'castle' | 'institute' | 'penthouse' | 'cavern';
 
@@ -42,6 +42,6 @@ export interface InteriorBuild {
 }
 
 export function buildInterior(spec: InteriorSpec): InteriorBuild | null {
-  // Built by Claude (interiors3d.ts): caverns, institutes by kind, the castle's great hall, landmark halls.
+  // Built by Claude (interiors3d.ts): caverns, institutes by kind, the castle's great hall, landmark halls, penthouses.
   return buildInterior3d(spec);
 }
