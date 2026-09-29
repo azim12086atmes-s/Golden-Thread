@@ -20,7 +20,7 @@ export const DRAGON_SCALE = 1.6;
 export const NIGHT_DRAGON: DragonSpec = {
   id: 'night-dragon', name: 'the Night Dragon', plan: 'wyrm', build: 'cat', length: 7.2, girth: 0.6, neck: 0.14,
   head: 'night', crestKind: 'plates', tail: 'twin', scales: 'shingle',
-  back: '#17181f', side: '#1d1e27', belly: '#262833', rim: '#3a4060',
+  back: '#1a1b23', side: '#22232d', belly: '#2c2e3a', rim: '#2e3244',
   crest: ['#111218', '#1a1b24'], mane: ['#111218'], claw: '#2a2b36', horn: '#17181f',
   wings: { span: 10.4, membrane: '#15161e', bone: '#1c1d26', hind: 0.4 },
   runes: '#7affe0', stars: ['#9ad8ff', '#ffd6f0', '#b99bff'],

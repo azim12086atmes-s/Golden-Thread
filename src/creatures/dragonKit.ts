@@ -397,12 +397,14 @@ function buildHead(d: DragonSpec, head: THREE.Group): number {
     case 'night': {
       // Big, broad and cat-like, flatter than it is wide: a rounded skull, a wide blunt snout, a
       // soft brow; two large ear flaps swept back from the crown, two smaller ones below them,
-      // and little flaps along the jaw.
-      g.add(mesh(new THREE.SphereGeometry(1.9, 24, 16).scale(1.2, 0.74, 1.08), skinM, 'head'));
-      g.add(mesh(new THREE.SphereGeometry(1.4, 20, 12).scale(1.12, 0.56, 0.95), skinM, 'head', 0, -0.32, 1.35));
-      g.add(mesh(new THREE.SphereGeometry(1.2, 18, 10).scale(1.05, 0.34, 0.85), skinM, 'head', 0, -0.78, 1.0));
-      g.add(mesh(new THREE.SphereGeometry(0.9, 14, 8).scale(1.7, 0.36, 0.8), skinM, 'head', 0, 0.62, 0.72));
-      const flapM = std(d.back, { side: THREE.DoubleSide, roughness: 0.55 });
+      // and little flaps along the jaw. The same scaled hide as the body, matte, so its shape reads.
+      const map = hideTexture(d);
+      const hide = std(map ? '#ffffff' : d.side, { map, roughness: 0.62, metalness: 0.18 });
+      g.add(mesh(new THREE.SphereGeometry(1.9, 24, 16).scale(1.2, 0.74, 1.08), hide, 'head'));
+      g.add(mesh(new THREE.SphereGeometry(1.4, 20, 12).scale(1.12, 0.56, 0.95), hide, 'head', 0, -0.32, 1.35));
+      g.add(mesh(new THREE.SphereGeometry(1.2, 18, 10).scale(1.05, 0.34, 0.85), hide, 'head', 0, -0.78, 1.0));
+      g.add(mesh(new THREE.SphereGeometry(0.9, 14, 8).scale(1.7, 0.36, 0.8), hide, 'head', 0, 0.62, 0.72));
+      const flapM = std(d.rim, { side: THREE.DoubleSide, roughness: 0.6, metalness: 0.1 });
       // A flap: a leaf-shaped blade, broad at its root, curling slightly along its length.
       const flap = (len: number, wid: number) => {
         const sh = new THREE.Shape();
@@ -417,16 +419,17 @@ function buildHead(d: DragonSpec, head: THREE.Group): number {
         return geo;
       };
       for (const sx of [1, -1]) {
-        // [length, width, x, y, z, tilt back, splay out, twist]
+        // [length, width, x, y, z, tilt back, splay out, twist]. Each blade is first turned about
+        // its own length (so its face shows outward, not edge-on), then splayed out, then swept back.
         const set: Array<[number, number, number, number, number, number, number, number]> = [
-          [3.1, 1.15, 0.95, 1.05, -0.9, -1.12, 0.32, 0.25],
-          [2.1, 0.8, 1.7, 0.45, -0.75, -1.2, 0.95, 0.4],
-          [1.2, 0.5, 1.95, -0.35, -0.2, -1.35, 1.5, 0.5],
-          [0.9, 0.4, 1.6, -0.95, 0.25, -1.5, 2.0, 0.4],
+          [3.6, 1.4, 0.85, 1.1, -0.85, -0.9, 0.38, 0.95],
+          [2.4, 0.95, 1.6, 0.55, -0.7, -1.05, 0.9, 1.0],
+          [1.4, 0.6, 1.95, -0.25, -0.2, -1.25, 1.35, 1.0],
+          [1.0, 0.45, 1.6, -0.9, 0.3, -1.45, 1.9, 0.9],
         ];
-        for (const [len, wid, x, y, z, rx, rz, ry] of set) {
+        for (const [len, wid, x, y, z, rx, rz, tw] of set) {
           const m = mesh(flap(len, wid), flapM, 'ear', sx * x, y, z);
-          m.rotation.set(rx, sx * ry, -sx * rz);
+          m.rotation.set(rx, sx * tw, -sx * rz, 'XZY');
           g.add(m);
         }
       }
