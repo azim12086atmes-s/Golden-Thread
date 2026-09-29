@@ -39,7 +39,7 @@ import { Travellers } from './player/Travellers';
 import { QuestSystem } from './quests/QuestSystem';
 import { Messages } from './social/Messages';
 import { UI } from './ui/UI';
-import { VEHICLES, setVehicleEnvironment, type VehicleId } from './vehicles/vehicles';
+import { VEHICLES, setVehicleEnvironment, setVehicleNight, type VehicleId } from './vehicles/vehicles';
 import { Traffic } from './traffic/Traffic';
 import { PERSON_BY_ID, floorBuilding, floorsOf, residentsOf, tickCharity } from './charity/charity';
 import { InstitutesView } from './institutions/InstitutesView';
@@ -424,6 +424,7 @@ export class Game {
     updateWind(this.t, this.region.id, dt);
     FOLIAGE_UNIFORMS.uSunDir.value.copy(this.sky.sunDirection);
     FOLIAGE_UNIFORMS.uLeafNight.value = this.sky.night;
+    setVehicleNight(this.sky.night);
     this.world.setWaterLook(this.t, this.sky.night, this.region.id, this.sky.sunDirection);
     this.world.update(this.trav.gPos, this.sky.night);
     // Lamplight: the nearest lamps light the ground and walls round them after dusk (a few times a second).

@@ -57,6 +57,22 @@ export function setVehicleEnvironment(tex: THREE.Texture): void {
   vehicleEnv = tex;
   for (const mat of cache.values()) if ((mat as THREE.MeshStandardMaterial).isMeshStandardMaterial) { (mat as THREE.MeshStandardMaterial).envMap = tex; mat.needsUpdate = true; }
 }
+let envNight = -1, envCount = 0;
+/**
+ * The reflections are of a daytime sky, so after dark they fade: otherwise a cream roof or a
+ * clear coat shines as if lit and blooms against the night (0 day … 1 night).
+ */
+export function setVehicleNight(night: number): void {
+  if (Math.abs(night - envNight) < 0.02 && cache.size === envCount) return;
+  envNight = night;
+  envCount = cache.size;
+  for (const mat of cache.values()) {
+    const s = mat as THREE.MeshStandardMaterial;
+    if (!s.isMeshStandardMaterial) continue;
+    s.userData.env0 ??= s.envMapIntensity;
+    s.envMapIntensity = s.userData.env0 * (1 - 0.9 * night);
+  }
+}
 const hsl = { h: 0, s: 0, l: 0 };
 /**
  * What a vehicle part is made of, from its colour: bright colours are glossy car paint under a
@@ -92,17 +108,6 @@ function glass(g: THREE.Object3D, w: number, h: number, d: number, x: number, y:
   const mesh = new THREE.Mesh(new THREE.BoxGeometry(w, h, d), GLASS);
   mesh.position.set(x, y, z);
   g.add(mesh);
-}
-function wheel(g: THREE.Object3D, r: number, x: number, y: number, z: number) {
-  const w = new THREE.Mesh(new THREE.CylinderGeometry(r, r, 0.3, 12), m('#262628'));
-  w.rotation.z = Math.PI / 2;
-  w.position.set(x, y, z);
-  w.userData.wheel = true;
-  g.add(w);
-  const hub = new THREE.Mesh(new THREE.CylinderGeometry(r * 0.45, r * 0.45, 0.32, 8), m('#d9d9e0'));
-  hub.rotation.z = Math.PI / 2;
-  hub.position.set(x, y, z);
-  g.add(hub);
 }
 
 /** Anything that can be ridden by one traveller. */
@@ -180,22 +185,7 @@ export function buildVehicle(id: VehicleId, van?: { lights: string; rug: string 
       break;
     }
     case 'plane': {
-      const body = new THREE.Mesh(new THREE.CylinderGeometry(0.55, 0.3, 5.4, 10), m('#f2c14e'));
-      body.rotation.x = Math.PI / 2;
-      body.position.y = 0.9;
-      root.add(body);
-      bx(root, 9, 0.12, 1.3, '#e8576a', 0, 0.7, 0.4);
-      bx(root, 8, 0.12, 1.2, '#e8576a', 0, 2.1, 0.4);
-      for (const x of [-3.2, 3.2]) for (const z of [0, 0.8]) bx(root, 0.06, 1.4, 0.06, '#6b4a2a', x, 1.4, z);
-      bx(root, 3, 0.1, 0.9, '#e8576a', 0, 1, -2.5);
-      bx(root, 0.1, 1.1, 0.9, '#e8576a', 0, 1.5, -2.5);
-      const prop = new THREE.Group();
-      prop.position.set(0, 0.9, 2.8);
-      bx(prop, 0.18, 2.4, 0.06, '#6b4a2a', 0, 0, 0);
-      root.add(prop);
-      spinners.push(prop);
-      bx(root, 0.1, 0.5, 0.1, '#6b4a2a', 0, 0.9, -0.15); // divider between tandem seats
-      for (const x of [-0.9, 0.9]) wheel(root, 0.3, x, 0.3, 1.2);
+      buildBiplane(root, spinners);
       break;
     }
     case 'dragon': {
@@ -826,4 +816,117 @@ export function buildTramCabin(): THREE.Group {
   for (const sx of [-1, 1]) for (const z of [F - 0.1, B + 0.1]) bx(root, 0.08, 0.08, 0.04, z > 0 ? '#bfe8ff' : '#ffc8f0', sx * (W - 0.2), top - 0.2, z, true);
   root.traverse((o) => { if ((o as THREE.Mesh).isMesh) o.castShadow = true; });
   return root;
+}
+
+// ───────────────────────── the biplane ─────────────────────────
+
+/**
+ * The travellers' biplane, after the 1930s trainers (Tiger Moth, Stearman): a round cream fuselage
+ * in painted steel with a red cheat line, an aluminium cowling over a five-cylinder radial and a
+ * red spinner, a wooden two-blade propeller, doped red fabric wings (upper and lower, a little
+ * dihedral, rib tapes showing) on N-struts and flying wires, a red tail, spoked wheels on a
+ * V undercarriage. Two open cockpits in tandem — hers in front, his behind — a bulkhead between.
+ */
+function buildBiplane(root: THREE.Group, spinners: THREE.Object3D[]): void {
+  const cream = '#e4d6b4', red = '#d8433a', alu = '#8a9098', wood = '#8a5a36', leather = '#5a3a26', wire = '#b8bcc4';
+  const Y = 0.9;
+  // The fuselage: a lathe along z, fullest behind the engine, tapering to the tail.
+  const prof: Array<[number, number]> = [[0.05, -3.5], [0.14, -3.3], [0.3, -2.4], [0.46, -1.2], [0.56, 0], [0.6, 1.1], [0.58, 1.9], [0.52, 2.35]];
+  const fus = new THREE.Mesh(new THREE.LatheGeometry(prof.map(([r, z]) => new THREE.Vector2(r, z)), 20), m(cream));
+  fus.rotation.x = Math.PI / 2;
+  fus.position.y = Y;
+  root.add(fus);
+  // The red cheat line along each side, and a red flash up the fin.
+  for (const sx of [-1, 1]) {
+    const pts = prof.slice(1, -1).map(([r, z]) => new THREE.Vector3(sx * (r + 0.005), Y + 0.08, z));
+    const tube = new THREE.Mesh(new THREE.TubeGeometry(new THREE.CatmullRomCurve3(pts), 24, 0.045, 4), m(red));
+    root.add(tube);
+  }
+  // Cowling and radial engine, spinner, propeller.
+  const cowl = new THREE.Mesh(new THREE.CylinderGeometry(0.55, 0.53, 0.55, 20, 1, true), m(alu));
+  cowl.rotation.x = Math.PI / 2;
+  cowl.position.set(0, Y, 2.6);
+  root.add(cowl);
+  for (let k = 0; k < 5; k++) {
+    const a = (k / 5) * Math.PI * 2 + 0.3;
+    const cyl = new THREE.Mesh(new THREE.CylinderGeometry(0.1, 0.12, 0.3, 8), m('#6a6e78'));
+    cyl.position.set(Math.cos(a) * 0.36, Y + Math.sin(a) * 0.36, 2.7);
+    cyl.rotation.z = a - Math.PI / 2;
+    root.add(cyl);
+  }
+  const spinner = new THREE.Mesh(new THREE.ConeGeometry(0.2, 0.45, 14), m(red));
+  spinner.rotation.x = Math.PI / 2;
+  spinner.position.set(0, Y, 3.05);
+  root.add(spinner);
+  const prop = new THREE.Group();
+  prop.position.set(0, Y, 2.95);
+  for (const s of [-1, 1]) {
+    const blade = new THREE.Mesh(new RoundedBoxGeometry(0.2, 1.25, 0.05, 2, 0.02), m(wood));
+    blade.position.y = s * 0.65;
+    blade.rotation.y = s * 0.25; // the twist of the blade
+    prop.add(blade);
+  }
+  root.add(prop);
+  spinners.push(prop);
+  // Wings: doped fabric over ribs, rounded tips; the lower pair with a little dihedral.
+  const wing = (span: number, chord: number, x: number, y: number, z: number, rz: number) => {
+    const w = new THREE.Mesh(new RoundedBoxGeometry(span, 0.12, chord, 3, 0.05), m(red));
+    w.position.set(x, y, z);
+    w.rotation.z = rz;
+    root.add(w);
+    for (let i = 0; i < Math.floor(span / 0.55); i++) {
+      const rib = new THREE.Mesh(new THREE.BoxGeometry(0.035, 0.125, chord - 0.1), m('#e8645a'));
+      rib.position.set(-span / 2 + 0.3 + i * 0.55, 0, 0);
+      w.add(rib);
+    }
+  };
+  wing(9.2, 1.35, 0, 2.2, 0.55, 0);
+  for (const s of [-1, 1]) wing(4.0, 1.3, s * 2.35, 0.55 + 0.1, 0.35, s * 0.05);
+  // Cabane struts to the upper wing, N-struts between the wings, flying wires.
+  const strut = (a: THREE.Vector3, b: THREE.Vector3, r: number, c: string) => {
+    const d = a.distanceTo(b), mesh = new THREE.Mesh(new THREE.CylinderGeometry(r, r, d, 6), m(c));
+    mesh.position.copy(a).add(b).multiplyScalar(0.5);
+    mesh.quaternion.setFromUnitVectors(new THREE.Vector3(0, 1, 0), b.clone().sub(a).normalize());
+    root.add(mesh);
+  };
+  const V = (x: number, y: number, z: number) => new THREE.Vector3(x, y, z);
+  for (const s of [-1, 1]) {
+    for (const z of [0.95, 0.15]) strut(V(s * 0.35, Y + 0.45, z + 0.1), V(s * 0.55, 2.15, z), 0.035, alu);
+    strut(V(s * 3.4, 0.75, 0.85), V(s * 3.4, 2.15, 0.9), 0.04, wood);
+    strut(V(s * 3.4, 0.75, 0.0), V(s * 3.4, 2.15, 0.05), 0.04, wood);
+    strut(V(s * 3.4, 0.75, 0.0), V(s * 3.4, 2.15, 0.9), 0.03, wood);
+    strut(V(s * 0.4, 0.65, 0.4), V(s * 3.3, 2.15, 0.45), 0.012, wire);
+    strut(V(s * 0.6, 2.15, 0.45), V(s * 3.3, 0.8, 0.45), 0.012, wire);
+  }
+  // Tailplane, fin and rudder, tail skid.
+  const tail = new THREE.Mesh(new RoundedBoxGeometry(2.8, 0.08, 0.85, 2, 0.03), m(red));
+  tail.position.set(0, Y + 0.05, -3.05);
+  root.add(tail);
+  const finShape = new THREE.Shape([new THREE.Vector2(0, 0), new THREE.Vector2(1.05, 0), new THREE.Vector2(0.55, 1.1), new THREE.Vector2(0.1, 1.2), new THREE.Vector2(-0.05, 0.9)]);
+  const fin = new THREE.Mesh(new THREE.ExtrudeGeometry(finShape, { depth: 0.06, bevelEnabled: false }), m(red));
+  fin.rotation.y = -Math.PI / 2;
+  fin.position.set(-0.03, Y + 0.1, -3.55);
+  root.add(fin);
+  strut(V(0, Y - 0.15, -3.2), V(0, 0.08, -3.45), 0.025, '#3a3a40');
+  // Two open cockpits in tandem, a padded coaming round each, little windscreens; a bulkhead between.
+  for (const z of [0.6, -0.9]) {
+    const ring = new THREE.Mesh(new THREE.TorusGeometry(0.36, 0.06, 6, 20), m(leather));
+    ring.rotation.x = Math.PI / 2;
+    ring.position.set(0, Y + 0.52, z);
+    root.add(ring);
+    const ws = new THREE.Mesh(new THREE.BoxGeometry(0.5, 0.26, 0.02), GLASS);
+    ws.position.set(0, Y + 0.68, z + 0.45);
+    ws.rotation.x = -0.35;
+    root.add(ws);
+  }
+  bx(root, 0.1, 0.5, 0.1, '#6b4a2a', 0, 0.9, -0.15); // the bulkhead between the tandem seats
+  // Undercarriage: V struts to the axle, spoked wheels.
+  for (const s of [-1, 1]) {
+    strut(V(s * 0.3, Y - 0.35, 1.3), V(s * 0.95, 0.32, 1.15), 0.035, '#3a3a40');
+    strut(V(s * 0.3, Y - 0.35, 0.55), V(s * 0.95, 0.32, 1.15), 0.035, '#3a3a40');
+    busWheel(root, 0.32, s * 1.05, 0.32, 1.15);
+  }
+  // A lamp at each upper wingtip: red to port, green to starboard.
+  bx(root, 0.08, 0.08, 0.14, '#e8303a', -4.62, 2.2, 0.6, true);
+  bx(root, 0.08, 0.08, 0.14, '#30e060', 4.62, 2.2, 0.6, true);
 }

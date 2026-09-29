@@ -28,7 +28,7 @@ checking. Detailed specifications for the open items are in `OWNER_REQUESTS_SPEC
 | Balloons: house decor, children holding them, in the skies | ✅ |
 | Starry dress: large glowing stained-glass butterfly wings — heart-shaped, twice her height, slow curving flap, intricate uneven mosaic | ✅ (wings.ts; Fathima's alone) |
 | All dresses: more colour and pattern from images | ✅ |
-| Safar (the van) and your own vehicles rebuilt in steel / painted metal | ✅ Safar: a split-screen bus in painted steel; the other vehicles have clear-coat paint and chrome |
+| Safar (the van) and your own vehicles rebuilt in steel / painted metal | ✅ Safar: a split-screen bus in painted steel; the car and truck in painted steel; the biplane a 1930s trainer (doped fabric wings, radial cowl); vehicle reflections fade after dark so paint never glows at night |
 
 ## 3. Story and interface
 | Request | Status |

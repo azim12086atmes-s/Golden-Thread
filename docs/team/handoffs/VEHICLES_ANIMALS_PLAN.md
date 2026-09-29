@@ -40,6 +40,9 @@ what is still missing, the keywords behind it, and the kit parts it needs. ✅ =
 | Nile Crossing | microbus, donkey cart ✅ | felucca ✅ | ibis, sun-barque ✅ | ibis, Egyptian mau cat, donkey ✅ |
 | Tents of Rimal | dune buggy ✅ | — | roc ✅ | fennec, desert hare, saluki |
 
+Kites are already in every land's sky by day (`SkyFX.ts` kites on strings; `FestivalAir.ts`
+Basant patang and Bali's bebean), so the "kites" entries above are done.
+
 ## Order of work
 1. Animal kit + New Yonder's cats and cyborg pets, then every land's missing animals.
 2. Road kit extensions, then each land's missing road vehicles; rebuild the car, truck and biplane

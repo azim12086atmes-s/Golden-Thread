@@ -100,7 +100,7 @@ sections C1–C7) and `3D_BUILDS_HANDOFF.md` (3D work, sections 2a and 3.x). Tic
 - [ ] Riding buses, taxis, trams, ferries, gondolas, air taxis (separate seats). Done: intercity coach, coastal ferry, air taxi, Sky Isles cable car (`travel/Ride.ts`); left: trams
 - [ ] Time of day (quieter nights, evening lantern boats, daytime kites and balloons)
 - [ ] Townsfolk crossing streets; Sky Isles cable gondolas; distance culling. Done: zebra crossings on the lights; far traffic culled; Sky Isles cable car (`travel/gondola.ts`, `SkyTram.ts`)
-- [ ] Rebuild the travellers' own vehicles (car, truck, biplane) — keep seats and `SEAT_GAP`. Done: Safar as a split-screen bus in painted steel (`vehicles.ts` `buildVan`); the car and truck in painted steel; left: the biplane
+- [x] Rebuild the travellers' own vehicles (car, truck, biplane) — keep seats and `SEAT_GAP`: Safar as a split-screen bus in painted steel (`vehicles.ts` `buildVan`); the car and truck in painted steel; the biplane as a 1930s trainer (`buildBiplane`)
 
 ## I2. Ships and the sea (NEW)
 - [ ] 3D: ships — cargo, container, ocean liner, cruise, large ferry, trawler, coastal steamer, ocean dhow, large junk, phinisi, rice barge, full-rigged tall ship, hospital ship, research vessel, sky galleon (`CHATGPT_3D_MODELS.md` §12.4)
