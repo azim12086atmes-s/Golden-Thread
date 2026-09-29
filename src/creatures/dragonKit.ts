@@ -16,10 +16,10 @@ import { ANIMAL_HEAD_GAP, type Part } from '../characters/anatomy';
  */
 
 export type Plan = 'lung' | 'wyrm' | 'wyvern' | 'naga';
-export type HeadKind = 'lung' | 'drake' | 'frost' | 'sea' | 'mech' | 'brass' | 'cloud';
+export type HeadKind = 'lung' | 'drake' | 'frost' | 'sea' | 'mech' | 'brass' | 'cloud' | 'night';
 export type Crest = 'fins' | 'spines' | 'flame' | 'crystal' | 'plates' | 'frond';
-export type TailKind = 'flame' | 'spade' | 'fins' | 'crystal' | 'frond' | 'plume';
-export type ScaleStyle = 'shingle' | 'plate' | 'hex' | 'cloud';
+export type TailKind = 'flame' | 'spade' | 'fins' | 'crystal' | 'frond' | 'plume' | 'twin';
+export type ScaleStyle = 'shingle' | 'plate' | 'hex' | 'cloud' | 'silk';
 
 export interface DragonSpec {
   id: string;
@@ -47,23 +47,30 @@ export interface DragonSpec {
   /** A faint inner light, and see-through (the cloud dragon). */
   emissive?: string;
   translucent?: boolean;
+  /** Winged plans: where the neck ends, as a share of the length (0.26; less for a short neck). */
+  neck?: number;
+  /** Little star-scales scattered down each flank (glowing colours). */
+  stars?: string[];
 }
 
 // ───── the body's girth along its length (s: 0 at the neck … 1 at the tail tip) ─────
 
-export function girthAt(plan: Plan, s: number): number {
+export function girthAt(plan: Plan, s: number, nk = 0.26): number {
   if (plan === 'lung' || plan === 'naga') {
     // Thin at the neck, full by an eighth of the way, then a long taper to the tail.
     return s < 0.015 ? 0.7 * Math.sqrt(s / 0.015) + 0.05 : s < 0.12 ? 0.7 + 0.3 * (s / 0.12) : 1 - 0.85 * Math.pow((s - 0.12) / 0.88, 1.6);
   }
   // Winged dragons: a slender neck, a deep chest and belly, a long tapering tail.
-  if (s < 0.26) return 0.32 + 0.18 * Math.sin((s / 0.26) * Math.PI * 0.5) + (s < 0.02 ? -0.1 * (1 - s / 0.02) : 0);
-  if (s < 0.52) return 0.5 + 0.5 * Math.sin(((s - 0.26) / 0.26) * Math.PI);
-  return 0.5 * Math.pow(1 - (s - 0.52) / 0.48, 1.3) + 0.04;
+  if (s < nk) return 0.32 + 0.18 * Math.sin((s / nk) * Math.PI * 0.5) + (s < 0.02 ? -0.1 * (1 - s / 0.02) : 0);
+  if (s < nk + 0.26) return 0.5 + 0.5 * Math.sin(((s - nk) / 0.26) * Math.PI);
+  const e = nk + 0.26;
+  return 0.5 * Math.pow(1 - (s - e) / (1 - e), 1.3) + 0.04;
 }
+const neckOf = (d: DragonSpec) => d.neck ?? 0.26;
+const girth = (d: DragonSpec, s: number) => girthAt(d.plan, s, neckOf(d));
 /** Where the shoulders (wings, forelegs) and hips (hind legs) sit along the body. */
-const SHOULDER = (plan: Plan) => (plan === 'lung' ? 0.14 : 0.3);
-const HIP = (plan: Plan) => (plan === 'lung' ? 0.58 : 0.46);
+const SHOULDER = (d: DragonSpec) => (d.plan === 'lung' ? 0.14 : neckOf(d) + 0.04);
+const HIP = (d: DragonSpec) => (d.plan === 'lung' ? 0.58 : neckOf(d) + 0.2);
 
 // ───── the painted hide ─────
 
@@ -107,6 +114,20 @@ export function hideTexture(d: DragonSpec): THREE.Texture | null {
       x.fillStyle = d.rim;
       for (let c = 6; c < W; c += 16) { x.beginPath(); x.arc(c, y + 8, 2.2, 0, Math.PI * 2); x.fill(); }
     }
+  } else if (d.scales === 'silk') {
+    // The festival dragon's silk: embroidered scales in gold thread, a hoop of the lantern frame
+    // every so often round the body, and a fringe down the belly.
+    const s = 20;
+    x.lineWidth = 1.5; x.strokeStyle = d.rim; x.globalAlpha = 0.7;
+    for (let row = 0; row < H / (s * 0.6) + 1; row++) for (let col = -1; col < W / s + 1; col++) {
+      const cx = col * s + (row % 2) * s * 0.5, cy = row * s * 0.6;
+      if (belly(cx / W)) continue;
+      x.beginPath(); x.arc(cx, cy, s * 0.42, 0.15, Math.PI - 0.15); x.stroke();
+    }
+    x.globalAlpha = 1;
+    for (const y of [0, H / 2]) { x.fillStyle = d.rim; x.fillRect(0, y, W, 6); x.fillStyle = 'rgba(0,0,0,0.25)'; x.fillRect(0, y + 6, W, 2); }
+    x.fillStyle = d.crest[1];
+    for (let y = 0; y < H; y += 6) for (const u of [0.655, 0.845]) x.fillRect(W * u, y, 3, 4);
   } else {
     // Cloud: soft billows, lighter at their crowns.
     for (let i = 0; i < 160; i++) {
@@ -117,7 +138,7 @@ export function hideTexture(d: DragonSpec): THREE.Texture | null {
     }
   }
   // Belly plates for every style but the cloud.
-  if (d.scales !== 'cloud') for (let y = 0; y < H; y += 22) { x.fillStyle = 'rgba(90,60,20,0.4)'; x.fillRect(W * 0.66, y, W * 0.18, 3); }
+  if (d.scales !== 'cloud' && d.scales !== 'silk') for (let y = 0; y < H; y += 22) { x.fillStyle = 'rgba(90,60,20,0.4)'; x.fillRect(W * 0.66, y, W * 0.18, 3); }
   const t = new THREE.CanvasTexture(cv);
   t.colorSpace = THREE.SRGBColorSpace;
   t.wrapS = t.wrapT = THREE.RepeatWrapping;
@@ -178,7 +199,7 @@ const C = (c: string) => new THREE.Color(c);
 
 /** The crest down the back, the mane at the neck, legs and claws, the tail, fins and runes. */
 function layParts(d: DragonSpec, solid: Parts, glow: Parts): void {
-  const L = d.length, R0 = d.girth, r = (s: number) => girthAt(d.plan, s) * R0;
+  const L = d.length, R0 = d.girth, r = (s: number) => girth(d, s) * R0;
   const c1 = C(d.crest[0]), c2 = C(d.crest[1]), claw = C(d.claw), side = C(d.side);
   const scale = R0 / 2.1; // parts were designed on the great lung (girth 2.1)
   // The crest: from just behind the neck to near the tail.
@@ -204,8 +225,8 @@ function layParts(d: DragonSpec, solid: Parts, glow: Parts): void {
     else if (k % 2 === 0) solid.cone(s, [sx, up, 0], [sx * 1.4, up + rr * 0.4, -rr * 1.4], rr * 0.18, 0.01, mane[k % mane.length], 4);
   }
   // Legs with claws: the lung's four stride out; a winged dragon's tuck back in flight.
-  const legs: Array<[number, number]> = d.plan === 'naga' ? [] : d.plan === 'wyvern' ? [[HIP(d.plan), 1], [HIP(d.plan), -1]]
-    : [[SHOULDER(d.plan), 1], [SHOULDER(d.plan), -1], [HIP(d.plan), 1], [HIP(d.plan), -1]];
+  const legs: Array<[number, number]> = d.plan === 'naga' ? [] : d.plan === 'wyvern' ? [[HIP(d), 1], [HIP(d), -1]]
+    : [[SHOULDER(d), 1], [SHOULDER(d), -1], [HIP(d), 1], [HIP(d), -1]];
   const nClaws = d.claws ?? 4;
   for (const [s, sx] of legs) {
     const rr = r(s), k = rr / 2.1 * (d.plan === 'lung' ? 1 : 1.2);
@@ -226,6 +247,11 @@ function layParts(d: DragonSpec, solid: Parts, glow: Parts): void {
     const rr = r(s);
     solid.tri(s, [sx * rr * 0.9, 0, 0.6 * rr], [sx * rr * 2.2, rr * 0.2, -rr * 0.8], [sx * rr * 0.9, 0, -rr * 0.9], c1);
   }
+  // Star-scales: little constellations of light down each flank.
+  if (d.stars) for (const sx of [1, -1]) for (let k = 0; k < 14; k++) {
+    const s = 0.06 + k * 0.035, rr = r(s), a = Math.sin(k * 1.9) * 0.45;
+    glow.blob(s, [sx * Math.cos(a) * rr * 0.97, Math.sin(a) * rr * 0.85, 0], rr * (0.05 + (k % 3) * 0.015), rr * 0.03, rr * 0.07, C(d.stars[k % d.stars.length]));
+  }
   // The tail.
   const ts = 0.985, tr = Math.max(r(0.9), 0.3 * scale), T = 2.2 * scale * (d.plan === 'lung' ? 1 : 0.8);
   switch (d.tail) {
@@ -245,6 +271,15 @@ function layParts(d: DragonSpec, solid: Parts, glow: Parts): void {
       break;
     case 'frond':
       for (let k = 0; k < 9; k++) { const a = -1 + (k / 8) * 2; solid.cone(ts, [0, 0, 0], [Math.sin(a) * T * 0.9, Math.cos(a * 1.3) * T * 0.3, -T * 1.6], 0.2 * scale, 0.01, k % 2 ? c1 : c2, 4); }
+      break;
+    case 'twin':
+      // A pair of fins spread flat: one its own, the other a red leather-and-steel prosthetic.
+      for (const sx of [1, -1]) {
+        const fin = sx > 0 ? c1 : C('#a3202a');
+        solid.tri(ts, [0, 0, 0], [sx * T * 0.95, 0, -T * 0.25], [sx * T * 0.75, 0, -T * 0.75], fin);
+        solid.tri(ts, [0, 0, 0], [sx * T * 0.75, 0, -T * 0.75], [sx * T * 0.15, 0, -T * 0.7], fin);
+        if (sx < 0) for (const f of [0.35, 0.65]) solid.cone(ts, [0, 0.02, -0.05], [-T * 0.9 * f - T * 0.1, 0.02, -T * 0.72 * f], 0.035 * scale, 0.02 * scale, C('#8a8a96'), 4);
+      }
       break;
     case 'plume':
       for (let k = 0; k < 12; k++) { const a = (k / 12) * Math.PI * 2; solid.cone(ts, [0, 0, 0], [Math.cos(a) * T * 0.5, Math.sin(a) * T * 0.5, -T * 1.8], 0.22 * scale, 0.01, k % 3 ? c2 : c1, 4); }
@@ -335,6 +370,21 @@ function buildHead(d: DragonSpec, head: THREE.Group): number {
         g.add(f);
       }
       back = 2.5;
+      break;
+    }
+    case 'night': {
+      // Big, round and cat-like: a broad skull, a short rounded snout, swept-back ear flaps.
+      g.add(mesh(new THREE.SphereGeometry(1.9, 22, 16).scale(1.15, 0.85, 1.05), skinM, 'head'));
+      g.add(mesh(new THREE.SphereGeometry(1.35, 18, 12).scale(1.05, 0.62, 0.9), skinM, 'head', 0, -0.45, 1.45));
+      const flapM = std(d.back, { side: THREE.DoubleSide });
+      for (const sx of [1, -1]) {
+        const big = mesh(new THREE.ConeGeometry(0.56, 2.8, 4).scale(1, 1, 0.3), flapM, 'ear', sx * 1.23, 1.12, -1.46);
+        big.rotation.set(-1.25, 0, sx * 0.35);
+        const small = mesh(new THREE.ConeGeometry(0.39, 1.7, 4).scale(1, 1, 0.3), flapM, 'ear', sx * 1.85, 0.11, -1.0);
+        small.rotation.set(-1.3, 0, sx * 0.9);
+        g.add(big, small);
+      }
+      back = 2.4;
       break;
     }
     case 'mech':
@@ -440,7 +490,7 @@ export class DragonModel {
     // The body: a tube along s, round angle u (u 0.25 the back, 0.75 the belly), a little flattened.
     const bpos: number[] = [], buv: number[] = [], bs: number[] = [], bo: number[] = [], bidx: number[] = [];
     for (let i = 0; i <= SEG; i++) {
-      const s = i / SEG, r = girthAt(d.plan, s) * R0;
+      const s = i / SEG, r = girth(d, s) * R0;
       for (let j = 0; j <= RAD; j++) {
         const u = j / RAD, a = u * Math.PI * 2;
         bo.push(Math.cos(a) * r, Math.sin(a) * r * 0.88, 0);
@@ -472,7 +522,8 @@ export class DragonModel {
     this.bits = new THREE.Mesh(sb.geo, new THREE.MeshStandardMaterial({ vertexColors: true, roughness: 0.5, metalness: metal ? 0.6 : 0.2, emissive: d.emissive ?? '#201000', emissiveIntensity: 0.3, side: THREE.DoubleSide, transparent: !!d.translucent, opacity: d.translucent ? 0.85 : 1 }));
     this.glowBits = new THREE.Mesh(gb.geo, new THREE.MeshBasicMaterial({ vertexColors: true, toneMapped: false, side: THREE.DoubleSide }));
 
-    this.headAhead = buildHead(d, this.head) + 0.5 + ANIMAL_HEAD_GAP * 4;
+    // Clear of the neck by a gap that shrinks with a small dragon (the big ones' half a metre).
+    this.headAhead = buildHead(d, this.head) + 0.5 * Math.min(1, R0 / 1.3) + ANIMAL_HEAD_GAP * 4;
     if (d.wings) for (const sx of [1, -1]) { const w = buildWing(d, sx); this.wings.push(w); this.group.add(w); }
     if (d.pearl) {
       this.pearl = mesh(new THREE.SphereGeometry(1.1 * (R0 / 2.1), 16, 12), glowMat(d.pearl), 'accessory');
@@ -489,7 +540,7 @@ export class DragonModel {
    * Bend the dragon along its centre line: P (neck → tail, `samples` points), with the tangent T
    * pointing forward, N to its side and B up. Then place the head, beat the wings.
    */
-  pose(t: number, flap = 1): void {
+  pose(t: number, flap = 1, beat?: number): void {
     this.deform(this.body, this.bodyLay);
     this.deform(this.bits, this.bitsLay);
     this.deform(this.glowBits, this.glowLay);
@@ -497,13 +548,13 @@ export class DragonModel {
     this.head.position.copy(this.P[0]).addScaledVector(this.T[0], this.headAhead);
     this.head.lookAt(this.head.position.clone().add(this.T[0]));
     if (this.wings.length) {
-      const i = Math.round(SHOULDER(this.spec.plan) * (this.samples - 1)), r = girthAt(this.spec.plan, SHOULDER(this.spec.plan)) * this.spec.girth;
+      const i = Math.round(SHOULDER(this.spec) * (this.samples - 1)), r = girth(this.spec, SHOULDER(this.spec)) * this.spec.girth;
       const m = new THREE.Matrix4().makeBasis(this.N[i], this.B[i], this.T[i]);
-      const beat = Math.sin(t * 2.2) * 0.55 * flap + 0.1;
+      const b = beat ?? Math.sin(t * 2.2) * 0.55 * flap + 0.1;
       this.wings.forEach((w, k) => {
         const sx = k === 0 ? 1 : -1;
         w.position.copy(this.P[i]).addScaledVector(this.N[i], sx * r * 0.7).addScaledVector(this.B[i], r * 0.55);
-        w.quaternion.setFromRotationMatrix(m).multiply(new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(0, 0, 1), sx * beat));
+        w.quaternion.setFromRotationMatrix(m).multiply(new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(0, 0, 1), sx * b));
       });
     }
   }
@@ -561,4 +612,26 @@ export function fly(dm: DragonModel, f: Flight, t: number): void {
     dm.pearl.position.y += Math.sin(t * 1.3) * 1.5;
     dm.pearl.rotation.y = t;
   }
+}
+
+/**
+ * Hold the dragon in its own frame, for a mount: the neck at (0, y, z0), the body straight back
+ * along −z, only the tail (behind `still`) swaying from side to side; wings beat by `beat`.
+ * Forward is +z here, as for every vehicle.
+ */
+export function perch(dm: DragonModel, t: number, y: number, z0: number, beat: number, still = 0.45, lift = 0): void {
+  const n = dm.samples, L = dm.spec.length, up = new THREE.Vector3(0, 1, 0);
+  for (let i = 0; i < n; i++) {
+    const s = i / (n - 1), k = Math.max(0, (s - still) / (1 - still));
+    // The neck arches up by `lift` towards the head.
+    const arch = lift * Math.max(0, 1 - s / 0.16) ** 2;
+    dm.P[i].set(Math.sin(t * 1.8 - s * 7) * k * k * L * 0.07, y + arch + Math.sin(t * 1.3 - s * 5) * k * L * 0.015, z0 - s * L);
+  }
+  for (let i = 0; i < n; i++) {
+    const a = dm.P[Math.max(0, i - 1)], b = dm.P[Math.min(n - 1, i + 1)];
+    dm.T[i].subVectors(a, b).normalize();
+    dm.N[i].crossVectors(up, dm.T[i]).normalize();
+    dm.B[i].crossVectors(dm.T[i], dm.N[i]).normalize();
+  }
+  dm.pose(t, 1, beat);
 }

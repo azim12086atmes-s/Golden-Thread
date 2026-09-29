@@ -476,7 +476,7 @@ celebration, which shows every land's sky). Make each kind cheap, or tell Claude
 | Boats | `gondola`, `narrowboat`, `punt`, `ferry`, `yacht`, `catboat`, `longship`, `fishing-boat`, `paddle-steamer`, `junk`, `dragon-boat`, `sampan`, `yakatabune`, `turtle-ship`, `jukung`, `phinisi`, `dhow`, `abra`, `felucca`, `reed-boat`, `kettuvallam`, `snake-boat`, `shikara`, `ganga-boat`, `kayak`, `swan-boat`, `raft`, `tall-ship` | `shaper.hull()` + sails (`sailBoat()`), canopies (`rowBoat()`) |
 | Aircraft | `airship`, `solar-blimp`, `zeppelin`, `air-taxi`, `air-taxi-2`, `drone`, `biplane`, `biplane-2`, `ornithopter`, `seaplane`, `light-plane`, `airliner`, `airliner-2`, `sky-jet` | lathe fuselages/envelopes, box wings, spinning propeller/rotor pieces |
 | Magical craft | `sky-ship`, `crystal-skiff`, `flying-carpet`, `flying-carpet-2`, `sun-barque`, `pushpaka`, `festival-dragon`, `janggan` | hulls with wings, platforms, chained bodies |
-| Creatures | `pegasi`, `unicorns-flying`, `little-dragons`, `sky-whale`, `sky-koi`, `sky-koi-2`, `cranes`, `eagle`, `owls`, `falcons`, `roc`, `phoenix`, `peacock-garuda`, `pigeons`, `light-birds`, `swans`, `ducks` | `quadruped()`, `bird()`, `skyWhale()`, `skyKoi()` — floating heads, animated pieces |
+| Creatures | `pegasi`, `unicorns-flying`, `sky-whale`, `sky-koi`, `sky-koi-2`, `cranes`, `eagle`, `owls`, `falcons`, `roc`, `phoenix`, `peacock-garuda`, `pigeons`, `light-birds`, `swans`, `ducks` | `quadruped()`, `bird()`, `skyWhale()`, `skyKoi()` — floating heads, animated pieces |
 
 Only the London double-decker, the gondola, the drone, the petit taxi, the kei van and the reindeer sleds have been seen
 in screenshots. **Contract**: each design is `Design` (`pieces` of `solid`/`glow` geometry + an `anim` about a `pivot`);

@@ -3,6 +3,7 @@ import { describe, expect, it } from 'vitest';
 import { isAllowedPart } from '../src/characters/anatomy';
 import { DragonModel, fly } from '../src/creatures/dragonKit';
 import { DRAGON_HOMES, flightOf, homeCentre } from '../src/creatures/Dragons';
+import { DRAGON_SADDLES, DRAGON_SCALE, Dragon } from '../src/event/Dragon';
 import { buildRegion } from '../src/world/RegionBuilder';
 import { REGION_BY_ID, regionCenter } from '../src/world/regions';
 import { WATER_Y, terrainHeight } from '../src/world/terrain';
@@ -76,6 +77,38 @@ describe('the dragon kit and every land\'s dragon', () => {
     for (let phi = 0; phi < Math.PI * 2; phi += 0.05) {
       fw.path(phi, p);
       expect(terrainHeight(p.x, p.z), `sea naga at ${Math.round(p.x - c.x)},${Math.round(p.z - c.z)}`).toBeLessThan(WATER_Y - 2);
+    }
+  });
+
+  it('the Night Dragon is built from the kit: allowed parts, its head clear, its back under both saddles', () => {
+    const d = new Dragon(DRAGON_SCALE, true);
+    for (const speed of [0, 5, 20]) {
+      d.update(0.1, speed, 3);
+      d.root.traverse((o) => { if ((o as THREE.Mesh).isMesh) expect(isAllowedPart(o.userData.part), `night dragon: ${o.userData.part}`).toBe(true); });
+      const head = verts(d.model.head), body = verts(d.model.body);
+      let min = Infinity;
+      for (const a of head) for (const b of body) min = Math.min(min, a.distanceToSquared(b));
+      expect(Math.sqrt(min)).toBeGreaterThan(0.3);
+      // Under each saddle the dragon's back rises to meet it — no gap, no saddle sunk in.
+      for (const z of DRAGON_SADDLES) {
+        const zs = z * DRAGON_SCALE, bottom = 1.05 + 0.3 * DRAGON_SCALE;
+        const top = Math.max(...body.filter((v) => Math.abs(v.x) < 0.2 && Math.abs(v.z - zs) < 0.15).map((v) => v.y));
+        expect(top, `back under the saddle at ${z}`).toBeGreaterThan(bottom - 0.15);
+        expect(top).toBeLessThan(bottom + 0.1);
+      }
+    }
+  });
+
+  it('the festival dragon flies over the Jade Terraces and three little dragons play over the Meadow', () => {
+    expect(DRAGON_HOMES.filter((h) => h.land === 'china').map((h) => h.spec.id).sort()).toEqual(['festival-dragon', 'jade-lung']);
+    const little = DRAGON_HOMES.find((h) => h.spec.id === 'little-dragon')!;
+    expect(little.land).toBe('meadow');
+    expect(little.flock).toBe(3);
+    // Each of the flock flies its own circle, clear of the others.
+    const a = new THREE.Vector3(), b = new THREE.Vector3();
+    for (let phi = 0; phi < Math.PI * 2; phi += 0.2) {
+      flightOf(little, 0).path(phi, a); flightOf(little, 1).path(phi, b);
+      expect(a.distanceTo(b)).toBeGreaterThan(little.spec.girth * 6);
     }
   });
 });

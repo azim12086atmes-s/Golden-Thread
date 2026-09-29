@@ -1,4 +1,4 @@
-import { piece, type Piece } from './creatures';
+import { piece, skyWhale, type Piece } from './creatures';
 import type { Shaper, V3 } from './shaper';
 import type { Design } from './designs';
 
@@ -313,6 +313,99 @@ function sandSkiff(): Design {
   };
 }
 
+// ───── creatures and craft of the high sky and the canals ─────
+
+/**
+ * The starlight whale of the Sky Isles: a sky whale of deep indigo, its back scattered with stars
+ * and a constellation traced between them in light. Its head floats, as every creature's does.
+ */
+function starlightWhale(): Design {
+  const len = 34, R = len * 0.14;
+  // The body's radius along its length (the sky whale's own profile).
+  const prof: Array<[number, number]> = [[-0.5, 0.02], [-0.42, 0.35], [-0.25, 0.7], [0, 1], [0.2, 0.95], [0.3, 0.7]];
+  const radius = (zf: number) => {
+    for (let i = 1; i < prof.length; i++) if (zf <= prof[i][0]) { const [a, ra] = prof[i - 1], [b, rb] = prof[i]; return R * (ra + ((zf - a) / (b - a)) * (rb - ra)); }
+    return R * 0.7;
+  };
+  const star = (i: number): V3 => {
+    const zf = -0.44 + ((i * 0.618) % 1) * 0.66, a = 0.25 + ((i * 0.377) % 1) * 2.6, r = radius(zf) * 1.01;
+    return [Math.cos(a) * r, Math.sin(a) * r * 0.85, zf * len];
+  };
+  const stars = piece((s) => {
+    for (let i = 0; i < 70; i++) s.ball(0.1 + (i % 4) * 0.05, i % 5 ? '#fff4c0' : '#bfe8ff', star(i), { glow: true, seg: 5 });
+    // A constellation along the back: a few stars joined by threads of light.
+    const pts: V3[] = [-0.38, -0.26, -0.14, -0.02, 0.1, 0.2].map((zf, k) => [Math.sin(k * 1.7) * R * 0.3, radius(zf) * 0.86, zf * len]);
+    for (let k = 0; k < pts.length; k++) { s.ball(0.3, '#ffffff', pts[k], { glow: true, seg: 6 }); if (k) s.rod(pts[k - 1], pts[k], 0.05, '#bfe8ff', { glow: true }); }
+  }, 'body');
+  return {
+    id: 'starlight-whale', name: 'starlight whale', realm: 'sky', len, speed: 4, alt: [110, 170], radius: [220, 420], bob: 5, bank: 0.05,
+    pieces: [...skyWhale('#1a1f4a', '#2e3570', len, '#fff4c0'), stars],
+  };
+}
+
+/** A cloud galleon: a pale-timbered galleon under sails of cloud, riding a cloud bank. */
+function cloudGalleon(): Design {
+  const len = 26, beam = 6, GOLD = '#e2b43a', CLOUD = '#ffffff', BLUSH = '#ffe4f0';
+  const billow = (s: Shaper, x: number, y: number, z: number, w: number, h: number, c: C) => {
+    // A sail of cloud: puffs packed into a bellied rectangle.
+    for (let i = 0; i < 5; i++) for (let j = 0; j < 3; j++) {
+      const u = (i / 4 - 0.5) * w, v = (j / 2 - 0.5) * h, belly = 0.6 * (1 - (2 * u / w) ** 2);
+      s.ball(h * 0.28 + ((i + j) % 2) * h * 0.06, c, [x + u, y + v, z + belly], { s: [1, 0.9, 0.55], seg: 8 });
+    }
+  };
+  return {
+    id: 'cloud-galleon', name: 'cloud galleon', realm: 'sky', len, speed: 6, alt: [90, 150], radius: [180, 380], bob: 2.5, bank: 0.08,
+    pieces: [P((s) => {
+      s.hull(len, beam, 2.8, '#e8dcc8', [0, 0, 0], { sheer: 1.6, deck: '#c8b08a' });
+      s.box(beam * 0.9, 0.18, len * 0.9, GOLD, [0, 1.35, 0]);
+      // The stern castle with lit windows, and a gilded rail.
+      s.box(beam * 0.8, 2.4, len * 0.18, '#e8dcc8', [0, 2.4, -len * 0.38]);
+      s.box(beam * 0.84, 0.16, len * 0.2, GOLD, [0, 3.65, -len * 0.38]);
+      for (let i = 0; i < 4; i++) for (const sx of [-1, 1]) s.box(0.04, 0.6, 0.7, WARM, [sx * beam * 0.41, 2.4, -len * 0.44 + i * 0.95], { glow: true });
+      // Three masts, their sails of cloud; a bowsprit.
+      for (const [z, h] of [[len * 0.26, 14], [0, 17], [-len * 0.22, 13]] as const) {
+        s.cyl(0.18, 0.26, h, '#8a6a4a', [0, 1.4 + h / 2, z], { seg: 6 });
+        for (let k = 0; k < 2; k++) {
+          const y = 1.4 + h * (0.42 + k * 0.33), w = beam * (1.5 - k * 0.35);
+          s.rod([-w / 2, y + h * 0.13, z], [w / 2, y + h * 0.13, z], 0.08, '#8a6a4a');
+          billow(s, 0, y, z + 0.4, w, h * 0.26, k ? BLUSH : CLOUD);
+        }
+        s.shape([[0, 0], [1.8, -0.3], [0, -0.6]], 0.02, '#ff8fb8', [0, 1.4 + h + 0.2, z], { r: [0, Math.PI / 2, 0] });
+      }
+      s.rod([0, 1.6, len * 0.48], [0, 3.8, len * 0.7], 0.14, '#8a6a4a');
+      billow(s, 0, 3.4, len * 0.6, 2.6, 2.2, CLOUD);
+      // Lanterns along the rail, and the cloud bank it sails on.
+      for (let i = 0; i < 8; i++) for (const sx of [-1, 1]) s.ball(0.16, WARM, [sx * beam * 0.46, 1.7, -len * 0.3 + i * len * 0.09], { glow: true, seg: 6 });
+      for (let i = 0; i < 16; i++) {
+        const z = -len * 0.5 + (i / 15) * len, x = Math.sin(i * 2.3) * beam * 0.5;
+        s.ball(2.2 + (i % 3) * 0.6, i % 4 ? CLOUD : BLUSH, [x, -1.6 - (i % 2) * 0.6, z], { s: [1.3, 0.6, 1], seg: 8 });
+      }
+    })],
+  };
+}
+
+/**
+ * New Yonder's drone fish: little silver machines that swim the canals in shoals, blue light in
+ * their seams, a dorsal fin above the water and a tail that beats. Machines, not creatures — no
+ * head, no face.
+ */
+function droneFish(): Design {
+  const len = 1.4, R = 0.24;
+  return {
+    id: 'drone-fish', name: 'drone fish', realm: 'water', len, speed: 2.6, bob: 0.08, group: { n: 6, spacing: 1.6 },
+    pieces: [
+      P((s) => {
+        s.lathe([[0.02, -len * 0.42], [R * 0.55, -len * 0.3], [R, -len * 0.05], [R * 0.95, len * 0.2], [R * 0.6, len * 0.4], [0.02, len * 0.48]], '#c8ccd4', [0, 0, 0], { s: [0.75, 1, 1], seg: 12 });
+        for (const zf of [-0.2, 0.05, 0.3]) s.cyl(R * 0.78 * (1 - Math.abs(zf) * 0.8), R * 0.78 * (1 - Math.abs(zf) * 0.8), 0.03, '#3ae8ff', [0, 0, zf * len], { r: [Math.PI / 2, 0, 0], glow: true, seg: 12 });
+        s.shape([[0, 0], [0.34, 0.26], [0.42, 0]], 0.02, '#8a909c', [0, R * 0.85, -0.2], { r: [0, -Math.PI / 2, 0] });
+        for (const sx of [-1, 1]) s.box(0.22, 0.02, 0.12, '#8a909c', [sx * R * 0.85, -R * 0.2, len * 0.12], { r: [0, 0, sx * 0.4] });
+        s.ball(0.05, '#3ae8ff', [0, R * 0.95, len * 0.18], { glow: true, seg: 5 });
+      }),
+      P((s) => { s.shape([[0, 0], [0.3, 0.26], [0.22, 0], [0.3, -0.26]], 0.02, '#8a909c', [0, 0, -len * 0.42], { r: [0, Math.PI / 2, 0] }); }, 'tail', [0, 0, -len * 0.4], 0.5),
+    ],
+  };
+}
+
 export const FANTASY_DESIGNS: Record<string, () => Design> = {
   'hover-bike': () => hoverBike('hover-bike', '#f4f6f8', '#3ae8ff'),
   'hover-bike-2': () => hoverBike('hover-bike-2', '#1f1f28', '#ff3ad8'),
@@ -330,4 +423,7 @@ export const FANTASY_DESIGNS: Record<string, () => Design> = {
   'hover-sled': () => hoverSled(),
   'bubble-sub': () => bubbleSub(),
   'sand-skiff': () => sandSkiff(),
+  'starlight-whale': () => starlightWhale(),
+  'cloud-galleon': () => cloudGalleon(),
+  'drone-fish': () => droneFish(),
 };

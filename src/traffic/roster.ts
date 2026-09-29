@@ -26,7 +26,7 @@ const R = (road: Array<[string, number]>, water: Array<[string, number]>, sky: A
 export const LAND_TRAFFIC: Record<RegionId, Roster> = {
   meadow: R([['pumpkin-coach', 2], ['flower-cart', 3], ['vardo', 2], ['carriage', 2], ['hatchback', 2], ['vintage-car-2', 2], ['hover-car-2', 2], ['hedgehog-wagon', 2]],
     [['swan-boat', 3], ['swans', 2], ['ducks', 2], ['raft', 1], ['catboat', 1], ['leaf-boat', 2]],
-    [['pegasi', 1], ['unicorns-flying', 1], ['little-dragons', 1], ['sky-ship', 1], ['phoenix', 1], ['airship', 1], ['biplane', 1], ['airliner', 1], ['butterflies', 3], ['hang-glider', 1], ['leaf-glider', 2], ['dandelion-balloon', 2]]),
+    [['pegasi', 1], ['unicorns-flying', 1], ['sky-ship', 1], ['phoenix', 1], ['airship', 1], ['biplane', 1], ['airliner', 1], ['butterflies', 3], ['hang-glider', 1], ['leaf-glider', 2], ['dandelion-balloon', 2]]),
   japan: R([['streetcar', 2], ['kei-van', 4], ['taxi', 3], ['hatchback-2', 3], ['sedan', 3], ['future-ev-2', 2], ['city-bus', 1], ['kei-truck', 2], ['vespa', 1]],
     [['yakatabune', 2], ['sampan', 2], ['raft', 1], ['ducks', 1], ['lantern-boat', 2], ['rowing-eight', 1]],
     [['sky-koi', 1], ['sky-koi-2', 1], ['cranes', 2], ['light-plane', 1], ['airliner-2', 1], ['drone', 1], ['seagulls', 1], ['helicopter', 1]]),
@@ -46,7 +46,7 @@ export const LAND_TRAFFIC: Record<RegionId, Roster> = {
     [['narrowboat', 3], ['punt', 2], ['swans', 2], ['ducks', 1], ['lantern-boat', 2], ['thames-clipper', 1], ['rowing-eight', 2]],
     [['airship', 1], ['pigeons', 2], ['airliner', 1], ['light-plane', 1], ['biplane', 1], ['seagulls', 1], ['helicopter', 1], ['steam-ornithopter', 1], ['brass-tug', 1]]),
   newyork: R([['solar-tram', 3], ['solar-cab', 6], ['hover-car', 3], ['hover-car-2', 2], ['future-ev', 3], ['hover-bus', 2], ['suv', 2], ['delivery-bot', 4], ['pedicab-2', 2], ['icecream-truck', 1], ['hover-bike', 3], ['hover-bike-2', 2], ['maglev-pod', 2], ['cargo-walker', 1]],
-    [['ferry', 2], ['yacht', 2], ['tall-ship', 1], ['water-taxi', 3], ['rib', 1]],
+    [['ferry', 2], ['yacht', 2], ['tall-ship', 1], ['water-taxi', 3], ['rib', 1], ['drone-fish', 2]],
     [['air-taxi', 3], ['air-taxi-2', 2], ['drone', 3], ['solar-blimp', 1], ['sky-jet', 1], ['airliner', 1], ['seagulls', 1], ['helicopter', 2], ['drone-swarm', 2], ['vtol-shuttle', 1]]),
   renaissance: R([['carriage', 3], ['caleche', 2], ['vintage-car', 2], ['hatchback', 4], ['sedan', 2], ['fiat-500', 4], ['ape', 3], ['vespa', 3], ['vespa-2', 2], ['clockwork-carriage', 2]],
     [['gondola', 4], ['punt', 1], ['swans', 1], ['lantern-boat', 2], ['vaporetto', 2], ['water-taxi', 1]],
@@ -83,7 +83,7 @@ export const LAND_TRAFFIC: Record<RegionId, Roster> = {
     [['owls', 2], ['airship', 1], ['seaplane', 1], ['eagle', 1], ['helicopter-2', 1]]),
   skyisles: R([],
     [],
-    [['sky-whale', 2], ['sky-ship', 2], ['crystal-skiff', 2], ['light-birds', 3], ['unicorns-flying', 1], ['pegasi', 1], ['solar-blimp', 1], ['cloud-jelly', 2], ['star-manta', 2], ['crystal-sled', 2], ['solar-sailship', 1]]),
+    [['sky-whale', 2], ['sky-ship', 2], ['crystal-skiff', 2], ['light-birds', 3], ['unicorns-flying', 1], ['pegasi', 1], ['solar-blimp', 1], ['cloud-jelly', 2], ['star-manta', 2], ['crystal-sled', 2], ['solar-sailship', 1], ['starlight-whale', 1], ['cloud-galleon', 1]]),
 };
 
 /**

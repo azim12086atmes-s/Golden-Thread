@@ -10,7 +10,10 @@ import { DragonModel, fly, type DragonSpec, type Flight } from './dragonKit';
  * azure yong with its jade pearl, Aurora's frost wyrm with an aurora-green glow down its back,
  * Alpenrose's mountain drake, Old London's red wyvern, Firenzia's clockwork dragon of brass and
  * canvas, New Yonder's armoured drone dragon, the Sky Isles' cloud dragon, Rimal's sand wyrm
- * arcing out of the dunes, and the Kaveri Coast's sea serpent rising and diving in the bay.
+ * arcing out of the dunes, and the Kaveri Coast's sea serpent rising and diving in the bay. Over
+ * the Jade Terraces, besides the great lung, the festival dragon of red and gold silk on its
+ * lantern hoops flies a wide circle after its pearl; over Wanderers' Meadow three little mint
+ * dragons play together.
  */
 
 export interface DragonHome {
@@ -24,6 +27,8 @@ export interface DragonHome {
   speed: number;
   /** Dives through the sand or the sea (its path goes under and out again). */
   dives?: 'sand' | 'sea';
+  /** Several that fly together (the little meadow dragons), each on its own wider, higher circle. */
+  flock?: number;
 }
 
 const lung = (o: Partial<DragonSpec> & Pick<DragonSpec, 'id' | 'name' | 'back' | 'side' | 'belly' | 'rim' | 'crest' | 'mane' | 'claw' | 'horn'>): DragonSpec =>
@@ -35,6 +40,18 @@ export const DRAGON_HOMES: DragonHome[] = [
     spec: lung({ id: 'jade-lung', name: 'the great dragon of the Jade Terraces', length: 72, girth: 2.1, claws: 5,
       back: '#8e1010', side: '#c81e1e', belly: '#f7dc8a', rim: '#ffd25a', crest: ['#ff7a2a', '#f2c24a'], mane: ['#2fae6a', '#f2c24a', '#ff7a2a'],
       claw: '#f2c24a', horn: '#f2c24a', pearl: '#fff4c8', emissive: '#5a0a0a' }),
+  },
+  {
+    land: 'china', at: [0, 0], radius: 170, alt: 70, bob: 8, speed: 10,
+    spec: lung({ id: 'festival-dragon', name: 'the festival dragon', length: 40, girth: 1.3, claws: 5, scales: 'silk',
+      back: '#b81e1e', side: '#e8342a', belly: '#ffd23a', rim: '#ffd23a', crest: ['#ffd23a', '#2fae6a'], mane: ['#ffd23a', '#2fae6a', '#ffffff'],
+      claw: '#ffd23a', horn: '#ffd23a', pearl: '#ffe6a0', emissive: '#6a1a08' }),
+  },
+  {
+    land: 'meadow', at: [0, 0], radius: 150, alt: 60, bob: 6, speed: 12, flock: 3,
+    spec: { id: 'little-dragon', name: 'the little dragons of the Meadow', plan: 'wyrm', length: 5, girth: 0.38, head: 'lung', crestKind: 'fins', tail: 'frond', scales: 'shingle', claws: 3,
+      back: '#3a9a78', side: '#5ac8a0', belly: '#fff0b8', rim: '#bff4dc', crest: ['#ffd23a', '#8affc8'], mane: ['#ffd23a', '#fff0b8'], claw: '#fff0b8', horn: '#ffd23a',
+      wings: { span: 6.5, membrane: '#8affc8', bone: '#3a9a78' } },
   },
   {
     land: 'japan', at: [0, 0], radius: 70, alt: 60, bob: 10, speed: 10,
@@ -108,8 +125,8 @@ export function homeCentre(h: DragonHome): { x: number; z: number } {
 }
 
 /** A dragon's flight round its home. */
-export function flightOf(h: DragonHome): Flight {
-  const c = homeCentre(h), g0 = terrainHeight(c.x, c.z), R = h.radius;
+export function flightOf(h: DragonHome, member = 0): Flight {
+  const c = homeCentre(h), g0 = terrainHeight(c.x, c.z), R = h.radius * (1 + member * 0.07), alt = h.alt + member * 5;
   const winged = !!h.spec.wings;
   return {
     scale: R, speed: h.speed, ripple: winged ? 0.25 : 1,
@@ -119,7 +136,7 @@ export function flightOf(h: DragonHome): Flight {
       let y: number;
       if (h.dives === 'sand') y = terrainHeight(x, z) + Math.sin(phi * 3) * h.bob - 3;
       else if (h.dives === 'sea') y = WATER_Y + Math.sin(phi * 2.5) * h.bob - 1.5;
-      else y = g0 + h.alt + h.bob * Math.sin(phi * 0.8) + h.bob * 0.35 * Math.sin(phi * 2.3);
+      else y = g0 + alt + h.bob * Math.sin(phi * 0.8) + h.bob * 0.35 * Math.sin(phi * 2.3);
       return out.set(x, y, z);
     },
   };
@@ -138,15 +155,19 @@ export class Dragons {
     for (const h of DRAGON_HOMES) {
       const c = homeCentre(h);
       const near = loaded(h.land) && Math.hypot(camera.x - c.x, camera.z - c.z) < 1100;
-      let d = this.built.get(h.spec.id);
-      if (!near) { if (d) d.model.group.visible = false; continue; }
-      if (!d) {
-        d = { model: new DragonModel(h.spec), flight: flightOf(h) };
-        this.built.set(h.spec.id, d);
-        this.group.add(d.model.group);
+      for (let k = 0; k < (h.flock ?? 1); k++) {
+        const key = k ? `${h.spec.id}~${k}` : h.spec.id;
+        let d = this.built.get(key);
+        if (!near) { if (d) d.model.group.visible = false; continue; }
+        if (!d) {
+          d = { model: new DragonModel(h.spec), flight: flightOf(h, k) };
+          this.built.set(key, d);
+          this.group.add(d.model.group);
+        }
+        d.model.group.visible = true;
+        // The flock plays tag: each a little behind the one before.
+        fly(d.model, d.flight, t - k * 2.2);
       }
-      d.model.group.visible = true;
-      fly(d.model, d.flight, t);
     }
   }
 

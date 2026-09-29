@@ -103,9 +103,28 @@ hulls, ornithopter wings, gear trains, envelope rigs. Traffic only — nothing c
 - **Fantasy and mech kit** on the animal kit (`AnimalModel.ts` `Fantasy`, `enchant`): all the
   creatures in §2 and §3, in their lands' fauna.
 - **Vehicles** `traffic/fantasyDesigns.ts`: all of §4 plus a VTOL shuttle.
-- Still to come from this plan: the festival dragon, the little meadow dragons and the rideable
-  Night Dragon rebuilt on the kit (they keep their own builds for now); a starlight whale; drone
-  fish; a cloud galleon.
+- Wings refined (fe130b4): bat-like fanned fingers with claws, deeper scallops, bones through
+  the membrane.
+
+## Built (2026-09-29, second pass)
+- **Festival dragon** on the kit (`Dragons.ts` `festival-dragon`): a lung of red silk with gold
+  embroidered scales, lantern hoops round the body and a fringe down the belly (new hide style
+  `silk`), chasing its pearl on a wide circle over the Jade Terraces. The old chain-of-balls
+  traffic design stays defined but flies nowhere.
+- **Little meadow dragons** on the kit: a flock of three small mint wyrms with lung heads
+  (`DragonHome.flock`), each on its own wider, higher circle, one behind another. The old
+  `little-dragons` traffic design is retired.
+- **The Night Dragon** (`event/Dragon.ts`) rebuilt on the kit: short neck (`DragonSpec.neck`), the
+  cat-like `night` head with swept ear flaps, bat wings, plated spine with glowing scales,
+  star-scales down the flanks (`stars`), and the `twin` tail with one red leather-and-steel
+  prosthetic fin. As a mount it is held by `perch()` (straight body, tail sways, neck arched), the
+  wings beating with speed; the saddles, divider and seat positions are unchanged. Over the
+  celebration it still loops its figure-eight and breathes glitter. Test: its back meets both
+  saddles, its head floats clear, allowed parts only.
+- **Starlight whale** (Sky Isles), **cloud galleon** (Sky Isles), **drone fish** shoals (New
+  Yonder's waters) in `traffic/fantasyDesigns.ts`.
+- Still open: squarer mech and brass dragon heads could be refined; the thunderbird reads blobby
+  at its scale.
 
 ## Order of work
 1. Dragon kit, then the Jade lung and the festival dragon rebuilt on it; then each land's dragon.
