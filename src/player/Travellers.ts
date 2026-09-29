@@ -127,6 +127,8 @@ export class Travellers {
     this.mode = id;
     this.speed = 0;
     this.vy = 0;
+    // On the Night Dragon her wings are always out, open behind her saddle.
+    this.girl.setRideWings(id === 'dragon');
     const def = VEHICLES[id];
     if (def.kind === 'ground' || def.kind === 'air') {
       if (id === 'van' && this.parkedVan && this.parkedVan.pos.distanceTo(this.gPos) < 40) {

@@ -57,6 +57,12 @@ export class Dragon {
   private phase = 0;
   /** How folded its wings are: folded at rest, opening as it takes off. */
   private fold = 1;
+  /** How hard it is turning (+ left) and climbing, eased, from how its frame moves; and the last frame. */
+  private steer = 0;
+  private climb = 0;
+  private lastYaw: number | null = null;
+  private lastY = 0;
+  private euler = new THREE.Euler();
   /** Glitter breath: particles blown from the head. */
   readonly breath: THREE.Points;
   private breathAge: Float32Array;
@@ -142,7 +148,16 @@ export class Dragon {
     const amp = speed > 8 ? 0.65 : speed > 0.2 ? 0.3 : 0.1;
     const want = speed > 8 ? 0 : speed > 0.2 ? 0.35 : 1;
     this.fold += (want - this.fold) * Math.min(1, dt * 2.5);
-    perch(this.model, t, BODY_Y, NECK_Z, (speed > 8 ? 0.05 : 0.3) + Math.sin(this.phase) * amp, 0.45, 0.55 - 0.3 * (1 - this.fold), this.fold);
+    // Read the turn and the climb from how the rider has moved it since the last frame.
+    const yaw = this.euler.setFromQuaternion(this.root.quaternion, 'YXZ').y, y = this.root.position.y;
+    if (this.lastYaw !== null && dt > 0) {
+      const turn = Math.atan2(Math.sin(yaw - this.lastYaw), Math.cos(yaw - this.lastYaw)) / dt;
+      const k = 1 - Math.exp(-dt * 4);
+      this.steer += (THREE.MathUtils.clamp(turn / 1.6, -1, 1) - this.steer) * k;
+      this.climb += (THREE.MathUtils.clamp((y - this.lastY) / dt / 10, -1, 1) - this.climb) * k;
+    }
+    this.lastYaw = yaw; this.lastY = y;
+    perch(this.model, t, BODY_Y, NECK_Z, (speed > 8 ? 0.05 : 0.3) + Math.sin(this.phase) * amp, 0.45, 0.55 - 0.3 * (1 - this.fold), this.fold, this.steer, this.climb);
     this.model.head.rotateX(Math.sin(t * 1.3) * 0.08);
   }
 

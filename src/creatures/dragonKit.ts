@@ -775,6 +775,9 @@ export class DragonModel {
    * Bend the dragon along its centre line: P (neck → tail, `samples` points), with the tangent T
    * pointing forward, N to its side and B up. Then place the head, beat the wings.
    */
+  /** Where the head looks, relative to the way the neck points: turned (+ to its left) and raised (radians). */
+  readonly look = { yaw: 0, pitch: 0 };
+
   pose(t: number, flap = 1, beat?: number, fold = 0): void {
     this.deform(this.body, this.bodyLay);
     this.deform(this.bits, this.bitsLay);
@@ -782,8 +785,13 @@ export class DragonModel {
     this.body.geometry.computeVertexNormals();
     // The cat build's rounded limbs shade smoothly.
     if (this.spec.build === 'cat') this.bits.geometry.computeVertexNormals();
-    this.head.position.copy(this.P[0]).addScaledVector(this.T[0], this.headAhead);
+    // As it turns its head, the head floats a little further forward, so its horns and frill never
+    // swing in against the neck.
+    this.head.position.copy(this.P[0]).addScaledVector(this.T[0], this.headAhead * (1 + 0.6 * Math.abs(this.look.yaw) + 0.3 * Math.abs(this.look.pitch)));
     this.head.lookAt(this.head.position.clone().add(this.T[0]));
+    // The head leads into turns and looks about; it floats, so it turns freely.
+    this.head.rotateY(this.look.yaw);
+    this.head.rotateX(-this.look.pitch);
     const b = beat ?? Math.sin(t * 2.2) * 0.55 * flap + 0.1;
     for (const { w, sx, at, beat: k } of this.wings) {
       const i = Math.round(at * (this.samples - 1)), r = girth(this.spec, at) * this.spec.girth;
@@ -811,6 +819,8 @@ export class DragonModel {
 }
 
 // ───── flight: the head follows a path; the body is where the head has been ─────
+
+const _dT = new THREE.Vector3();
 
 export interface Flight {
   /** Where the head is at phase φ (world). */
@@ -842,6 +852,27 @@ export function fly(dm: DragonModel, f: Flight, t: number): void {
     dm.P[i].addScaledVector(dm.N[i], Math.sin(2 * Math.PI * (s * 1.6 - t * 0.28)) * 2.2 * s * f.ripple);
     dm.B[i].crossVectors(dm.T[i], dm.N[i]).normalize();
   }
+  // Banking: every part of the body leans into the curve it is flying round, as a bird or a plane
+  // does — more in a tighter turn and at speed (tan bank = v²κ/g), never past about 43°.
+  let lead = 0;
+  for (let i = 0; i < n; i++) {
+    const i0 = Math.max(0, i - 4), i1 = Math.min(n - 1, i + 4);
+    _dT.subVectors(dm.T[i0], dm.T[i1]);
+    _dT.y = 0;
+    _dT.addScaledVector(dm.T[i], -_dT.dot(dm.T[i]));
+    const k = _dT.length() / Math.max(1e-3, (i1 - i0) * step);
+    const bank = Math.min(0.75, Math.atan((f.speed * f.speed * k) / 9.81));
+    if (bank < 0.01) continue;
+    _dT.normalize();
+    dm.B[i].multiplyScalar(Math.cos(bank)).addScaledVector(_dT, Math.sin(bank)).normalize();
+    dm.N[i].crossVectors(dm.B[i], dm.T[i]).normalize();
+    dm.B[i].crossVectors(dm.T[i], dm.N[i]).normalize();
+    if (i === 2) lead = Math.sign(_dT.dot(dm.N[i])) * Math.min(0.45, bank * 0.9);
+  }
+  // The head turns into the curve ahead of the body, and looks gently about as it flies.
+  const ph = dm.spec.id.length * 1.7;
+  dm.look.yaw = lead + Math.sin(t * 0.37 + ph) * 0.18;
+  dm.look.pitch = Math.sin(t * 0.53 + ph) * 0.08;
   dm.pose(t);
   if (dm.pearl) {
     f.path(phi0 + (dm.headAhead + dm.spec.girth * 4) / f.scale, dm.pearl.position);
@@ -855,14 +886,19 @@ export function fly(dm: DragonModel, f: Flight, t: number): void {
  * along −z, only the tail (behind `still`) swaying from side to side; wings beat by `beat`.
  * Forward is +z here, as for every vehicle.
  */
-export function perch(dm: DragonModel, t: number, y: number, z0: number, beat: number, still = 0.45, lift = 0, fold = 0): void {
+export function perch(dm: DragonModel, t: number, y: number, z0: number, beat: number, still = 0.45, lift = 0, fold = 0, steer = 0, climb = 0): void {
   const n = dm.samples, L = dm.spec.length, up = new THREE.Vector3(0, 1, 0);
   for (let i = 0; i < n; i++) {
     const s = i / (n - 1), k = Math.max(0, (s - still) / (1 - still));
-    // The neck arches up by `lift` towards the head.
-    const arch = lift * Math.max(0, 1 - s / 0.16) ** 2;
-    dm.P[i].set(Math.sin(t * 1.8 - s * 7) * k * k * L * 0.07, y + arch + Math.sin(t * 1.3 - s * 5) * k * L * 0.015, z0 - s * L);
+    // The neck arches up by `lift` towards the head, and bends into a turn (`steer`, + to its left);
+    // the tail swings the other way.
+    const arch = lift * Math.max(0, 1 - s / 0.16) ** 2, bend = Math.max(0, 1 - s / 0.22) ** 2;
+    dm.P[i].set(Math.sin(t * 1.8 - s * 7) * k * k * L * 0.07 + steer * L * 0.09 * bend - steer * k * k * L * 0.06,
+      y + arch + Math.sin(t * 1.3 - s * 5) * k * L * 0.015, z0 - s * L);
   }
+  // The head leads the turn and lifts to climb or dips to dive.
+  dm.look.yaw = steer * 0.35;
+  dm.look.pitch = climb * 0.3;
   for (let i = 0; i < n; i++) {
     const a = dm.P[Math.max(0, i - 1)], b = dm.P[Math.min(n - 1, i + 1)];
     dm.T[i].subVectors(a, b).normalize();

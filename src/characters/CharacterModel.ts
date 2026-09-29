@@ -295,6 +295,15 @@ export class CharacterModel {
 
   /** Whether wings or a jetpack are worn (indoors they are left at the door). */
   private backShown = true;
+  /** Her wings open on the Night Dragon whatever she wears (owner, 2026-09-29): hers alone, as always. */
+  private rideWings = false;
+
+  /** Show her wings while she rides the Night Dragon, even with an outfit that has none. */
+  setRideWings(on: boolean): void {
+    if (this.identity !== 'girl' || on === this.rideWings) return;
+    this.rideWings = on;
+    this.setOutfit(this.outfit);
+  }
 
   /** Leave the wings or jetpack off (rooms are too small for them). */
   hideBack(): void {
@@ -316,6 +325,7 @@ export class CharacterModel {
    */
   private get back(): 'wings' | 'jetpack' | undefined {
     const b = this.outfit.detail?.back;
+    if (this.rideWings && this.identity === 'girl') return 'wings';
     return (b === 'wings' && this.identity === 'girl') || (b === 'jetpack' && this.identity === 'boy') ? b : undefined;
   }
 

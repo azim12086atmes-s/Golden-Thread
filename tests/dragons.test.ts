@@ -124,6 +124,21 @@ describe('the dragon kit and every land\'s dragon', () => {
     }
   });
 
+  it('flying dragons bank into their turns and turn their heads into the curve; the ridden one bends its neck into a turn', () => {
+    const h = DRAGON_HOMES.find((x) => x.spec.id === 'red-wyvern')!, d = new DragonModel(h.spec);
+    fly(d, flightOf(h), 5);
+    // Round a circle, the body's up leans in toward the circle's centre.
+    const i = 40, c = homeCentre(h);
+    const inward = new THREE.Vector3(c.x - d.P[i].x, 0, c.z - d.P[i].z).normalize();
+    expect(d.B[i].dot(inward)).toBeGreaterThan(0.2);
+    expect(Math.abs(d.look.yaw)).toBeGreaterThan(0.05);
+    // Ridden: a steady turn to the left bends the neck to the left and turns the head that way.
+    const r = new Dragon(DRAGON_SCALE, true);
+    for (let k = 0; k < 40; k++) { r.root.rotation.set(0, k * 0.03, 0); r.update(1 / 60, 20, k / 60); }
+    expect(r.model.look.yaw).toBeGreaterThan(0.1);
+    expect(r.model.P[0].x).toBeGreaterThan(0.1);
+  });
+
   it('the Night Dragon folds its wings at rest and opens them to fly', () => {
     const d = new Dragon(DRAGON_SCALE, true);
     const span = () => { const b = new THREE.Box3().setFromObject(d.model.group); return b.max.x - b.min.x; };
