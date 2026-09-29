@@ -95,6 +95,18 @@ hulls, ornithopter wings, gear trains, envelope rigs. Traffic only — nothing c
 | Nusa Rinjani / Kaveri | bubble submersible in the bays |
 | Tents of Rimal | sand skiff with a sail on hover runners |
 
+## Built (2026-09-29, 5b03b73)
+- **Dragon kit** `creatures/dragonKit.ts` and every land's dragon in `creatures/Dragons.ts` (the
+  Jade lung rebuilt on it; `world/ChinaDragon.ts` retired). Tests: `tests/dragons.test.ts` —
+  allowed parts, the head clear of the body, flights clear over every building, the sand wyrm in
+  and out of the dunes, the sea serpent in deep water.
+- **Fantasy and mech kit** on the animal kit (`AnimalModel.ts` `Fantasy`, `enchant`): all the
+  creatures in §2 and §3, in their lands' fauna.
+- **Vehicles** `traffic/fantasyDesigns.ts`: all of §4 plus a VTOL shuttle.
+- Still to come from this plan: the festival dragon, the little meadow dragons and the rideable
+  Night Dragon rebuilt on the kit (they keep their own builds for now); a starlight whale; drone
+  fish; a cloud galleon.
+
 ## Order of work
 1. Dragon kit, then the Jade lung and the festival dragon rebuilt on it; then each land's dragon.
 2. Fantasy creature kit, then each land's creatures.

@@ -366,10 +366,12 @@ function buildHead(d: DragonSpec, head: THREE.Group): number {
 function buildWing(d: DragonSpec, sx: number): THREE.Group {
   const w = d.wings!, span = w.span / 2, grp = new THREE.Group();
   const bone = std(w.bone, { roughness: 0.4, metalness: w.panels ? 0.6 : 0.1 });
-  const mem = std(w.membrane, { side: THREE.DoubleSide, transparent: true, opacity: w.panels ? 1 : 0.92, roughness: 0.65, emissive: d.emissive ?? '#000000', emissiveIntensity: d.emissive ? 0.2 : 0 });
+  const mem = std(w.membrane, { side: THREE.DoubleSide, transparent: true, opacity: w.panels ? 1 : 0.82, depthWrite: !!w.panels, roughness: 0.65, emissive: d.emissive ?? '#000000', emissiveIntensity: d.emissive ? 0.2 : 0 });
   // The arm: shoulder → elbow → wrist; four fingers splay back from the wrist.
   const sh = new THREE.Vector3(0, 0, 0), el = new THREE.Vector3(sx * span * 0.35, span * 0.08, span * 0.12), wr = new THREE.Vector3(sx * span * 0.55, span * 0.12, span * 0.05);
-  const fingers = [0, 1, 2, 3].map((i) => new THREE.Vector3(sx * span * (1 - i * 0.11), span * (0.05 - i * 0.03), -span * (0.06 + i * 0.16)));
+  // Four fingers fanned like a bat's: the first straight out, the last swept back along the flank.
+  const splay: Array<[number, number]> = [[1.0, 0.02], [0.9, -0.22], [0.75, -0.42], [0.55, -0.58]];
+  const fingers = splay.map(([fx, fz], i) => new THREE.Vector3(sx * span * fx, span * (0.05 - i * 0.03), span * fz));
   const rod = (a: THREE.Vector3, b: THREE.Vector3, r: number) => {
     const dd = b.clone().sub(a), len = dd.length();
     const m = mesh(new THREE.CylinderGeometry(r * 0.6, r, len, 6), bone, 'wing');
@@ -377,23 +379,23 @@ function buildWing(d: DragonSpec, sx: number): THREE.Group {
     m.quaternion.setFromUnitVectors(new THREE.Vector3(0, 1, 0), dd.normalize());
     grp.add(m);
   };
-  const R = span * 0.022;
+  const R = span * 0.026;
   rod(sh, el, R); rod(el, wr, R * 0.8);
   // The thumb claw at the wrist.
   const thumb = mesh(new THREE.ConeGeometry(R * 0.7, span * 0.08, 5), bone, 'wing', wr.x, wr.y + span * 0.03, wr.z + span * 0.02);
   thumb.rotation.x = -0.6;
   grp.add(thumb);
-  for (const f of fingers) rod(wr, f, R * 0.45);
+  for (const f of fingers) { rod(wr, f, R * 0.55); const tip = mesh(new THREE.ConeGeometry(R * 0.4, span * 0.05, 5), bone, 'wing', f.x, f.y, f.z); tip.rotation.z = -sx * Math.PI / 2; grp.add(tip); }
   // The membrane: fans from the wrist between the fingers, and back to the body along the flank;
   // the trailing edge scallops in between each pair.
   const pos: number[] = [];
   const push = (...v: THREE.Vector3[]) => v.forEach((p) => pos.push(p.x, p.y, p.z));
-  const root = new THREE.Vector3(0, 0, -span * 0.5);
+  const root = new THREE.Vector3(0, 0, -span * 0.42);
   const lead = [el, wr];
   push(sh, el, root); push(el, wr, root);
   const pts = [fingers[0], fingers[1], fingers[2], fingers[3]];
   for (let i = 0; i < 3; i++) {
-    const a = pts[i], b = pts[i + 1], mid = a.clone().lerp(b, 0.5).lerp(wr, 0.36); // scallop in
+    const a = pts[i], b = pts[i + 1], mid = a.clone().lerp(b, 0.5).lerp(wr, 0.42); // scallop in
     push(wr, a, mid); push(wr, mid, b);
   }
   push(wr, fingers[3], root);

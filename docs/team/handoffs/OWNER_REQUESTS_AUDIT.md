@@ -21,6 +21,7 @@ checking. Detailed specifications for the open items are in `OWNER_REQUESTS_SPEC
 | Flying carpet carrying the children and pets beside you in every flight mode | ✅ |
 | Accurate cat, dog and unicorn forms; true structure for all animals | ✅ |
 | Animal heads float by a distance that suits their size | ✅ |
+| A kit for the Chinese dragon and the other dragons, more detailed; fantasy and sci-fi animals and vehicles (ideas, parts, kits, models) | ✅ dragon kit with 11 dragons, one per land (`creatures/`); 18 creatures of legend and machines; 16 fantasy and sci-fi vehicles — DRAGONS_FANTASY_SCIFI_PLAN.md. Left: festival, meadow and Night dragons onto the kit |
 | Each land's own animals from an animal kit (design method): New Yonder's stray and cyborg cats and dogs, the Sky Isles' star cats, primates, big cats, a Komodo dragon | ✅ 69 species on 24 body plans (19 beasts, 5 birds) with coat overlays (cyber, starry, stripes, mane, spines, spots, fairy) — `animals/detailed.ts`, `AnimalModel.ts`; every land's fauna list in `regions.ts` |
 | People's faces: jawline; headscarf wrapped under the chin; angular beard; flat back and top of head; hair | ✅ |
 | Fur on animals, feathered unicorn wings, Toothless-like scaled dragon | ✅ |
