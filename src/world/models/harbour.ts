@@ -196,8 +196,14 @@ export function buildHarbour(c: Ctx, pier: number, ground: (x: number, z: number
       if (c.s.id === 'indiasouth') for (const x of [-11.5, 11.5]) {
         const tip: [number, number, number] = [x, 7, 9];
         for (const dx of [-0.8, 0.8]) c.g.add(new THREE.CylinderGeometry(0.1, 0.14, 11, 5).translate(0, 5.5, 0), '#6b4a2a', M(x + dx, -0.3, 1, 0, 1, 1, 1, 0.85, 0));
-        c.g.add(new THREE.PlaneGeometry(6, 6, 6, 6), '#3a3a30', M(tip[0], tip[1] - 5, tip[2] + 1, 0, 1, 1, 1, -Math.PI / 2, 0));
-        for (const [dx, dz] of [[-3, -2], [3, -2], [-3, 4], [3, 4]]) cyl(c.g, 0.02, 0.02, 5, '#2a2a22', tip[0] + dx, tip[1] - 5, tip[2] + dz, 3);
+        // The net: a square of cords sagging into a shallow bowl, hung from the tip by four ropes.
+        const ny = tip[1] - 3.2, nz = tip[2] + 1;
+        for (let k = 0; k <= 6; k++) {
+          const u = -3 + k, sag = (v: number) => -0.6 * (1 - (v / 3) ** 2);
+          c.g.add(new THREE.BoxGeometry(6, 0.03, 0.03), '#8a7a5a', M(tip[0], ny + sag(u) * 0.5, nz + u));
+          c.g.add(new THREE.BoxGeometry(0.03, 0.03, 6), '#8a7a5a', M(tip[0] + u, ny + sag(u) * 0.5, nz));
+        }
+        for (const [dx, dz] of [[-3, -3], [3, -3], [-3, 3], [3, 3]]) cyl(c.g, 0.015, 0.015, 3.2, '#3a3226', tip[0] + dx * 0.5, ny, nz + dz * 0.5, 3);
         for (let k = 0; k < 4; k++) sphere(c.g, 0.3, '#8a847a', x + (k - 1.5) * 0.3, 1.5 + k * 0.4, -1.5, 6);
       }
       break;
@@ -255,10 +261,10 @@ export function buildHarbour(c: Ctx, pier: number, ground: (x: number, z: number
       const stone = c.s.id === 'indianorth' ? '#e8a6a0' : '#e8dcc8', dome = c.s.id === 'indianorth' ? '#f2d4c8' : '#f4f1e8';
       steps(c, 8, 7, stone);
       steps(c, -8, 7, stone);
-      chhatri(c, -8, 0, -4, 1, stone, dome);
-      chhatri(c, 8, ground(8, -4), -4, 1, stone, dome);
+      chhatri(c, -8, ground(-8, -4.5), -4.5, 1.5, stone, dome);
+      chhatri(c, 8, ground(8, -4.5), -4.5, 1.5, stone, dome);
       for (let i = 0; i < 12; i++) sphere(c.glow, 0.08, '#ffb84a', (i % 2 ? 1 : -1) * (5.5 + (i % 6)), -0.32 * (1 + (i % 3)) + 0.05, 1.2 + (i % 3) * 0.8, 5);
-      for (let i = 0; i < 10; i++) sphere(c.g, 0.12, i % 2 ? '#ff9a1a' : '#ffd21a', -9.4 + i * 0.3, 2.4, -3.1, 5);
+      for (let i = 0; i < 10; i++) sphere(c.g, 0.14, i % 2 ? '#ff9a1a' : '#ffd21a', -10.1 + i * 0.47, ground(-8, -4.5) + 3.6, -3.1, 5);
       break;
     }
     case 'lake': {
