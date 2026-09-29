@@ -129,3 +129,25 @@ describe('favours in town', () => {
     expect(deserialize(JSON.stringify(old))!.folk).toEqual({ day: 0, asked: [], helped: [] });
   });
 });
+
+describe('crossing the avenues', () => {
+  it('people wait on the kerb and step onto the road only while the avenue’s lights are red', async () => {
+    const { step } = await import('../src/npc/Townsfolk');
+    const { lights, ZEBRA_KERB } = await import('../src/traffic/schedule');
+    const walkers = townPeople('london', []).filter((w) => w.path.kind === 'cross');
+    expect(walkers.length).toBeGreaterThanOrEqual(8);
+    let crossed = 0;
+    for (let t = 0; t < 180; t += 0.1) {
+      for (const w of walkers) {
+        const before = w.path.kind === 'cross' ? w.path.side : 0;
+        step(w, 0.1, t, 0, 0, false);
+        const p = w.path as { axis: 'x' | 'z'; side: number };
+        const lat = p.axis === 'z' ? w.x : w.z;
+        // On the carriageway (the kerbs are at ±ZEBRA_KERB) only while the avenue is held at red.
+        if (Math.abs(lat) < ZEBRA_KERB - 0.5) expect(lights(t).avenue, `t=${t.toFixed(1)}`).toBe('red');
+        if (p.side !== before) crossed++;
+      }
+    }
+    expect(crossed).toBeGreaterThan(walkers.length);
+  });
+});

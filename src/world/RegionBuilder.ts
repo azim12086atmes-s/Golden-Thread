@@ -30,6 +30,7 @@ import type { Lamp } from './lamplight';
 import { chimneyMark, chimneyRollback, collectChimneys, takeChimneys } from './chimneys';
 import { GRID_TOWNS, LANE_W, laneDistance, laneLots, townLanes } from './townLayout';
 import { stopShelters } from '../travel/bus';
+import { ZEBRA_D } from '../traffic/schedule';
 import { LOCALES } from './locale';
 import { CIVIC_R, buildMarket, buildWorship, civicColliders, civicOf } from './neighbourhood';
 import { SQUARE_R, buildSebil, buildSquare, sebilsOf, squaresOf, type Collide } from './landWaters';
@@ -235,6 +236,13 @@ export function buildRegion(spec: RegionSpec, solid: THREE.Material, glowMat: TH
     const ring: Array<[number, number]> = [];
     for (let a = 0; a <= Math.PI * 2 + 1e-6; a += 0.02) ring.push([Math.cos(a) * RING, Math.sin(a) * RING]);
     drapeStrip(g, ring, 9, spec.road, H);
+    // Zebra crossings on each avenue just inside the ring road's stop line, where people cross
+    // while the lights hold the avenue's traffic (Townsfolk 'cross').
+    for (const sg of [-1, 1]) for (let k = -6; k <= 6; k++) {
+      const lat = k * 1.1;
+      box(g, 0.55, 0.03, 3, '#f4f4f0', lat, H(lat, sg * ZEBRA_D) + 0.08, sg * ZEBRA_D);
+      box(g, 3, 0.03, 0.55, '#f4f4f0', sg * ZEBRA_D, H(sg * ZEBRA_D, lat) + 0.08, lat);
+    }
     drapeDisc(g, 50, spec.road, H);
     // Patterned paths in the land's own colours: a mosaic runner down each avenue, a tiled
     // border along the ring road, and a star mosaic in the plaza.

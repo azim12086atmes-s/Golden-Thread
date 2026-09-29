@@ -59,6 +59,8 @@ export function lights(t: number): { avenue: Light; ring: Light } {
 
 /** The ring road's radius, and where vehicles wait before a crossing (m from its middle). */
 export const RING_R = 140, STOP_BACK = 9.5;
+/** The zebra crossings: this far out along each avenue (just inside the ring road's stop line), kerb to kerb. */
+export const ZEBRA_D = 132.5, ZEBRA_KERB = 9;
 
 // ───── highways between lands ─────
 

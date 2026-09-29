@@ -10,6 +10,7 @@ import { regionCenter, type RegionId } from '../world/regions';
 import { surfaceAt } from '../world/terrain';
 import { GeoBuilder, box } from '../world/kit';
 import { CrowdMeshes, crowdColours } from './Crowd';
+import { LIGHT_CYCLE, ZEBRA_D, ZEBRA_KERB, lights } from '../traffic/schedule';
 import { CITY_PEOPLE, folkOf } from './folk';
 
 /**
@@ -54,7 +55,12 @@ type Path =
   | { kind: 'stall'; x: number; z: number; face: number; working: boolean }
 
   /** Strolling round the central plaza. */
-  | { kind: 'plaza'; r: number; a: number; dir: number };
+  | { kind: 'plaza'; r: number; a: number; dir: number }
+  /**
+   * Crossing an avenue at the zebra by its ring-road junction (`at` m out along it, `sgn` which
+   * end): waiting on the kerb, then crossing while the avenue's lights hold its traffic at red.
+   */
+  | { kind: 'cross'; axis: 'x' | 'z'; at: number; side: number; u: number; going: boolean; off: number };
 
 /** One person in town. `model` is set only while they are near enough to be a full figure. */
 export interface Walker {
@@ -86,7 +92,7 @@ export const FULL_RANGE = 34;
 export const TOWN_VIEW = 430;
 
 /** How a town's people are spread over its streets (counts; the rest stroll the avenues). */
-export const ROLES = { stall: 6, shopper: 4, pair: 12, circle: CHAT_GROUPS * 3, ring: 60, plaza: 60 } as const;
+export const ROLES = { stall: 6, shopper: 4, pair: 12, circle: CHAT_GROUPS * 3, ring: 60, plaza: 60, cross: 12 } as const;
 
 /**
  * A market street in every town: stalls line both sides of the south avenue, just beyond the
@@ -333,6 +339,11 @@ export function townPeople(land: RegionId, spots: Array<{ x: number; z: number }
   }
   for (let k = 0; k < R.ring; k++) add({ kind: 'ring', a: rng.range(0, Math.PI * 2), dir: rng.chance(0.5) ? 1 : -1, lane: rng.range(-4.5, 4.5) });
   for (let k = 0; k < R.plaza; k++) add({ kind: 'plaza', r: rng.range(30, 47), a: rng.range(0, Math.PI * 2), dir: rng.chance(0.5) ? 1 : -1 });
+  // A few at each of the four zebras, some on one kerb, some on the other.
+  for (let k = 0; k < R.cross; k++) {
+    const end = k % 4;
+    add({ kind: 'cross', axis: end % 2 ? 'x' : 'z', at: (end < 2 ? 1 : -1) * ZEBRA_D, side: k % 8 < 4 ? 1 : -1, u: 0, going: false, off: rng.range(-1.2, 1.2) });
+  }
   // Everyone else walks the avenues on their own lanes, on both sides.
   while (i < PER_TOWN) {
     const lane = (rng.chance(0.5) ? 1 : -1) * rng.range(1.4, 6);
@@ -343,7 +354,7 @@ export function townPeople(land: RegionId, spots: Array<{ x: number; z: number }
 }
 
 /** Walk one person along their path (local to the town centre cx, cz). */
-function step(w: Walker, dt: number, t: number, cx: number, cz: number, ground = true): void {
+export function step(w: Walker, dt: number, t: number, cx: number, cz: number, ground = true): void {
   const p = w.path;
   let x: number, z: number, heading: number, moving = true;
   if (t < w.faceUntil) {
@@ -364,6 +375,17 @@ function step(w: Walker, dt: number, t: number, cx: number, cz: number, ground =
     x = Math.cos(p.a) * rad;
     z = Math.sin(p.a) * rad;
     heading = Math.atan2(-Math.sin(p.a) * p.dir, Math.cos(p.a) * p.dir);
+  } else if (p.kind === 'cross') {
+    // Wait on the kerb until the avenue's traffic is held at red with time enough to cross, then go.
+    const cyc = ((t % LIGHT_CYCLE) + LIGHT_CYCLE) % LIGHT_CYCLE, left = LIGHT_CYCLE - cyc;
+    if (!p.going && lights(t).avenue === 'red' && cyc >= 14.5 && left > (2 * ZEBRA_KERB) / w.speed) p.going = true;
+    if (p.going) {
+      p.u += w.speed * dt;
+      if (p.u >= 2 * ZEBRA_KERB) { p.u = 0; p.side = -p.side; p.going = false; }
+    }
+    const lat = p.side * (ZEBRA_KERB - p.u), along = p.at + p.off;
+    if (p.axis === 'z') { x = lat; z = along; heading = p.side > 0 ? -Math.PI / 2 : Math.PI / 2; } else { x = along; z = lat; heading = p.side > 0 ? Math.PI : 0; }
+    moving = p.going;
   } else if (p.kind === 'plaza') {
     p.a += (p.dir * w.speed * 0.8 * dt) / p.r;
     x = Math.cos(p.a) * p.r;
