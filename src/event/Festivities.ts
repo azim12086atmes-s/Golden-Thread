@@ -7,6 +7,8 @@ import { auroraMaterial, rainbowGeometry, rainbowMaterial } from '../world/Sky';
 import { CASTLE, guestSpot, guests } from './site';
 import { Dragon } from './Dragon';
 import { wardrobeFor } from '../npc/Townsfolk';
+import { CrowdMeshes, crowdColours } from '../npc/Crowd';
+import type { Outfit } from '../characters/modesty';
 import { REGIONS } from '../world/regions';
 
 /**
@@ -66,6 +68,16 @@ function swarm(n: number, size: number, tex: THREE.Texture, colour: (i: number, 
 
 /** Party dancers in the ring (beyond the guests lining the aisle). */
 export const DANCERS = 26;
+/** How many of the party are full, animated figures at once (the nearest). */
+export const PARTY_FULL = 12;
+
+interface Party {
+  outfit: Outfit; skin: string; scale: number; ph: number;
+  model: CharacterModel | null;
+  /** Guests stand at (x, z) facing `face`; dancers go round at angle `a`, radius `r`. */
+  guest: boolean; x: number; z: number; face: number; heading: number; a: number; r: number; y: number; visible: boolean;
+}
+const PARTY_HAIR = ['#2a1f1a', '#4a3226', '#6b4a2a', '#1f1a1a', '#8a6a4a', '#3a2a1f'];
 
 export class Festivities {
   readonly group = new THREE.Group();
@@ -85,9 +97,15 @@ export class Festivities {
   readonly dragon = new Dragon();
   /** The air of every land, each in its own slice round the courtyard. */
   readonly air = new PartyAir();
-  private crowd: Array<{ model: CharacterModel; x: number; z: number; face: number; ph: number }> = [];
+  /**
+   * The guests lining the aisle and the dancers in the ring. Everyone is drawn in one instanced
+   * crowd (npc/Crowd.ts); only the people nearest the travellers get full, animated figures,
+   * built when first needed and swapped as the travellers move (as the towns' crowds do).
+   */
+  private people: Party[] = [];
   private crowdOn = false;
-  private dancers: Array<{ model: CharacterModel; a: number; r: number; ph: number }> = [];
+  private inst: CrowdMeshes | null = null;
+  private lodClock = 0;
   private tmp = new THREE.Matrix4();
   /** Warm light over the courtyard, and coloured wash lights among the flowers. */
   private lights: THREE.PointLight[] = [];
@@ -213,11 +231,8 @@ export class Festivities {
     const list = guests();
     list.forEach((p, i) => {
       const s = guestSpot(i, list.length);
-      const model = new CharacterModel(OUTFITS[p.outfit], p.skin, p.who === 'girl' ? 0.95 : 1.02);
-      model.root.position.set(s.x, this.y, s.z);
-      model.root.rotation.y = s.face;
-      this.group.add(model.root);
-      this.crowd.push({ model, x: s.x, z: s.z, face: s.face, ph: i * 0.7 });
+      this.people.push({ outfit: OUTFITS[p.outfit], skin: p.skin, scale: p.who === 'girl' ? 0.95 : 1.02, ph: i * 0.7, model: null,
+        guest: true, x: s.x, z: s.z, face: s.face, heading: s.face, a: 0, r: 0, y: this.y, visible: true });
     });
     // More people from every land, dancing in a slow ring round the courtyard.
     const lands = REGIONS.filter((r) => r.id !== 'skyisles');
@@ -225,15 +240,61 @@ export class Festivities {
       const who = i % 2 ? 'boy' : 'girl';
       const land = lands[(i * 7) % lands.length].id;
       const pool = wardrobeFor(land, who);
-      const model = new CharacterModel(pool[(i * 5) % pool.length], ['#f1c9a5', '#e0ac85', '#c68b62', '#a8704a', '#8a5a3a', '#6b4630'][i % 6], who === 'girl' ? 0.94 : 1.02);
-      this.group.add(model.root);
-      this.dancers.push({ model, a: (i / DANCERS) * Math.PI * 2, r: CASTLE.venue.r - 7 + (i % 2) * 1.6, ph: i * 0.9 });
+      this.people.push({ outfit: pool[(i * 5) % pool.length], skin: ['#f1c9a5', '#e0ac85', '#c68b62', '#a8704a', '#8a5a3a', '#6b4630'][i % 6], scale: who === 'girl' ? 0.94 : 1.02, ph: i * 0.9, model: null,
+        guest: false, x: 0, z: 0, face: 0, heading: 0, a: (i / DANCERS) * Math.PI * 2, r: CASTLE.venue.r - 7 + (i % 2) * 1.6, y: this.y, visible: true });
     }
+    this.inst = new CrowdMeshes(this.group, this.people.length, this.centre.clone(), CASTLE.venue.r + 20);
+    this.people.forEach((q, i) => this.inst!.paint(i, crowdColours(q.outfit, q.skin, PARTY_HAIR[i % PARTY_HAIR.length])));
+    this.inst.finishPaint();
+  }
+
+  /**
+   * Guests cheer (little hops, arms up now and then, turning to face the couple); dancers turn
+   * slowly round the courtyard, swaying, a step apart. The nearest are full figures, the rest the
+   * instanced crowd.
+   */
+  private updatePeople(dt: number, t: number, focus: THREE.Vector3): void {
+    if (!this.inst) return;
+    for (const c of this.people) {
+      if (c.guest) {
+        c.y = this.y + Math.max(0, Math.sin(t * 5 + c.ph)) * 0.18;
+        c.heading += Math.atan2(Math.sin(c.face - c.heading), Math.cos(c.face - c.heading)) * Math.min(1, dt * 3);
+      } else {
+        c.a += dt * 0.12;
+        c.x = this.centre.x + Math.cos(c.a) * c.r; c.z = this.centre.z + Math.sin(c.a) * c.r;
+        c.visible = !(Math.abs(c.x - CASTLE.aisle.x) < 6.8 && c.z > this.centre.z); // off the aisle and the guests lining it
+        c.y = this.y + Math.max(0, Math.sin(t * 4 + c.ph)) * 0.12;
+        c.heading = -c.a + Math.sin(t * 2 + c.ph) * 0.6;
+      }
+    }
+    // Every quarter second, the nearest people become full figures (built once, then reused).
+    this.lodClock -= dt;
+    if (this.lodClock <= 0) {
+      this.lodClock = 0.25;
+      const near = new Set(this.people.filter((c) => c.visible).sort((a, b) => Math.hypot(a.x - focus.x, a.z - focus.z) - Math.hypot(b.x - focus.x, b.z - focus.z)).slice(0, PARTY_FULL));
+      for (const c of this.people) {
+        if (near.has(c) && !c.model) { c.model = new CharacterModel(c.outfit, c.skin, c.scale); this.group.add(c.model.root); }
+        if (c.model) c.model.root.visible = near.has(c);
+      }
+    }
+    this.people.forEach((c, i) => {
+      const full = c.model?.root.visible;
+      if (full && c.model) {
+        this.inst!.hide(i);
+        c.model.root.position.set(c.x, c.y, c.z);
+        c.model.root.rotation.y = c.heading;
+        c.model.update(dt, c.guest
+          ? { speed: 0, airborne: Math.sin(t * 1.7 + c.ph) > 0.2, riding: false, t: t + c.ph }
+          : { speed: 0.9, airborne: Math.sin(t * 1.3 + c.ph) > 0.6, riding: false, t: t + c.ph });
+      } else if (!c.visible) this.inst!.hide(i);
+      else this.inst!.place(i, c.x, c.y, c.z, c.heading, c.guest ? 0 : Math.sin(t * 2 + c.ph) * 0.05, c.scale);
+    });
+    this.inst.commit();
   }
 
   /** Face the crowd towards a point (the couple). */
   cheerAt(p: THREE.Vector3 | null): void {
-    for (const c of this.crowd) if (p) c.face = Math.atan2(p.x - c.x, p.z - c.z);
+    if (p) for (const c of this.people) if (c.guest) c.face = Math.atan2(p.x - c.x, p.z - c.z);
   }
 
   update(dt: number, t: number, night: number, focus: THREE.Vector3): void {
@@ -322,23 +383,6 @@ export class Festivities {
       u.m.update(dt, 1.2, t);
     }
     this.dragon.fly(dt, t, this.centre, 26);
-    // Guests cheer: little hops, arms up now and then.
-    for (const c of this.crowd) {
-      const hop = Math.max(0, Math.sin(t * 5 + c.ph));
-      c.model.root.position.y = this.y + hop * 0.18;
-      c.model.root.rotation.y += Math.atan2(Math.sin(c.face - c.model.root.rotation.y), Math.cos(c.face - c.model.root.rotation.y)) * Math.min(1, dt * 3);
-      c.model.update(dt, { speed: 0, airborne: Math.sin(t * 1.7 + c.ph) > 0.2, riding: false, t: t + c.ph });
-    }
-    // Dancers turn slowly round the courtyard, swaying, always a step apart from each other.
-    for (const d of this.dancers) {
-      d.a += dt * 0.12;
-      const x = this.centre.x + Math.cos(d.a) * d.r, z = this.centre.z + Math.sin(d.a) * d.r;
-      const aisle = Math.abs(x - CASTLE.aisle.x) < 6.8 && z > this.centre.z; // the aisle and the guests lining it
-      d.model.root.visible = !aisle;
-      d.model.root.position.set(x, this.y + Math.max(0, Math.sin(t * 4 + d.ph)) * 0.12, z);
-      d.model.root.rotation.y = -d.a + Math.sin(t * 2 + d.ph) * 0.6;
-      d.model.update(dt, { speed: 0.9, airborne: Math.sin(t * 1.3 + d.ph) > 0.6, riding: false, t: t + d.ph });
-    }
-    void focus;
+    this.updatePeople(dt, t, focus);
   }
 }

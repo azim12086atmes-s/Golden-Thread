@@ -120,7 +120,7 @@ export class CrowdMeshes {
   private s = new THREE.Vector3();
   private zero = new THREE.Matrix4().makeScale(0, 0, 0);
 
-  constructor(private scene: THREE.Scene, readonly count: number, centre: THREE.Vector3, radius: number) {
+  constructor(private scene: THREE.Object3D, readonly count: number, centre: THREE.Vector3, radius: number) {
     this.meshes = CROWD_PARTS.map((k) => {
       const im = new THREE.InstancedMesh(CROWD_GEOS[k], MAT, count);
       im.castShadow = false;
