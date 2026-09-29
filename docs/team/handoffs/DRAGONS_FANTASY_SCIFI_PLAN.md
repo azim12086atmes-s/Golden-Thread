@@ -42,7 +42,7 @@ One kit, four body plans, parts swapped per land.
 | Jade Terraces | lung (the great dragon) rebuilt on the kit, + festival dragon | red and gold, pearl, flame tail |
 | Sakura Hollow | ryū — three claws, slender, over the pagoda lake | blue-green, white mane, cloud wisps |
 | Hanok Village | yong — with the wish pearl, over the palace | azure and white, jade pearl |
-| Nusa Rinjani | sea naga surfacing in the bay | teal, gold crown fins |
+| Kaveri Coast | sea serpent surfacing in the bay (Nusa Rinjani is inland) | teal, gold crown fins |
 | Aurora Huts | frost wyrm | ice-white, crystal horns, aurora ribbon trail at night |
 | Alpenrose | mountain drake perched on a peak | slate and moss, stone crest |
 | Old London | heraldic red wyvern (on the flags, and one circling the tower) | red, gold spade tail |

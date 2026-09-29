@@ -8,7 +8,7 @@ const fs = require('fs');
   const logs = [];
   page.on('console', (m) => { if (m.type() === 'error' || m.type() === 'warning') logs.push(m.type() + ': ' + m.text()); });
   page.on('pageerror', (e) => logs.push('pageerror: ' + e.message));
-  await page.goto('http://127.0.0.1:' + (process.env.PORT || 5191) + '/', { waitUntil: 'load' });
+  await page.goto('http://127.0.0.1:' + (process.env.PORT || 5191) + '/', { waitUntil: 'load', timeout: 180000 });
   await page.waitForFunction(() => window.dev, null, { timeout: 90000 });
   await page.waitForTimeout(4000);
   await page.waitForFunction(() => window.dev, null, { timeout: 90000 });

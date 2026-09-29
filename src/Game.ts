@@ -56,8 +56,7 @@ import { tickBusinesses } from './economy/business';
 import { tickInventions } from './economy/inventions';
 import { befriend, befriendMet } from './social/friends';
 import { tickHomes } from './economy/storage';
-import { ChinaDragon } from './world/ChinaDragon';
-const REGION_CENTRE_CHINA = (() => { const c = regionCenter(REGION_BY_ID.china); return new THREE.Vector3(c.x, 0, c.z); })();
+import { Dragons } from './creatures/Dragons';
 import { keepInTouch, tickLearning } from './charity/upskill';
 import { carryNews } from './economy/economy';
 import { expireErrands } from './npc/folk';
@@ -196,7 +195,7 @@ export class Game {
   private raycaster = new THREE.Raycaster();
   /** A soft light around each traveller (hers blush, his warm gold), brighter at night. */
   /** The great dragon circling the temple of the Jade Terraces. */
-  private chinaDragon!: ChinaDragon;
+  private dragons!: Dragons;
   private auras = [new THREE.PointLight('#ffc4dd', 0, 7, 2), new THREE.PointLight('#ffdca0', 0, 7, 2)];
   private dress = { blend: 0, yaw: 0, savedYaw: 0, from: new THREE.Vector3(), goal: new THREE.Vector3(), look: new THREE.Vector3() };
 
@@ -232,7 +231,7 @@ export class Game {
     }
     this.scene.fog = this.sky.fog;
     this.scene.add(...this.auras);
-    this.chinaDragon = new ChinaDragon(this.scene);
+    this.dragons = new Dragons(this.scene);
     this.scene.add(this.atmos.group);
     this.scene.add(this.world.group, this.sky.group, this.sky.sunLight, this.sky.sunLight.target, this.sky.hemi, this.ambience.points, this.regionFx.points, this.skyLanterns.mesh, this.skyFx.group, this.weather.group, this.traffic.group);
     this.festivalAir = new FestivalAir(this.world.solid, this.world.glow);
@@ -472,7 +471,7 @@ export class Game {
     this.sky.moonHidden = this.skyFx.hideMoon;
     this.npcs.update(dt, this.t, this.trav.gPos);
     this.needFolk.update(dt, this.t, this.camera.position);
-    this.chinaDragon.update(this.t, this.world.isLoaded('china') && this.camera.position.distanceTo(REGION_CENTRE_CHINA) < 1100);
+    this.dragons.update(this.t, this.camera.position, (land) => this.world.isLoaded(land));
     this.plotsView.update(dt, this.t, this.sky.night, this.housing.plotAt(this.trav.gPos.x, this.trav.gPos.z)?.id ?? null, this.camera.position);
     this.townsfolk.update(dt, this.t, this.trav.gPos, this.st.errands);
     this.dressing.update(this.sky.night);

@@ -19,7 +19,11 @@ export type SpeciesId =
   | 'puffin' | 'magpie' | 'ibis' | 'hornbill' | 'parakeet' | 'cormorant' | 'raven'
   // The kit, part two: primates, a great lizard, big cats, and the rest of each land's own.
   | 'monkey' | 'orangutan' | 'komodo' | 'goldenmonkey' | 'macaque' | 'langur' | 'tiger' | 'lion'
-  | 'hedgehog' | 'fawn' | 'fairyfox' | 'cardinal' | 'deserthare' | 'kankrej';
+  | 'hedgehog' | 'fawn' | 'fairyfox' | 'cardinal' | 'deserthare' | 'kankrej'
+  // Creatures of legend and machines (the fantasy and mech kits).
+  | 'qilin' | 'haetae' | 'kitsune' | 'griffin' | 'pegasus' | 'thunderbird' | 'simurgh' | 'lotusswan'
+  | 'moonrabbit' | 'fairydeer' | 'crystalstag' | 'aurorafox'
+  | 'robopigeon' | 'mechahorse' | 'hoverhound' | 'clockbird' | 'clockraven' | 'brasshorse';
 
 interface Species {
   name: string;
@@ -51,9 +55,40 @@ interface Species {
   overlay?: Overlay;
   /** Built without the form's horns (a fawn on the deer's plan). */
   noHorns?: boolean;
+  /** The fantasy and machine kit's parts laid over the body (creatures of legend, clockwork, mechs). */
+  fantasy?: Fantasy;
 }
 
 type Overlay = 'cyber' | 'starry' | 'stripes' | 'mane' | 'spines' | 'spots' | 'fairy';
+
+/**
+ * The fantasy and sci-fi creature kit (DRAGONS_FANTASY_SCIFI_PLAN.md): parts for creatures of
+ * legend and of machines, laid over any body plan.
+ */
+export interface Fantasy {
+  /** Feathered wings from the shoulders (a pegasus's, a griffin's), and the colour of their tips. */
+  wings?: { color: string; tip: string; size?: number };
+  /** Brush tails fanned out behind (a kitsune's nine), glowing at the tips. */
+  tails?: number;
+  /** A single spiralled horn on the brow. */
+  horn?: string;
+  /** A mane of glowing flame down the neck and back (the qilin's). */
+  flame?: string;
+  /** Antlers of glowing crystal. */
+  crystal?: string;
+  /** An eagle's hooked beak on the floating head, with a feathered crest (the griffin's). */
+  beak?: string;
+  /** Glowing tips: on the ears, the tail and the feet. */
+  glowTips?: string;
+  /** Its coat: scales or feathers instead of fur. */
+  skin?: Skin;
+  /** Armour plates, lit joint rings and a lit crest strip (New Yonder's mechs). */
+  mech?: string;
+  /** Clockwork: brass gears on the flanks, rivets, a wind-up key on the back. */
+  brass?: boolean;
+  /** Glowing hover pads under the feet. */
+  hover?: string;
+}
 
 const D = SPECIES_BASE();
 /** A new species on an existing body plan: the plan's dimensions, its own look. */
@@ -149,6 +184,26 @@ export const SPECIES: Record<SpeciesId, Species> = {
   cardinal: on('dove', { name: 'Cardinal', color: '#d8262a', accent: '#3a1a1a', diet: 'rice', scale: 0.9 }),
   deserthare: on('rabbit', { name: 'Desert Hare', color: '#d8b88a', accent: '#f4e8d4', diet: 'dates', scale: 1.25 }),
   kankrej: on('cow', { name: 'Kankrej Cow', color: '#cfcac2', accent: '#3a3230', diet: 'marigold', scale: 1.05, produce: 'milk' }),
+  // ── Creatures of legend (the fantasy kit), one or two to a land ──
+  qilin: on('deer', { name: 'Qilin', color: '#d8a040', accent: '#2fae6a', diet: 'bamboo', scale: 1.3, noHorns: true, fantasy: { flame: '#ff8a3a', horn: '#fff4c0', skin: 'scale', glowTips: '#ffd27a' } }),
+  haetae: on('cat', { name: 'Haetae', color: '#8ab8a8', accent: '#e8e0c8', diet: 'ginseng', scale: 2.6, overlay: 'mane', fantasy: { horn: '#f2c24a', skin: 'scale' } }),
+  kitsune: on('fox', { name: 'Kitsune', color: '#fbf6ee', accent: '#ffc890', diet: 'rice', fantasy: { tails: 9, glowTips: '#ffd8a0' } }),
+  griffin: on('cat', { name: 'Griffin', color: '#c8964a', accent: '#f4f0ea', diet: 'olive', scale: 2.8, fantasy: { wings: { color: '#8a5a2a', tip: '#f4f0ea', size: 2.4 }, beak: '#f2c24a' } }),
+  pegasus: on('horse', { name: 'Pegasus', color: '#ffffff', accent: '#e8e8f0', diet: 'feed', fantasy: { wings: { color: '#ffffff', tip: '#dfe8ff', size: 1.5 } } }),
+  thunderbird: on('dove', { name: 'Thunderbird', color: '#2a3a6a', accent: '#f2e14e', diet: 'rice', scale: 5, fantasy: { glowTips: '#fff08a' } }),
+  simurgh: on('peacock', { name: 'Simurgh', color: '#2a8a8a', accent: '#e8a040', diet: 'rice', scale: 2.2, fantasy: { glowTips: '#ffd27a' } }),
+  lotusswan: on('duck', { name: 'Lotus Swan', color: '#fffaf4', accent: '#ff9ac8', diet: 'rice', scale: 2.2, fantasy: { glowTips: '#ffb8d8' } }),
+  moonrabbit: on('rabbit', { name: 'Moon Rabbit', color: '#f4f4ff', accent: '#fff4c0', diet: 'wildflower', overlay: 'starry', fantasy: { glowTips: '#fff4c0' } }),
+  fairydeer: on('deer', { name: 'Fairy Deer', color: '#f4e8ff', accent: '#fff4c0', diet: 'wildflower', noHorns: true, fantasy: { crystal: '#ffd6f0', glowTips: '#ffd6f0' } }),
+  crystalstag: on('reindeer', { name: 'Crystal Stag', color: '#e8e0ff', accent: '#bfe8ff', diet: 'stardust', scale: 1.3, noHorns: true, overlay: 'starry', fantasy: { crystal: '#bfe8ff' } }),
+  aurorafox: on('fox', { name: 'Aurora Fox', color: '#e8f4fa', accent: '#8affc8', diet: 'dates', fantasy: { tails: 3, glowTips: '#8affc8' } }),
+  // ── Machines (the mech kit): New Yonder's mechs, Firenzia's and London's clockwork ──
+  robopigeon: on('dove', { name: 'Robo-pigeon', color: '#c8ccd4', accent: '#3a3e4a', diet: 'bread', overlay: 'cyber', fantasy: { mech: '#5af0ff' } }),
+  mechahorse: on('horse', { name: 'Mecha-horse', color: '#e8ecf2', accent: '#3a3e4a', diet: 'feed', overlay: 'cyber', fantasy: { mech: '#5af0ff' } }),
+  hoverhound: on('dog', { name: 'Hover-hound', color: '#3a3e4a', accent: '#c8ccd4', diet: 'bread', overlay: 'cyber', fantasy: { mech: '#ff5ad8', hover: '#ff5ad8' } }),
+  clockbird: on('dove', { name: 'Clockwork Songbird', color: '#c8963a', accent: '#6a4a2a', diet: 'rice', fantasy: { brass: true } }),
+  clockraven: on('dove', { name: 'Clockwork Raven', color: '#5a4a32', accent: '#c8963a', diet: 'bread', scale: 1.4, fantasy: { brass: true } }),
+  brasshorse: on('horse', { name: 'Brass Automaton Horse', color: '#c8963a', accent: '#6a4a2a', diet: 'feed', fantasy: { brass: true } }),
 } as Record<SpeciesId, Species>;
 
 const cache = new Map<string, THREE.Material>();
@@ -296,6 +351,150 @@ function dress(kind: Overlay, body: THREE.Group, head: THREE.Group, legs: THREE.
   }
 }
 
+/** Feathered wings from the shoulders, three rows of feathers each (as the unicorn's), sized to the body. */
+function featherWings(body: THREE.Group, d: { L: number; H: number; W: number; bodyY: number }, col: string, tip: string, size = 1): THREE.Group[] {
+  const k = (d.L / 1.6) * size, out: THREE.Group[] = [];
+  for (const sd of [-1, 1]) {
+    const w = new THREE.Group();
+    const rows: Array<[number, number, number, number, number]> = [[9, 0.62, 0.075, 0.2, 0], [8, 0.4, 0.05, 0.17, 0.025], [7, 0.22, 0.02, 0.14, 0.05]];
+    rows.forEach(([n, len0, step, wid, dy], r) => {
+      for (let i = 0; i < n; i++) {
+        const len = (len0 + i * step) * k, a = sd * (0.15 + i * (1.15 / n));
+        const f = part(featherGeometry(len, wid * k), r === 0 && i > n - 4 ? tip : col, 'wing');
+        f.rotation.y = a;
+        f.position.y = (dy - i * 0.012) * k;
+        w.add(f);
+      }
+    });
+    w.position.set(sd * d.W * 0.42, d.bodyY + d.H * 0.32, d.L * 0.18);
+    w.rotation.set(0.35, sd * 1.35, sd * 0.5);
+    body.add(w);
+    out.push(w);
+  }
+  return out;
+}
+
+/**
+ * The fantasy and mech kit's parts laid over a built body. Returns any wings (they beat in update).
+ * Everything keeps the rules: the head's parts go on the floating head and stay on it; nothing
+ * makes a face — a beak is the bird's head shape, like a muzzle; the mechs' light runs along the
+ * crest, never across where eyes would be.
+ */
+function enchant(f: Fantasy, body: THREE.Group, head: THREE.Group, legs: THREE.Group[], tail: THREE.Object3D | undefined, d: { L: number; H: number; W: number; bodyY: number; headR: number }, c: string, accent: string, folded: THREE.Group[] = []): THREE.Group[] {
+  const { L, H, W, bodyY, headR } = d;
+  const wings = f.wings ? featherWings(body, d, f.wings.color, f.wings.tip, f.wings.size) : [];
+  if (f.horn) {
+    // A spiralled horn: a cone wound with rings.
+    const h = part(new THREE.ConeGeometry(headR * 0.22, headR * 2.2, 8), f.horn, 'horn', true);
+    h.position.set(0, headR * 1.25, headR * 0.45);
+    h.rotation.x = 0.5;
+    head.add(h);
+    for (let i = 0; i < 4; i++) {
+      const ring = part(new THREE.TorusGeometry(headR * (0.17 - i * 0.03), headR * 0.03, 4, 10), f.horn, 'horn');
+      ring.position.set(0, headR * (1.0 + i * 0.28), headR * (0.3 + i * 0.14));
+      ring.rotation.x = 0.5 + Math.PI / 2;
+      head.add(ring);
+    }
+  }
+  if (f.flame) for (let i = 0; i < 12; i++) {
+    // Flames licking up along the back from the shoulders to the rump.
+    const fl = part(new THREE.ConeGeometry(W * 0.09, H * (0.5 + (i % 3) * 0.15), 5), f.flame, 'mane', true);
+    fl.position.set(Math.sin(i * 2.1) * W * 0.08, bodyY + H * 0.55, L * 0.3 - (i / 11) * L * 0.7);
+    fl.rotation.set(-0.5, 0, Math.sin(i * 1.7) * 0.3);
+    body.add(fl);
+  }
+  if (f.crystal) for (const x of [-1, 1]) for (let i = 0; i < 5; i++) {
+    const cr = part(new THREE.OctahedronGeometry(headR * (0.36 - i * 0.04)).scale(0.45, 2, 0.45), f.crystal, 'horn', true);
+    cr.position.set(x * headR * (0.45 + i * 0.3), headR * (1.2 + i * 0.45), -headR * (0.1 + i * 0.15));
+    cr.rotation.z = -x * (0.3 + i * 0.15);
+    head.add(cr);
+  }
+  if (f.beak) {
+    // An eagle's hooked beak and a white-feathered crown on the (floating) head.
+    const beak = part(new THREE.ConeGeometry(headR * 0.36, headR * 1.3, 6), f.beak, 'head');
+    beak.position.set(0, -headR * 0.2, headR * 1.15);
+    beak.rotation.x = Math.PI / 2 + 0.35;
+    head.add(beak);
+    for (let i = 0; i < 7; i++) {
+      const fe = part(featherGeometry(headR * 0.9, headR * 0.35), accent, 'head');
+      fe.position.set((i - 3) * headR * 0.18, headR * 0.6, -headR * 0.4);
+      fe.rotation.set(0.5, (i - 3) * 0.15, 0);
+      head.add(fe);
+    }
+  }
+  if (f.tails && tail) for (let i = 0; i < f.tails; i++) {
+    // More brush tails fanned out behind, each tipped with light.
+    // A great plume curving up and out, the fan of them spread wide behind.
+    const a = f.tails === 1 ? 0 : (i / (f.tails - 1) - 0.5) * 2.4;
+    const t = new THREE.Group();
+    for (let k = 0; k < 6; k++) {
+      const seg = part(new THREE.SphereGeometry(W * (0.2 + Math.sin((k / 5) * Math.PI) * 0.12), 7, 5), k === 5 ? accent : c, 'tail');
+      seg.scale.set(1, 1, 1.5);
+      seg.position.set(0, k * k * W * 0.05, -k * W * 0.36);
+      t.add(seg);
+    }
+    if (f.glowTips) { const g = part(new THREE.SphereGeometry(W * 0.16, 6, 5), f.glowTips, 'tail', true); g.position.set(0, 36 * W * 0.05, -6 * W * 0.36); t.add(g); }
+    t.position.set(0, 0.02, -0.03);
+    t.rotation.set(-0.55, a, 0);
+    tail.add(t);
+  }
+  if (f.glowTips) {
+    if (tail && !f.tails) { const g = part(new THREE.SphereGeometry(0.035, 6, 5), f.glowTips, 'tail', true); g.position.set(0, 0.04, -0.12); tail.add(g); }
+    for (const leg of legs) { const g = part(new THREE.SphereGeometry(W * 0.06, 6, 4), f.glowTips, 'leg', true); g.position.y = -0.02; leg.add(g); }
+    for (const w of folded) { const g = part(new THREE.SphereGeometry(W * 0.08, 6, 4), f.glowTips, 'wing', true); g.scale.set(0.4, 0.3, 1.6); g.position.set(0, 0, -L * 0.45); w.add(g); }
+  }
+  if (f.mech) {
+    // Armour plates on the flanks and shoulders, lit rings at the joints, a lit crest strip.
+    for (const x of [-1, 1]) for (const z of [L * 0.22, -L * 0.2]) {
+      const plate = part(new THREE.BoxGeometry(0.01 + W * 0.04, H * 0.4, L * 0.24), '#d8dce4', 'body');
+      plate.position.set(x * W * 0.47, bodyY + H * 0.08, z);
+      plate.rotation.z = x * 0.12;
+      body.add(plate);
+    }
+    for (const leg of legs) for (const y of [-0.02, -0.18]) {
+      const r = part(new THREE.TorusGeometry(W * 0.11, 0.01, 4, 12), f.mech, 'leg', true);
+      r.rotation.x = Math.PI / 2;
+      r.position.y = y;
+      leg.add(r);
+    }
+    const crest = part(new THREE.BoxGeometry(headR * 0.18, headR * 0.08, headR * 1.6), f.mech, 'accessory', true);
+    crest.position.set(0, headR * 0.98, 0);
+    head.add(crest);
+  }
+  if (f.hover) for (const leg of legs) {
+    const pad = part(new THREE.CylinderGeometry(W * 0.16, W * 0.2, 0.02, 12), f.hover, 'foot', true);
+    pad.position.y = -0.06;
+    leg.add(pad);
+  }
+  if (f.brass) {
+    // Clockwork: a gear on each flank, rivet lines, and a wind-up key standing from the back.
+    for (const x of [-1, 1]) {
+      const gear = part(new THREE.TorusGeometry(H * 0.2, H * 0.05, 5, 12), '#8a6a2a', 'body');
+      gear.rotation.y = Math.PI / 2;
+      gear.position.set(x * W * 0.5, bodyY, 0);
+      body.add(gear);
+      for (let t = 0; t < 8; t++) {
+        const tooth = part(new THREE.BoxGeometry(0.01, H * 0.06, H * 0.06), '#8a6a2a', 'body');
+        const a = (t / 8) * Math.PI * 2;
+        tooth.position.set(x * W * 0.5, bodyY + Math.sin(a) * H * 0.27, Math.cos(a) * H * 0.27);
+        body.add(tooth);
+      }
+      for (let i = 0; i < 6; i++) {
+        const rv = part(new THREE.SphereGeometry(0.012 + W * 0.015, 5, 4), '#f2d27a', 'body');
+        rv.position.set(x * W * 0.49, bodyY + H * 0.3, L * 0.3 - i * L * 0.12);
+        body.add(rv);
+      }
+    }
+    const shaft = part(new THREE.CylinderGeometry(W * 0.03, W * 0.03, H * 0.35, 6), '#8a6a2a', 'accessory');
+    shaft.position.set(0, bodyY + H * 0.62, -L * 0.05);
+    body.add(shaft);
+    const bow = part(new THREE.TorusGeometry(H * 0.12, H * 0.03, 5, 12), '#f2d27a', 'accessory');
+    bow.position.set(0, bodyY + H * 0.85, -L * 0.05);
+    body.add(bow);
+  }
+  return wings;
+}
+
 export class AnimalModel {
   readonly root = new THREE.Group();
   readonly head = new THREE.Group();
@@ -324,7 +523,7 @@ export class AnimalModel {
     body.scale.setScalar(scale);
     this.root.add(body);
     const glow = s.extra === 'glow';
-    coat = bird || s.kind === 'bird' ? 'feather' : 'fur';
+    coat = s.fantasy?.skin ?? (bird || s.kind === 'bird' ? 'feather' : 'fur');
 
     const bodyY = s.leg + H / 2;
     const torso = part(new THREE.SphereGeometry(0.5, 12, 9), c, 'body', glow);
@@ -401,6 +600,7 @@ export class AnimalModel {
       this.head.position.copy(this.headBase);
       body.add(this.head);
       if (s.overlay) dress(s.overlay, body, this.head, this.legs, this.tail, { L, H, W, bodyY, headR: s.headR }, a);
+      if (s.fantasy) this.wings.push(...enchant(s.fantasy, body, this.head, this.legs, this.tail, { L, H, W, bodyY, headR: s.headR }, c, a));
       return;
     }
     if (bird) {
@@ -411,6 +611,8 @@ export class AnimalModel {
       this.headBase.copy(b.headBase);
       this.head.position.copy(this.headBase);
       body.add(this.head);
+      if (s.overlay) dress(s.overlay, body, this.head, this.legs, this.tail, { L, H, W, bodyY, headR: s.headR }, a);
+      if (s.fantasy) enchant(s.fantasy, body, this.head, this.legs, this.tail, { L, H, W, bodyY, headR: s.headR }, c, a, b.wings);
       return;
     }
 

@@ -2,6 +2,7 @@ import * as THREE from 'three';
 import { animalHeadGap } from '../characters/anatomy';
 import { type Piece, bird, dragonHead, dragonSegment, featheredWing, piece, quadruped, skyKoi, skyWhale } from './creatures';
 import type { Shaper, V3 } from './shaper';
+import { FANTASY_DESIGNS } from './fantasyDesigns';
 
 /**
  * What travels each land's roads, waters and skies, modelled on the real thing (see
@@ -940,6 +941,7 @@ const withGroup = (d: Design, n: number, spacing: number): Design => ({ ...d, gr
 // ───────────────────────── the catalogue ─────────────────────────
 
 export const DESIGNS: Record<string, () => Design> = {
+  ...FANTASY_DESIGNS,
   // Road
   'double-decker': () => bus('double-decker', 'red double-decker bus', '#c8102e', '#1b1b20', 10.2, 2),
   'black-cab': () => car('black-cab', 'black cab', '#1b1b20', '#1b1b20', { round: true, taxi: '#ffb000', chrome: true, len: 4.6 }),
