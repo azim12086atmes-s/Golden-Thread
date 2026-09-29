@@ -125,16 +125,29 @@ export function buildVehicle(id: VehicleId, van?: { lights: string; rug: string 
   let dragon: Dragon | undefined;
   switch (id) {
     case 'car': {
-      bx(root, 2.0, 0.6, 3.8, '#e8576a', 0, 0.55, 0);
-      bx(root, 1.8, 0.1, 2.0, '#f7f3ea', 0, 2.1, -0.1);
-      for (const [x, z] of [[-0.86, 0.85], [0.86, 0.85], [-0.86, -1.05], [0.86, -1.05]]) bx(root, 0.1, 1.25, 0.1, '#f7f3ea', x, 1.47, z);
-      glass(root, 1.72, 1.2, 0.04, 0, 1.47, 0.87);
-      glass(root, 1.72, 1.2, 0.04, 0, 1.47, -1.07);
-      for (const x of [-0.88, 0.88]) glass(root, 0.04, 1.2, 1.9, x, 1.47, -0.1);
+      // A little rounded car in painted steel: coral below, cream above, a soft V on the nose;
+      // windows cut through, chrome bumpers, round lamps, whitewall wheels; a console between the seats.
+      root.add(paintedShell({
+        key: 'car-shell', W: 1.0, y0: 0.28, y1: 1.9, B: -1.9, F: 1.9, R: 0.45, belt: 1.08, vTip: 0.9, lower: '#e8576a', upper: '#f7f3ea',
+        side: [{ z: -0.1, hz: 0.95, y: 1.45, hy: 0.3 }], front: [{ x: 0, hx: 0.72, y: 1.45, hy: 0.3 }], back: [{ x: 0, hx: 0.66, y: 1.45, hy: 0.27 }],
+        arches: [[1.2, 0.36, 0.46], [-1.2, 0.36, 0.46]],
+      }));
+      for (const x of [-0.97, 0.97]) glass(root, 0.03, 0.6, 1.9, x, 1.45, -0.1);
+      glass(root, 1.44, 0.6, 0.03, 0, 1.45, 1.78);
+      glass(root, 1.32, 0.54, 0.03, 0, 1.45, -1.78);
       bx(root, 0.16, 0.5, 1.2, '#8a6a4a', 0, 1.05, 0.1); // divider console between the seats
-      for (const [x, z] of [[-0.95, 1.2], [0.95, 1.2], [-0.95, -1.2], [0.95, -1.2]]) wheel(root, 0.36, x, 0.36, z);
-      bx(root, 0.4, 0.2, 0.05, '#fff6c0', -0.6, 0.6, 1.92, true);
-      bx(root, 0.4, 0.2, 0.05, '#fff6c0', 0.6, 0.6, 1.92, true);
+      for (const sx of [-1, 1]) for (const z of [0.2, -0.45]) bx(root, 0.62, 0.5, 0.12, '#c8483a', sx * 0.55, 1.05, z - 0.3);
+      for (const z of [1.98, -1.98]) bx(root, 2.05, 0.16, 0.12, '#c8ccd4', 0, 0.5, z);
+      for (const sx of [-1, 1]) {
+        const hl = new THREE.Mesh(new THREE.CircleGeometry(0.14, 16), m('#fff6c0', true));
+        hl.position.set(sx * 0.62, 0.8, 1.9);
+        root.add(hl);
+        const tl = new THREE.Mesh(new THREE.CircleGeometry(0.09, 12), m('#e8303a', true));
+        tl.position.set(sx * 0.62, 0.85, -1.9);
+        tl.rotation.y = Math.PI;
+        root.add(tl);
+      }
+      for (const [x, z] of [[-0.9, 1.2], [0.9, 1.2], [-0.9, -1.2], [0.9, -1.2]]) busWheel(root, 0.36, x, 0.36, z);
       break;
     }
     case 'van': {
@@ -142,18 +155,25 @@ export function buildVehicle(id: VehicleId, van?: { lights: string; rug: string 
       break;
     }
     case 'truck': {
-      bx(root, 2.5, 0.9, 2.4, '#3a6ea5', 0, 1.25, 2.2);
-      bx(root, 2.5, 0.15, 2.4, '#3a6ea5', 0, 2.9, 2.2);
-      for (const [x, z] of [[-1.2, 3.35], [1.2, 3.35], [-1.2, 1.05], [1.2, 1.05]]) bx(root, 0.12, 1.2, 0.12, '#3a6ea5', x, 2.25, z);
-      glass(root, 2.3, 1.1, 0.04, 0, 2.25, 3.38);
-      for (const x of [-1.22, 1.22]) glass(root, 0.04, 1.1, 2.2, x, 2.25, 2.2);
+      // An old lorry: a rounded painted-steel cab (blue and cream), a timber-slatted cargo box behind.
+      root.add(paintedShell({
+        key: 'truck-shell', W: 1.25, y0: 0.7, y1: 3.0, B: 1.0, F: 3.45, R: 0.35, belt: 1.95, vTip: 1.75, lower: '#3a6ea5', upper: '#f4f1e8',
+        side: [{ z: 2.3, hz: 0.7, y: 2.35, hy: 0.42 }], front: [{ x: 0, hx: 0.98, y: 2.35, hy: 0.45 }], back: [],
+        arches: [[2.4, 0.55, 0.62]],
+      }));
+      for (const x of [-1.22, 1.22]) glass(root, 0.03, 0.84, 1.4, x, 2.35, 2.3);
+      glass(root, 1.96, 0.9, 0.03, 0, 2.35, 3.35);
       bx(root, 0.16, 0.7, 1.0, '#8a6a4a', 0, 1.9, 2.3);
       bx(root, 2.6, 0.4, 7.4, '#3a3a40', 0, 0.8, -0.4);
       bx(root, 2.6, 1.9, 4.6, '#d9a066', 0, 2, -1.8);
       for (let i = 0; i < 4; i++) bx(root, 2.62, 0.1, 4.62, '#8a5a36', 0, 1.2 + i * 0.5, -1.8);
-      for (const [x, z] of [[-1.15, 2.4], [1.15, 2.4], [-1.15, -1.2], [1.15, -1.2], [-1.15, -2.8], [1.15, -2.8]]) wheel(root, 0.55, x, 0.55, z);
-      bx(root, 0.5, 0.3, 0.05, '#fff6c0', -0.8, 1.1, 3.42, true);
-      bx(root, 0.5, 0.3, 0.05, '#fff6c0', 0.8, 1.1, 3.42, true);
+      bx(root, 2.7, 0.2, 0.2, '#c8ccd4', 0, 0.75, 3.5);
+      for (const [x, z] of [[-1.15, 2.4], [1.15, 2.4], [-1.15, -1.2], [1.15, -1.2], [-1.15, -2.8], [1.15, -2.8]]) busWheel(root, 0.55, x * 1.05, 0.55, z);
+      for (const sx of [-1, 1]) {
+        const hl = new THREE.Mesh(new THREE.CircleGeometry(0.2, 16), m('#fff6c0', true));
+        hl.position.set(sx * 0.85, 1.25, 3.46);
+        root.add(hl);
+      }
       break;
     }
     case 'plane': {
