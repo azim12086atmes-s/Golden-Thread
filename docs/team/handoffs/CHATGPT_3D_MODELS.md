@@ -938,6 +938,7 @@ stays unless the owner asks for a change.
   switch of the sky ornaments.
 - **The Meadow celebration:** every land's particles at once; the aurora-like rainbows, brighter at night.
 - **Grass and trees:** dense, even grass tufts; translucent leafy tree crowns; wind in grass, foliage and particles.
+- **The Sky Isles' trees** (`cloud`, `crystal`, `candy`, `glowtree`) as they are (owner, 2026-09-29: "weren't the isle's trees already looking good?") — do not rebuild them; §8 and §13's Sky Isles tree items are closed.
 - **The crowns** (characters are shared, so ask before editing `CharacterModel.ts`): the girl's grand arched crown with
   rose and ruby gems is bigger than the boy's pearl tiara, both float above the head, and **neither spins**.
 
