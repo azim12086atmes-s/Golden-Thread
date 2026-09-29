@@ -16,8 +16,20 @@ export const PYRAMIDS: Array<{ x: number; z: number; s: number }> = [
 export const NILE_X = 300, NILE_W = 22;
 export const nileX = (z: number): number => NILE_X + Math.sin(z * 0.012) * 7;
 
+/**
+ * The Sky Isles cable car's valley station (local), out on the meadow below the spiral, and the
+ * way the cable leaves it (unit, toward the temple's isle): travel/gondola.ts. Chosen so the cable
+ * rises clear of every floating isle, bridge of light and crystal.
+ */
+export const SKY_TRAM = { x: Math.cos((190 * Math.PI) / 180) * 190, z: Math.sin((190 * Math.PI) / 180) * 190 };
+
 export const RESERVED: Partial<Record<RegionId, Array<{ x: number; z: number; r: number }>>> = {
   egypt: PYRAMIDS.map((p) => ({ x: p.x, z: p.z, r: p.s * 0.74 })), // out to the corners
+  // The valley station, and a clear run under the cable until it is above the treetops.
+  skyisles: [{ x: SKY_TRAM.x, z: SKY_TRAM.z, r: 24 }, ...[12, 24, 36, 48].map((d) => {
+    const tx = 13.1 - SKY_TRAM.x, tz = 17.7 - SKY_TRAM.z, l = Math.hypot(tx, tz);
+    return { x: SKY_TRAM.x + (tx / l) * d, z: SKY_TRAM.z + (tz / l) * d, r: 10 };
+  })],
 };
 
 /**

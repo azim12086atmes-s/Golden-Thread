@@ -81,7 +81,9 @@ import { World } from './world/World';
 import { FOLIAGE_UNIFORMS, updateWind } from './world/wind';
 import { setLamps } from './world/lamplight';
 import { Atmos } from './world/Atmos';
-import { Ride, airRide, coachRide, ferryRide } from './travel/Ride';
+import { Ride, airRide, coachRide, ferryRide, tramRide } from './travel/Ride';
+import { SkyTram } from './travel/SkyTram';
+import { tramBoarding } from './travel/gondola';
 import { ferryFare } from './travel/ferry';
 import { airFare, skyPadPoint, type AirPoint } from './travel/air';
 import { busFare, busStops, type BusStop } from './travel/bus';
@@ -110,7 +112,8 @@ export type Interactable =
   | { kind: 'harbour'; land: RegionId; label: string }
   | { kind: 'need'; person: Person; label: string }
   | { kind: 'busstop'; stop: BusStop; label: string }
-  | { kind: 'skypad'; label: string };
+  | { kind: 'skypad'; label: string }
+  | { kind: 'tram'; up: boolean; label: string };
 
 /** A scripted scene that takes the camera (and optionally renders its own scene). */
 export interface Cutscene {
@@ -159,6 +162,8 @@ export class Game {
   readonly institutesView: InstitutesView;
   readonly fieldsView: FieldsView;
   readonly harboursView: HarboursView;
+  /** The Sky Isles cable car's two shuttling cabins. */
+  private readonly skyTram: SkyTram;
   readonly bridgesView: BridgesView;
   readonly needFolk: NeedFolkView;
   readonly plotsView: PlotsView;
@@ -252,6 +257,7 @@ export class Game {
     this.institutesView = new InstitutesView(this.scene, this.st, this.world);
     this.fieldsView = new FieldsView(this.scene, this.st, this.world);
     this.harboursView = new HarboursView(this.scene, this.world);
+    this.skyTram = new SkyTram(this.scene, this.world);
     this.bridgesView = new BridgesView(this.scene, this.world);
     this.needFolk = new NeedFolkView(this.scene, this.st, this.world);
     this.plotsView = new PlotsView(this.scene, this.st, this.world);
@@ -406,6 +412,7 @@ export class Game {
         if (!this.ui.modal && (this.input.hit('e') || this.input.hit('escape'))) this.ride.skip();
         if (this.ride.done) this.arriveByRide();
       }
+      this.skyTram.update(dt, this.ride);
       this.trav.update(dt, this.input, this.t);
       this.trackRegion();
     } else {
@@ -655,6 +662,11 @@ export class Game {
     if (onFoot && this.region.id === 'skyisles') {
       const sp = skyPadPoint(), dd = Math.hypot(sp.x - p.x, sp.z - p.z);
       if (dd < 7 && Math.abs(p.y - sp.y) < 3) cands.push([dd * 0.3, { kind: 'skypad', label: '🚁 Air taxi — fly down to any land' }]);
+      // The cable car's stations: up to the temple, or down to the meadow.
+      for (const up of [true, false]) {
+        const b = tramBoarding(up), db = Math.hypot(b.x - p.x, b.z - p.z);
+        if (db < 7 && Math.abs(p.y - b.y) < 3) cands.push([db * 0.3, { kind: 'tram', up, label: up ? '🚡 Cable car up to the Temple of the Great Lantern' : '🚡 Cable car down to the meadow' }]);
+      }
     }
     // Front doors: every building in town can be entered.
     if (onFoot) for (const d of [...this.world.loadedRegions().flatMap((r) => r.doors), ...this.world.landmarkDoors, ...this.homeDoors(), CASTLE_DOOR]) {
@@ -695,6 +707,7 @@ export class Game {
       case 'harbour': return this.ui.openHarbour(t.land);
       case 'busstop': return this.ui.openBusStop(t.stop);
       case 'skypad': return this.ui.openSkyPad();
+      case 'tram': { const e = this.rideTram(t.up); if (e) this.toast(e, 'info'); return; }
       case 'need': {
         if (meet(this.st, t.person.id)) this.toast(`🤲 ${t.person.name} — ${NEED_LABEL[t.person.kind].name.toLowerCase()}: “${t.person.hope}” They are in your people finder now.`, 'story');
         // Meeting them makes a friend: they write to you, and a marker stays over them in town.
@@ -862,11 +875,17 @@ export class Game {
     return this.board(f.coins, () => airRide(this.scene, this.trav, from, to), `🚁 The air taxi lifts off for ${REGION_BY_ID[to].name} — ${f.km.toFixed(1)} km as the crow flies.`);
   }
 
+  /** Ride the Sky Isles cable car up to the temple's isle, or down to the meadow. It is free. */
+  rideTram(up: boolean): string | null {
+    return this.board(0, () => tramRide(this.scene, this.trav, up), up ? '🚡 The cabin glides out of the station and up toward the Great Lantern.' : '🚡 The cabin sinks away from the isle, down over the meadow.');
+  }
+
   private arriveByRide(): void {
     const r = this.ride!, name = REGION_BY_ID[r.to].name;
     this.ride = null;
     this.toast(r.kind === 'ferry' ? `⛴️ ${name}. She comes alongside, and you step onto the pier together.`
       : r.kind === 'air' ? `🚁 ${name}. The rotors slow, and you step down together.`
+      : r.kind === 'tram' ? (r.up ? '🚡 The mountain station. The temple is a few steps away.' : '🚡 The valley station, on the meadow.')
       : `🚌 ${name}. You step down at the stop together.`, 'story');
   }
 

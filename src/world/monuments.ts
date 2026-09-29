@@ -15,6 +15,7 @@ import { lanternGeometry } from './lanterns';
 import type { RegionId } from './regions';
 import { SURF } from './surfaces';
 import { PAD_OUT, PAD_R, skyPad } from '../travel/air';
+import { TRAM_HANG, TRAM_TRACK, tramCourse, tramLine } from '../travel/gondola';
 
 /**
  * Monuments rebuilt from the ground up (owner: "the monuments still need detailing, and perhaps
@@ -2576,6 +2577,54 @@ const skyisles: Monument = (c, o) => {
     c.glow.add(new THREE.OctahedronGeometry(0.28).scale(0.7, 1.3, 0.7), s < 0 ? '#bfe8ff' : '#ffc8f0', M(lx, P.y + 2.5, lz));
   }
   o.platforms.push({ x: P.x, z: P.z, r: PAD_R, y: P.y });
+  // ═══ The cable car (travel/gondola.ts): a valley station on the meadow, a mountain station built
+  // out from the rim of the temple's isle, two cables between, each station a moonstone deck under
+  // a lilac canopy with the bullwheel the cables turn round. ═══
+  const L = tramLine(), ry = Math.atan2(L.ux, L.uz);
+  const station = (sx: number, sy: number, sz: number, back: number, fore: number, wheelZ: number, valley: boolean) => {
+    c.g.frame(sx, sy, sz, ry, 1, () => c.glow.frame(sx, sy, sz, ry, 1, () => {
+      const len = fore - back, mid = (fore + back) / 2;
+      box(c.g, 8, valley ? 1.2 : 0.45, len, moon, 0, valley ? -1.2 : -0.45, mid);
+      for (const x of [-4.05, 4.05]) box(c.g, 0.1, 0.12, len, gold, x, -0.12, mid);
+      // Slender columns and the canopy.
+      for (const x of [-3.9, 3.9]) for (const z of [back + 0.6, mid, fore - 0.6]) {
+        cyl(c.g, 0.16, 0.2, 5.6, moon, x, 0, z, 10);
+        c.glow.add(new THREE.OctahedronGeometry(0.16).scale(0.7, 1.4, 0.7), '#fff0b0', M(x, 5.9, z));
+      }
+      box(c.g, 8.8, 0.3, len + 0.8, lilac, 0, 5.6, mid);
+      box(c.g, 9, 0.1, len + 1, gold, 0, 5.55, mid);
+      c.g.add(new THREE.SphereGeometry(1.6, 16, 8, 0, Math.PI * 2, 0, Math.PI / 2), moon, M(0, 5.9, mid));
+      // The bullwheel the cables turn round, on its post.
+      c.g.add(new THREE.TorusGeometry(TRAM_TRACK, 0.14, 8, 32).rotateX(Math.PI / 2), '#c8ccd4', M(0, TRAM_HANG, wheelZ));
+      for (let k = 0; k < 6; k++) box(c.g, 0.08, 0.08, TRAM_TRACK * 2, '#9a9eb0', 0, TRAM_HANG - 0.04, wheelZ, (k / 6) * Math.PI);
+      cyl(c.g, 0.25, 0.3, TRAM_HANG, '#8a8ea0', 0, 0, wheelZ, 10);
+      // A rail round the open end over the drop, or low kerbs on the meadow.
+      if (!valley) {
+        for (const x of [-4, 4]) box(c.g, 0.08, 1, 0.08, gold, x, 0, back + 0.1);
+        box(c.g, 8, 0.08, 0.08, gold, 0, 1, back + 0.1);
+      }
+    }));
+  };
+  const tp = L.top, gp = L.ground;
+  station(tp.x, tp.y, tp.z, -4, 9, 8, false);
+  station(gp.x, gp.y, gp.z, -9, 4, -8, true);
+  // The mountain station's brace down to the isle's rock.
+  rod(c.g, new THREE.Vector3(tp.x - L.ux * 3, tp.y - 0.45, tp.z - L.uz * 3), new THREE.Vector3(tp.x + L.ux * 7, tp.y - 9, tp.z + L.uz * 7), 0.35, '#c8b8f0', 8);
+  // Two cables, each with its haul rope just above, following the cabins' course.
+  for (const side of [1, -1] as const) {
+    const course = tramCourse(side, true), step = Math.max(1, Math.floor(course.length / 60));
+    for (const lift of [TRAM_HANG, TRAM_HANG + 0.35]) {
+      const pts = course.filter((_, i) => i % step === 0 || i === course.length - 1).map(([x, y, z]) => new THREE.Vector3(x, y + lift, z));
+      // On round the bullwheels at either end.
+      pts.unshift(pts[0].clone().add(new THREE.Vector3(-L.ux * 3, 0, -L.uz * 3)));
+      pts.push(pts[pts.length - 1].clone().add(new THREE.Vector3(L.ux * 3, 0, L.uz * 3)));
+      c.g.add(new THREE.TubeGeometry(new THREE.CatmullRomCurve3(pts), pts.length * 2, lift === TRAM_HANG ? 0.045 : 0.025, 4), '#3a3a48');
+    }
+  }
+  // The decks are walkable.
+  for (const [s0, y, a, b] of [[tp, tp.y, -4, 9], [gp, gp.y, -9, 4]] as const) {
+    for (let z = a + 1; z <= b - 1; z += 1.5) o.platforms.push({ x: s0.x + L.ux * z, z: s0.z + L.uz * z, r: 3.9, y });
+  }
   o.height = T.y + 60;
 };
 

@@ -7,6 +7,7 @@ import { BUNKS, CAB_SEATS, PET_BEDS, VAN } from './vanLayout';
 import { COACH, COACH_FAMILY_SEATS, COACH_SEATS } from '../travel/bus';
 import { FERRY, FERRY_FAMILY_SEATS, FERRY_SEATS } from '../travel/ferry';
 import { AIR, AIR_FAMILY_SEATS, AIR_SEATS } from '../travel/air';
+import { TRAM, TRAM_FAMILY_SEATS, TRAM_HANG, TRAM_SEATS } from '../travel/gondola';
 
 /**
  * Ways to travel. In every vehicle the two sit in separate seats with a divider between them, and
@@ -776,6 +777,53 @@ export function buildAirTaxi(): THREE.Group {
     bx(root, 0.3, 0.06, 0.04, '#fff6c0', s * (W - 0.45), FY + 0.2, F - 0.05, true);
     bx(root, 0.2, 0.06, 0.04, '#e8303a', s * (W - 0.4), FY + 0.6, B + 0.02, true);
   }
+  root.traverse((o) => { if ((o as THREE.Mesh).isMesh) o.castShadow = true; });
+  return root;
+}
+
+// ───────────────────────── the Sky Isles cable car ─────────────────────────
+
+/**
+ * A cable-car cabin (travel/gondola.ts): a rounded moonstone-and-lilac body glazed all round, a
+ * hanger arm up to the grip that runs on the cable, a lamp under the roof. Its floor is at y = 0;
+ * the cable runs TRAM_HANG above. The front bench has a divider between its two seats.
+ */
+export function buildTramCabin(): THREE.Group {
+  const root = new THREE.Group();
+  const { halfW: W, len } = TRAM, F = len / 2, B = -len / 2, top = 2.25, moon = '#f4f0ff', lilac = '#9a84e8', gold = '#d4af37';
+  root.add(paintedShell({
+    key: 'tram-cabin', W, y0: -0.25, y1: top, B, F, R: 0.4, belt: 0.75, vTip: 0.55, lower: lilac, upper: moon,
+    band: [0.72, 0.04, gold],
+    side: [{ z: 0, hz: F - 0.45, y: 1.45, hy: 0.55 }],
+    front: [{ x: 0, hx: W - 0.35, y: 1.4, hy: 0.62 }],
+    back: [{ x: 0, hx: W - 0.35, y: 1.45, hy: 0.55 }],
+    arches: [],
+  }));
+  for (const s of [-1, 1]) glass(root, 0.03, 1.1, len - 0.9, s * (W - 0.03), 1.45, 0);
+  glass(root, (W - 0.35) * 2, 1.24, 0.03, 0, 1.4, F - 0.05);
+  glass(root, (W - 0.35) * 2, 1.1, 0.03, 0, 1.45, B + 0.05);
+  bx(root, W * 2 - 0.15, 0.05, len - 0.2, '#6a6a78', 0, 0.02, 0); // the floor
+  // Benches: theirs in front with a divider, the family's behind.
+  for (const z of [TRAM_SEATS.girl[2], TRAM_FAMILY_SEATS[0][2]]) for (const sx of [-1, 1]) {
+    bx(root, 0.9, 0.1, 0.5, '#5a4a9a', sx * 0.58, 0.45, z);
+    bx(root, 0.9, 0.6, 0.08, '#5a4a9a', sx * 0.58, 0.78, z - 0.27);
+  }
+  bx(root, 0.12, 0.6, 0.55, gold, 0, 0.35, TRAM_SEATS.girl[2]);
+  // Roof: a gilded crown rail, the hanger arm and the grip with its two sheaves on the cable.
+  bx(root, W * 2 - 0.3, 0.08, len - 0.3, gold, 0, top + 0.02, 0);
+  const arm = new THREE.Mesh(new THREE.CylinderGeometry(0.07, 0.09, TRAM_HANG - top - 0.2, 8), m('#c8ccd4'));
+  arm.position.set(0, (TRAM_HANG + top) / 2 - 0.1, 0);
+  root.add(arm);
+  bx(root, 0.3, 0.25, 1.3, '#3a3a44', 0, TRAM_HANG - 0.15, 0);
+  for (const z of [-0.45, 0.45]) {
+    const sheave = new THREE.Mesh(new THREE.CylinderGeometry(0.2, 0.2, 0.12, 14), m('#c8ccd4'));
+    sheave.rotation.z = Math.PI / 2;
+    sheave.position.set(0, TRAM_HANG, z);
+    root.add(sheave);
+  }
+  // A lamp under the roof, and running lights at the corners.
+  bx(root, 0.5, 0.05, 0.5, '#fff0c8', 0, top - 0.05, 0, true);
+  for (const sx of [-1, 1]) for (const z of [F - 0.1, B + 0.1]) bx(root, 0.08, 0.08, 0.04, z > 0 ? '#bfe8ff' : '#ffc8f0', sx * (W - 0.2), top - 0.2, z, true);
   root.traverse((o) => { if ((o as THREE.Mesh).isMesh) o.castShadow = true; });
   return root;
 }

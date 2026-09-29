@@ -140,7 +140,7 @@ checking. Detailed specifications for the open items are in `OWNER_REQUESTS_SPEC
 |---|---|
 | Living traffic on roads, waters and skies per land | ✅ |
 | Travel between lands without popping in; couriers, ships, buses and ferries across borders | ✅ highways between neighbouring towns, placed by the clock (traffic/schedule.ts); sea lanes |
-| Stops (bus stops, piers, airfields) and riding buses, ferries, gondolas, air taxis in separate seats | 🟡 bus stops and intercity coaches ✅; coastal ferry from every harbour pier round the island ✅; air taxi from every bus stop to any land, and to/from a landing stage on the Sky Isles ✅ (`travel/ferry.ts`, `travel/air.ts`, `travel/Ride.ts`); Sky Isles cable gondolas ⬜ |
+| Stops (bus stops, piers, airfields) and riding buses, ferries, gondolas, air taxis in separate seats | 🟡 bus stops and intercity coaches ✅; coastal ferry from every harbour pier round the island ✅; air taxi from every bus stop to any land, and to/from a landing stage on the Sky Isles ✅; Sky Isles cable car from a valley station up to the temple's isle, two cabins shuttling ✅ (`travel/ferry.ts`, `travel/air.ts`, `travel/gondola.ts`, `travel/Ride.ts`); trams ⬜ |
 | Junctions, traffic lights or roundabouts, people crossing, far traffic hidden | ✅ lights at every avenue/ring junction, vehicles stop at the line; people cross at zebra crossings on the red; far traffic culled |
 | Traffic by time of day: quiet nights, lantern boats at dusk, kites by day, Sky Isles gondolas | ✅ roads quiet at night, lantern boats at dusk, day and night birds, fewer aircraft at night |
 

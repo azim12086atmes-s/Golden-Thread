@@ -58,4 +58,8 @@ One ride class carries them on a course with a model, their two seats and the fa
   ground, and settle beside the stop of any land — or on the landing stage floating beside the
   Sky Isles' top island (built in `architecture.ts`), where it also boards. Seats either side of
   a console.
-- Left: Sky Isles cable gondolas, trams, water taxis.
+- **Sky Isles cable car** (`travel/gondola.ts`, `travel/SkyTram.ts`): a valley station on the meadow
+  (ground reserved in `reserved.ts`), a mountain station built out from the temple isle's rim, two
+  cables rising at ~40° clear of every isle; two cabins shuttle, one up as the other comes down.
+  Free. The two sit on the front bench either side of a divider.
+- Left: trams, rideable water taxis.

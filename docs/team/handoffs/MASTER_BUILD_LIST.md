@@ -97,9 +97,9 @@ sections C1–C7) and `3D_BUILDS_HANDOFF.md` (3D work, sections 2a and 3.x). Tic
 - [ ] Vehicles entering and leaving; travel between lands; no pop-in at borders
 - [ ] Junctions, turning, traffic lights, roundabouts
 - [ ] Stops: bus stops, taxi ranks, ferry piers, jetties, harbours, airports, drone docks; take-off, landing, docking. Done: bus stops in every town; ferries dock at every harbour pier; air taxis land beside every stop and on the Sky Isles stage
-- [ ] Riding buses, taxis, trams, ferries, gondolas, air taxis (separate seats). Done: intercity coach, coastal ferry, air taxi (`travel/Ride.ts`); left: trams, gondolas
+- [ ] Riding buses, taxis, trams, ferries, gondolas, air taxis (separate seats). Done: intercity coach, coastal ferry, air taxi, Sky Isles cable car (`travel/Ride.ts`); left: trams
 - [ ] Time of day (quieter nights, evening lantern boats, daytime kites and balloons)
-- [ ] Townsfolk crossing streets; Sky Isles cable gondolas; distance culling. Done: zebra crossings on the lights; far traffic culled; left: cable gondolas
+- [ ] Townsfolk crossing streets; Sky Isles cable gondolas; distance culling. Done: zebra crossings on the lights; far traffic culled; Sky Isles cable car (`travel/gondola.ts`, `SkyTram.ts`)
 - [ ] Rebuild the travellers' own vehicles (car, truck, biplane) — keep seats and `SEAT_GAP`. Done: Safar as a split-screen bus in painted steel (`vehicles.ts` `buildVan`); the car and truck in painted steel; left: the biplane
 
 ## I2. Ships and the sea (NEW)

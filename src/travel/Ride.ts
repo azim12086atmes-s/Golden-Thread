@@ -1,5 +1,5 @@
 import * as THREE from 'three';
-import { buildAirTaxi, buildCoach, buildFerryBoat } from '../vehicles/vehicles';
+import { buildAirTaxi, buildCoach, buildFerryBoat, buildTramCabin } from '../vehicles/vehicles';
 import { WATER_Y, surfaceAt } from '../world/terrain';
 import { bridgeDeckAt } from '../world/bridges';
 import { harbourOf } from '../world/harbours';
@@ -8,15 +8,16 @@ import { REGION_BY_ID, type RegionId } from '../world/regions';
 import { COACH_FAMILY_SEATS, COACH_SEATS, busPath, keepSide, type BusStop } from './bus';
 import { FERRY_FAMILY_SEATS, FERRY_SEATS, ferryRoute, mooring } from './ferry';
 import { AIR_FAMILY_SEATS, AIR_SEATS, airArrival, airCourse, type AirPoint } from './air';
+import { TRAM_FAMILY_SEATS, TRAM_SEATS, tramAlight, tramCourseWorld } from './gondola';
 import type { Travellers } from '../player/Travellers';
 
 type V3 = readonly [number, number, number];
-export type RideKind = 'coach' | 'ferry' | 'air';
+export type RideKind = 'coach' | 'ferry' | 'air' | 'tram';
 
 interface RideSpec {
   kind: RideKind;
   to: RegionId;
-  /** The course (world x, y, z); y is followed only in the air. */
+  /** The course (world x, y, z); y is followed only in the air and on the cable. */
   pts: Array<[number, number, number]>;
   model: THREE.Object3D;
   seats: { girl: V3; boy: V3 };
@@ -27,11 +28,13 @@ interface RideSpec {
   brake: number;
   /** Where they step down, which way they face, and the height if it is a deck (a pier). */
   alight: { x: number; z: number; facing: number; y?: number; bx?: number; bz?: number; van?: [number, number] };
+  /** Going up (the cable car); otherwise down. */
+  up?: boolean;
 }
 
 /**
- * A ride on someone else's vehicle — the intercity coach, the coastal ferry or the air taxi. It
- * takes them at the stop, pier or pad, the two in their separate seats and the family theirs, and
+ * A ride on someone else's vehicle — the intercity coach, the coastal ferry, the air taxi or the
+ * Sky Isles cable car. It takes them at the stop, pier, pad or station, the two in their separate seats and the family theirs, and
  * carries them along its course to where they step down. The world streams in as it goes; E or
  * Esc skips to the arrival.
  */
@@ -39,6 +42,7 @@ export class Ride {
   readonly root: THREE.Object3D;
   readonly kind: RideKind;
   readonly to: RegionId;
+  readonly up: boolean;
   private pts: Array<[number, number, number]>;
   private cum: number[] = [0];
   private u = 0;
@@ -53,21 +57,27 @@ export class Ride {
   constructor(private scene: THREE.Scene, private trav: Travellers, private spec: RideSpec) {
     this.kind = spec.kind;
     this.to = spec.to;
+    this.up = spec.up ?? true;
     this.pts = spec.pts;
     this.root = spec.model;
     this.root.traverse((o) => { if (o.userData.rotor) this.rotors.push(o); });
     for (let k = 1; k < this.pts.length; k++) {
       const [ax, ay, az] = this.pts[k - 1], [bx, by, bz] = this.pts[k];
-      this.cum.push(this.cum[k - 1] + Math.hypot(bx - ax, this.kind === 'air' ? by - ay : 0, bz - az));
+      this.cum.push(this.cum[k - 1] + Math.hypot(bx - ax, this.aloft ? by - ay : 0, bz - az));
     }
     const [x0, y0, z0] = this.pts[0];
-    this.y = this.kind === 'air' ? y0 : this.kind === 'ferry' ? WATER_Y : surfaceAt(x0, z0, 1e9);
+    this.y = this.aloft ? y0 : this.kind === 'ferry' ? WATER_Y : surfaceAt(x0, z0, 1e9);
     // Facing the way it will go: the first point a few metres off along the ground.
     const ahead = this.pts.find((p) => Math.hypot(p[0] - x0, p[2] - z0) > 3) ?? this.pts[this.pts.length - 1];
     this.heading = Math.atan2(ahead[0] - x0, ahead[2] - z0);
     this.place();
     scene.add(this.root);
     trav.carriage = { root: this.root, girl: spec.seats.girl, boy: spec.seats.boy, family: spec.family };
+  }
+
+  /** Following its course's own heights: flying, or hanging from the cable. */
+  private get aloft(): boolean {
+    return this.kind === 'air' || this.kind === 'tram';
   }
 
   get length(): number {
@@ -81,7 +91,7 @@ export class Ride {
 
   /** Jump to just short of the arrival (it slows and comes in). */
   skip(): void {
-    const back = this.kind === 'air' ? 40 : this.kind === 'ferry' ? 45 : 30;
+    const back = this.kind === 'air' ? 40 : this.kind === 'ferry' ? 45 : this.kind === 'tram' ? 12 : 30;
     this.u = Math.max(this.u, this.length - back);
     this.v = Math.min(this.v, 8);
     while (this.i < this.cum.length - 2 && this.cum[this.i + 1] < this.u) this.i++;
@@ -108,7 +118,7 @@ export class Ride {
       this.heading += d * Math.min(1, dt * (this.kind === 'ferry' ? 1.2 : 3));
     }
     const g = this.kind === 'coach' ? bridgeDeckAt(p[0], p[2]) ?? surfaceAt(p[0], p[2], this.y + 3) : this.height(p);
-    this.y += (g - this.y) * Math.min(1, dt * (this.kind === 'air' ? 20 : 8));
+    this.y = this.kind === 'tram' ? g : this.y + (g - this.y) * Math.min(1, dt * (this.kind === 'air' ? 20 : 8));
     for (const r of this.rotors) r.rotation.y += dt * 40;
     this.place(p);
     if (left < 0.05 && this.v < 0.6) this.arrive();
@@ -117,6 +127,7 @@ export class Ride {
   /** The height it rides at: on the swell at sea, on its course in the air (never into the ground). */
   private height(p: [number, number, number]): number {
     if (this.kind === 'ferry') return WATER_Y + Math.sin(this.t * 0.9) * 0.12;
+    if (this.kind === 'tram') return p[1];
     const hover = Math.min(1, this.v / 10) * Math.sin(this.t * 1.3) * 0.25;
     return Math.max(p[1] + hover, surfaceAt(p[0], p[2], p[1] + 0.5));
   }
@@ -158,7 +169,10 @@ export class Ride {
   private place(p = this.at(this.u)): void {
     this.root.position.set(p[0], this.y, p[2]);
     // At sea she pitches and rolls a little with the swell.
-    const roll = this.kind === 'ferry' ? Math.sin(this.t * 0.7) * 0.025 : 0, pitch = this.kind === 'ferry' ? Math.sin(this.t * 0.55 + 1) * 0.015 : 0;
+    // On the cable the cabin swings gently from its grip.
+    const sway = this.kind === 'tram' ? Math.min(1, this.v / 3) : 0;
+    const roll = this.kind === 'ferry' ? Math.sin(this.t * 0.7) * 0.025 : Math.sin(this.t * 1.1) * 0.02 * sway;
+    const pitch = this.kind === 'ferry' ? Math.sin(this.t * 0.55 + 1) * 0.015 : Math.sin(this.t * 0.8 + 2) * 0.012 * sway;
     this.root.rotation.set(pitch, this.heading, roll, 'YXZ');
   }
 }
@@ -202,5 +216,15 @@ export function airRide(scene: THREE.Scene, trav: Travellers, from: AirPoint, to
     seats: AIR_SEATS, family: AIR_FAMILY_SEATS, vmax: 45, accel: 5, brake: 3,
     // On the Sky Isles stage he stands beside her, not over its edge.
     alight: { x: b.stepX, z: b.stepZ, facing: b.facing, ...(to === 'skyisles' ? { y: b.y, bx: b.stepX + Math.cos(b.facing) * 1.95, bz: b.stepZ - Math.sin(b.facing) * 1.95 } : {}) },
+  });
+}
+
+/** The Sky Isles cable car, up from the valley station to the temple's isle or back down. */
+export function tramRide(scene: THREE.Scene, trav: Travellers, up: boolean): Ride {
+  const a = tramAlight(up);
+  return new Ride(scene, trav, {
+    kind: 'tram', to: 'skyisles', up, pts: tramCourseWorld(up ? 1 : -1, up), model: buildTramCabin(),
+    seats: TRAM_SEATS, family: TRAM_FAMILY_SEATS, vmax: 6, accel: 0.8, brake: 0.7,
+    alight: { x: a.x, z: a.z, y: a.y, bx: a.bx, bz: a.bz, facing: a.facing },
   });
 }
