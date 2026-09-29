@@ -23,7 +23,7 @@ export const NIGHT_DRAGON: DragonSpec = {
   id: 'night-dragon', name: 'the Night Dragon', plan: 'wyrm', build: 'cat', length: 7.2, girth: 0.6, neck: 0.14,
   head: 'night', crestKind: 'plates', tail: 'twin', scales: 'shingle',
   back: '#1a1b23', side: '#22232d', belly: '#2c2e3a', rim: '#2e3244',
-  crest: ['#111218', '#1a1b24'], mane: ['#111218'], claw: '#2a2b36', horn: '#17181f',
+  crest: ['#111218', '#1a1b24'], mane: ['#111218'], claw: '#7a7e8c', horn: '#17181f',
   wings: { span: 10.4, membrane: '#15161e', bone: '#1c1d26', hind: 0.4 },
   runes: '#7affe0', stars: ['#9ad8ff', '#ffd6f0', '#b99bff'], prosthetic: '#a3202a',
 };
@@ -142,7 +142,7 @@ export class Dragon {
     const amp = speed > 8 ? 0.65 : speed > 0.2 ? 0.3 : 0.1;
     const want = speed > 8 ? 0 : speed > 0.2 ? 0.35 : 1;
     this.fold += (want - this.fold) * Math.min(1, dt * 2.5);
-    perch(this.model, t, BODY_Y, NECK_Z, (speed > 8 ? 0.05 : 0.3) + Math.sin(this.phase) * amp, 0.45, 0.3, this.fold);
+    perch(this.model, t, BODY_Y, NECK_Z, (speed > 8 ? 0.05 : 0.3) + Math.sin(this.phase) * amp, 0.45, 0.55 - 0.3 * (1 - this.fold), this.fold);
     this.model.head.rotateX(Math.sin(t * 1.3) * 0.08);
   }
 
