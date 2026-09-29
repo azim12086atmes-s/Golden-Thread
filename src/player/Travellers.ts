@@ -42,10 +42,11 @@ export class Travellers {
   private boyUnicorn: Mount | null = null;
   parkedVan: { model: VehicleModel; pos: THREE.Vector3; heading: number } | null = null;
   /**
-   * Riding someone else's vehicle (the intercity coach, travel/BusRide.ts): its body, and their two
-   * seats in its frame — separate seats either side of the aisle. While set they sit and ride.
+   * Riding someone else's vehicle (the coach, the ferry, the air taxi; travel/Ride.ts): its body,
+   * their two seats in its frame — separate seats either side of an aisle or a divider — and the
+   * family's behind. While set they sit and ride.
    */
-  carriage: { root: THREE.Object3D; girl: readonly [number, number, number]; boy: readonly [number, number, number] } | null = null;
+  carriage: { root: THREE.Object3D; girl: readonly [number, number, number]; boy: readonly [number, number, number]; family: ReadonlyArray<readonly [number, number, number]> } | null = null;
 
   /** Riding their own mounts (unicorns, or the dragon and a unicorn). */
   get mounted(): boolean {

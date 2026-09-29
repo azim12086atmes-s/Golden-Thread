@@ -7,7 +7,9 @@ import { FIELD_BY_ID, FIELD_ROWS, barnCount, buyField, fieldGrowTime, fieldGrowt
 import { addRoute, bestMarkets, destLabel, destLand, homeDest, marketDest, pantryDest, removeRoute, shipmentOf, tripMinutes } from '../economy/supply';
 import { WORKER_BY_ID, roleTitle, workersOf, type Role, type Worker } from '../economy/workers';
 import { HAND_HOURS, helpedToday, hurry, hurryShare, type Project } from '../economy/crews';
-import { hasHarbour } from '../world/harbours';
+import { harbours, hasHarbour } from '../world/harbours';
+import { ferryFare } from '../travel/ferry';
+import { airDestinations, airFare, airPointAtStop, skyPadPoint, type AirPoint } from '../travel/air';
 import { RANKS, doGig, gigsFor, jobsIn, shiftPay, titleAt, workShift, workedToday } from '../economy/services';
 import { buySeed } from '../housing/housing';
 import type { Animal } from '../animals/Animals';
@@ -47,7 +49,7 @@ import { CIVIC_LABEL, civicDoor, civicOf } from '../world/neighbourhood';
 import { FIELD_SITES } from '../world/plots';
 import type { Game } from '../Game';
 
-type Panel = 'finder' | 'work' | 'harbour' | 'bus' | 'field' | 'institute' | 'care' | 'wardrobe' | 'bag' | 'journal' | 'map' | 'messages' | 'vehicles' | 'dialogue' | 'animal' | 'build' | 'van' | 'house' | 'farm' | 'market' | 'help' | 'homes' | 'property' | null;
+type Panel = 'finder' | 'work' | 'harbour' | 'bus' | 'air' | 'field' | 'institute' | 'care' | 'wardrobe' | 'bag' | 'journal' | 'map' | 'messages' | 'vehicles' | 'dialogue' | 'animal' | 'build' | 'van' | 'house' | 'farm' | 'market' | 'help' | 'homes' | 'property' | null;
 
 const h = (tag: string, attrs: Record<string, string> = {}, ...kids: Array<Node | string | null | false>) => {
   const el = document.createElement(tag);
@@ -614,7 +616,7 @@ export class UI {
 
   render(): void {
     const body = h('div', { class: 'body' });
-    const titles: Record<string, string> = { wardrobe: 'Dressing room', bag: 'Bag & Crafts', journal: 'Journal', map: 'The World', messages: 'Messages', vehicles: 'Ways to Travel', dialogue: '', animal: '', build: 'Build', van: 'Inside Safar', house: this.g.houseTitle(), farm: 'Farm bed', market: 'Market stall', help: 'How to play', care: 'Care & sponsorship', institute: this.instituteTitle(), field: this.fieldTitle(), work: `Work in ${this.g.region.name}`, finder: 'People finder', harbour: `The harbour of ${REGION_BY_ID[this.harbourLand]?.name ?? ''}`, bus: `Bus stop · ${this.busStop ? REGION_BY_ID[this.busStop.land].name : ''}`, homes: 'Homes & Land', property: 'Land for sale' };
+    const titles: Record<string, string> = { wardrobe: 'Dressing room', bag: 'Bag & Crafts', journal: 'Journal', map: 'The World', messages: 'Messages', vehicles: 'Ways to Travel', dialogue: '', animal: '', build: 'Build', van: 'Inside Safar', house: this.g.houseTitle(), farm: 'Farm bed', market: 'Market stall', help: 'How to play', care: 'Care & sponsorship', institute: this.instituteTitle(), field: this.fieldTitle(), work: `Work in ${this.g.region.name}`, finder: 'People finder', harbour: `The harbour of ${REGION_BY_ID[this.harbourLand]?.name ?? ''}`, bus: `Bus stop · ${this.busStop ? REGION_BY_ID[this.busStop.land].name : ''}`, air: 'Air taxi · the Sky Isles', homes: 'Homes & Land', property: 'Land for sale' };
     const head = this.panel === 'van'
       ? h('header', {}, h('h2', {}, titles.van),
         h('span', { class: 'head-acts' },
@@ -647,6 +649,7 @@ export class UI {
       case 'field': this.fieldPanel(body); break;
       case 'harbour': this.harbourPanel(body); break;
       case 'bus': this.busPanel(body); break;
+      case 'air': this.airRows(body, skyPadPoint()); break;
       case 'work': this.workPanel(body); break;
       case 'finder': this.finderPanel(body); break;
       case 'property': this.property(body); break;
@@ -1115,7 +1118,26 @@ export class UI {
         h('small', {}, `${f!.towns === 1 ? 'the next town' : `${f!.towns} towns`} · ${f!.coins} coins`),
         btn('🚌 Ride', () => { const e = g.rideBus(stop, r.id); if (e) g.toast(e, 'info'); else this.closePanel(); }, 'small primary', g.st.coins < f!.coins)));
     }
-    body.append(h('p', { class: 'dim' }, 'The Sky Isles float above the clouds: no road reaches them.'));
+    body.append(h('p', { class: 'dim' }, 'The Sky Isles float above the clouds: no road reaches them — but an air taxi does.'));
+    body.append(h('h3', {}, '🚁 Air taxi'));
+    this.airRows(body, airPointAtStop(stop));
+  }
+
+  openSkyPad(): void {
+    this.open('air');
+  }
+
+  /** Every land an air taxi flies to from `from`, how far and the fare. */
+  private airRows(body: HTMLElement, from: AirPoint): void {
+    const g = this.g;
+    body.append(h('p', { class: 'dim' }, 'It settles beside you, lifts straight up and flies straight there, high over the roofs, and comes down beside the stop — or on the stage beside the top island of the Sky Isles. Two seats either side of the console, the family behind.'));
+    const dests = airDestinations(from.land).map((id) => ({ r: REGION_BY_ID[id], f: airFare(from, id) })).sort((a, b) => a.f.km - b.f.km);
+    for (const { r, f } of dests) {
+      body.append(h('div', { class: 'quest' },
+        h('b', {}, r.name),
+        h('small', {}, `${f.km.toFixed(1)} km · ${f.coins} coins`),
+        btn('🚁 Fly', () => { const e = g.rideAir(from, r.id); if (e) g.toast(e, 'info'); else this.closePanel(); }, 'small primary', g.st.coins < f.coins)));
+    }
   }
 
   openHarbour(land: RegionId): void {
@@ -1138,6 +1160,16 @@ export class UI {
         this.carrierRows(body, [ship], id, Object.keys(st.fields[id].store)[0], act);
       }
       if (!mine.length) this.carrierRows(body, [ship], '', undefined, act);
+    }
+    // The ferry: from the pier head to any other harbour.
+    body.append(h('h3', {}, '⛴️ The coastal ferry'));
+    body.append(h('p', { class: 'dim' }, 'From the pier head the ferry sails round the island, outside the shipping lanes, to any other harbour. You sit on the open foredeck, her bench to port and his to starboard with a planter between; the family on the benches behind.'));
+    const sails = harbours().filter((x) => x.land !== land).map((x) => ({ r: REGION_BY_ID[x.land], f: ferryFare(land, x.land)! })).filter((x) => x.f).sort((a, b) => a.f.km - b.f.km);
+    for (const { r, f } of sails) {
+      body.append(h('div', { class: 'quest' },
+        h('b', {}, r.name),
+        h('small', {}, `${f.km.toFixed(1)} km · ${f.coins} coins`),
+        btn('⛴️ Sail', () => { const e = g.rideFerry(land, r.id); if (e) g.toast(e, 'info'); else this.closePanel(); }, 'small primary', st.coins < f.coins)));
     }
     // Cargo at sea to or from here.
     const here = st.shipments.filter((x) => WORKER_BY_ID[x.courier]?.role === 'ship' && (FIELD_BY_ID[x.from]?.land === land || x.to.endsWith(`:${land}`)));

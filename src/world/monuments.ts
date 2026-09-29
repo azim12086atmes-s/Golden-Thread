@@ -14,6 +14,7 @@ import { HABITS, growTree, type Habit } from './trees';
 import { lanternGeometry } from './lanterns';
 import type { RegionId } from './regions';
 import { SURF } from './surfaces';
+import { PAD_OUT, PAD_R, skyPad } from '../travel/air';
 
 /**
  * Monuments rebuilt from the ground up (owner: "the monuments still need detailing, and perhaps
@@ -2555,6 +2556,26 @@ const skyisles: Monument = (c, o) => {
   for (let k = 0; k < 3; k++) o.platforms.push({ x: T.x, z: T.z, r: 15.1 - k * 0.8, y: T.y + 0.4 * (k + 1) });
   for (let k = 0; k < 12; k++) { const a = (k / 12) * Math.PI * 2; o.colliders.push({ x: T.x + Math.cos(a) * 12.5, z: T.z + Math.sin(a) * 12.5, r: 0.8, h: T.y + 16, y0: T.y }); }
   o.colliders.push({ x: T.x, z: T.z, r: 0.9, h: T.y + 4, y0: T.y });
+  // ═══ The air-taxi stage (travel/air.ts): a round moonstone landing stage floating off the temple's
+  // isle, a bridge of light across to it, a glowing ring to land in, a lamp either side. ═══
+  const P = skyPad(), u = new THREE.Vector3(P.ux, 0, P.uz);
+  cyl(c.g, PAD_R + 0.2, PAD_R + 0.2, 0.4, moon, P.x, P.y - 0.4, P.z, 36);
+  cyl(c.g, PAD_R + 0.2, 1.6, 4.5, '#c8b8f0', P.x, P.y - 4.9, P.z, 24);
+  cyl(c.g, 1.6, 0.1, 3, lilac, P.x, P.y - 7.9, P.z, 12);
+  c.glow.add(new THREE.TorusGeometry(PAD_R - 1.2, 0.08, 4, 48).rotateX(Math.PI / 2), '#bfe8ff', M(P.x, P.y + 0.03, P.z));
+  c.glow.add(new THREE.TorusGeometry(PAD_R - 3.4, 0.05, 4, 32).rotateX(Math.PI / 2), '#ffc8f0', M(P.x, P.y + 0.03, P.z));
+  const b0 = T.clone().addScaledVector(u, 23.5).setY(T.y + 0.1), b1 = T.clone().addScaledVector(u, PAD_OUT - PAD_R + 0.3).setY(T.y + 0.1);
+  lightBridge(c, b0, b1);
+  for (let d = 15; d <= PAD_OUT - PAD_R + 0.5; d += 1) {
+    const t = Math.min(1, Math.max(0, (d - 23.5) / b0.distanceTo(b1)));
+    o.platforms.push({ x: T.x + u.x * d, z: T.z + u.z * d, r: 1.1, y: T.y + (d < 23.5 ? 0 : 0.1 - Math.sin(t * Math.PI) * b0.distanceTo(b1) * 0.05) });
+  }
+  for (const s of [-1, 1]) {
+    const lx = P.x - u.x * (PAD_R - 0.5) - u.z * s * 1.4, lz = P.z - u.z * (PAD_R - 0.5) + u.x * s * 1.4;
+    cyl(c.g, 0.07, 0.09, 2.2, moon, lx, P.y, lz, 6);
+    c.glow.add(new THREE.OctahedronGeometry(0.28).scale(0.7, 1.3, 0.7), s < 0 ? '#bfe8ff' : '#ffc8f0', M(lx, P.y + 2.5, lz));
+  }
+  o.platforms.push({ x: P.x, z: P.z, r: PAD_R, y: P.y });
   o.height = T.y + 60;
 };
 

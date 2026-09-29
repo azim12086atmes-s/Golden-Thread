@@ -81,7 +81,9 @@ import { World } from './world/World';
 import { FOLIAGE_UNIFORMS, updateWind } from './world/wind';
 import { setLamps } from './world/lamplight';
 import { Atmos } from './world/Atmos';
-import { BusRide } from './travel/BusRide';
+import { Ride, airRide, coachRide, ferryRide } from './travel/Ride';
+import { ferryFare } from './travel/ferry';
+import { airFare, skyPadPoint, type AirPoint } from './travel/air';
 import { busFare, busStops, type BusStop } from './travel/bus';
 
 /** Real seconds per game minute: a day lasts 16 real minutes. */
@@ -107,7 +109,8 @@ export type Interactable =
   | { kind: 'field'; field: string; label: string }
   | { kind: 'harbour'; land: RegionId; label: string }
   | { kind: 'need'; person: Person; label: string }
-  | { kind: 'busstop'; stop: BusStop; label: string };
+  | { kind: 'busstop'; stop: BusStop; label: string }
+  | { kind: 'skypad'; label: string };
 
 /** A scripted scene that takes the camera (and optionally renders its own scene). */
 export interface Cutscene {
@@ -395,11 +398,13 @@ export class Game {
       this.st.playSeconds += dt;
       if (!this.cutscene) this.ui.handleKeys();
       this.input.blocked = (this.ui.modal && !this.build) || !!this.cutscene;
-      // On the coach: it drives; E or Esc skips ahead to the stop.
-      if (this.busRide) {
-        this.busRide.update(dt);
-        if (!this.ui.modal && (this.input.hit('e') || this.input.hit('escape'))) this.busRide.skip();
-        if (this.busRide.done) this.arriveByBus();
+      // On the coach, the ferry or the air taxi: it carries them; E or Esc skips ahead to the arrival.
+      if (this.ride) {
+        // The pier they will step onto is walkable as soon as its land streams in.
+        if (this.ride.kind === 'ferry') this.harboursView.update();
+        this.ride.update(dt);
+        if (!this.ui.modal && (this.input.hit('e') || this.input.hit('escape'))) this.ride.skip();
+        if (this.ride.done) this.arriveByRide();
       }
       this.trav.update(dt, this.input, this.t);
       this.trackRegion();
@@ -644,7 +649,12 @@ export class Game {
     // Bus stops: the coach to any town the roads reach.
     if (onFoot) for (const r of this.world.loadedRegions()) for (const s of busStops(r.spec.id)) {
       const dd = Math.min(Math.hypot(s.x - p.x, s.z - p.z), Math.hypot(s.kerbX - p.x, s.kerbZ - p.z));
-      if (dd < 3.5) cands.push([dd + 0.2, { kind: 'busstop', stop: s, label: '🚌 Bus stop — ride to another town' }]);
+      if (dd < 3.5) cands.push([dd + 0.2, { kind: 'busstop', stop: s, label: '🚌 Bus stop — the coach or an air taxi to another town' }]);
+    }
+    // The air-taxi stage on the Sky Isles.
+    if (onFoot && this.region.id === 'skyisles') {
+      const sp = skyPadPoint(), dd = Math.hypot(sp.x - p.x, sp.z - p.z);
+      if (dd < 7 && Math.abs(p.y - sp.y) < 3) cands.push([dd * 0.3, { kind: 'skypad', label: '🚁 Air taxi — fly down to any land' }]);
     }
     // Front doors: every building in town can be entered.
     if (onFoot) for (const d of [...this.world.loadedRegions().flatMap((r) => r.doors), ...this.world.landmarkDoors, ...this.homeDoors(), CASTLE_DOOR]) {
@@ -684,6 +694,7 @@ export class Game {
       case 'field': return this.ui.openField(t.field);
       case 'harbour': return this.ui.openHarbour(t.land);
       case 'busstop': return this.ui.openBusStop(t.stop);
+      case 'skypad': return this.ui.openSkyPad();
       case 'need': {
         if (meet(this.st, t.person.id)) this.toast(`🤲 ${t.person.name} — ${NEED_LABEL[t.person.kind].name.toLowerCase()}: “${t.person.hope}” They are in your people finder now.`, 'story');
         // Meeting them makes a friend: they write to you, and a marker stays over them in town.
@@ -816,27 +827,47 @@ export class Game {
   }
 
   /** Travel to a land you have already visited. The journey is implied — the van drives you. */
-  /** The coach running now, if they are on it. */
-  busRide: BusRide | null = null;
+  /** The coach, ferry or air taxi carrying them now, if any. */
+  ride: Ride | null = null;
 
-  /** Board the coach at `stop` for `to`: pay the fare and take your seats. Returns why not, if not. */
-  rideBus(stop: BusStop, to: RegionId): string | null {
-    if (this.busRide) return 'You are already on the coach.';
-    const f = busFare(stop.land, to);
-    if (!f) return 'No road reaches there.';
-    if (this.st.coins < f.coins) return `The fare is ${f.coins} coins.`;
+  /** Pay the fare and take their seats. Returns why not, if not. */
+  private board(coins: number, make: () => Ride, toast: string): string | null {
+    if (this.ride) return 'You are already on your way.';
+    if (this.st.coins < coins) return `The fare is ${coins} coins.`;
     if (this.trav.mode !== 'walk') this.trav.setMode('walk');
-    this.st.coins -= f.coins;
+    this.st.coins -= coins;
     this.bus.emit('coins:changed', { coins: this.st.coins });
-    this.busRide = new BusRide(this.scene, this.trav, stop, to);
-    this.toast(`🚌 All aboard for ${REGION_BY_ID[to].name} — ${f.towns === 1 ? 'the next town' : `${f.towns} towns`} down the road. (E to skip ahead)`, 'story');
+    this.ride = make();
+    this.toast(`${toast} (E to skip ahead)`, 'story');
     return null;
   }
 
-  private arriveByBus(): void {
-    const to = this.busRide!.to;
-    this.busRide = null;
-    this.toast(`🚌 ${REGION_BY_ID[to].name}. You step down at the stop together.`, 'story');
+  /** Board the coach at `stop` for `to`. */
+  rideBus(stop: BusStop, to: RegionId): string | null {
+    const f = busFare(stop.land, to);
+    if (!f) return 'No road reaches there.';
+    return this.board(f.coins, () => coachRide(this.scene, this.trav, stop, to), `🚌 All aboard for ${REGION_BY_ID[to].name} — ${f.towns === 1 ? 'the next town' : `${f.towns} towns`} down the road.`);
+  }
+
+  /** Board the ferry at the harbour of `from` for the harbour of `to`. */
+  rideFerry(from: RegionId, to: RegionId): string | null {
+    const f = ferryFare(from, to);
+    if (!f) return 'No ferry sails there.';
+    return this.board(f.coins, () => ferryRide(this.scene, this.trav, from, to), `⛴️ Cast off for ${REGION_BY_ID[to].name} — ${f.km.toFixed(1)} km round the coast. Your benches are on the foredeck.`);
+  }
+
+  /** Call an air taxi at `from` (a stop, or the Sky Isles stage) to `to`. */
+  rideAir(from: AirPoint, to: RegionId): string | null {
+    const f = airFare(from, to);
+    return this.board(f.coins, () => airRide(this.scene, this.trav, from, to), `🚁 The air taxi lifts off for ${REGION_BY_ID[to].name} — ${f.km.toFixed(1)} km as the crow flies.`);
+  }
+
+  private arriveByRide(): void {
+    const r = this.ride!, name = REGION_BY_ID[r.to].name;
+    this.ride = null;
+    this.toast(r.kind === 'ferry' ? `⛴️ ${name}. She comes alongside, and you step onto the pier together.`
+      : r.kind === 'air' ? `🚁 ${name}. The rotors slow, and you step down together.`
+      : `🚌 ${name}. You step down at the stop together.`, 'story');
   }
 
   travelTo(id: RegionId): void {

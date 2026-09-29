@@ -5,6 +5,8 @@ import { BODY_RADIUS } from '../characters/follow';
 import { DRAGON_SCALE, Dragon } from '../event/Dragon';
 import { BUNKS, CAB_SEATS, PET_BEDS, VAN } from './vanLayout';
 import { COACH, COACH_FAMILY_SEATS, COACH_SEATS } from '../travel/bus';
+import { FERRY, FERRY_FAMILY_SEATS, FERRY_SEATS } from '../travel/ferry';
+import { AIR, AIR_FAMILY_SEATS, AIR_SEATS } from '../travel/air';
 
 /**
  * Ways to travel. In every vehicle the two sit in separate seats with a divider between them, and
@@ -594,4 +596,186 @@ function destSprite(text: string): THREE.Mesh | null {
   const tex = new THREE.CanvasTexture(c);
   tex.colorSpace = THREE.SRGBColorSpace;
   return new THREE.Mesh(new THREE.PlaneGeometry(COACH.halfW * 2 - 0.95, 0.22), new THREE.MeshBasicMaterial({ map: tex, toneMapped: false }));
+}
+
+// ───────────────────────── the coastal ferry ─────────────────────────
+
+/**
+ * The coastal ferry (travel/ferry.ts): a navy hull with a sharp bow, white topsides and a red
+ * boot-top stripe, a teak foredeck with benches port and starboard either side of a planter, a
+ * cabin aft with a wheelhouse over it and solar panels on the roof, rails, lifebuoys and the
+ * red and green lamps. Its waterline is y = 0.
+ */
+export function buildFerryBoat(): THREE.Group {
+  const root = new THREE.Group();
+  const { halfW: W, len, deckY: DY } = FERRY;
+  const F = len / 2, B = -len / 2, rail = '#d8dce4', wood = '#9a6a42', white = '#f4f1ea';
+  // How wide the hull is at z (the bow draws in to a point).
+  const half = (z: number) => { const t = Math.min(1, Math.max(0, (z - (F - 7)) / 7)); return W * (1 - 0.95 * Math.pow(t, 1.6)); };
+  const hullPart = (y0: number, y1: number, c: string, grow = 0) => {
+    const g = new THREE.BoxGeometry(2, y1 - y0, len, 6, 2, 48);
+    const p = g.attributes.position as THREE.BufferAttribute;
+    for (let i = 0; i < p.count; i++) {
+      const z = p.getZ(i), y = p.getY(i) + (y0 + y1) / 2, t = Math.min(1, Math.max(0, (z - (F - 7)) / 7));
+      p.setX(i, p.getX(i) * (half(z) + grow));
+      // The keel rises toward the bow; the stern rounds a little under the transom.
+      p.setY(i, y < 0 ? y * (1 - 0.75 * t) : y);
+    }
+    g.computeVertexNormals();
+    const mesh = new THREE.Mesh(g, m(c));
+    mesh.castShadow = true;
+    root.add(mesh);
+  };
+  hullPart(-0.9, 0.35, '#1f3a5a');
+  hullPart(0.33, 0.47, '#c23b2a', 0.01);
+  hullPart(0.45, DY, white);
+  hullPart(DY - 0.02, DY + 0.05, wood, -0.12); // the deck
+  // Rails round the foredeck, on posts.
+  for (const s of [-1, 1]) {
+    let prev: THREE.Vector3 | null = null;
+    for (let z = -0.6; z <= F - 0.3; z += 0.9) {
+      const x = s * (half(z) - 0.12), top = new THREE.Vector3(x, DY + 0.95, z);
+      bx(root, 0.05, 0.95, 0.05, rail, x, DY + 0.48, z);
+      if (prev) {
+        const d = top.distanceTo(prev), mid = top.clone().add(prev).multiplyScalar(0.5);
+        const r = bx(root, 0.05, 0.05, d, rail, mid.x, mid.y, mid.z);
+        r.lookAt(root.localToWorld(top.clone()));
+      }
+      prev = top;
+    }
+  }
+  // The cabin aft: windows all along, a lit band at night, solar panels on the roof.
+  const panes: Array<[number, number]> = [];
+  for (let z = B + 1.4; z + 1.2 < -1.2; z += 1.45) panes.push([z, z + 1.2]);
+  const cB = B + 0.7, cF = -0.6, cTop = DY + 2.3;
+  root.add(paintedShell({
+    key: 'ferry-cabin', W: W - 0.35, y0: DY, y1: cTop, B: cB, F: cF, R: 0.3, belt: DY + 0.7, vTip: DY + 0.7,
+    lower: '#f4f1ea', upper: '#f4f1ea', band: [DY + 0.62, 0.06, '#2f7fae'],
+    side: panes.map(([a, b]) => ({ z: (a + b) / 2, hz: (b - a) / 2, y: DY + 1.35, hy: 0.5 })),
+    front: [-1.5, 0, 1.5].map((x) => ({ x, hx: 0.6, y: DY + 1.35, hy: 0.5 })),
+    back: [{ x: 0, hx: 0.55, y: DY + 0.95, hy: 0.95 }],
+    arches: [],
+  }));
+  for (const s of [-1, 1]) for (const [a, b] of panes) glass(root, 0.03, 1.0, b - a, s * (W - 0.39), DY + 1.35, (a + b) / 2);
+  for (const x of [-1.5, 0, 1.5]) glass(root, 1.2, 1.0, 0.03, x, DY + 1.35, cF - 0.04);
+  bx(root, (W - 0.35) * 2 - 0.4, 0.06, cF - cB - 0.6, '#1d3566', 0, cTop + 0.05, (cB + cF) / 2 - 1.2); // solar panels
+  // The wheelhouse on top, glazed all round.
+  const wB = -4.4, wF = -1.4, wTop = cTop + 1.55;
+  root.add(paintedShell({
+    key: 'ferry-bridge', W: 1.5, y0: cTop, y1: wTop, B: wB, F: wF, R: 0.25, belt: cTop + 0.55, vTip: cTop + 0.55,
+    lower: '#f4f1ea', upper: '#f4f1ea',
+    side: [{ z: (wB + wF) / 2, hz: 1.2, y: cTop + 0.95, hy: 0.38 }],
+    front: [{ x: 0, hx: 1.2, y: cTop + 0.95, hy: 0.38 }],
+    back: [{ x: 0, hx: 0.9, y: cTop + 0.95, hy: 0.38 }],
+    arches: [],
+  }));
+  glass(root, 2.5, 0.8, 0.03, 0, cTop + 0.95, wF - 0.04);
+  for (const s of [-1, 1]) glass(root, 0.03, 0.8, 2.5, s * 1.46, cTop + 0.95, (wB + wF) / 2);
+  bx(root, 3.3, 0.1, 3.4, '#2f7fae', 0, wTop + 0.05, (wB + wF) / 2); // its roof
+  // Mast with the lamps and a flag.
+  bx(root, 0.08, 2.2, 0.08, rail, 0, wTop + 1.1, wB + 0.6);
+  bx(root, 0.02, 0.4, 0.7, '#2f7fae', 0, wTop + 1.95, wB + 0.2);
+  bx(root, 0.14, 0.14, 0.14, '#fff6d8', 0, wTop + 2.25, wB + 0.6, true);
+  bx(root, 0.1, 0.14, 0.2, '#e8303a', -1.52, cTop + 0.4, wF - 0.4, true); // port, red
+  bx(root, 0.1, 0.14, 0.2, '#30e060', 1.52, cTop + 0.4, wF - 0.4, true); // starboard, green
+  // Lifebuoys on the cabin front.
+  for (const s of [-1, 1]) {
+    const ring = new THREE.Mesh(new THREE.TorusGeometry(0.28, 0.08, 8, 18), m('#ff6a2a'));
+    ring.position.set(s * 2.35, DY + 1.35, cF + 0.02);
+    root.add(ring);
+  }
+  // Their benches on the foredeck, each row its own; a planter down the middle between the two sides.
+  const rows = [FERRY_SEATS.girl[2], ...new Set(FERRY_FAMILY_SEATS.map((q) => q[2]))];
+  for (const z of rows) for (const sx of [-1, 1]) {
+    bx(root, 1.1, 0.1, 0.5, wood, sx * 1.3, DY + 0.4, z);
+    bx(root, 1.1, 0.5, 0.08, wood, sx * 1.3, DY + 0.72, z - 0.26);
+    for (const lx of [-0.45, 0.45]) bx(root, 0.06, 0.4, 0.4, '#3a3a40', sx * 1.3 + lx, DY + 0.2, z);
+  }
+  const pz0 = Math.min(...rows) - 0.4, pz1 = Math.max(...rows) + 0.5;
+  bx(root, 0.5, 0.55, pz1 - pz0, wood, 0, DY + 0.28, (pz0 + pz1) / 2);
+  // Low clipped box hedge along it, lavender and marigolds in flower.
+  const hedge = new THREE.Mesh(new RoundedBoxGeometry(0.42, 0.3, pz1 - pz0 - 0.1, 3, 0.12), m('#4f8a3e'));
+  hedge.position.set(0, DY + 0.68, (pz0 + pz1) / 2);
+  root.add(hedge);
+  for (let z = pz0 + 0.25, k = 0; z < pz1 - 0.1; z += 0.32, k++) for (const x of [-0.12, 0.12]) {
+    const f = new THREE.Mesh(new THREE.SphereGeometry(0.05, 6, 4), m(['#b79ae8', '#ffb43a', '#f4f1ea'][(k + (x > 0 ? 1 : 0)) % 3]));
+    f.position.set(x, DY + 0.85, z + (x > 0 ? 0.14 : 0));
+    root.add(f);
+  }
+  // Bollards and a coil of rope at the bow.
+  for (const s of [-1, 1]) bx(root, 0.2, 0.3, 0.2, '#2a2a30', s * 0.9, DY + 0.15, F - 3.2);
+  const rope = new THREE.Mesh(new THREE.TorusGeometry(0.3, 0.07, 6, 16), m('#c9a878'));
+  rope.rotation.x = Math.PI / 2;
+  rope.position.set(0, DY + 0.07, F - 4);
+  root.add(rope);
+  root.traverse((o) => { if ((o as THREE.Mesh).isMesh) o.castShadow = true; });
+  return root;
+}
+
+// ───────────────────────── the air taxi ─────────────────────────
+
+/**
+ * The air taxi (travel/air.ts): a rounded two-tone cabin with a wide windscreen, six ducted rotors
+ * on swept booms, skids, and a thin cyan light along its belt. Rotor blades are tagged
+ * `userData.rotor` so the ride spins them.
+ */
+export function buildAirTaxi(): THREE.Group {
+  const root = new THREE.Group();
+  const { halfW: W, len, floorY: FY } = AIR;
+  const F = len / 2, B = -len / 2, top = FY + 1.75, body = '#f2f4f7', trim = '#2a3a55', neon = '#3ae8ff';
+  root.add(paintedShell({
+    key: 'air-cabin', W, y0: 0.3, y1: top, B, F, R: 0.65, belt: FY + 0.45, vTip: FY + 0.1, lower: trim, upper: body,
+    side: [{ z: 1.2, hz: 0.75, y: FY + 1.0, hy: 0.45 }, { z: -0.6, hz: 0.75, y: FY + 1.0, hy: 0.45 }],
+    front: [{ x: 0, hx: W - 0.4, y: FY + 0.95, hy: 0.55 }],
+    back: [{ x: 0, hx: 0.6, y: FY + 1.1, hy: 0.3 }],
+    arches: [],
+  }));
+  for (const s of [-1, 1]) for (const z of [1.2, -0.6]) glass(root, 0.03, 0.9, 1.5, s * (W - 0.03), FY + 1.0, z);
+  glass(root, (W - 0.4) * 2, 1.1, 0.03, 0, FY + 0.95, F - 0.06);
+  for (const s of [-1, 1]) bx(root, 0.03, 0.04, len - 1.4, neon, s * (W + 0.01), FY + 0.45, 0, true);
+  bx(root, W * 2 - 0.2, 0.05, len - 0.6, '#5a5a62', 0, FY, 0); // the floor
+  bx(root, W * 2 - 0.5, 0.3, 0.35, '#3a4a6a', 0, FY + 0.55, F - 0.55); // the dash
+  // Seats in pairs, a console between the two front seats.
+  const rows = [AIR_SEATS.girl[2], ...new Set(AIR_FAMILY_SEATS.map((q) => q[2]))];
+  for (const z of rows) for (const sx of [-1, 1]) {
+    bx(root, 0.8, 0.12, 0.55, '#3a5a8a', sx * 0.75, FY + 0.4, z);
+    bx(root, 0.8, 0.7, 0.1, '#3a5a8a', sx * 0.75, FY + 0.8, z - 0.3);
+  }
+  bx(root, 0.3, 0.55, 0.9, '#2a2a30', 0, FY + 0.3, AIR_SEATS.girl[2] + 0.1);
+  // Skids.
+  for (const s of [-1, 1]) {
+    bx(root, 0.08, 0.08, len - 1.2, '#c8ccd4', s * (W - 0.3), 0.04, 0);
+    for (const z of [1.6, -1.6]) bx(root, 0.06, 0.34, 0.06, '#c8ccd4', s * (W - 0.3), 0.2, z);
+  }
+  // Six rotors on booms.
+  for (const [x, z] of [[2.6, 2.1], [-2.6, 2.1], [3.0, 0], [-3.0, 0], [2.6, -2.1], [-2.6, -2.1]]) {
+    const from = new THREE.Vector3(Math.sign(x) * (W - 0.2), top - 0.35, z * 0.5), to = new THREE.Vector3(x, top - 0.1, z);
+    const d = from.distanceTo(to), mid = from.clone().add(to).multiplyScalar(0.5);
+    const boom = bx(root, 0.12, 0.1, d, trim, mid.x, mid.y, mid.z);
+    boom.lookAt(to);
+    const duct = new THREE.Mesh(new THREE.TorusGeometry(0.85, 0.07, 6, 24), m(body));
+    duct.rotation.x = Math.PI / 2;
+    duct.position.set(x, top - 0.1, z);
+    root.add(duct);
+    const halo = new THREE.Mesh(new THREE.TorusGeometry(0.85, 0.02, 4, 24), m(neon, true));
+    halo.rotation.x = Math.PI / 2;
+    halo.position.set(x, top - 0.02, z);
+    root.add(halo);
+    const blades = new THREE.Group();
+    blades.position.set(x, top - 0.1, z);
+    blades.userData.rotor = true;
+    for (let k = 0; k < 3; k++) {
+      const b = new THREE.Mesh(new THREE.BoxGeometry(1.5, 0.02, 0.13), m('#2a2a30'));
+      b.rotation.y = (k / 3) * Math.PI * 2;
+      blades.add(b);
+    }
+    root.add(blades);
+  }
+  // Lamps: white ahead, red behind.
+  for (const s of [-1, 1]) {
+    bx(root, 0.3, 0.06, 0.04, '#fff6c0', s * (W - 0.45), FY + 0.2, F - 0.05, true);
+    bx(root, 0.2, 0.06, 0.04, '#e8303a', s * (W - 0.4), FY + 0.6, B + 0.02, true);
+  }
+  root.traverse((o) => { if ((o as THREE.Mesh).isMesh) o.castShadow = true; });
+  return root;
 }

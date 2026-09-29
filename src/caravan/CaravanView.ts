@@ -9,7 +9,6 @@ import { surfaceAt } from '../world/terrain';
 import { Carpet } from './Carpet';
 import { DIMS } from '../characters/CharacterModel';
 import { BUNKS, PET_BEDS, RIDE_CHILD_SEATS, VAN } from '../vehicles/vanLayout';
-import { COACH_FAMILY_SEATS } from '../travel/bus';
 
 /** Children are drawn at this scale of an adult. */
 const CHILD_SCALE = 0.62;
@@ -185,8 +184,8 @@ export class CaravanView {
   update(dt: number, t: number): void {
     const g = this.g, tr = g.trav;
     if (g.started) this.updateStrays(dt, t);
-    // On the intercity coach they ride along in the seats behind the two.
-    if (tr.carriage) return this.rideAlong(dt, t, tr.carriage.root);
+    // On the coach, the ferry or the air taxi they ride along in the seats behind the two.
+    if (tr.carriage) return this.rideAlong(dt, t, tr.carriage.root, tr.carriage.family);
     const cutOk = !g.cutscene || !!g.cutscene.caravan;
     const below = surfaceAt(tr.gPos.x, tr.gPos.z, tr.gPos.y + 3);
     const aloft = g.started && !g.inVan && cutOk && tr.airborne && tr.gPos.y > below + 1.2;
@@ -348,10 +347,10 @@ export class CaravanView {
     }
   }
 
-  /** Seated on a coach: sisters on her side, a brother on his, then the children, the pets beside them. */
-  private rideAlong(dt: number, t: number, coach: THREE.Object3D): void {
+  /** Seated on a coach, ferry or air taxi: sisters on her side, a brother on his, then the children, the pets beside them. */
+  private rideAlong(dt: number, t: number, coach: THREE.Object3D, seats: ReadonlyArray<readonly [number, number, number]>): void {
     coach.updateMatrixWorld();
-    const her = COACH_FAMILY_SEATS.filter((s) => s[0] < 0), his = COACH_FAMILY_SEATS.filter((s) => s[0] > 0);
+    const her = seats.filter((s) => s[0] < 0), his = seats.filter((s) => s[0] > 0);
     const next = (boy: boolean) => (boy ? his.shift() ?? her.shift() : her.shift() ?? his.shift());
     for (const b of this.bodies) {
       const r = (b.child ?? b.pet)!.root;

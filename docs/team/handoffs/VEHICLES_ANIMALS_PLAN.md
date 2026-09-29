@@ -47,3 +47,15 @@ what is still missing, the keywords behind it, and the kit parts it needs. ✅ =
 3. Water kit and sky kit, then each land's missing boats and fliers.
 Rules kept throughout: no eyes on any animal, heads float (`ANIMAL_HEAD_GAP`), nothing carries the
 two together in one seat.
+
+## Rides (vehicles you board) — `travel/Ride.ts`
+One ride class carries them on a course with a model, their two seats and the family's:
+- **Intercity coach** (`travel/bus.ts`): every bus stop to every town on the ground, by the roads.
+- **Coastal ferry** (`travel/ferry.ts`): from the pier head of every harbour, out across the ship
+  lanes and round the island outside them, to any other harbour; benches port and starboard on the
+  open foredeck with a planter between. Board from the harbour panel.
+- **Air taxi** (`travel/air.ts`): from beside any bus stop, lift off, cruise 110 m above the highest
+  ground, and settle beside the stop of any land — or on the landing stage floating beside the
+  Sky Isles' top island (built in `architecture.ts`), where it also boards. Seats either side of
+  a console.
+- Left: Sky Isles cable gondolas, trams, water taxis.
