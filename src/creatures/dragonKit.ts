@@ -70,7 +70,9 @@ export function girthAt(plan: Plan, s: number, nk = 0.26, cat = false): number {
     // Rounding in from the head end, a thick neck swelling into a deep chest and belly, then a
     // thick tail tapering slowly to the fins at its tip.
     const e = nk + 0.3;
-    if (s < nk) return 0.64 + 0.3 * Math.sin((s / nk) * Math.PI * 0.5) - (s < 0.02 ? 0.14 * (1 - s / 0.02) : 0);
+    // The neck's end rounds closed (the head floats just ahead of it).
+    const cap = s < 0.03 ? Math.sqrt(Math.max(0, 1 - ((0.03 - s) / 0.03) ** 2)) : 1;
+    if (s < nk) return (0.64 + 0.3 * Math.sin((s / nk) * Math.PI * 0.5)) * cap;
     if (s < e) return 0.94 + 0.06 * Math.sin(((s - nk) / 0.3) * Math.PI);
     return 0.15 + 0.79 * Math.pow(1 - (s - e) / (1 - e), 1.35);
   }
@@ -284,7 +286,7 @@ function layParts(d: DragonSpec, solid: Parts, glow: Parts): void {
     const s = 0.005 + (k / 26) * 0.07, rr = r(s), a = (k * 2.4) % (Math.PI * 1.2) - 0.1;
     const sx = Math.cos(a) * rr * 0.9, up = Math.sin(a) * rr * 0.9 + rr * 0.2;
     if (d.plan === 'lung' || d.plan === 'naga') solid.cone(s, [sx, up, 0], [sx * 1.3, up + 0.45 * scale, -(3.6 + (k % 4) * 0.8) * scale], 0.2 * scale, 0.01, mane[k % mane.length], 4);
-    else if (k % 2 === 0) solid.cone(s, [sx, up, 0], [sx * 1.4, up + rr * 0.4, -rr * 1.4], rr * 0.18, 0.01, mane[k % mane.length], 4);
+    else if (k % 2 === 0 && d.build !== 'cat') solid.cone(s, [sx, up, 0], [sx * 1.4, up + rr * 0.4, -rr * 1.4], rr * 0.18, 0.01, mane[k % mane.length], 4);
   }
   // Legs with claws: the lung's four stride out; a winged dragon's tuck back in flight.
   const legs: Array<[number, number]> = d.plan === 'naga' ? [] : d.plan === 'wyvern' ? [[HIP(d), 1], [HIP(d), -1]]
@@ -381,7 +383,7 @@ function layParts(d: DragonSpec, solid: Parts, glow: Parts): void {
       }
       const rib = C(d.rim);
       for (const sx of [1, -1]) {
-        const cx = sx * T * 0.42, cz = -T * 0.62, ax = T * 0.4, az = T * 0.72, n = 10;
+        const H = T * (d.build === 'cat' ? 1.9 : 1), cx = sx * H * 0.42, cz = -H * 0.62, ax = H * 0.4, az = H * 0.72, n = 10;
         const arc: number[][] = [];
         for (let i = 0; i <= n; i++) {
           // Round the lobe from its inner root, out along the back, to its outer edge.
@@ -390,7 +392,7 @@ function layParts(d: DragonSpec, solid: Parts, glow: Parts): void {
           arc.push([x, Math.abs(x) * 0.3, z]);
         }
         for (let i = 0; i < n; i++) solid.tri(ts, [0, 0, 0], arc[i], arc[i + 1], c1);
-        for (let i = 1; i < n; i += 2) solid.cone(ts, [0, 0.01, 0], [arc[i][0], arc[i][1] + 0.01, arc[i][2]], 0.02 * scale, 0.008 * scale, rib, 4);
+        for (let i = 1; i < n; i += 2) solid.cone(ts, [0, 0.01, 0], [arc[i][0], arc[i][1] + 0.01, arc[i][2]], 0.02 * H, 0.008 * H, rib, 4);
       }
       break;
     }
@@ -532,10 +534,11 @@ function buildHead(d: DragonSpec, head: THREE.Group): number {
       g.add(mesh(new THREE.SphereGeometry(1.15, 20, 12).scale(0.95, 0.62, 1.1), skinM, 'head', 0, -0.32, 1.3));
       g.add(mesh(new THREE.SphereGeometry(1.0, 18, 10).scale(0.95, 0.36, 0.9), skinM, 'head', 0, -0.72, 0.9));
       for (const sx of [1, -1]) {
-        const big = mesh(new THREE.CapsuleGeometry(0.26, 1.0, 6, 10), skinM, 'ear', sx * 0.55, 1.2, -0.55);
-        big.rotation.set(-0.85, 0, -sx * 0.22);
-        const small = mesh(new THREE.CapsuleGeometry(0.17, 0.5, 5, 8), skinM, 'ear', sx * 1.08, 0.5, -0.6);
-        small.rotation.set(-1.0, 0, -sx * 0.8);
+        // Swept well back, so from any side they read as smooth nubs along the crown.
+        const big = mesh(new THREE.CapsuleGeometry(0.26, 1.1, 6, 10), skinM, 'ear', sx * 0.55, 1.1, -0.75);
+        big.rotation.set(-1.2, 0, -sx * 0.2);
+        const small = mesh(new THREE.CapsuleGeometry(0.17, 0.55, 5, 8), skinM, 'ear', sx * 1.05, 0.45, -0.75);
+        small.rotation.set(-1.3, 0, -sx * 0.7);
         g.add(big, small);
       }
       back = 2.0;
