@@ -2,30 +2,32 @@ import * as THREE from 'three';
 import { DragonModel, fly, perch, type DragonSpec, type Flight } from '../creatures/dragonKit';
 
 /**
- * The Night Dragon you ride — sleek and night-black, cat-like and playful, with a big rounded head,
- * swept-back ear flaps, huge bat wings and twin tail fins (one of them a red leather-and-steel
- * prosthetic). A loving nod to the black night dragons she adores, built from the dragon kit
- * (creatures/dragonKit.ts) like every dragon in the world: one continuous scaled body, jointed
- * wings of finger bones and membrane, tucked legs with claws, a line of glowing scales down the
- * spine and star-scales along its flanks. Like everyone here it has no eyes and no mouth, and its
- * head floats just clear of its neck. Over the celebration it loops a figure-eight and breathes
- * harmless glitter.
+ * The Night Dragon you ride — sleek and night-black, cat-like and playful, in the spirit of the
+ * black night dragons she adores: a big, broad, rounded head with two large ear flaps swept back
+ * and smaller ones below them, a short thick neck, a deep compact body on sturdy legs, huge bat
+ * wings from the shoulders with a smaller pair over the hips, and a thick tail with a small pair
+ * of fins partway along and twin fins at its tip (one of them a red leather-and-steel
+ * prosthetic). Built from the dragon kit (creatures/dragonKit.ts, the 'cat' build) like every
+ * dragon in the world: one continuous scaled body, jointed wings of finger bones and membrane,
+ * low plates and a line of glowing scales down the spine, star-scales along its flanks. Like
+ * everyone here it has no eyes and no mouth, and its head floats just clear of its neck. Over
+ * the celebration it loops a figure-eight and breathes harmless glitter.
  */
 /** Saddle positions along the body (unscaled): hers in front, his behind. */
 export const DRAGON_SADDLES = [0.35, -0.5] as const;
 export const DRAGON_SCALE = 1.6;
 
 export const NIGHT_DRAGON: DragonSpec = {
-  id: 'night-dragon', name: 'the Night Dragon', plan: 'wyrm', length: 7.2, girth: 0.62, neck: 0.12,
+  id: 'night-dragon', name: 'the Night Dragon', plan: 'wyrm', build: 'cat', length: 7.2, girth: 0.6, neck: 0.14,
   head: 'night', crestKind: 'plates', tail: 'twin', scales: 'shingle',
   back: '#17181f', side: '#1d1e27', belly: '#262833', rim: '#3a4060',
   crest: ['#111218', '#1a1b24'], mane: ['#111218'], claw: '#2a2b36', horn: '#17181f',
-  wings: { span: 9.4, membrane: '#111218', bone: '#17181f' },
+  wings: { span: 10.4, membrane: '#15161e', bone: '#1c1d26', hind: 0.4 },
   runes: '#7affe0', stars: ['#9ad8ff', '#ffd6f0', '#b99bff'],
 };
 
 /** Where the body sits under the saddles: the neck's height and how far forward it starts. */
-const BODY_Y = 1.17, NECK_Z = 1.68;
+const BODY_Y = 1.02, NECK_Z = 1.68;
 
 const std = (c: string) => new THREE.MeshStandardMaterial({ color: c, roughness: 0.5, metalness: 0.12, side: THREE.DoubleSide });
 
