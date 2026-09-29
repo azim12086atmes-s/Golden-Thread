@@ -710,6 +710,231 @@ function skyJet(): Design {
   };
 }
 
+// ───────────────────────── the kit, extended (VEHICLES_ANIMALS_PLAN.md) ─────────────────────────
+
+/** A scooter or motorbike (a Vespa, a Royal Enfield, an e-moped): two wheels, a seat, a lamp, maybe a box. */
+function scooter(id: string, name: string, body: C, opts: { moto?: boolean; box?: C } = {}): Design {
+  return {
+    id, name, realm: 'road', len: 2, speed: 9,
+    pieces: [P((s) => {
+      if (opts.moto) {
+        s.ball(1, body, [0, 0.85, 0.1], { s: [0.2, 0.18, 0.45], seg: 12 }); // the tank
+        s.box(0.3, 0.1, 0.7, '#1b1b20', [0, 0.95, -0.4]);
+        s.cyl(0.05, 0.06, 0.6, CHROME, [0.18, 0.45, -0.5], { r: [Math.PI / 2 - 0.2, 0, 0], seg: 6 });
+        s.box(0.3, 0.35, 0.4, '#3a3a44', [0, 0.55, 0.05]);
+      } else {
+        s.ball(1, body, [0, 0.6, -0.35], { s: [0.32, 0.32, 0.55], seg: 14 }); // the curved rear shell
+        s.box(0.3, 0.1, 0.55, '#6b4a30', [0, 0.95, -0.35]);
+        s.box(0.34, 0.9, 0.12, body, [0, 0.55, 0.55], { r: [-0.25, 0, 0] });
+        s.box(0.4, 0.06, 0.6, body, [0, 0.35, 0.15]);
+      }
+      s.rod([0, 0.6, 0.6], [0, 1.15, 0.5], 0.03, CHROME);
+      s.rod([-0.35, 1.15, 0.5], [0.35, 1.15, 0.5], 0.025, CHROME);
+      s.ball(0.09, HEAD, [0, 1.0, 0.68], { glow: true, seg: 6 });
+      for (const z of [0.65, -0.62]) s.wheel(0.28, 0.1, [0, 0.28, z]);
+      if (opts.box) s.box(0.45, 0.4, 0.4, opts.box, [0, 1.2, -0.75]);
+    })],
+  };
+}
+
+/** A lorry on a truck chassis: a cab in front, then a box, a tank, a flatbed, or an ice-cream parlour. */
+function truck(id: string, name: string, cab: C, back: C, opts: { len?: number; tank?: boolean; flat?: boolean; icecream?: boolean; stripes?: C } = {}): Design {
+  const len = opts.len ?? 7, w = 2.3, cabL = 1.9;
+  return {
+    id, name, realm: 'road', len, speed: 8,
+    pieces: [P((s) => {
+      s.box(w - 0.1, 0.3, len - 0.3, '#2a2a30', [0, 0.6, 0]);
+      s.box(w, 1.7, cabL, cab, [0, 1.55, len / 2 - cabL / 2]);
+      s.box(w - 0.3, 0.8, 0.05, GLASS, [0, 1.9, len / 2 + 0.01]);
+      for (const sx of [-1, 1]) s.box(0.04, 0.6, cabL * 0.55, GLASS, [sx * w / 2, 1.95, len / 2 - cabL * 0.45]);
+      const bl = len - cabL - 0.3, bz = -len / 2 + bl / 2;
+      if (opts.tank) s.cyl(1.0, 1.0, bl, back, [0, 1.8, bz], { r: [Math.PI / 2, 0, 0], seg: 16 });
+      else if (opts.flat) { s.box(w, 0.2, bl, back, [0, 0.95, bz]); for (let i = 0; i < 3; i++) s.box(1.2, 0.6, 1.1, ['#8a6444', '#c9a06a', '#6b8a4a'][i], [0, 1.35, bz - bl / 3 + i * bl / 3]); }
+      else s.box(w, 2.3, bl, back, [0, 2.0, bz]);
+      if (opts.stripes) for (const y of [1.3, 2.7]) s.box(w + 0.02, 0.14, bl, opts.stripes, [0, y, bz]);
+      if (opts.icecream) {
+        for (const sx of [-1, 1]) { s.box(0.05, 0.9, bl * 0.5, WARM, [sx * (w / 2 + 0.01), 2.1, bz], { glow: true }); s.box(0.9, 0.06, bl * 0.55, '#f2a0b0', [sx * (w / 2 + 0.3), 2.75, bz], { r: [0, 0, sx * 0.3] }); }
+        s.cyl(0.25, 0.02, 0.6, '#f2d0a0', [0, 3.5, bz], { seg: 8 });
+        s.ball(0.32, '#ffd6e8', [0, 3.85, bz], { seg: 10 });
+      }
+      for (const z of [len / 2 - 1.2, -len / 2 + 1.4, -len / 2 + 2.6]) for (const sx of [-1, 1]) s.wheel(0.48, 0.3, [sx * (w / 2 - 0.12), 0.48, z]);
+      lamps(s, w / 2 - 0.3, 0.9, len / 2 + 0.02, -len / 2 - 0.02);
+    })],
+  };
+}
+
+/** A three-wheeled pickup (a Piaggio Ape, a cargo trike, a kei truck): a tiny cab and a little bed behind. */
+function trike(id: string, name: string, body: C, bed: C): Design {
+  return {
+    id, name, realm: 'road', len: 2.9, speed: 7,
+    pieces: [P((s) => {
+      s.box(1.2, 1.3, 1.0, body, [0, 1.05, 0.85]);
+      s.ball(1, body, [0, 1.7, 0.85], { s: [0.6, 0.12, 0.5], seg: 12 });
+      s.box(1.0, 0.55, 0.04, GLASS, [0, 1.3, 1.36]);
+      s.box(1.3, 0.1, 1.5, bed, [0, 0.62, -0.5]);
+      for (const sx of [-1, 1]) s.box(0.05, 0.4, 1.5, bed, [sx * 0.65, 0.85, -0.5]);
+      s.box(1.3, 0.4, 0.05, bed, [0, 0.85, -1.25]);
+      s.box(0.6, 0.4, 0.5, '#c9a06a', [0.2, 0.9, -0.5]);
+      s.wheel(0.26, 0.14, [0, 0.26, 1.1]);
+      for (const sx of [-1, 1]) s.wheel(0.26, 0.14, [sx * 0.62, 0.26, -0.6]);
+      s.ball(0.09, HEAD, [0, 1.0, 1.37], { glow: true, seg: 6 });
+    })],
+  };
+}
+
+/** A tracked snowcat: a warm-lit cabin on two long tracks with road wheels, a blade in front. */
+function snowcat(): Design {
+  const len = 5.2;
+  return {
+    id: 'snowcat', name: 'snowcat', realm: 'road', len, speed: 5,
+    pieces: [P((s) => {
+      for (const sx of [-1, 1]) {
+        s.ball(1, '#2a2a30', [sx * 1.05, 0.45, 0], { s: [0.32, 0.45, len / 2], seg: 12 });
+        for (let i = 0; i < 5; i++) s.cyl(0.28, 0.28, 0.2, '#6a6a72', [sx * 1.25, 0.4, -len * 0.36 + i * len * 0.18], { r: [0, 0, Math.PI / 2], seg: 10 });
+      }
+      s.box(2.1, 0.5, len * 0.9, '#e8342a', [0, 1.05, 0]);
+      s.box(1.9, 1.3, len * 0.55, '#e8342a', [0, 1.9, 0.3]);
+      s.box(1.7, 0.6, 0.05, GLASS, [0, 2.1, 0.3 + len * 0.275]);
+      windows(s, 2, 0.95, 2.1, -0.4, 1.4, 0.7, 0.55);
+      s.box(2.6, 0.9, 0.2, '#c8ccd4', [0, 0.7, len / 2 + 0.3], { r: [-0.3, 0, 0] });
+      s.ball(0.12, '#ffb000', [0, 2.65, 0.3], { glow: true, seg: 6 });
+      lamps(s, 0.7, 1.4, len / 2 - 0.1, -len / 2 + 0.2);
+    })],
+  };
+}
+
+/** New Yonder's delivery robot: a rounded cooler on six small wheels, a flag on a whip, lights. */
+function deliveryBot(): Design {
+  return {
+    id: 'delivery-bot', name: 'delivery robot', realm: 'road', len: 1, speed: 1.6,
+    pieces: [P((s) => {
+      s.ball(1, '#f4f4f4', [0, 0.45, 0], { s: [0.32, 0.3, 0.4], seg: 14 });
+      s.box(0.6, 0.02, 0.4, '#3ae8ff', [0, 0.6, 0.05], { glow: true });
+      for (const z of [-0.28, 0, 0.28]) for (const sx of [-1, 1]) s.wheel(0.1, 0.06, [sx * 0.3, 0.1, z]);
+      s.rod([0.2, 0.7, -0.3], [0.2, 1.6, -0.35], 0.01, '#8a8a94');
+      s.box(0.2, 0.12, 0.02, '#ff8a2a', [0.3, 1.55, -0.35], { glow: true });
+      s.box(0.3, 0.04, 0.02, '#fff6d8', [0, 0.45, 0.4], { glow: true });
+    })],
+  };
+}
+
+/** A pedicab: a bicycle in front, a hooded seat behind (empty — nothing here carries anyone). */
+function pedicab(id: string, body: C, hood: C): Design {
+  return {
+    id, name: 'pedicab', realm: 'road', len: 2.6, speed: 3.5,
+    pieces: [P((s) => {
+      s.wheel(0.34, 0.06, [0, 0.34, 0.95]);
+      s.rod([0, 0.34, 0.95], [0, 0.95, 0.4], 0.03, body);
+      s.rod([0, 0.95, 0.4], [0, 0.6, -0.3], 0.03, body);
+      s.box(0.25, 0.06, 0.3, '#1b1b20', [0, 1.0, 0.35]);
+      s.rod([-0.25, 1.15, 0.8], [0.25, 1.15, 0.8], 0.02, CHROME);
+      s.box(1.2, 0.5, 0.7, body, [0, 0.7, -0.6]);
+      s.box(1.1, 0.15, 0.6, '#c23b2a', [0, 0.98, -0.6]);
+      s.ball(1, hood, [0, 1.5, -0.7], { s: [0.62, 0.55, 0.45], seg: 12 });
+      for (const sx of [-1, 1]) s.wheel(0.3, 0.06, [sx * 0.6, 0.3, -0.6]);
+      s.ball(0.07, HEAD, [0, 0.9, 1.05], { glow: true, seg: 6 });
+    })],
+  };
+}
+
+/** A speedboat, rib or water taxi: a pointed hull, a console with a screen, an outboard at the stern. */
+function speedboat(id: string, name: string, hull: C, deck: C, len = 6): Design {
+  const beam = len * 0.36;
+  return {
+    id, name, realm: 'water', len, speed: 6, bob: 0.08,
+    pieces: [P((s) => {
+      s.hull(len, beam, 0.6, hull, [0, 0.3, 0], { sheer: 0.25, deck });
+      for (const sx of [-1, 1]) s.cyl(0.25, 0.25, len * 0.85, '#3a3a44', [sx * beam * 0.46, 0.45, -0.1], { r: [Math.PI / 2, 0, 0], seg: 10 });
+      s.box(0.8, 0.8, 0.6, '#f4f4f4', [0, 0.9, 0.2]);
+      s.box(0.7, 0.4, 0.04, GLASS, [0, 1.3, 0.52], { r: [-0.4, 0, 0] });
+      s.box(0.4, 0.9, 0.4, '#2a2a30', [0, 0.6, -len / 2 - 0.1]);
+      s.ball(0.08, '#ff3a3a', [0.3, 1.4, 0.2], { glow: true, seg: 6 });
+    })],
+  };
+}
+
+/** A coracle: a round woven bowl of a boat, paddled with one oar. */
+function coracle(): Design {
+  return {
+    id: 'coracle', name: 'coracle', realm: 'water', len: 2, speed: 1, bob: 0.12,
+    pieces: [P((s) => {
+      s.lathe([[0.2, 0], [0.8, 0.05], [1.0, 0.3], [1.02, 0.55]], '#8a6a3a', [0, 0.05, 0], { seg: 16 });
+      for (let i = 0; i < 8; i++) s.rod([Math.cos(i) * 1.0, 0.55, Math.sin(i) * 1.0], [Math.cos(i + Math.PI) * 1.0, 0.55, Math.sin(i + Math.PI) * 1.0], 0.02, '#c9a06a');
+      s.rod([0.6, 0.6, 0.2], [1.4, -0.1, 0.9], 0.03, '#6b4a2a');
+    })],
+  };
+}
+
+/** The Meadow's leaf boat: a great curled leaf with a flower for a sail. */
+function leafBoat(): Design {
+  return {
+    id: 'leaf-boat', name: 'leaf boat', realm: 'water', len: 3.2, speed: 1.4, bob: 0.12,
+    pieces: [P((s) => {
+      s.hull(3.2, 1.2, 0.3, '#5aa84a', [0, 0.2, 0], { sheer: 0.35, deck: '#7ac85a' });
+      s.rod([0, 0.3, -1.4], [0, 0.3, 1.5], 0.03, '#3a7a3a');
+      s.rod([0, 0.3, 0.2], [0, 2.2, 0.1], 0.03, '#4f9a44');
+      for (let i = 0; i < 6; i++) s.ball(0.3, '#ff8fb8', [Math.cos(i) * 0.35, 2.3 + Math.sin(i) * 0.35, 0.1], { s: [1, 1, 0.3], seg: 8 });
+      s.ball(0.15, '#f2d14e', [0, 2.3, 0.15], { seg: 8 });
+    })],
+  };
+}
+
+/** A helicopter: a rounded glass cabin, a tail boom, the rotor spinning above. */
+function helicopter(id: string, body: C, stripe: C): Design {
+  return {
+    id, name: 'helicopter', realm: 'sky', len: 10, speed: 14, alt: [50, 100], radius: [150, 350], bob: 1, bank: 0.2,
+    pieces: [
+      P((s) => {
+        s.ball(1, body, [0, 0, 0], { s: [1.1, 1.1, 1.9], seg: 16 });
+        s.ball(1, GLASS, [0, 0.3, 1.2], { s: [0.95, 0.75, 0.9], seg: 12 });
+        s.cyl(0.25, 0.12, 5, body, [0, 0.4, -3.8], { r: [Math.PI / 2, 0, 0], seg: 8 });
+        s.box(0.1, 1.2, 0.8, stripe, [0, 0.9, -6.2]);
+        s.box(2.2, 0.12, 0.3, stripe, [0, -0.2, 0]);
+        for (const sx of [-1, 1]) s.rod([sx * 0.8, -1.1, 1.2], [sx * 0.8, -1.1, -1.2], 0.06, '#3a3a44');
+        s.ball(0.12, '#ff3a3a', [0, -1, 0], { glow: true, seg: 6 });
+      }),
+      P((s) => { s.box(11, 0.05, 0.35, '#2a2a30', [0, 1.3, 0]); s.box(0.35, 0.05, 11, '#2a2a30', [0, 1.3, 0]); }, 'spinY', [0, 1.3, 0], 3),
+    ],
+  };
+}
+
+/** A hang glider: a great triangle of sailcloth on a frame. */
+function hangGlider(col: C): Design {
+  return {
+    id: 'hang-glider', name: 'hang glider', realm: 'sky', len: 4, speed: 7, alt: [40, 90], radius: [100, 280], bob: 2, bank: 0.4,
+    pieces: [P((s) => {
+      s.shape([[0, 2.2], [5, -1.4], [-5, -1.4]], 0.04, col, [0, 0, 0], { r: [Math.PI / 2, 0, 0] });
+      s.rod([0, 0, 2.2], [0, 0, -1.4], 0.04, '#6a6a72');
+      s.rod([-1, -1.3, 0.3], [1, -1.3, 0.3], 0.03, '#6a6a72');
+      for (const sx of [-1, 1]) s.rod([sx, -1.3, 0.3], [0, 0, 0.3], 0.03, '#6a6a72');
+    })],
+  };
+}
+
+/** The Sky Isles' cloud jellies: a glowing bell trailing ribbons of light. */
+function cloudJelly(col: C): Design {
+  return {
+    id: 'cloud-jelly', name: 'cloud jellies', realm: 'sky', len: 3, speed: 1.5, alt: [25, 80], radius: [40, 220], bob: 3, bank: 0, group: { n: 3, spacing: 7 },
+    pieces: [P((s) => {
+      s.ball(1.4, col, [0, 0, 0], { s: [1, 0.7, 1], seg: 14, glow: true });
+      s.ball(1.1, '#ffffff', [0, 0.1, 0], { s: [1, 0.5, 1], seg: 12 });
+      for (let i = 0; i < 8; i++) { const a = (i / 8) * Math.PI * 2; s.rod([Math.cos(a) * 0.9, -0.3, Math.sin(a) * 0.9], [Math.cos(a) * 1.1, -3 - (i % 3) * 0.6, Math.sin(a) * 1.1], 0.05, col, { glow: true }); }
+    })],
+  };
+}
+
+/** Star mantas: wide dark wings dusted with stars, beating slowly as they glide. */
+function starManta(): Design {
+  const wing = (sx: number) => P((s) => {
+    s.shape([[0, 1.2], [3.6 * sx, -0.4], [0.6 * sx, -1.4]], 0.08, '#2a2a5a', [0, 0, 0], { r: [Math.PI / 2, 0, 0] });
+    for (let i = 0; i < 6; i++) s.ball(0.06, '#fff4c0', [sx * (0.6 + i * 0.45), 0.06, -0.1 + (i % 2) * 0.3], { glow: true, seg: 5 });
+  }, sx > 0 ? 'flapL' : 'flapR', [0, 0, 0], 0.5);
+  return {
+    id: 'star-manta', name: 'star mantas', realm: 'sky', len: 6, speed: 5, alt: [40, 110], radius: [120, 380], bob: 2, bank: 0.2, group: { n: 2, spacing: 12 },
+    pieces: [P((s) => { s.ball(1, '#2a2a5a', [0, 0, 0], { s: [0.8, 0.25, 1.4], seg: 12 }); s.rod([0, 0, -1.3], [0, 0, -4.5], 0.04, '#b8a4ff', { glow: true }); }), wing(1), wing(-1)],
+  };
+}
+
 const withGroup = (d: Design, n: number, spacing: number): Design => ({ ...d, group: { n, spacing } });
 
 // ───────────────────────── the catalogue ─────────────────────────
@@ -917,6 +1142,51 @@ export const DESIGNS: Record<string, () => Design> = {
   'airliner-2': () => airliner('airliner-2', '#c8102e'),
   'light-plane': () => lightPlane(),
   'sky-jet': () => skyJet(),
+
+  // Each land's own (VEHICLES_ANIMALS_PLAN.md) — road
+  'snowcat': () => snowcat(),
+  'volvo-estate': () => car('volvo-estate', 'old estate car', '#2f5a8a', '#2f5a8a', { len: 4.9, h: 1.6, chrome: true }),
+  'fish-lorry': () => truck('fish-lorry', 'fish lorry', '#f4f4f4', '#2f6fb0', { len: 7, stripes: '#f4f4f4' }),
+  'vespa': () => scooter('vespa', 'scooter', '#9fd8c8'),
+  'vespa-2': () => scooter('vespa-2', 'scooter', '#e8342a'),
+  'fiat-500': () => car('fiat-500', 'little Fiat', '#f2d0a0', '#f4f1e8', { round: true, len: 3.2, chrome: true }),
+  'ape': () => trike('ape', 'three-wheeled Ape', '#3a8ad9', '#6b8a9a'),
+  'milk-float': () => truck('milk-float', 'milk float', '#f4f4f4', '#2f7a3a', { len: 4.6, flat: true }),
+  'pedicab': () => pedicab('pedicab', '#1b1b20', '#c8102e'),
+  'pedicab-2': () => pedicab('pedicab-2', '#f4f4f4', '#3ae8ff'),
+  'delivery-bot': () => deliveryBot(),
+  'e-moped': () => scooter('e-moped', 'e-moped', '#3aae6a', { box: '#f2d14e' }),
+  'pony-car': () => modern('pony-car', 'Pony hatchback', '#c8a060', 'hatch'),
+  'cargo-trike': () => trike('cargo-trike', 'cargo trike', '#2f6fb0', '#8a8a94'),
+  'kei-truck': () => trike('kei-truck', 'kei truck', '#f4f4f4', '#c8ccd4'),
+  'model-t': () => car('model-t', 'Model T', '#1b1b20', '#1b1b20', { len: 3.8, h: 2.0, chrome: true }),
+  'icecream-truck': () => truck('icecream-truck', 'ice-cream truck', '#f4f4f4', '#ffd6e8', { len: 6, icecream: true }),
+  'school-bus': () => bus('school-bus', 'yellow school bus', '#ffb000', '#1b1b20', 10.5, 1),
+  'ambassador': () => car('ambassador', 'Ambassador', '#f4f1e8', '#f4f1e8', { round: true, len: 4.5, chrome: true, taxi: '#f2d14e' }),
+  'royal-enfield': () => scooter('royal-enfield', 'motorbike', '#1b1b20', { moto: true }),
+  'microbus': () => bus('microbus', 'microbus', '#f4f4f4', '#2f6fb0', 6, 1),
+  'hedgehog-wagon': () => cart('hedgehog-wagon', 'hedgehog wagon', HORSE('#e8dcc0', '#f4efe6'), false, (s) => {
+    s.ball(1.2, '#8a6444', [0, 1.6, -1], { s: [1, 0.8, 1.2], seg: 14 });
+    for (let i = 0; i < 24; i++) s.cone(0.1, 0.5, '#6b4a30', [Math.cos(i * 1.3) * 0.9, 2.0 + Math.sin(i * 0.7) * 0.4, -1 + Math.sin(i * 1.3) * 1.0], { r: [Math.sin(i) * 0.6, 0, Math.cos(i) * 0.6] });
+    for (const sx of [-1, 1]) { s.box(0.05, 0.4, 0.5, WARM, [sx * 1.15, 1.6, -1], { glow: true }); for (const z of [0, -2]) s.wheel(0.5, 0.1, [sx * 1.0, 0.5, z], '#e2b43a', '#ff8fb8'); }
+  }, 3, 7),
+  // water
+  'rib': () => speedboat('rib', 'rib', '#e8342a', '#3a3a44'),
+  'water-taxi': () => speedboat('water-taxi', 'water taxi', '#ffcc1a', '#f4f4f4', 8),
+  'faering': () => rowBoat('faering', 'færing rowboat', '#b3262a', 5, { beam: 1.4, sheer: 0.45 }),
+  'pedalo': () => rowBoat('pedalo', 'pedalo', '#f4f4f4', 3, { beam: 1.6, sheer: 0.1, canopy: '#e8342a', roof: 'flat' }),
+  'thames-clipper': () => ferry('thames-clipper', 'river clipper', '#1b1b20', '#f4f4f4', 24, false),
+  'vaporetto': () => ferry('vaporetto', 'vaporetto', '#f4f1e8', '#2f6f9a', 18, false),
+  'rowing-eight': () => rowBoat('rowing-eight', 'rowing eight', '#f4f4f4', 14, { beam: 0.6, sheer: 0.05 }),
+  'coracle': () => coracle(),
+  'leaf-boat': () => leafBoat(),
+  // sky
+  'helicopter': () => helicopter('helicopter', '#1b3a6a', '#f2d14e'),
+  'helicopter-2': () => helicopter('helicopter-2', '#e8342a', '#f4f4f4'),
+  'hang-glider': () => hangGlider('#ff8a2a'),
+  'crop-duster': () => biplane('crop-duster', '#f2d14e', '#1b1b20'),
+  'cloud-jelly': () => cloudJelly('#bfe8ff'),
+  'star-manta': () => starManta(),
 };
 
 /** Whether a design exists (ships the 3D side adds later are used as soon as they do). */
