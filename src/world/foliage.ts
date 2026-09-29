@@ -130,6 +130,8 @@ function leafAtlas(): THREE.Texture | null {
     }
   });
   const t = new THREE.CanvasTexture(c);
+  // (flipY: the canvas's top row — broad, small, needles, blossom — is the texture's upper half,
+  // v 0.5…1; the card shader picks the row accordingly.)
   t.colorSpace = THREE.SRGBColorSpace;
   t.anisotropy = 8;
   return t;
@@ -153,7 +155,7 @@ export function cardMaterial(): THREE.MeshLambertMaterial {
         attribute float aKind; attribute float aSway; varying float vKind; varying vec3 vCW;
         ${WIND_GLSL}`)
       .replace('#include <uv_vertex>', `#include <uv_vertex>
-        vMapUv = (clamp(vMapUv, 0.02, 0.98) + vec2(mod(aKind, 4.0), floor(aKind / 4.0))) * vec2(0.25, 0.5);`)
+        vMapUv = (clamp(vMapUv, 0.02, 0.98) + vec2(mod(aKind, 4.0), 1.0 - floor(aKind / 4.0))) * vec2(0.25, 0.5);`)
       .replace('#include <project_vertex>', `
         vKind = aKind;
         vec4 wpC = modelMatrix * instanceMatrix * vec4(transformed, 1.0);
