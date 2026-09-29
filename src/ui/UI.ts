@@ -38,6 +38,7 @@ import { WONDERS, foundWonder, wonderHint, wonderPos } from '../world/wonders';
 import { VEHICLES, type VehicleId } from '../vehicles/vehicles';
 import { GRID_COLS, GRID_ROWS, REGIONS, REGION_BY_ID, regionCenter, type RegionId, type RegionSpec } from '../world/regions';
 import { busFare, type BusStop } from '../travel/bus';
+import { TRAM_FARE, TRAM_MINUTES, TRAM_NAME, TRAM_TOWNS, tramStops, type TramStop } from '../travel/streetTram';
 import { INSTITUTE_SITES } from '../institutions/sites';
 import { certificatesOf, rankCap } from '../institutions/certificates';
 import { BENCH_FEE, PRODUCT_BY_INVENTION, bestMarkets as bestProductMarkets, manufacture, productPrice, sellProduct, workshopAt } from '../economy/manufacture';
@@ -49,7 +50,7 @@ import { CIVIC_LABEL, civicDoor, civicOf } from '../world/neighbourhood';
 import { FIELD_SITES } from '../world/plots';
 import type { Game } from '../Game';
 
-type Panel = 'finder' | 'work' | 'harbour' | 'bus' | 'air' | 'field' | 'institute' | 'care' | 'wardrobe' | 'bag' | 'journal' | 'map' | 'messages' | 'vehicles' | 'dialogue' | 'animal' | 'build' | 'van' | 'house' | 'farm' | 'market' | 'help' | 'homes' | 'property' | null;
+type Panel = 'finder' | 'work' | 'harbour' | 'bus' | 'tram' | 'air' | 'field' | 'institute' | 'care' | 'wardrobe' | 'bag' | 'journal' | 'map' | 'messages' | 'vehicles' | 'dialogue' | 'animal' | 'build' | 'van' | 'house' | 'farm' | 'market' | 'help' | 'homes' | 'property' | null;
 
 const h = (tag: string, attrs: Record<string, string> = {}, ...kids: Array<Node | string | null | false>) => {
   const el = document.createElement(tag);
@@ -616,7 +617,7 @@ export class UI {
 
   render(): void {
     const body = h('div', { class: 'body' });
-    const titles: Record<string, string> = { wardrobe: 'Dressing room', bag: 'Bag & Crafts', journal: 'Journal', map: 'The World', messages: 'Messages', vehicles: 'Ways to Travel', dialogue: '', animal: '', build: 'Build', van: 'Inside Safar', house: this.g.houseTitle(), farm: 'Farm bed', market: 'Market stall', help: 'How to play', care: 'Care & sponsorship', institute: this.instituteTitle(), field: this.fieldTitle(), work: `Work in ${this.g.region.name}`, finder: 'People finder', harbour: `The harbour of ${REGION_BY_ID[this.harbourLand]?.name ?? ''}`, bus: `Bus stop · ${this.busStop ? REGION_BY_ID[this.busStop.land].name : ''}`, air: 'Air taxi · the Sky Isles', homes: 'Homes & Land', property: 'Land for sale' };
+    const titles: Record<string, string> = { wardrobe: 'Dressing room', bag: 'Bag & Crafts', journal: 'Journal', map: 'The World', messages: 'Messages', vehicles: 'Ways to Travel', dialogue: '', animal: '', build: 'Build', van: 'Inside Safar', house: this.g.houseTitle(), farm: 'Farm bed', market: 'Market stall', help: 'How to play', care: 'Care & sponsorship', institute: this.instituteTitle(), field: this.fieldTitle(), work: `Work in ${this.g.region.name}`, finder: 'People finder', harbour: `The harbour of ${REGION_BY_ID[this.harbourLand]?.name ?? ''}`, bus: `Bus stop · ${this.busStop ? REGION_BY_ID[this.busStop.land].name : ''}`, tram: `Tram stop · ${this.tramStop ? `${this.tramStop.name}, ${REGION_BY_ID[this.tramStop.land].name}` : ''}`, air: 'Air taxi · the Sky Isles', homes: 'Homes & Land', property: 'Land for sale' };
     const head = this.panel === 'van'
       ? h('header', {}, h('h2', {}, titles.van),
         h('span', { class: 'head-acts' },
@@ -649,6 +650,7 @@ export class UI {
       case 'field': this.fieldPanel(body); break;
       case 'harbour': this.harbourPanel(body); break;
       case 'bus': this.busPanel(body); break;
+      case 'tram': this.tramPanel(body); break;
       case 'air': this.airRows(body, skyPadPoint()); break;
       case 'work': this.workPanel(body); break;
       case 'finder': this.finderPanel(body); break;
@@ -1100,6 +1102,27 @@ export class UI {
   private harbourLand: RegionId = 'london';
 
   private busStop: BusStop | null = null;
+  private tramStop: TramStop | null = null;
+
+  openTramStop(stop: TramStop): void {
+    this.tramStop = stop;
+    this.open('tram');
+  }
+
+  /** A tram stop: the other stops across town, and the flat fare. */
+  private tramPanel(body: HTMLElement): void {
+    const g = this.g, stop = this.tramStop;
+    if (!stop) return;
+    const style = TRAM_TOWNS[stop.land]!;
+    body.append(h('p', { class: 'dim' }, `The ${TRAM_NAME[style]} runs out along ${stop.name}, round the ring road and in along the other avenues. You sit at the front in your own seats, either side of the aisle, the family behind. ${TRAM_FARE} coins, any stop.`));
+    for (const s of tramStops(stop.land)) {
+      if (s.id === stop.id) continue;
+      body.append(h('div', { class: 'quest' },
+        h('b', {}, s.name),
+        h('small', {}, `about ${TRAM_MINUTES} minutes · ${TRAM_FARE} coins`),
+        btn('🚋 Ride', () => { const e = g.rideStreetTram(stop, s); if (e) g.toast(e, 'info'); else this.closePanel(); }, 'small primary', g.st.coins < TRAM_FARE)));
+    }
+  }
 
   openBusStop(stop: BusStop): void {
     this.busStop = stop;

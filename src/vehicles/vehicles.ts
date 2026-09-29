@@ -8,6 +8,7 @@ import { COACH, COACH_FAMILY_SEATS, COACH_SEATS } from '../travel/bus';
 import { FERRY, FERRY_FAMILY_SEATS, FERRY_SEATS } from '../travel/ferry';
 import { AIR, AIR_FAMILY_SEATS, AIR_SEATS } from '../travel/air';
 import { TRAM, TRAM_FAMILY_SEATS, TRAM_HANG, TRAM_SEATS } from '../travel/gondola';
+import { STREET_TRAM, STREET_TRAM_FAMILY_SEATS, STREET_TRAM_SEATS, type TramStyle } from '../travel/streetTram';
 
 /**
  * Ways to travel. In every vehicle the two sit in separate seats with a divider between them, and
@@ -814,6 +815,109 @@ export function buildTramCabin(): THREE.Group {
   // A lamp under the roof, and running lights at the corners.
   bx(root, 0.5, 0.05, 0.5, '#fff0c8', 0, top - 0.05, 0, true);
   for (const sx of [-1, 1]) for (const z of [F - 0.1, B + 0.1]) bx(root, 0.08, 0.08, 0.04, z > 0 ? '#bfe8ff' : '#ffc8f0', sx * (W - 0.2), top - 0.2, z, true);
+  root.traverse((o) => { if ((o as THREE.Mesh).isMesh) o.castShadow = true; });
+  return root;
+}
+
+// ───────────────────────── city trams ─────────────────────────
+
+/**
+ * A city tram you ride (travel/streetTram.ts), one per town's style, all on a low floor with
+ * windows down both sides and seats in pairs across the aisle — theirs in front, a rail between:
+ *  - Sakura Hollow's streetcar: green below and cream above, a red band, a pantograph on the roof;
+ *  - New Yonder's solar tram: white with a green stripe, solar panels over the roof, a strip of
+ *    light along each side;
+ *  - Maple Row's cable car: red below and cream above, open ends with brass grab-poles, varnished
+ *    wooden benches, a brass bell and lanterns on the roof.
+ */
+export function buildStreetTram(style: TramStyle): THREE.Group {
+  const root = new THREE.Group();
+  const { halfW: W, len, floorY: FY } = STREET_TRAM, F = len / 2, B = -len / 2, top = FY + 2.45;
+  const pal = style === 'streetcar' ? { lower: '#2f7a4a', upper: '#f2ead0', band: '#c23b2a', seat: '#3a6a4a', roof: '#6a6e78' }
+    : style === 'solar' ? { lower: '#f4f6f8', upper: '#f4f6f8', band: '#3aae6a', seat: '#2a3a4a', roof: '#dfe3e8' }
+    : { lower: '#b3262a', upper: '#f2ead0', band: '#d4af37', seat: '#8a5a36', roof: '#5a2a1a' };
+  const winLo = FY + 0.85, winHi = FY + 1.95;
+  const panes: Array<[number, number]> = [];
+  const open = style === 'cable' ? 1.1 : 0; // the cable car's open ends
+  for (let z = B + 0.6 + open; z + 1.0 < F - 0.9 - open; z += 1.2) panes.push([z, z + 1.0]);
+  root.add(paintedShell({
+    key: `street-tram-${style}`, W, y0: FY - 0.35, y1: top, B, F, R: style === 'solar' ? 0.55 : 0.25,
+    belt: FY + 0.75, vTip: style === 'solar' ? FY + 0.5 : FY + 0.75, lower: pal.lower, upper: pal.upper,
+    band: [FY + 0.7, style === 'solar' ? 0.06 : 0.05, pal.band],
+    side: [...panes.map(([a, b]) => ({ z: (a + b) / 2, hz: (b - a) / 2, y: (winLo + winHi) / 2, hy: (winHi - winLo) / 2 })),
+      ...(open ? [F - open / 2 - 0.1, B + open / 2 + 0.1].map((z) => ({ z, hz: open / 2, y: FY + 1.1, hy: 1.05 })) : [])],
+    front: [{ x: 0, hx: W - 0.3, y: FY + 1.4, hy: 0.62 }],
+    back: [{ x: 0, hx: W - 0.3, y: FY + 1.4, hy: 0.62 }],
+    arches: [],
+  }));
+  for (const sx of [-1, 1]) for (const [a, b] of panes) glass(root, 0.03, winHi - winLo, b - a, sx * (W - 0.04), (winLo + winHi) / 2, (a + b) / 2);
+  glass(root, (W - 0.3) * 2, 1.24, 0.03, 0, FY + 1.4, F - 0.05);
+  glass(root, (W - 0.3) * 2, 1.24, 0.03, 0, FY + 1.4, B + 0.05);
+  // The floor, the skirt over the bogies, and the bogies' wheels peeping below.
+  bx(root, W * 2 - 0.1, 0.05, len - 0.3, style === 'cable' ? '#8a6a4a' : '#5a5a62', 0, FY, 0);
+  bx(root, W * 2 - 0.2, 0.3, len - 1.2, '#2a2a30', 0, FY - 0.45, 0);
+  for (const z of [F - 2, B + 2]) for (const sx of [-1, 1]) for (const dz of [-0.55, 0.55]) {
+    const w = new THREE.Mesh(new THREE.CylinderGeometry(0.3, 0.3, 0.12, 14), m('#3a3a40'));
+    w.rotation.z = Math.PI / 2;
+    w.position.set(sx * 0.72, 0.3, z + dz);
+    w.userData.wheel = true;
+    root.add(w);
+  }
+  // Seats in pairs across the aisle, a low partition behind each row; a rail between theirs.
+  const rows = [STREET_TRAM_SEATS.girl[2], ...new Set(STREET_TRAM_FAMILY_SEATS.map((q) => q[2]))];
+  for (const z of rows) for (const sx of [-1, 1]) {
+    bx(root, 0.85, 0.1, 0.5, pal.seat, sx * 0.8, FY + 0.4, z);
+    bx(root, 0.85, 0.6, 0.08, pal.seat, sx * 0.8, FY + 0.75, z - 0.28);
+    if (style === 'cable') for (const k of [0.15, 0.3]) bx(root, 0.85, 0.03, 0.06, '#c89a5a', sx * 0.8, FY + 0.6 + k, z - 0.23);
+  }
+  bx(root, 0.05, 0.9, 0.5, '#8a8a92', 0, FY + 0.45, STREET_TRAM_SEATS.girl[2]);
+  // Grab rails along the ceiling, lamps in the ceiling, the driver's desk at the front.
+  for (const sx of [-1, 1]) bx(root, 0.04, 0.04, len - 1.2, '#c8ccd4', sx * 0.45, top - 0.35, 0);
+  for (let z = B + 1.5; z < F - 1; z += 2.5) bx(root, 0.5, 0.04, 0.5, '#fff0c8', 0, top - 0.1, z, true);
+  bx(root, W * 2 - 0.3, 0.45, 0.4, '#3a4a5a', 0, FY + 0.55, F - 0.35);
+  // Head and tail lamps, and the route board.
+  for (const sx of [-1, 1]) {
+    bx(root, 0.26, 0.14, 0.04, '#fff6c0', sx * (W - 0.4), FY + 0.25, F + 0.01, true);
+    bx(root, 0.2, 0.12, 0.04, '#e8303a', sx * (W - 0.4), FY + 0.25, B - 0.01, true);
+  }
+  bx(root, W * 2 - 0.9, 0.24, 0.04, '#ffd27a', 0, top - 0.3, F + 0.01, true);
+  // The roof, each in its own way.
+  bx(root, W * 2 - 0.4, 0.08, len - 0.6, pal.roof, 0, top + 0.03, 0);
+  if (style === 'streetcar') {
+    // A pantograph: a diamond of rods rising to a collector bar.
+    const px = 0, pz = 0.8, base = top + 0.1, h = 1.1;
+    bx(root, 0.9, 0.12, 0.9, '#3a3a44', px, base, pz);
+    for (const [a, b] of [[[-0.4, base, pz - 0.4], [0, base + h * 0.55, pz]], [[0.4, base, pz + 0.4], [0, base + h * 0.55, pz]], [[0, base + h * 0.55, pz], [0, base + h, pz - 0.3]]] as Array<[number[], number[]]>) {
+      const A = new THREE.Vector3(...a), Bv = new THREE.Vector3(...b), d = Bv.clone().sub(A);
+      const rod = new THREE.Mesh(new THREE.CylinderGeometry(0.025, 0.025, d.length(), 6), m('#c8ccd4'));
+      rod.position.copy(A).addScaledVector(d, 0.5);
+      rod.quaternion.setFromUnitVectors(new THREE.Vector3(0, 1, 0), d.normalize());
+      root.add(rod);
+    }
+    bx(root, 1.2, 0.04, 0.08, '#c8ccd4', px, base + h, pz - 0.3);
+  } else if (style === 'solar') {
+    // Solar panels tilted either side of the ridge, and a lit strip along each flank.
+    for (const sx of [-1, 1]) for (let z = B + 0.8; z < F - 0.8; z += 1.4) {
+      const p = bx(root, W - 0.2, 0.04, 1.25, '#1a2a4a', sx * (W / 2 - 0.05), top + 0.12, z);
+      p.rotation.z = -sx * 0.12;
+      bx(root, 0.02, 0.05, 1.25, '#8aa0c8', sx * (W / 2 - 0.05), top + 0.15, z);
+    }
+    for (const sx of [-1, 1]) bx(root, 0.02, 0.05, len - 1.4, '#3affb0', sx * (W + 0.01), FY + 0.72, 0, true);
+  } else {
+    // Brass grab-poles at the open ends, a brass bell up front, a lantern at each corner.
+    for (const z of [F - open / 2 - 0.1, B + open / 2 + 0.1]) for (const sx of [-1, 1]) {
+      const pole = new THREE.Mesh(new THREE.CylinderGeometry(0.025, 0.025, 2.1, 8), m('#d4af37'));
+      pole.position.set(sx * (W - 0.1), FY + 1.1, z);
+      root.add(pole);
+    }
+    const bell = new THREE.Mesh(new THREE.SphereGeometry(0.16, 12, 8, 0, Math.PI * 2, 0, Math.PI / 2), m('#d4af37'));
+    bell.position.set(0, top + 0.12, F - 0.6);
+    root.add(bell);
+    for (const sx of [-1, 1]) for (const z of [F - 0.3, B + 0.3]) {
+      bx(root, 0.16, 0.22, 0.16, '#2a2a2a', sx * (W - 0.25), top + 0.2, z);
+      bx(root, 0.12, 0.16, 0.12, '#ffd89a', sx * (W - 0.25), top + 0.2, z, true);
+    }
+  }
   root.traverse((o) => { if ((o as THREE.Mesh).isMesh) o.castShadow = true; });
   return root;
 }

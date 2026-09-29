@@ -30,6 +30,7 @@ import type { Lamp } from './lamplight';
 import { chimneyMark, chimneyRollback, collectChimneys, takeChimneys } from './chimneys';
 import { GRID_TOWNS, LANE_W, laneDistance, laneLots, townLanes } from './townLayout';
 import { stopShelters } from '../travel/bus';
+import { TRAM_TOWNS, tramShelters } from '../travel/streetTram';
 import { ZEBRA_D } from '../traffic/schedule';
 import { LOCALES } from './locale';
 import { CIVIC_R, buildMarket, buildWorship, civicColliders, civicOf } from './neighbourhood';
@@ -200,9 +201,12 @@ export function buildRegion(spec: RegionSpec, solid: THREE.Material, glowMat: TH
   const needHere = ([[0, 1], [1, 0], [0, -1], [-1, 0]] as const).map(([ax, az]) => ({ x: ax * 118 + az * 13, z: az * 118 - ax * 13 }));
   // The town's bus stops (travel/bus.ts): a shelter beside each avenue.
   const stopsHere = stopShelters(spec.id);
+  // Its tram stops, in the towns with trams (travel/streetTram.ts).
+  const tramsHere = tramShelters(spec.id);
   const nearPlot = (x: number, z: number, pad: number) => inCastle(x, z, pad) || reservedAt(spec.id, x, z, pad) ||
     needHere.some((q) => Math.hypot(x - q.x, z - q.z) < 4 + pad) ||
     stopsHere.some((q) => Math.hypot(x - q.x, z - q.z) < 4 + pad) ||
+    tramsHere.some((q) => Math.hypot(x - q.x, z - q.z) < 4 + pad) ||
     gatesHere.some((q) => Math.hypot(x - q.x, z - q.z) < q.r + pad) ||
     civicHere.some((q) => Math.hypot(x - q.x, z - q.z) < CIVIC_R + pad) ||
     squaresHere.some((q) => Math.hypot(x - q.x, z - q.z) < SQUARE_R + pad) ||
@@ -291,6 +295,31 @@ export function buildRegion(spec: RegionSpec, solid: THREE.Material, glowMat: TH
     colliders.push({ x: c.x + q.x - Math.sin(q.facing) * 0.4, z: c.z + q.z - Math.cos(q.facing) * 0.4, r: 1.4, h: y + 2.6 });
     buildings.push({ x: q.x, z: q.z, r: 2.2 });
     recordDecor(spec.id, 'street: bus stops');
+  }
+
+  // Tram stops: a platform along the kerb under a long canopy in the tram's colour, a bench, a lit
+  // departures board, and a sign on a pole showing the tram.
+  const tramCol = TRAM_TOWNS[spec.id] === 'solar' ? '#3aae6a' : TRAM_TOWNS[spec.id] === 'cable' ? '#b3262a' : '#2f7a4a';
+  for (const q of tramsHere) {
+    const y = H(q.x, q.z);
+    g.frame(q.x, y, q.z, q.facing, 1, () => glow.frame(q.x, y, q.z, q.facing, 1, () => {
+      box(g, 5.2, 0.22, 2.6, '#c8c4bc', 0, 0, 0.1); // the platform
+      box(g, 5.2, 0.04, 0.2, '#f2d14e', 0, 0.22, 1.3); // its yellow edge
+      for (const x of [-2.2, 2.2]) box(g, 0.12, 2.7, 0.12, '#4a4a52', x, 0.2, -0.5);
+      box(g, 5.6, 0.14, 2.2, tramCol, 0, 2.9, 0.3); // the canopy
+      box(g, 5.6, 0.06, 0.08, '#f2ead0', 0, 2.85, 1.4);
+      box(g, 4.6, 1.8, 0.05, '#bfe0f0', 0, 0.9, -0.62); // the glass back
+      box(g, 2.8, 0.08, 0.45, spec.walls[0], 0.6, 0.68, -0.3); // the bench
+      for (const x of [-0.6, 1.8]) box(g, 0.08, 0.46, 0.4, '#6a6a70', x, 0.22, -0.3);
+      box(glow, 0.9, 0.5, 0.05, '#ffb84a', -1.6, 2.2, -0.55); // the departures board
+      cyl(g, 0.05, 0.05, 3.1, '#6a6a70', 2.8, 0.2, 1.1, 6);
+      box(glow, 0.6, 0.6, 0.05, tramCol, 2.8, 3.3, 1.1); // the tram sign
+      box(glow, 0.4, 0.12, 0.06, '#ffffff', 2.8, 3.3, 1.1);
+    }));
+    lamp(q.x, y + 2.6, q.z, 6);
+    colliders.push({ x: c.x + q.x - Math.sin(q.facing) * 0.5, z: c.z + q.z - Math.cos(q.facing) * 0.5, r: 1.6, h: y + 3 });
+    buildings.push({ x: q.x, z: q.z, r: 3 });
+    recordDecor(spec.id, 'street: tram stops');
   }
 
   // Houses. Most towns grew along winding lanes (townLayout.ts): the lanes first, then houses

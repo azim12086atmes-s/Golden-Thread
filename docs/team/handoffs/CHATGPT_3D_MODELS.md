@@ -1,4 +1,8 @@
-# Physical models — requirements for Codex / ChatGPT (3D side), 2026-09-27
+# Physical models — requirements for the 3D side, 2026-09-27
+
+> **2026-09-29: Codex / ChatGPT no longer works on this project (owner). Claude builds these models too.** This file
+> stays the spec; where it says "you", read "whoever builds the models". Built so far by Claude from this list: the
+> §12.4 ships (`src/traffic/ships.ts`), the §22 harbours (`models/harbour.ts`).
 
 > **Access**: repository https://github.com/azim12086atmes-s/Golden-Thread. The source is on branch
 > `claudes-current-work` (set it as the repository's default branch so Codex opens it; `gh-pages` is only the compiled

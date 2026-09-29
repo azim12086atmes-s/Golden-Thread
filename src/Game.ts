@@ -80,12 +80,13 @@ import { World } from './world/World';
 import { FOLIAGE_UNIFORMS, updateWind } from './world/wind';
 import { setLamps } from './world/lamplight';
 import { Atmos } from './world/Atmos';
-import { Ride, airRide, coachRide, ferryRide, tramRide } from './travel/Ride';
+import { Ride, airRide, coachRide, ferryRide, streetTramRide, tramRide } from './travel/Ride';
 import { SkyTram } from './travel/SkyTram';
 import { tramBoarding } from './travel/gondola';
 import { ferryFare } from './travel/ferry';
 import { airFare, skyPadPoint, type AirPoint } from './travel/air';
 import { busFare, busStops, type BusStop } from './travel/bus';
+import { TRAM_FARE, TRAM_NAME, TRAM_TOWNS, tramStops, type TramStop } from './travel/streetTram';
 
 /** Real seconds per game minute: a day lasts 16 real minutes. */
 const MINUTES_PER_SECOND = DAY_MINUTES / (16 * 60);
@@ -111,6 +112,7 @@ export type Interactable =
   | { kind: 'harbour'; land: RegionId; label: string }
   | { kind: 'need'; person: Person; label: string }
   | { kind: 'busstop'; stop: BusStop; label: string }
+  | { kind: 'tramstop'; stop: TramStop; label: string }
   | { kind: 'skypad'; label: string }
   | { kind: 'tram'; up: boolean; label: string };
 
@@ -658,6 +660,11 @@ export class Game {
       const dd = Math.min(Math.hypot(s.x - p.x, s.z - p.z), Math.hypot(s.kerbX - p.x, s.kerbZ - p.z));
       if (dd < 3.5) cands.push([dd + 0.2, { kind: 'busstop', stop: s, label: '🚌 Bus stop — the coach or an air taxi to another town' }]);
     }
+    // Tram stops, in the towns with trams: across town to another stop.
+    if (onFoot) for (const r of this.world.loadedRegions()) for (const s of tramStops(r.spec.id)) {
+      const dd = Math.min(Math.hypot(s.x - p.x, s.z - p.z), Math.hypot(s.kerbX - p.x, s.kerbZ - p.z));
+      if (dd < 4) cands.push([dd + 0.2, { kind: 'tramstop', stop: s, label: `🚋 ${s.name} tram stop — the ${TRAM_NAME[TRAM_TOWNS[s.land]!]} across town` }]);
+    }
     // The air-taxi stage on the Sky Isles.
     if (onFoot && this.region.id === 'skyisles') {
       const sp = skyPadPoint(), dd = Math.hypot(sp.x - p.x, sp.z - p.z);
@@ -706,6 +713,7 @@ export class Game {
       case 'field': return this.ui.openField(t.field);
       case 'harbour': return this.ui.openHarbour(t.land);
       case 'busstop': return this.ui.openBusStop(t.stop);
+      case 'tramstop': return this.ui.openTramStop(t.stop);
       case 'skypad': return this.ui.openSkyPad();
       case 'tram': { const e = this.rideTram(t.up); if (e) this.toast(e, 'info'); return; }
       case 'need': {
@@ -860,6 +868,13 @@ export class Game {
     const f = busFare(stop.land, to);
     if (!f) return 'No road reaches there.';
     return this.board(f.coins, () => coachRide(this.scene, this.trav, stop, to), `🚌 All aboard for ${REGION_BY_ID[to].name} — ${f.towns === 1 ? 'the next town' : `${f.towns} towns`} down the road.`);
+  }
+
+  /** Board the city tram at `from` for the stop `to` across town. */
+  rideStreetTram(from: TramStop, to: TramStop): string | null {
+    if (from.land !== to.land || from.id === to.id) return 'That is this stop.';
+    const style = TRAM_TOWNS[from.land]!;
+    return this.board(TRAM_FARE, () => streetTramRide(this.scene, this.trav, from, to), `🚋 Ding ding — the ${TRAM_NAME[style]} pulls away for ${to.name}. Your seats are at the front, either side of the aisle.`);
   }
 
   /** Board the ferry at the harbour of `from` for the harbour of `to`. */

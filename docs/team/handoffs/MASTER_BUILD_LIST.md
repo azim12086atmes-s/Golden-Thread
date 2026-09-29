@@ -1,6 +1,6 @@
 # Master build list — everything still to build (2026-09-27)
 
-One list of every open item. **Split:** physical models → ChatGPT (`CHATGPT_3D_MODELS.md`); logic → Claude. Details, owner's words and specifications are in `NEXT_WORK_2026-09-27.md` (game rules,
+One list of every open item. **Who builds what (owner, 2026-09-29):** Codex / ChatGPT no longer works on this project; Claude builds everything — logic and physical models (spec: `CHATGPT_3D_MODELS.md`). Details, owner's words and specifications are in `NEXT_WORK_2026-09-27.md` (game rules,
 sections C1–C7) and `3D_BUILDS_HANDOFF.md` (3D work, sections 2a and 3.x). Tick items off here as they ship.
 
 ## A. Charity, sponsorship and homes (rules side; C1)
@@ -124,7 +124,7 @@ sections C1–C7) and `3D_BUILDS_HANDOFF.md` (3D work, sections 2a and 3.x). Tic
 
 ## L. Claude's logic queue — still to do (in order)
 
-Everything here is logic (rules, state, placement, wiring, UI, tests); 3D models stay with Codex.
+Logic (rules, state, placement, wiring, UI, tests). The 3D models are Claude's too now (sections above).
 
 1. **Travel between lands**
    - Vehicles drive out of one land and into the next, with no popping in at the borders.

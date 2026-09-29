@@ -83,7 +83,7 @@ export const LAND_TRAFFIC: Record<RegionId, Roster> = {
     [['owls', 2], ['airship', 1], ['seaplane', 1], ['eagle', 1], ['helicopter-2', 1]]),
   skyisles: R([],
     [],
-    [['sky-whale', 2], ['sky-ship', 2], ['crystal-skiff', 2], ['light-birds', 3], ['unicorns-flying', 1], ['pegasi', 1], ['solar-blimp', 1], ['cloud-jelly', 2], ['star-manta', 2], ['crystal-sled', 2], ['solar-sailship', 1], ['starlight-whale', 1], ['cloud-galleon', 1]]),
+    [['sky-whale', 2], ['sky-ship', 2], ['crystal-skiff', 2], ['light-birds', 3], ['unicorns-flying', 1], ['pegasi', 1], ['solar-blimp', 1], ['cloud-jelly', 2], ['star-manta', 2], ['crystal-sled', 2], ['solar-sailship', 1], ['starlight-whale', 1], ['cloud-galleon', 1], ['sky-galleon', 1]]),
 };
 
 /**
@@ -95,13 +95,13 @@ const SEA_BASE: Partial<Record<RegionId, Array<[string, string, number]>>> = {
   aurora: [['research-vessel', 'fishing-boat', 1], ['fishing-trawler', 'fishing-boat', 2], ['hurtigruten', 'ferry', 1]],
   norway: [['hurtigruten', 'ferry', 1], ['fishing-trawler', 'fishing-boat', 2], ['ferry-large', 'ferry', 1], ['longship', 'longship', 1]],
   switzerland: [['ferry-large', 'paddle-steamer', 1], ['cargo-ship', 'ferry', 1], ['yacht', 'yacht', 1]],
-  london: [['ocean-liner', 'tall-ship', 1], ['cargo-ship', 'ferry', 1], ['ferry-large', 'ferry', 1], ['tall-ship', 'tall-ship', 1]],
+  london: [['ocean-liner', 'tall-ship', 1], ['cargo-ship', 'ferry', 1], ['ferry-large', 'ferry', 1], ['full-rigger', 'tall-ship', 1]],
   newyork: [['cruise-ship', 'ferry', 1], ['container-ship', 'ferry', 1], ['cargo-ship', 'ferry', 1], ['yacht', 'yacht', 2]],
   korea: [['cargo-ship', 'ferry', 1], ['turtle-ship', 'turtle-ship', 1], ['fishing-trawler', 'fishing-boat', 2]],
-  vintage: [['ocean-liner', 'tall-ship', 1], ['tall-ship', 'tall-ship', 1], ['yacht', 'yacht', 1], ['catboat', 'catboat', 1]],
-  china: [['junk-large', 'junk', 2], ['container-ship', 'ferry', 1], ['sampan', 'sampan', 1]],
+  vintage: [['ocean-liner', 'tall-ship', 1], ['full-rigger', 'tall-ship', 1], ['yacht', 'yacht', 1], ['catboat', 'catboat', 1]],
+  china: [['junk-large', 'junk', 2], ['container-ship', 'ferry', 1], ['phinisi-large', 'junk', 1], ['sampan', 'sampan', 1]],
   middleeast: [['dhow-large', 'dhow', 2], ['cargo-ship', 'ferry', 1], ['abra', 'abra', 1]],
-  indiasouth: [['kettuvallam-large', 'kettuvallam', 1], ['ferry-large', 'ferry', 1], ['snake-boat', 'snake-boat', 1], ['fishing-trawler', 'fishing-boat', 1]],
+  indiasouth: [['kettuvallam-large', 'kettuvallam', 1], ['ferry-large', 'ferry', 1], ['phinisi-large', 'dhow', 1], ['snake-boat', 'snake-boat', 1], ['fishing-trawler', 'fishing-boat', 1]],
   indianorth: [['cargo-ship', 'ferry', 1], ['dhow-large', 'dhow', 1], ['fishing-trawler', 'fishing-boat', 1]],
   mughal: [['hospital-ship', 'ferry', 1], ['dhow-large', 'dhow', 1], ['cargo-ship', 'ferry', 1]],
   egypt: [['cargo-ship', 'ferry', 1], ['felucca', 'felucca', 2], ['dhow-large', 'dhow', 1]],

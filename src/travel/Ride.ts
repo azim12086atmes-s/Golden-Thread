@@ -1,5 +1,5 @@
 import * as THREE from 'three';
-import { buildAirTaxi, buildCoach, buildFerryBoat, buildTramCabin } from '../vehicles/vehicles';
+import { buildAirTaxi, buildCoach, buildFerryBoat, buildStreetTram, buildTramCabin } from '../vehicles/vehicles';
 import { WATER_Y, surfaceAt } from '../world/terrain';
 import { bridgeDeckAt } from '../world/bridges';
 import { harbourOf } from '../world/harbours';
@@ -9,10 +9,11 @@ import { COACH_FAMILY_SEATS, COACH_SEATS, busPath, keepSide, type BusStop } from
 import { FERRY_FAMILY_SEATS, FERRY_SEATS, ferryRoute, mooring } from './ferry';
 import { AIR_FAMILY_SEATS, AIR_SEATS, airArrival, airCourse, type AirPoint } from './air';
 import { TRAM_FAMILY_SEATS, TRAM_SEATS, tramAlight, tramCourseWorld } from './gondola';
+import { STREET_TRAM_FAMILY_SEATS, STREET_TRAM_SEATS, TRAM_TOWNS, tramPath, type TramStop } from './streetTram';
 import type { Travellers } from '../player/Travellers';
 
 type V3 = readonly [number, number, number];
-export type RideKind = 'coach' | 'ferry' | 'air' | 'tram';
+export type RideKind = 'coach' | 'ferry' | 'air' | 'tram' | 'streetcar';
 
 interface RideSpec {
   kind: RideKind;
@@ -33,8 +34,8 @@ interface RideSpec {
 }
 
 /**
- * A ride on someone else's vehicle — the intercity coach, the coastal ferry, the air taxi or the
- * Sky Isles cable car. It takes them at the stop, pier, pad or station, the two in their separate seats and the family theirs, and
+ * A ride on someone else's vehicle — the intercity coach, a city tram, the coastal ferry, the air
+ * taxi or the Sky Isles cable car. It takes them at the stop, pier, pad or station, the two in their separate seats and the family theirs, and
  * carries them along its course to where they step down. The world streams in as it goes; E or
  * Esc skips to the arrival.
  */
@@ -80,6 +81,11 @@ export class Ride {
     return this.kind === 'air' || this.kind === 'tram';
   }
 
+  /** On the road: the coach and the city tram. */
+  private get onRoad(): boolean {
+    return this.kind === 'coach' || this.kind === 'streetcar';
+  }
+
   get length(): number {
     return this.cum[this.cum.length - 1];
   }
@@ -91,12 +97,12 @@ export class Ride {
 
   /** Jump to just short of the arrival (it slows and comes in). */
   skip(): void {
-    const back = this.kind === 'air' ? 40 : this.kind === 'ferry' ? 45 : this.kind === 'tram' ? 12 : 30;
+    const back = this.kind === 'air' ? 40 : this.kind === 'ferry' ? 45 : this.kind === 'tram' ? 12 : this.kind === 'streetcar' ? 20 : 30;
     this.u = Math.max(this.u, this.length - back);
     this.v = Math.min(this.v, 8);
     while (this.i < this.cum.length - 2 && this.cum[this.i + 1] < this.u) this.i++;
     const p = this.at(this.u);
-    this.y = this.kind === 'coach' ? surfaceAt(p[0], p[2], 1e9) : this.height(p);
+    this.y = this.onRoad ? surfaceAt(p[0], p[2], 1e9) : this.height(p);
     this.place(p);
   }
 
@@ -117,7 +123,7 @@ export class Ride {
       d = Math.atan2(Math.sin(d), Math.cos(d));
       this.heading += d * Math.min(1, dt * (this.kind === 'ferry' ? 1.2 : 3));
     }
-    const g = this.kind === 'coach' ? bridgeDeckAt(p[0], p[2]) ?? surfaceAt(p[0], p[2], this.y + 3) : this.height(p);
+    const g = this.onRoad ? bridgeDeckAt(p[0], p[2]) ?? surfaceAt(p[0], p[2], this.y + 3) : this.height(p);
     this.y = this.kind === 'tram' ? g : this.y + (g - this.y) * Math.min(1, dt * (this.kind === 'air' ? 20 : 8));
     for (const r of this.rotors) r.rotation.y += dt * 40;
     this.place(p);
@@ -226,5 +232,18 @@ export function tramRide(scene: THREE.Scene, trav: Travellers, up: boolean): Rid
     kind: 'tram', to: 'skyisles', up, pts: tramCourseWorld(up ? 1 : -1, up), model: buildTramCabin(),
     seats: TRAM_SEATS, family: TRAM_FAMILY_SEATS, vmax: 6, accel: 0.8, brake: 0.7,
     alight: { x: a.x, z: a.z, y: a.y, bx: a.bx, bz: a.bz, facing: a.facing },
+  });
+}
+
+/** A city tram from `from` to another stop `to` in the same town. */
+export function streetTramRide(scene: THREE.Scene, trav: Travellers, from: TramStop, to: TramStop): Ride {
+  const style = TRAM_TOWNS[from.land];
+  const pts = tramPath(from, to);
+  if (!style || pts.length < 2) throw new Error(`no tram from ${from.id} to ${to.id}`);
+  const dx = to.x - to.kerbX, dz = to.z - to.kerbZ, d = Math.hypot(dx, dz) || 1;
+  return new Ride(scene, trav, {
+    kind: 'streetcar', to: to.land, pts: flat(keepSide(pts, 3.5)), model: buildStreetTram(style),
+    seats: STREET_TRAM_SEATS, family: STREET_TRAM_FAMILY_SEATS, vmax: 12, accel: 1.8, brake: 1.8,
+    alight: { x: to.kerbX + (dx / d) * 2.5, z: to.kerbZ + (dz / d) * 2.5, facing: to.facing + Math.PI },
   });
 }
