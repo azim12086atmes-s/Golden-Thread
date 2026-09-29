@@ -11,7 +11,12 @@ import { BIRDS, DETAILED, buildBird, buildDetailed, type BirdId, type DetailedId
 export type SpeciesId =
   | 'sheep' | 'rabbit' | 'unicorn' | 'duck' | 'cat' | 'crane' | 'deer' | 'panda' | 'dog' | 'horse'
   | 'reindeer' | 'fox' | 'goat' | 'cow' | 'camel' | 'buffalo' | 'elephant' | 'peacock' | 'dove'
-  | 'donkey' | 'lightbird';
+  | 'donkey' | 'lightbird'
+  // Each land's own (VEHICLES_ANIMALS_PLAN.md), built from the kit's body plans below (`form`).
+  | 'husky' | 'arcticfox' | 'snowhare' | 'muskox' | 'elk' | 'lynx' | 'ibex' | 'stbernard' | 'marmot'
+  | 'corgi' | 'squirrel' | 'raccoon' | 'streetcat' | 'cybercat' | 'cyberdog' | 'jindo' | 'shiba' | 'tanuki'
+  | 'greyhound' | 'redpanda' | 'fennec' | 'oryx' | 'saluki' | 'mau' | 'nilgai' | 'starcat' | 'cloudsheep'
+  | 'puffin' | 'magpie' | 'ibis' | 'hornbill' | 'parakeet' | 'cormorant' | 'raven';
 
 interface Species {
   name: string;
@@ -29,9 +34,23 @@ interface Species {
   snout?: number;
   diet: string; // item that befriends them
   produce?: string; // item they give daily when kept
+  /** The body plan it is built on (the kit): a detailed beast's or a bird's. Default: its own id. */
+  form?: DetailedId | BirdId;
+  /** Its size relative to the form's dimensions above. */
+  scale?: number;
+  /** Coat colours it may wear (strays, breeds); one is chosen per animal. */
+  tints?: string[];
+  /** An overlay: 'cyber' (glowing seams, chrome plates, an antenna — New Yonder's pets) or 'starry' (Sky Isles). */
+  overlay?: 'cyber' | 'starry';
 }
 
-export const SPECIES: Record<SpeciesId, Species> = {
+const D = SPECIES_BASE();
+/** A new species on an existing body plan: the plan's dimensions, its own look. */
+function on(form: DetailedId | BirdId, o: Partial<Species> & { name: string; color: string; accent: string; diet: string }): Species {
+  return { ...D[form as SpeciesId], ...o, form };
+}
+
+function SPECIES_BASE(): Record<string, Species> { return {
   sheep: { name: 'Sheep', kind: 'quad', body: [0.9, 0.6, 0.6], color: '#f7f3ea', accent: '#3a3230', leg: 0.4, headR: 0.17, ears: 'small', tail: 'short', extra: 'wool', diet: 'wildflower', produce: 'wool' },
   rabbit: { name: 'Rabbit', kind: 'quad', body: [0.4, 0.3, 0.3], color: '#e8dcc8', accent: '#f7f0e6', leg: 0.1, headR: 0.12, ears: 'long', tail: 'fluffy', diet: 'wildflower' },
   unicorn: { name: 'Unicorn', kind: 'quad', body: [1.6, 0.8, 0.6], color: '#fbf8ff', accent: '#ffd6f0', leg: 0.95, headR: 0.2, neck: 0.6, ears: 'pointy', horn: 'unicorn', tail: 'long', extra: 'rainbow', snout: 0.22, diet: 'wildflower' },
@@ -53,7 +72,55 @@ export const SPECIES: Record<SpeciesId, Species> = {
   dove: { name: 'Dove', kind: 'bird', body: [0.3, 0.2, 0.2], color: '#f4f4f8', accent: '#c8c8d8', leg: 0.06, headR: 0.08, tail: 'short', diet: 'rice' },
   donkey: { name: 'Donkey', kind: 'quad', body: [1.1, 0.6, 0.45], color: '#8a847a', accent: '#f4f1ea', leg: 0.7, headR: 0.17, neck: 0.35, ears: 'long', tail: 'tuft', extra: 'mane', snout: 0.18, diet: 'feed' },
   lightbird: { name: 'Light Bird', kind: 'bird', body: [0.4, 0.25, 0.25], color: '#fff4c0', accent: '#b8a4ff', leg: 0.1, headR: 0.1, tail: 'fan', extra: 'glow', diet: 'stardust' },
-};
+}; }
+
+export const SPECIES: Record<SpeciesId, Species> = {
+  ...(D as Record<string, Species>),
+  // Aurora Huts
+  husky: on('dog', { name: 'Husky', color: '#8f969e', accent: '#f4f6f8', diet: 'bread', scale: 1.15 }),
+  arcticfox: on('fox', { name: 'Arctic Fox', color: '#f4f6fa', accent: '#dfe6ee', diet: 'dates' }),
+  snowhare: on('rabbit', { name: 'Snowshoe Hare', color: '#f8f8fa', accent: '#e8ecf2', diet: 'wildflower', scale: 1.3 }),
+  muskox: on('buffalo', { name: 'Musk Ox', color: '#4a3a2c', accent: '#d8ccb8', diet: 'feed', scale: 0.85 }),
+  // Fjordhavn
+  elk: on('reindeer', { name: 'Elk', color: '#5a4030', accent: '#c8b090', diet: 'pinecone', scale: 1.35 }),
+  lynx: on('cat', { name: 'Lynx', color: '#c8a878', accent: '#f4ece0', diet: 'milk', scale: 1.7 }),
+  // Alpenrose
+  ibex: on('goat', { name: 'Alpine Ibex', color: '#9a8064', accent: '#4a3a2a', diet: 'feed', scale: 1.1 }),
+  stbernard: on('dog', { name: 'St Bernard', color: '#b8642a', accent: '#faf6f0', diet: 'bread', scale: 1.45, tints: ['#b8642a', '#9a4a22'] }),
+  marmot: on('panda', { name: 'Marmot', color: '#9a7a54', accent: '#6a5238', diet: 'wildflower', scale: 0.32 }),
+  // Old London and Maple Row
+  corgi: on('dog', { name: 'Corgi', color: '#e0943a', accent: '#faf6f0', diet: 'bread', scale: 0.8, leg: 0.2 }),
+  squirrel: on('fox', { name: 'Squirrel', color: '#8a8a8e', accent: '#e8e4de', diet: 'pinecone', scale: 0.45, tints: ['#8a8a8e', '#b0562a'] }),
+  raccoon: on('fox', { name: 'Raccoon', color: '#7a7a80', accent: '#2a2a2e', diet: 'bread', scale: 0.8 }),
+  // New Yonder: strays and cyborg pets with glowing seams
+  streetcat: on('cat', { name: 'Street Cat', color: '#8a8a8e', accent: '#f4f0ea', diet: 'milk', tints: ['#8a8a8e', '#2a2a2e', '#e8a86a', '#f4f0ea', '#c8a070', '#5a4a3a'] }),
+  cybercat: on('cat', { name: 'Cyber Cat', color: '#3a3e4a', accent: '#c8ccd4', diet: 'milk', overlay: 'cyber', tints: ['#3a3e4a', '#e8e4f0', '#2a2a32'] }),
+  cyberdog: on('dog', { name: 'Cyber Dog', color: '#c8ccd4', accent: '#3a3e4a', diet: 'bread', overlay: 'cyber', tints: ['#c8ccd4', '#3a3e4a', '#f4f0ea'] }),
+  // Hanok Village and Sakura Hollow
+  jindo: on('dog', { name: 'Jindo Dog', color: '#f0e6d4', accent: '#faf6f0', diet: 'bread', tints: ['#f0e6d4', '#c8864a'] }),
+  shiba: on('dog', { name: 'Shiba Inu', color: '#d88a3a', accent: '#faf2e6', diet: 'bread', scale: 0.85 }),
+  tanuki: on('fox', { name: 'Tanuki', color: '#7a6a52', accent: '#3a2e24', diet: 'rice', scale: 0.9 }),
+  // Firenzia, Jade Terraces
+  greyhound: on('dog', { name: 'Italian Greyhound', color: '#b8b0a8', accent: '#f4f0ea', diet: 'bread', scale: 0.9, leg: 0.42 }),
+  redpanda: on('fox', { name: 'Red Panda', color: '#c0502a', accent: '#3a2420', diet: 'bamboo', scale: 0.75 }),
+  // Souq al-Qamar, Tents of Rimal, Nile Crossing, Bagh-e-Noor
+  fennec: on('fox', { name: 'Fennec Fox', color: '#ecd4a4', accent: '#faf2e2', diet: 'dates', scale: 0.6 }),
+  oryx: on('goat', { name: 'Arabian Oryx', color: '#f0ece0', accent: '#3a3230', diet: 'dates', scale: 1.3 }),
+  saluki: on('dog', { name: 'Saluki', color: '#d8c0a0', accent: '#f4ece0', diet: 'bread', leg: 0.45, tints: ['#d8c0a0', '#f0e8dc', '#a8784a'] }),
+  mau: on('cat', { name: 'Egyptian Mau', color: '#c8c0b0', accent: '#5a5048', diet: 'milk', tints: ['#c8c0b0', '#b8a888'] }),
+  nilgai: on('deer', { name: 'Nilgai', color: '#8a8a90', accent: '#f4f0ea', diet: 'wildflower', scale: 1.25 }),
+  // The Sky Isles
+  starcat: on('cat', { name: 'Star Cat', color: '#b8a4ff', accent: '#fff4c0', diet: 'stardust', overlay: 'starry', tints: ['#b8a4ff', '#ffd6f0', '#bfe8ff'] }),
+  cloudsheep: on('sheep', { name: 'Cloud Sheep', color: '#ffffff', accent: '#e0e4ff', diet: 'stardust', overlay: 'starry', produce: 'wool' }),
+  // Birds of the lands
+  puffin: on('duck', { name: 'Puffin', color: '#1f1f24', accent: '#f2a13a', diet: 'rice', scale: 0.8 }),
+  magpie: on('dove', { name: 'Magpie', color: '#1f2230', accent: '#f4f6fa', diet: 'rice', scale: 1.3 }),
+  ibis: on('crane', { name: 'Sacred Ibis', color: '#f4f4f0', accent: '#1f1f24', diet: 'rice', scale: 0.8 }),
+  hornbill: on('dove', { name: 'Hornbill', color: '#2a2a30', accent: '#f2c14e', diet: 'rice', scale: 1.8 }),
+  parakeet: on('dove', { name: 'Parakeet', color: '#5ac85a', accent: '#e8403a', diet: 'rice', scale: 0.8 }),
+  cormorant: on('duck', { name: 'Cormorant', color: '#2a2e2a', accent: '#f2c14e', diet: 'rice', scale: 1.2 }),
+  raven: on('dove', { name: 'Raven', color: '#1a1a22', accent: '#3a3a48', diet: 'bread', scale: 1.4 }),
+} as Record<SpeciesId, Species>;
 
 const cache = new Map<string, THREE.Material>();
 function mat(c: string, glow = false): THREE.Material {
@@ -79,6 +146,69 @@ function part(geo: THREE.BufferGeometry, c: string, p: Part, glow = false): THRE
 
 const RAINBOW = ['#ff8a8a', '#ffc27a', '#fff08a', '#9ae8a0', '#8ac8ff', '#c8a4ff'];
 
+/** A coat colour for this animal, fixed by its id: strays and breeds come in their colours. */
+export function tintFor(species: SpeciesId, id: string): string | undefined {
+  const t = SPECIES[species].tints;
+  if (!t) return undefined;
+  let h = 0;
+  for (const ch of id) h = (h * 31 + ch.charCodeAt(0)) >>> 0;
+  return t[h % t.length];
+}
+
+/**
+ * The kit's overlays, laid over a built body. 'cyber' — New Yonder's cyborg pets: glowing seams
+ * round the barrel and the legs, a lit strip down the spine, chrome plates on the flanks, a
+ * little antenna with a light on the (floating) head, the tail tipped with light. 'starry' — the
+ * Sky Isles' creatures: a scatter of small glowing stars in their coats.
+ */
+function dress(kind: 'cyber' | 'starry', body: THREE.Group, head: THREE.Group, legs: THREE.Group[], tail: THREE.Object3D | undefined, d: { L: number; H: number; W: number; bodyY: number; headR: number }, accent: string): void {
+  const { L, H, W, bodyY, headR } = d;
+  if (kind === 'cyber') {
+    const neon = ['#5af0ff', '#ff5ad8'][Math.floor(Math.random() * 2)];
+    for (const z of [L * 0.18, -L * 0.12]) {
+      const ring = part(new THREE.TorusGeometry(0.5, 0.012, 4, 24), neon, 'body', true);
+      ring.scale.set(W * 0.92, H * 0.92, 1);
+      ring.position.set(0, bodyY, z);
+      body.add(ring);
+    }
+    for (let i = 0; i < 6; i++) {
+      const dot = part(new THREE.BoxGeometry(W * 0.12, 0.012, L * 0.06), neon, 'body', true);
+      dot.position.set(0, bodyY + H * 0.49, L * 0.3 - i * L * 0.12);
+      body.add(dot);
+    }
+    for (const x of [-1, 1]) {
+      const plate = part(new THREE.BoxGeometry(0.01, H * 0.34, L * 0.3), '#c8ccd4', 'body');
+      plate.position.set(x * W * 0.46, bodyY + H * 0.05, 0);
+      body.add(plate);
+    }
+    for (const leg of legs) {
+      const band = part(new THREE.TorusGeometry(W * 0.12, 0.008, 4, 12), neon, 'leg', true);
+      band.rotation.x = Math.PI / 2;
+      band.position.y = -0.08;
+      leg.add(band);
+    }
+    const ant = part(new THREE.CylinderGeometry(0.006, 0.008, headR * 1.2, 4), accent, 'accessory');
+    ant.position.set(headR * 0.3, headR * 1.3, -headR * 0.2);
+    ant.rotation.z = -0.3;
+    head.add(ant);
+    const bulb = part(new THREE.SphereGeometry(headR * 0.12, 6, 5), neon, 'accessory', true);
+    bulb.position.set(headR * 0.48, headR * 1.85, -headR * 0.2);
+    head.add(bulb);
+    if (tail) {
+      const tip = part(new THREE.SphereGeometry(0.025, 6, 5), neon, 'tail', true);
+      tip.position.set(0, 0.05, -0.05);
+      tail.add(tip);
+    }
+  } else {
+    for (let i = 0; i < 14; i++) {
+      const st = part(new THREE.OctahedronGeometry(0.02 + (i % 3) * 0.008), i % 3 ? '#fff4c0' : '#ffd6f0', 'body', true);
+      const a = (i / 14) * Math.PI * 2;
+      st.position.set(Math.cos(a) * W * 0.5, bodyY + Math.sin(a * 1.7) * H * 0.35, ((i % 7) / 6 - 0.5) * L * 0.8);
+      body.add(st);
+    }
+  }
+}
+
 export class AnimalModel {
   readonly root = new THREE.Group();
   readonly head = new THREE.Group();
@@ -99,8 +229,11 @@ export class AnimalModel {
     const s = SPECIES[species];
     const [L, H, W] = s.body;
     const c = tint ?? s.color, a = s.accent;
-    const detailed = (DETAILED as readonly string[]).includes(species), bird = (BIRDS as readonly string[]).includes(species);
+    // Built on its form's body plan (the kit), at its own size.
+    const form = (s.form ?? species) as string;
+    const detailed = (DETAILED as readonly string[]).includes(form), bird = (BIRDS as readonly string[]).includes(form);
     const body = new THREE.Group();
+    scale *= s.scale ?? 1;
     body.scale.setScalar(scale);
     this.root.add(body);
     const glow = s.extra === 'glow';
@@ -173,17 +306,18 @@ export class AnimalModel {
     }
 
     if (detailed) {
-      const b = buildDetailed(species as DetailedId, part, body, this.head, { L, H, W, bodyY, headR: s.headR, neck: s.neck, snout: s.snout }, c, a);
+      const b = buildDetailed(form as DetailedId, part, body, this.head, { L, H, W, bodyY, headR: s.headR, neck: s.neck, snout: s.snout }, c, a);
       this.legs = b.legs;
       this.knees = b.knees;
       this.tail = b.tail;
       this.headBase.copy(b.headBase);
       this.head.position.copy(this.headBase);
       body.add(this.head);
+      if (s.overlay) dress(s.overlay, body, this.head, this.legs, this.tail, { L, H, W, bodyY, headR: s.headR }, a);
       return;
     }
     if (bird) {
-      const b = buildBird(species as BirdId, part, body, this.head, { L, H, W, bodyY, headR: s.headR, neck: s.neck, leg: s.leg }, c, a, glow);
+      const b = buildBird(form as BirdId, part, body, this.head, { L, H, W, bodyY, headR: s.headR, neck: s.neck, leg: s.leg }, c, a, glow);
       this.legs = b.legs;
       this.tail = b.tail;
       this.folded = b.wings;

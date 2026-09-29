@@ -6,7 +6,7 @@ import { wrap } from '../npc/Npcs';
 import type { RegionInstance } from '../world/RegionBuilder';
 import { regionCenter } from '../world/regions';
 import { WATER_Y, surfaceAt } from '../world/terrain';
-import { AnimalModel, SPECIES, type SpeciesId } from './AnimalModel';
+import { AnimalModel, SPECIES, type SpeciesId, tintFor } from './AnimalModel';
 
 export interface Animal {
   id: string;
@@ -61,7 +61,7 @@ export class Animals {
   }
 
   spawn(id: string, species: SpeciesId, x: number, z: number, range: number, region: string, plotId?: string): Animal {
-    const model = new AnimalModel(species, species === 'elephant' ? 0.9 : 1);
+    const model = new AnimalModel(species, species === 'elephant' ? 0.9 : 1, tintFor(species, id));
     const home = new THREE.Vector3(x, surfaceAt(x, z, 1e9), z);
     model.root.position.copy(home);
     this.scene.add(model.root);
