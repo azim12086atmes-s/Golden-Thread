@@ -123,8 +123,13 @@ hulls, ornithopter wings, gear trains, envelope rigs. Traffic only — nothing c
   saddles, its head floats clear, allowed parts only.
 - **Starlight whale** (Sky Isles), **cloud galleon** (Sky Isles), **drone fish** shoals (New
   Yonder's waters) in `traffic/fantasyDesigns.ts`.
-- Still open: squarer mech and brass dragon heads could be refined; the thunderbird reads blobby
-  at its scale.
+- The mech and brass dragon heads sculpted: a tapered hexagonal muzzle over a skull frame, a
+  crown plate with a gilt edge, cheek plates, a jaw, a fan of collar plates; riveted gears on the
+  clockwork dragon, lit jaw seams on the drone dragon; the only light is along the crown (amber on
+  brass).
+- A new bird plan, the **eagle** (`detailed.ts`): lean body, long primaries, a hooked beak, a broad
+  nine-feather tail, taloned feet. The golden eagle soars in Alpenrose's fauna, and the
+  thunderbird is rebuilt on it (it was a dove at five times the size).
 
 ## Order of work
 1. Dragon kit, then the Jade lung and the festival dragon rebuilt on it; then each land's dragon.

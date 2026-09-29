@@ -17,8 +17,8 @@ export type DetailedId =
   | 'cat' | 'dog' | 'horse' | 'unicorn' | 'donkey' | 'fox' | 'sheep' | 'goat' | 'deer' | 'reindeer'
   | 'cow' | 'buffalo' | 'camel' | 'panda' | 'elephant' | 'rabbit' | 'monkey' | 'orangutan' | 'komodo';
 export const DETAILED: readonly DetailedId[] = ['cat', 'dog', 'horse', 'unicorn', 'donkey', 'fox', 'sheep', 'goat', 'deer', 'reindeer', 'cow', 'buffalo', 'camel', 'panda', 'elephant', 'rabbit', 'monkey', 'orangutan', 'komodo'];
-export type BirdId = 'duck' | 'crane' | 'peacock' | 'dove' | 'lightbird';
-export const BIRDS: readonly BirdId[] = ['duck', 'crane', 'peacock', 'dove', 'lightbird'];
+export type BirdId = 'duck' | 'crane' | 'peacock' | 'dove' | 'lightbird' | 'eagle';
+export const BIRDS: readonly BirdId[] = ['duck', 'crane', 'peacock', 'dove', 'lightbird', 'eagle'];
 
 export interface Built {
   legs: THREE.Group[];
@@ -575,7 +575,7 @@ export function buildBird(
     const w = new THREE.Group();
     w.position.set(x * W * 0.45, bodyY + H * 0.18, L * 0.15);
     for (let r = 0; r < 3; r++) for (let i = 0; i < 4; i++) {
-      const len = L * (0.35 + r * 0.18) - i * 0.02;
+      const len = L * (0.35 + r * 0.18) * (id === 'eagle' ? 1 + r * 0.18 : 1) - i * 0.02;
       const f = part(new THREE.BoxGeometry(0.02, H * 0.2, len).translate(0, 0, -len / 2), r === 2 ? (id === 'peacock' ? '#2f6a9a' : accent) : r === 1 ? c : tone(c, '#ffffff', 0.15), 'wing', glow);
       f.position.set(x * 0.005 * r, -r * H * 0.12 - i * 0.01, -i * 0.02);
       f.rotation.set(-0.08 - r * 0.05, 0, x * (0.06 + i * 0.02));
@@ -586,7 +586,7 @@ export function buildBird(
   }
   // Legs: thigh, a backward-bending ankle, and three toes forward.
   const legs: THREE.Group[] = [], knees: THREE.Group[] = [];
-  const legCol = id === 'crane' ? '#3a3a3a' : '#e0a040';
+  const legCol = id === 'crane' ? '#3a3a3a' : id === 'eagle' ? '#e8b83a' : '#e0a040';
   for (const x of [-1, 1]) {
     const hip = new THREE.Group();
     hip.position.set(x * W * 0.2, bodyY - H * 0.3, 0.02);
@@ -603,6 +603,13 @@ export function buildBird(
       toe.position.set(0, -low + 0.006, 0);
       toe.rotation.y = a;
       knee.add(toe);
+      if (id === 'eagle') {
+        // A dark curved talon at each toe's end.
+        const talon = part(new THREE.ConeGeometry(0.01, 0.045, 4).translate(0, -0.02, 0), '#2a2622', 'foot');
+        talon.position.set(Math.sin(a) * 0.09, -low + 0.004, Math.cos(a) * 0.09);
+        talon.rotation.set(-2.3, a, 0);
+        knee.add(talon);
+      }
     }
     hip.add(knee);
     body.add(hip);
@@ -622,11 +629,19 @@ export function buildBird(
   const skull = part(new THREE.SphereGeometry(headR, 10, 8), id === 'peacock' ? '#1f5a9a' : c, 'head', glow);
   skull.scale.set(0.9, 1, 1.1);
   head.add(skull);
-  const beak = part(new THREE.ConeGeometry(headR * (id === 'duck' ? 0.45 : 0.3), headR * (id === 'crane' ? 2.4 : id === 'duck' ? 1.3 : 1.0), 5), id === 'crane' ? '#3a3a3a' : '#f2a13a', 'head');
+  const beak = part(new THREE.ConeGeometry(headR * (id === 'duck' ? 0.45 : id === 'eagle' ? 0.42 : 0.3), headR * (id === 'crane' ? 2.4 : id === 'duck' ? 1.3 : 1.0), 5), id === 'crane' ? '#3a3a3a' : id === 'eagle' ? '#e8b83a' : '#f2a13a', 'head');
   if (id === 'duck') beak.scale.set(1.3, 0.45, 1);
+  if (id === 'eagle') beak.scale.set(0.8, 1, 1.1);
   beak.rotation.x = Math.PI / 2;
   beak.position.set(0, -headR * 0.1, headR * (id === 'crane' ? 1.9 : 1.2));
   head.add(beak);
+  if (id === 'eagle') {
+    // The raptor's hook: the beak's tip curls down.
+    const hook = part(new THREE.ConeGeometry(headR * 0.14, headR * 0.5, 5), '#3a3026', 'head');
+    hook.position.set(0, -headR * 0.28, headR * 1.72);
+    hook.rotation.x = Math.PI * 0.85;
+    head.add(hook);
+  }
   // A pale throat and a sleek crown: every bird's head has its shape.
   const throat = part(new THREE.SphereGeometry(headR * 0.55, 7, 5), breast, 'head', glow);
   throat.position.set(0, -headR * 0.45, headR * 0.35);
@@ -648,12 +663,13 @@ export function buildBird(
   const tail = new THREE.Group();
   tail.position.set(0, bodyY + H * 0.1, -L * 0.45);
   const fan = id === 'peacock' || id === 'lightbird';
-  const n = fan ? 11 : 5;
+  const n = fan ? 11 : id === 'eagle' ? 9 : 5;
   const cols = id === 'peacock' ? ['#2f8a6a', '#1f5a9a', '#3aa08a', '#e2b43a'] : id === 'lightbird' ? ['#fff4c0', '#b8a4ff', '#ffd6f0'] : [c, accent];
   for (let i = 0; i < n; i++) {
     const len = id === 'peacock' ? 1.1 : fan ? 0.45 : L * 0.4;
-    const f = part(new THREE.BoxGeometry(fan ? 0.09 : 0.06, 0.015, len).translate(0, 0, -len / 2), cols[i % cols.length], 'tail', glow || id === 'lightbird');
-    f.rotation.set(fan ? -0.95 : -0.1, ((i - (n - 1) / 2) / ((n - 1) / 2)) * (fan ? 1.0 : 0.25), 0);
+    const wide = id === 'eagle';
+    const f = part(new THREE.BoxGeometry(fan ? 0.09 : wide ? 0.09 : 0.06, 0.015, len).translate(0, 0, -len / 2), cols[i % cols.length], 'tail', glow || id === 'lightbird');
+    f.rotation.set(fan ? -0.95 : -0.1, ((i - (n - 1) / 2) / ((n - 1) / 2)) * (fan ? 1.0 : wide ? 0.4 : 0.25), 0);
     tail.add(f);
     if (id === 'peacock') {
       // A gold diamond near each feather's end — a pattern on the plume, never a round "eye".

@@ -32,12 +32,21 @@ const PATTERN: Record<Skin, string> = {
     diffuseColor.rgb += diffuseColor.rgb * pow(rim, 2.5) * 0.35;
   }`,
   feather: /* glsl */ `{
-    // A feather lies along object z with its width along y: a pale shaft and angled barbs.
+    #ifdef FEATHER_VANE
+    // A flight feather lies along object z with its width along y: a pale shaft and angled barbs.
     float across = vObj.y;
     float shaft = 1.0 - smoothstep(0.004, 0.012, abs(across));
     float barbs = 0.5 + 0.5 * sin((vObj.z * 120.0) + abs(across) * 260.0);
     diffuseColor.rgb *= 0.86 + barbs * 0.14 - smoothstep(0.03, 0.09, abs(across)) * 0.12;
     diffuseColor.rgb = mix(diffuseColor.rgb, vec3(1.0, 0.98, 0.94), shaft * 0.6);
+    #else
+    // Body and head plumage: soft overlapping contour feathers, no quill (a quill line round a
+    // round head would draw a band across it).
+    vec3 q = vObj * vec3(38.0, 38.0, 24.0);
+    float down = kn(q) * 0.6 + kn(q * 2.1 + 3.7) * 0.4;
+    float rows = 0.5 + 0.5 * sin(vObj.z * 90.0 + kn(vObj * 14.0) * 5.0);
+    diffuseColor.rgb *= 0.86 + down * 0.14 + rows * 0.06;
+    #endif
   }`,
   scale: /* glsl */ `{
     // Overlapping rounded scales in rows along the body.
@@ -68,16 +77,18 @@ export function skinMaterial(color: string, skin: Skin, opts: { roughness?: numb
     metalness: opts.metalness ?? (skin === 'scale' ? 0.18 : 0),
     side: opts.side ?? THREE.FrontSide,
   });
+  // Flight feathers (double-sided vanes) carry a quill; plumage on the body does not.
+  const vane = skin === 'feather' && opts.side === THREE.DoubleSide;
   m.onBeforeCompile = (sh) => {
     sh.vertexShader = sh.vertexShader
       .replace('#include <common>', `#include <common>\n${VERT_DECL}`)
       .replace('#include <begin_vertex>', '#include <begin_vertex>\nvObj = position;')
       .replace('#include <defaultnormal_vertex>', '#include <defaultnormal_vertex>\nvViewN = normalize(transformedNormal);');
     sh.fragmentShader = sh.fragmentShader
-      .replace('#include <common>', `#include <common>\n${FRAG_COMMON}`)
+      .replace('#include <common>', `#include <common>\n${vane ? '#define FEATHER_VANE\n' : ''}${FRAG_COMMON}`)
       .replace('#include <color_fragment>', `#include <color_fragment>\n${PATTERN[skin]}`);
   };
-  m.customProgramCacheKey = () => 'skin-' + skin;
+  m.customProgramCacheKey = () => 'skin-' + skin + (vane ? '-vane' : '');
   cache.set(key, m);
   return m;
 }

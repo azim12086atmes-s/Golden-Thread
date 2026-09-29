@@ -389,19 +389,51 @@ function buildHead(d: DragonSpec, head: THREE.Group): number {
     }
     case 'mech':
     case 'brass': {
-      // Armoured plates over a skull frame; a lit band where a face would be is left out — only
-      // a crest strip of light along the top.
-      const plate = std(d.side, { metalness: d.head === 'brass' ? 0.85 : 0.6, roughness: 0.3 });
-      g.add(mesh(new THREE.BoxGeometry(2.2, 1.6, 2.6), plate, 'head'));
-      g.add(mesh(new THREE.BoxGeometry(1.6, 1.0, 2.2), plate, 'head', 0, -0.25, 2.2));
-      g.add(mesh(new THREE.BoxGeometry(2.4, 0.2, 2.8), std(d.rim, { metalness: 0.8, roughness: 0.25 }), 'head', 0, 0.85, 0.1));
-      g.add(mesh(new THREE.BoxGeometry(0.25, 0.12, 3.2), glowMat(d.runes ?? '#5af0ff'), 'head', 0, 1.0, 0.6));
+      // Sculpted armour over a skull frame: a tapered hexagonal muzzle, a crown plate, cheek
+      // plates and a jaw, a fan of collar plates behind. No face: the only light is a strip along
+      // the crown (and, on the drone dragon, seams along the jaw line).
+      const brass = d.head === 'brass';
+      const plate = std(d.side, { metalness: brass ? 0.85 : 0.6, roughness: brass ? 0.35 : 0.3 });
+      const frame = std(brass ? '#5a3a1a' : '#2a2e38', { metalness: 0.7, roughness: 0.4 });
+      const trim = std(d.rim, { metalness: 0.85, roughness: 0.25 });
+      const lit = glowMat(d.runes ?? (brass ? '#ffb84a' : '#5af0ff'));
+      const hex = (r0: number, r1: number, len: number, m: THREE.Material, at: [number, number, number], sc: [number, number, number], rx = Math.PI / 2) => {
+        const o = mesh(new THREE.CylinderGeometry(r1, r0, len, 6).scale(...sc), m, 'head', ...at);
+        o.rotation.x = rx;
+        g.add(o);
+        return o;
+      };
+      g.add(mesh(new THREE.SphereGeometry(1.4, 14, 10).scale(1, 0.85, 1.15), frame, 'head'));
+      hex(1.25, 0.6, 3.0, plate, [0, -0.2, 1.7], [1, 1, 0.62]);            // the muzzle, tapering forward
+      hex(0.95, 0.45, 2.4, frame, [0, -0.72, 1.35], [0.9, 1, 0.45]);         // the jaw below it
+      hex(1.3, 1.0, 2.6, plate, [0, 0.62, 0.35], [1.05, 1, 0.3], Math.PI / 2 + 0.12); // the crown plate
+      hex(1.34, 1.04, 2.4, trim, [0, 0.72, 0.25], [1.06, 1, 0.08], Math.PI / 2 + 0.12); // its gilt edge
+      g.add(mesh(new THREE.BoxGeometry(0.22, 0.1, 3.4), lit, 'head', 0, 0.98, 0.7));
       for (const sx of [1, -1]) {
-        prong(g, hornM, 'horn', 2.2, 0.18, 0.06, [sx * 0.8, 0.7, -0.9], [-2.0, 0, -sx * 0.25]);
-        if (d.head === 'brass') {
-          const gear = mesh(new THREE.TorusGeometry(0.5, 0.12, 5, 12), hornM, 'head', sx * 1.15, 0, -0.2);
+        // Cheek plates angled back, a collar fan, and swept horns.
+        const cheek = hex(0.9, 0.55, 1.8, plate, [sx * 1.05, -0.25, 0.2], [0.35, 1, 1]);
+        cheek.rotation.set(Math.PI / 2, sx * 0.35, 0);
+        for (let f = 0; f < 3; f++) {
+          const fan = mesh(new THREE.BoxGeometry(0.12, 0.9 - f * 0.15, 1.9 - f * 0.3), f % 2 ? trim : plate, 'head', sx * (0.7 + f * 0.25), 0.25 - f * 0.35, -1.35);
+          fan.rotation.set(0.5 + f * 0.3, sx * 0.5, sx * (0.5 + f * 0.25));
+          g.add(fan);
+        }
+        prong(g, trim, 'horn', 2.4, 0.2, 0.05, [sx * 0.75, 0.75, -0.8], [-2.0, 0, -sx * 0.28]);
+        if (brass) {
+          // A gear on each cheek, riveted, and rivets down the muzzle.
+          const gear = mesh(new THREE.TorusGeometry(0.42, 0.1, 5, 14), trim, 'head', sx * 1.32, -0.25, 0.1);
           gear.rotation.y = Math.PI / 2;
           g.add(gear);
+          for (let t = 0; t < 10; t++) {
+            const a = (t / 10) * Math.PI * 2;
+            g.add(mesh(new THREE.BoxGeometry(0.1, 0.14, 0.14), trim, 'head', sx * 1.32, -0.25 + Math.sin(a) * 0.54, 0.1 + Math.cos(a) * 0.54));
+          }
+          for (let r = 0; r < 5; r++) g.add(mesh(new THREE.SphereGeometry(0.07, 6, 4), trim, 'head', sx * (0.62 - r * 0.07), 0.12, 0.9 + r * 0.45));
+        } else {
+          // Lit seams along the jaw line.
+          const seam = mesh(new THREE.BoxGeometry(0.06, 0.06, 2.3), lit, 'head', sx * 0.72, -0.5, 1.5);
+          seam.rotation.y = -sx * 0.16;
+          g.add(seam);
         }
       }
       back = 2.2;

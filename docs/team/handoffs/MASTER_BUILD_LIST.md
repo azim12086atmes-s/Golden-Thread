@@ -96,6 +96,7 @@ sections C1–C7) and `3D_BUILDS_HANDOFF.md` (3D work, sections 2a and 3.x). Tic
 - [ ] Screenshot and polish most designs
 - [ ] Vehicles entering and leaving; travel between lands; no pop-in at borders
 - [x] Junctions, turning, traffic lights, roundabouts
+- [x] Dragons, creatures of legend and fantasy and sci-fi vehicles on shared kits (DRAGONS_FANTASY_SCIFI_PLAN.md): every land's dragon, the festival dragon, the little meadow dragons and the rideable Night Dragon on the dragon kit; 18 fantasy and mech creatures and an eagle bird plan; 19 fantasy and sci-fi craft including a starlight whale, cloud galleon and drone fish
 - [ ] Stops: bus stops, taxi ranks, ferry piers, jetties, harbours, airports, drone docks; take-off, landing, docking. Done: bus stops in every town; ferries dock at every harbour pier; air taxis land beside every stop and on the Sky Isles stage
 - [ ] Riding buses, taxis, trams, ferries, gondolas, air taxis (separate seats). Done: intercity coach, coastal ferry, air taxi, Sky Isles cable car (`travel/Ride.ts`); left: trams
 - [x] Time of day (quieter nights, evening lantern boats, daytime kites and balloons)

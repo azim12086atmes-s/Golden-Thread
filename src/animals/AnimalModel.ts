@@ -11,7 +11,7 @@ import { BIRDS, DETAILED, buildBird, buildDetailed, type BirdId, type DetailedId
 export type SpeciesId =
   | 'sheep' | 'rabbit' | 'unicorn' | 'duck' | 'cat' | 'crane' | 'deer' | 'panda' | 'dog' | 'horse'
   | 'reindeer' | 'fox' | 'goat' | 'cow' | 'camel' | 'buffalo' | 'elephant' | 'peacock' | 'dove'
-  | 'donkey' | 'lightbird'
+  | 'donkey' | 'lightbird' | 'eagle'
   // Each land's own (VEHICLES_ANIMALS_PLAN.md), built from the kit's body plans below (`form`).
   | 'husky' | 'arcticfox' | 'snowhare' | 'muskox' | 'elk' | 'lynx' | 'ibex' | 'stbernard' | 'marmot'
   | 'corgi' | 'squirrel' | 'raccoon' | 'streetcat' | 'cybercat' | 'cyberdog' | 'jindo' | 'shiba' | 'tanuki'
@@ -117,6 +117,7 @@ function SPECIES_BASE(): Record<string, Species> { return {
   peacock: { name: 'Peacock', kind: 'bird', body: [0.5, 0.35, 0.3], color: '#1f5a9a', accent: '#2f8a6a', leg: 0.3, headR: 0.09, neck: 0.3, tail: 'fan', diet: 'rice' },
   dove: { name: 'Dove', kind: 'bird', body: [0.3, 0.2, 0.2], color: '#f4f4f8', accent: '#c8c8d8', leg: 0.06, headR: 0.08, tail: 'short', diet: 'rice' },
   donkey: { name: 'Donkey', kind: 'quad', body: [1.1, 0.6, 0.45], color: '#8a847a', accent: '#f4f1ea', leg: 0.7, headR: 0.17, neck: 0.35, ears: 'long', tail: 'tuft', extra: 'mane', snout: 0.18, diet: 'feed' },
+  eagle: { name: 'Golden Eagle', kind: 'bird', body: [0.75, 0.32, 0.34], color: '#6a4a2a', accent: '#d8b070', leg: 0.16, headR: 0.1, neck: 0.1, tail: 'fan', diet: 'dates' },
   lightbird: { name: 'Light Bird', kind: 'bird', body: [0.4, 0.25, 0.25], color: '#fff4c0', accent: '#b8a4ff', leg: 0.1, headR: 0.1, tail: 'fan', extra: 'glow', diet: 'stardust' },
   monkey: { name: 'Monkey', kind: 'quad', body: [0.55, 0.3, 0.26], color: '#8a6a4a', accent: '#d8c0a0', leg: 0.3, headR: 0.12, tail: 'long', diet: 'coconut' },
   orangutan: { name: 'Orangutan', kind: 'quad', body: [0.85, 0.7, 0.62], color: '#b8521e', accent: '#6a3a24', leg: 0.42, headR: 0.2, diet: 'coconut' },
@@ -190,7 +191,7 @@ export const SPECIES: Record<SpeciesId, Species> = {
   kitsune: on('fox', { name: 'Kitsune', color: '#fbf6ee', accent: '#ffc890', diet: 'rice', fantasy: { tails: 9, glowTips: '#ffd8a0' } }),
   griffin: on('cat', { name: 'Griffin', color: '#c8964a', accent: '#f4f0ea', diet: 'olive', scale: 2.8, fantasy: { wings: { color: '#8a5a2a', tip: '#f4f0ea', size: 2.4 }, beak: '#f2c24a' } }),
   pegasus: on('horse', { name: 'Pegasus', color: '#ffffff', accent: '#e8e8f0', diet: 'feed', fantasy: { wings: { color: '#ffffff', tip: '#dfe8ff', size: 1.5 } } }),
-  thunderbird: on('dove', { name: 'Thunderbird', color: '#2a3a6a', accent: '#f2e14e', diet: 'rice', scale: 5, fantasy: { glowTips: '#fff08a' } }),
+  thunderbird: on('eagle', { name: 'Thunderbird', color: '#2a3a6a', accent: '#f2e14e', diet: 'rice', scale: 4, fantasy: { glowTips: '#fff08a' } }),
   simurgh: on('peacock', { name: 'Simurgh', color: '#2a8a8a', accent: '#e8a040', diet: 'rice', scale: 2.2, fantasy: { glowTips: '#ffd27a' } }),
   lotusswan: on('duck', { name: 'Lotus Swan', color: '#fffaf4', accent: '#ff9ac8', diet: 'rice', scale: 2.2, fantasy: { glowTips: '#ffb8d8' } }),
   moonrabbit: on('rabbit', { name: 'Moon Rabbit', color: '#f4f4ff', accent: '#fff4c0', diet: 'wildflower', overlay: 'starry', fantasy: { glowTips: '#fff4c0' } }),
