@@ -16,10 +16,10 @@ import { ANIMAL_HEAD_GAP, type Part } from '../characters/anatomy';
  */
 
 export type Plan = 'lung' | 'wyrm' | 'wyvern' | 'naga';
-export type HeadKind = 'lung' | 'drake' | 'frost' | 'sea' | 'mech' | 'brass' | 'cloud' | 'night';
-export type Crest = 'fins' | 'spines' | 'flame' | 'crystal' | 'plates' | 'frond';
-export type TailKind = 'flame' | 'spade' | 'fins' | 'crystal' | 'frond' | 'plume' | 'twin';
-export type ScaleStyle = 'shingle' | 'plate' | 'hex' | 'cloud' | 'silk';
+export type HeadKind = 'lung' | 'drake' | 'frost' | 'sea' | 'mech' | 'brass' | 'cloud' | 'night' | 'light';
+export type Crest = 'fins' | 'spines' | 'flame' | 'crystal' | 'plates' | 'frond' | 'none';
+export type TailKind = 'flame' | 'spade' | 'fins' | 'crystal' | 'frond' | 'plume' | 'twin' | 'heart';
+export type ScaleStyle = 'shingle' | 'plate' | 'hex' | 'cloud' | 'silk' | 'smooth';
 
 export interface DragonSpec {
   id: string;
@@ -43,7 +43,7 @@ export interface DragonSpec {
    * Membrane wings: span (m), membrane and bone colours; `panels` draws them as canvas or plates;
    * `hind`, a second, smaller pair over the hips (that share of the main span).
    */
-  wings?: { span: number; membrane: string; bone: string; panels?: boolean; hind?: number };
+  wings?: { span: number; membrane: string; bone: string; panels?: boolean; hind?: number; ribs?: number };
   /** A glowing pearl it chases (colour), and glowing runes along its back (colour). */
   pearl?: string;
   runes?: string;
@@ -59,6 +59,8 @@ export interface DragonSpec {
    * sturdy legs, and a thick tail that tapers slowly to its fins.
    */
   build?: 'cat';
+  /** A twin tail's left fin is a prosthetic of leather and steel, this colour (the Night Dragon's red). */
+  prosthetic?: string;
 }
 
 // ───── the body's girth along its length (s: 0 at the neck … 1 at the tail tip) ─────
@@ -130,6 +132,15 @@ export function hideTexture(d: DragonSpec): THREE.Texture | null {
       x.fillStyle = d.rim;
       for (let c = 6; c < W; c += 16) { x.beginPath(); x.arc(c, y + 8, 2.2, 0, Math.PI * 2); x.fill(); }
     }
+  } else if (d.scales === 'smooth') {
+    // Smooth, pearly skin: no scales, only soft clouds of its rim colour (a lilac or blue sheen).
+    for (let i = 0; i < 90; i++) {
+      const cx = (i * 97.3) % W, cy = (i * 53.7) % H, rr = 14 + (i % 7) * 6;
+      const gr = x.createRadialGradient(cx, cy, 0, cx, cy, rr);
+      gr.addColorStop(0, d.rim); gr.addColorStop(1, 'rgba(0,0,0,0)');
+      x.globalAlpha = 0.16; x.fillStyle = gr; x.fillRect(cx - rr, cy - rr, rr * 2, rr * 2);
+    }
+    x.globalAlpha = 1;
   } else if (d.scales === 'silk') {
     // The festival dragon's silk: embroidered scales in gold thread, a hoop of the lantern frame
     // every so often round the body, and a fringe down the belly.
@@ -154,7 +165,7 @@ export function hideTexture(d: DragonSpec): THREE.Texture | null {
     }
   }
   // Belly plates for every style but the cloud.
-  if (d.scales !== 'cloud' && d.scales !== 'silk') for (let y = 0; y < H; y += 22) { x.fillStyle = 'rgba(90,60,20,0.4)'; x.fillRect(W * 0.66, y, W * 0.18, 3); }
+  if (d.scales !== 'cloud' && d.scales !== 'silk' && d.scales !== 'smooth') for (let y = 0; y < H; y += 22) { x.fillStyle = 'rgba(90,60,20,0.4)'; x.fillRect(W * 0.66, y, W * 0.18, 3); }
   const t = new THREE.CanvasTexture(cv);
   t.colorSpace = THREE.SRGBColorSpace;
   t.wrapS = t.wrapT = THREE.RepeatWrapping;
@@ -193,6 +204,41 @@ class Parts {
       const a0 = base + j, a1 = base + ((j + 1) % n), b0 = a0 + n, b1 = a1 + n;
       this.idx.push(a0, b0, a1, a1, b0, b1);
     }
+  }
+  /**
+   * A rounded limb from p to q (local): a closed tube of `n` sides, rounded at both ends, its
+   * radius running from r0 to r1 and swelling by `bulge` in the middle (a muscle). Its rings share
+   * vertices, so it shades smoothly once normals are computed.
+   */
+  capsule(s: number, p: number[], q: number[], r0: number, r1: number, colour: THREE.Color, bulge = 0, n = 10): void {
+    const d = new THREE.Vector3(q[0] - p[0], q[1] - p[1], q[2] - p[2]), len = d.length();
+    d.normalize();
+    const a = Math.abs(d.x) > 0.9 ? new THREE.Vector3(0, 1, 0) : new THREE.Vector3(1, 0, 0);
+    const u = new THREE.Vector3().crossVectors(d, a).normalize(), v = new THREE.Vector3().crossVectors(d, u);
+    // Rings: along the length from a rounded start to a rounded end ([distance along, radius]).
+    const rings: Array<[number, number]> = [];
+    for (let k = 1; k <= 3; k++) { const t = (k / 3) * Math.PI * 0.5; rings.push([-r0 * Math.cos(t), r0 * Math.sin(t)]); }
+    for (let k = 1; k < 6; k++) { const t = k / 6; rings.push([len * t, (r0 + (r1 - r0) * t) * (1 + bulge * Math.sin(t * Math.PI))]); }
+    for (let k = 0; k < 3; k++) { const t = (k / 3) * Math.PI * 0.5; rings.push([len + r1 * Math.sin(t), r1 * Math.cos(t)]); }
+    const push = (x: number, y: number, z: number) => { this.pos.push(x, y, z); this.col.push(colour.r, colour.g, colour.b); this.s.push(s); };
+    const tip0 = this.pos.length / 3;
+    push(p[0] - d.x * r0, p[1] - d.y * r0, p[2] - d.z * r0);
+    const base = this.pos.length / 3;
+    for (const [along, r] of rings) for (let j = 0; j < n; j++) {
+      const ang = (j / n) * Math.PI * 2;
+      push(p[0] + d.x * along + (u.x * Math.cos(ang) + v.x * Math.sin(ang)) * r,
+        p[1] + d.y * along + (u.y * Math.cos(ang) + v.y * Math.sin(ang)) * r,
+        p[2] + d.z * along + (u.z * Math.cos(ang) + v.z * Math.sin(ang)) * r);
+    }
+    const tip1 = this.pos.length / 3;
+    push(q[0] + d.x * r1, q[1] + d.y * r1, q[2] + d.z * r1);
+    for (let j = 0; j < n; j++) this.idx.push(tip0, base + ((j + 1) % n), base + j);
+    for (let k = 0; k < rings.length - 1; k++) for (let j = 0; j < n; j++) {
+      const a0 = base + k * n + j, a1 = base + k * n + ((j + 1) % n), b0 = a0 + n, b1 = a1 + n;
+      this.idx.push(a0, a1, b0, a1, b1, b0);
+    }
+    const last = base + (rings.length - 1) * n;
+    for (let j = 0; j < n; j++) this.idx.push(tip1, last + j, last + ((j + 1) % n));
   }
   /** A flattened ball (a plate, a pad) at p, radii rx, ry, rz. */
   blob(s: number, p: number[], rx: number, ry: number, rz: number, colour: THREE.Color): void {
@@ -250,9 +296,21 @@ function layParts(d: DragonSpec, solid: Parts, glow: Parts): void {
     const hip = [sx * rr * 0.8, -rr * 0.25, 0];
     const knee = [sx * (rr + 1.6 * k), -rr - 0.6 * k, (0.8 - tuck * 2.2) * k];
     const foot = [sx * (rr + 1.4 * k), -rr - (2.2 - tuck * 0.6) * k, (1.6 - tuck * 4.4) * k];
-    const thick = d.build === 'cat' ? 1.5 : 1;
-    solid.cone(s, hip, knee, rr * 0.36 * thick, rr * 0.25 * thick, side, 7);
-    solid.cone(s, knee, foot, rr * 0.25 * thick, rr * 0.16 * thick, side, 7);
+    if (d.build === 'cat') {
+      // Rounded, muscled limbs: a thick thigh or shoulder swelling out of the body, a shorter shin,
+      // and a broad padded paw with short claws.
+      solid.capsule(s, hip, knee, rr * 0.5, rr * 0.3, side, 0.25);
+      solid.capsule(s, knee, foot, rr * 0.3, rr * 0.22, side, 0.1);
+      const pawTip = [foot[0] + sx * 0.08 * k, foot[1] - 0.25 * k, foot[2] + (0.9 - tuck * 1.6) * 0.55 * k];
+      solid.capsule(s, foot, pawTip, rr * 0.26, rr * 0.2, side, 0.15);
+      for (let c = 0; c < nClaws; c++) {
+        const f = c / (nClaws - 1) - 0.5;
+        solid.cone(s, pawTip, [pawTip[0] + f * 0.5 * k, pawTip[1] - 0.2 * k, pawTip[2] + (0.9 - tuck * 1.6) * 0.35 * k], 0.07 * k, 0.005, claw, 5);
+      }
+      continue;
+    }
+    solid.cone(s, hip, knee, rr * 0.36, rr * 0.25, side, 7);
+    solid.cone(s, knee, foot, rr * 0.25, rr * 0.16, side, 7);
     for (let c = 0; c < nClaws; c++) {
       const f = c / (nClaws - 1) - 0.5;
       solid.cone(s, foot, [foot[0] + sx * 0.25 * k + f * 0.8 * k, foot[1] - 0.45 * k, foot[2] + (0.9 - tuck * 1.6) * k], 0.12 * k, 0.01, claw, 4);
@@ -295,14 +353,37 @@ function layParts(d: DragonSpec, solid: Parts, glow: Parts): void {
         const s0 = 0.86, rr = r(s0);
         solid.tri(s0, [sx * rr * 0.8, 0, 0.15 * T], [sx * (rr + T * 0.42), 0, -T * 0.12], [sx * rr * 0.8, 0, -T * 0.34], c1);
       }
-      // Then a pair of fins spread flat at the tip: one its own, the other a red leather-and-steel prosthetic.
+      // Then a pair of fins spread flat at the tip: both its own, or one of them a leather-and-steel prosthetic.
       for (const sx of [1, -1]) {
-        const fin = sx > 0 ? c1 : C('#a3202a');
+        const fake = sx < 0 && !!d.prosthetic;
+        const fin = fake ? C(d.prosthetic!) : c1;
         solid.tri(ts, [0, 0, 0], [sx * T * 0.95, 0, -T * 0.25], [sx * T * 0.75, 0, -T * 0.75], fin);
         solid.tri(ts, [0, 0, 0], [sx * T * 0.75, 0, -T * 0.75], [sx * T * 0.15, 0, -T * 0.7], fin);
-        if (sx < 0) for (const f of [0.35, 0.65]) solid.cone(ts, [0, 0.02, -0.05], [-T * 0.9 * f - T * 0.1, 0.02, -T * 0.72 * f], 0.035 * scale, 0.02 * scale, C('#8a8a96'), 4);
+        if (fake) for (const f of [0.35, 0.65]) solid.cone(ts, [0, 0.02, -0.05], [-T * 0.9 * f - T * 0.1, 0.02, -T * 0.72 * f], 0.035 * scale, 0.02 * scale, C('#8a8a96'), 4);
       }
       break;
+    case 'heart': {
+      // A small pair of fins a little way up the tail, then two broad rounded lobes at the tip,
+      // spread in a heart and tipped a little up, each ribbed like a fan.
+      for (const sx of [1, -1]) {
+        const s0 = 0.8, rr = r(s0);
+        solid.tri(s0, [sx * rr * 0.8, 0, 0.12 * T], [sx * (rr + T * 0.3), 0, -T * 0.1], [sx * rr * 0.8, 0, -T * 0.3], c1);
+      }
+      const rib = C(d.rim);
+      for (const sx of [1, -1]) {
+        const cx = sx * T * 0.42, cz = -T * 0.62, ax = T * 0.4, az = T * 0.72, n = 10;
+        const arc: number[][] = [];
+        for (let i = 0; i <= n; i++) {
+          // Round the lobe from its inner root, out along the back, to its outer edge.
+          const a = -Math.PI * 0.55 + (i / n) * Math.PI * 1.25;
+          const x = cx + sx * Math.sin(a) * ax, z = cz - Math.cos(a) * az;
+          arc.push([x, Math.abs(x) * 0.3, z]);
+        }
+        for (let i = 0; i < n; i++) solid.tri(ts, [0, 0, 0], arc[i], arc[i + 1], c1);
+        for (let i = 1; i < n; i += 2) solid.cone(ts, [0, 0.01, 0], [arc[i][0], arc[i][1] + 0.01, arc[i][2]], 0.02 * scale, 0.008 * scale, rib, 4);
+      }
+      break;
+    }
     case 'plume':
       for (let k = 0; k < 12; k++) { const a = (k / 12) * Math.PI * 2; solid.cone(ts, [0, 0, 0], [Math.cos(a) * T * 0.5, Math.sin(a) * T * 0.5, -T * 1.8], 0.22 * scale, 0.01, k % 3 ? c2 : c1, 4); }
       break;
@@ -436,6 +517,22 @@ function buildHead(d: DragonSpec, head: THREE.Group): number {
       back = 2.3;
       break;
     }
+    case 'light': {
+      // Smaller and rounder than the Night Dragon's, smooth, a soft muzzle; two short rounded ear
+      // nubs rising back from the crown and two smaller ones below them.
+      g.add(mesh(new THREE.SphereGeometry(1.6, 24, 16).scale(1.0, 0.84, 1.2), skinM, 'head'));
+      g.add(mesh(new THREE.SphereGeometry(1.15, 20, 12).scale(0.95, 0.62, 1.1), skinM, 'head', 0, -0.32, 1.3));
+      g.add(mesh(new THREE.SphereGeometry(1.0, 18, 10).scale(0.95, 0.36, 0.9), skinM, 'head', 0, -0.72, 0.9));
+      for (const sx of [1, -1]) {
+        const big = mesh(new THREE.CapsuleGeometry(0.26, 1.0, 6, 10), skinM, 'ear', sx * 0.55, 1.2, -0.55);
+        big.rotation.set(-0.85, 0, -sx * 0.22);
+        const small = mesh(new THREE.CapsuleGeometry(0.17, 0.5, 5, 8), skinM, 'ear', sx * 1.08, 0.5, -0.6);
+        small.rotation.set(-1.0, 0, -sx * 0.8);
+        g.add(big, small);
+      }
+      back = 2.0;
+      break;
+    }
     case 'mech':
     case 'brass': {
       // Sculpted armour over a skull frame: a tapered hexagonal muzzle, a crown plate, cheek
@@ -494,57 +591,92 @@ function buildHead(d: DragonSpec, head: THREE.Group): number {
 
 // ───── wings: finger bones with a membrane between, a scalloped trailing edge ─────
 
-function buildWing(d: DragonSpec, sx: number, share = 1): THREE.Group {
+/** A wing that can fold: its group, and how to set it from spread (0) to folded along the flank (1). */
+interface Wing { g: THREE.Group; fold(f: number): void }
+
+function buildWing(d: DragonSpec, sx: number, share = 1): Wing {
   const w = d.wings!, span = (w.span / 2) * share, grp = new THREE.Group();
   const bone = std(w.bone, { roughness: 0.4, metalness: w.panels ? 0.6 : 0.1 });
   const mem = std(w.membrane, { side: THREE.DoubleSide, transparent: true, opacity: w.panels ? 1 : 0.82, depthWrite: !!w.panels, roughness: 0.65, emissive: d.emissive ?? '#000000', emissiveIntensity: d.emissive ? 0.2 : 0 });
-  // The arm: shoulder → elbow → wrist; four fingers splay back from the wrist.
-  const sh = new THREE.Vector3(0, 0, 0), el = new THREE.Vector3(sx * span * 0.35, span * 0.08, span * 0.12), wr = new THREE.Vector3(sx * span * 0.55, span * 0.12, span * 0.05);
-  // Four fingers fanned like a bat's: the first straight out, the last swept back along the flank.
-  const splay: Array<[number, number]> = [[1.0, 0.02], [0.9, -0.22], [0.75, -0.42], [0.55, -0.58]];
-  const fingers = splay.map(([fx, fz], i) => new THREE.Vector3(sx * span * fx, span * (0.05 - i * 0.03), span * fz));
-  const rod = (a: THREE.Vector3, b: THREE.Vector3, r: number) => {
-    const dd = b.clone().sub(a), len = dd.length();
-    const m = mesh(new THREE.CylinderGeometry(r * 0.6, r, len, 6), bone, 'wing');
-    m.position.copy(a).addScaledVector(dd, 0.5);
-    m.quaternion.setFromUnitVectors(new THREE.Vector3(0, 1, 0), dd.normalize());
-    grp.add(m);
-  };
+  const V = (x: number, y: number, z: number) => new THREE.Vector3(sx * span * x, span * y, span * z);
+  // The arm: shoulder → elbow → wrist; four fingers splay back from the wrist, fanned like a bat's
+  // (the first straight out, the last swept back along the flank). Folded, the elbow tucks back,
+  // the wrist comes forward beside the shoulder and the fingers lie back along the flank.
+  const sh = new THREE.Vector3(0, 0, 0);
+  const spread = { el: V(0.35, 0.08, 0.12), wr: V(0.55, 0.12, 0.05), fingers: [V(1.0, 0.05, 0.02), V(0.9, 0.02, -0.22), V(0.75, -0.01, -0.42), V(0.55, -0.04, -0.58)] };
+  const folded = { el: V(0.13, 0.14, -0.2), wr: V(0.16, 0.2, 0.16), fingers: [V(0.2, 0.18, -0.62), V(0.2, 0.12, -0.6), V(0.19, 0.06, -0.57), V(0.17, 0.0, -0.52)] };
+  const el = spread.el.clone(), wr = spread.wr.clone(), fingers = spread.fingers.map((f) => f.clone());
   const R = span * 0.026;
+  // Bones are unit-length rods, stretched and turned to their joints on every pose.
+  const rods: Array<{ m: THREE.Mesh; a: THREE.Vector3; b: THREE.Vector3 }> = [];
+  const rod = (a: THREE.Vector3, b: THREE.Vector3, r: number) => {
+    const m = mesh(new THREE.CylinderGeometry(r * 0.6, r, 1, 6), bone, 'wing');
+    grp.add(m);
+    rods.push({ m, a, b });
+  };
   rod(sh, el, R); rod(el, wr, R * 0.8);
-  // The thumb claw at the wrist.
-  const thumb = mesh(new THREE.ConeGeometry(R * 0.7, span * 0.08, 5), bone, 'wing', wr.x, wr.y + span * 0.03, wr.z + span * 0.02);
+  for (const f of fingers) rod(wr, f, R * 0.55);
+  // The thumb claw at the wrist, and a claw at each finger's tip.
+  const thumb = mesh(new THREE.ConeGeometry(R * 0.7, span * 0.08, 5), bone, 'wing');
   thumb.rotation.x = -0.6;
   grp.add(thumb);
-  for (const f of fingers) { rod(wr, f, R * 0.55); const tip = mesh(new THREE.ConeGeometry(R * 0.4, span * 0.05, 5), bone, 'wing', f.x, f.y, f.z); tip.rotation.z = -sx * Math.PI / 2; grp.add(tip); }
+  const tips = fingers.map(() => { const t = mesh(new THREE.ConeGeometry(R * 0.4, span * 0.05, 5), bone, 'wing'); t.rotation.z = -sx * Math.PI / 2; grp.add(t); return t; });
   // The membrane: fans from the wrist between the fingers, and back to the body along the flank;
   // the trailing edge scallops in between each pair.
-  const pos: number[] = [];
-  const push = (...v: THREE.Vector3[]) => v.forEach((p) => pos.push(p.x, p.y, p.z));
   const root = new THREE.Vector3(0, 0, -span * 0.42);
-  const lead = [el, wr];
-  push(sh, el, root); push(el, wr, root);
-  const pts = [fingers[0], fingers[1], fingers[2], fingers[3]];
-  for (let i = 0; i < 3; i++) {
-    const a = pts[i], b = pts[i + 1], mid = a.clone().lerp(b, 0.5).lerp(wr, 0.42); // scallop in
-    push(wr, a, mid); push(wr, mid, b);
-  }
-  push(wr, fingers[3], root);
+  const tris = (): THREE.Vector3[] => {
+    const out: THREE.Vector3[] = [sh, el, root, el, wr, root];
+    for (let i = 0; i < 3; i++) {
+      const a = fingers[i], b = fingers[i + 1], mid = a.clone().lerp(b, 0.5).lerp(wr, 0.42); // scallop in
+      out.push(wr, a, mid, wr, mid, b);
+    }
+    out.push(wr, fingers[3], root);
+    return out;
+  };
   const mg = new THREE.BufferGeometry();
-  mg.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3));
-  mg.computeVertexNormals();
-  grp.add(mesh(mg, mem, 'wing'));
-  // Veins (or panel seams) from the wrist.
-  for (let i = 0; i < 3; i++) {
-    const tip = pts[i].clone().lerp(pts[i + 1], 0.5).lerp(wr, 0.3);
-    const dd = tip.clone().sub(wr), len = dd.length();
-    const v = mesh(new THREE.CylinderGeometry(R * 0.12, R * 0.2, len, 4), w.panels && d.runes ? glowMat(d.runes) : bone, 'wing');
-    v.position.copy(wr).addScaledVector(dd, 0.5);
-    v.quaternion.setFromUnitVectors(new THREE.Vector3(0, 1, 0), dd.normalize());
-    grp.add(v);
+  mg.setAttribute('position', new THREE.Float32BufferAttribute(new Array(tris().length * 3).fill(0), 3));
+  const membrane = mesh(mg, mem, 'wing');
+  grp.add(membrane);
+  // Veins (or panel seams) from the wrist: one between each pair of fingers, or `ribs` of them,
+  // fanned (the Light Fury's ribbed wings).
+  const perGap = w.ribs ?? 1;
+  const veins: Array<{ m: THREE.Mesh; gap: number; f: number }> = [];
+  for (let i = 0; i < 3; i++) for (let k = 0; k < perGap; k++) {
+    const m = mesh(new THREE.CylinderGeometry(R * 0.12, R * 0.2, 1, 4), w.panels && d.runes ? glowMat(d.runes) : bone, 'wing');
+    grp.add(m);
+    veins.push({ m, gap: i, f: (k + 1) / (perGap + 1) });
   }
-  void lead;
-  return grp;
+  const Y = new THREE.Vector3(0, 1, 0), dd = new THREE.Vector3();
+  const place = (m: THREE.Mesh, a: THREE.Vector3, b: THREE.Vector3) => {
+    dd.subVectors(b, a);
+    const len = Math.max(1e-4, dd.length());
+    m.position.copy(a).addScaledVector(dd, 0.5);
+    m.scale.set(1, len, 1);
+    m.quaternion.setFromUnitVectors(Y, dd.divideScalar(len));
+  };
+  let last = -1;
+  const fold = (f: number) => {
+    f = Math.min(1, Math.max(0, f));
+    if (Math.abs(f - last) < 1e-3) return;
+    last = f;
+    // Ease the fold so the wing sweeps in smoothly.
+    const e = f * f * (3 - 2 * f);
+    el.lerpVectors(spread.el, folded.el, e);
+    wr.lerpVectors(spread.wr, folded.wr, e);
+    fingers.forEach((p, i) => p.lerpVectors(spread.fingers[i], folded.fingers[i], e));
+    for (const r of rods) place(r.m, r.a, r.b);
+    thumb.position.set(wr.x, wr.y + span * 0.03, wr.z + span * 0.02);
+    tips.forEach((t, i) => t.position.copy(fingers[i]));
+    const pa = mg.getAttribute('position') as THREE.BufferAttribute;
+    tris().forEach((p, i) => pa.setXYZ(i, p.x, p.y, p.z));
+    pa.needsUpdate = true;
+    mg.computeVertexNormals();
+    mg.computeBoundingSphere();
+    // Each vein runs to the scalloped edge between its two fingers (deepest at the middle).
+    for (const v of veins) place(v.m, wr, fingers[v.gap].clone().lerp(fingers[v.gap + 1], v.f).lerp(wr, 0.42 * Math.sin(v.f * Math.PI) * 0.72));
+  };
+  fold(0);
+  return { g: grp, fold };
 }
 
 // ───── the dragon ─────
@@ -558,7 +690,7 @@ export class DragonModel {
   private glowBits: THREE.Mesh;
   readonly head = new THREE.Group();
   /** Each wing, the side it is on and where along the body it grows (the main pair at the shoulders, a hind pair over the hips). */
-  private wings: Array<{ g: THREE.Group; sx: number; at: number; beat: number }> = [];
+  private wings: Array<{ w: Wing; sx: number; at: number; beat: number }> = [];
   readonly pearl: THREE.Mesh | null = null;
   private bodyLay: Layout; private bitsLay: Layout; private glowLay: Layout;
   /** How far ahead of the neck the head's centre floats. */
@@ -608,12 +740,12 @@ export class DragonModel {
     this.headAhead = buildHead(d, this.head) + 0.5 * Math.min(1, R0 / 1.3) + ANIMAL_HEAD_GAP * 4;
     if (d.wings) for (const sx of [1, -1]) {
       const w = buildWing(d, sx);
-      this.wings.push({ g: w, sx, at: SHOULDER(d), beat: 1 });
-      this.group.add(w);
+      this.wings.push({ w, sx, at: SHOULDER(d), beat: 1 });
+      this.group.add(w.g);
       if (d.wings.hind) {
         const h = buildWing(d, sx, d.wings.hind);
-        this.wings.push({ g: h, sx, at: HIP(d) + 0.04, beat: 0.6 });
-        this.group.add(h);
+        this.wings.push({ w: h, sx, at: HIP(d) + 0.04, beat: 0.6 });
+        this.group.add(h.g);
       }
     }
     if (d.pearl) {
@@ -631,19 +763,23 @@ export class DragonModel {
    * Bend the dragon along its centre line: P (neck → tail, `samples` points), with the tangent T
    * pointing forward, N to its side and B up. Then place the head, beat the wings.
    */
-  pose(t: number, flap = 1, beat?: number): void {
+  pose(t: number, flap = 1, beat?: number, fold = 0): void {
     this.deform(this.body, this.bodyLay);
     this.deform(this.bits, this.bitsLay);
     this.deform(this.glowBits, this.glowLay);
     this.body.geometry.computeVertexNormals();
+    // The cat build's rounded limbs shade smoothly.
+    if (this.spec.build === 'cat') this.bits.geometry.computeVertexNormals();
     this.head.position.copy(this.P[0]).addScaledVector(this.T[0], this.headAhead);
     this.head.lookAt(this.head.position.clone().add(this.T[0]));
     const b = beat ?? Math.sin(t * 2.2) * 0.55 * flap + 0.1;
-    for (const w of this.wings) {
-      const i = Math.round(w.at * (this.samples - 1)), r = girth(this.spec, w.at) * this.spec.girth;
+    for (const { w, sx, at, beat: k } of this.wings) {
+      const i = Math.round(at * (this.samples - 1)), r = girth(this.spec, at) * this.spec.girth;
       const m = new THREE.Matrix4().makeBasis(this.N[i], this.B[i], this.T[i]);
-      w.g.position.copy(this.P[i]).addScaledVector(this.N[i], w.sx * r * 0.7).addScaledVector(this.B[i], r * 0.55);
-      w.g.quaternion.setFromRotationMatrix(m).multiply(new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(0, 0, 1), w.sx * b * w.beat));
+      w.fold(fold);
+      w.g.position.copy(this.P[i]).addScaledVector(this.N[i], sx * r * 0.7).addScaledVector(this.B[i], r * 0.55);
+      // Folded, the wing lies against the flank and barely beats.
+      w.g.quaternion.setFromRotationMatrix(m).multiply(new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(0, 0, 1), sx * b * k * (1 - fold * 0.85)));
     }
   }
 
@@ -707,7 +843,7 @@ export function fly(dm: DragonModel, f: Flight, t: number): void {
  * along −z, only the tail (behind `still`) swaying from side to side; wings beat by `beat`.
  * Forward is +z here, as for every vehicle.
  */
-export function perch(dm: DragonModel, t: number, y: number, z0: number, beat: number, still = 0.45, lift = 0): void {
+export function perch(dm: DragonModel, t: number, y: number, z0: number, beat: number, still = 0.45, lift = 0, fold = 0): void {
   const n = dm.samples, L = dm.spec.length, up = new THREE.Vector3(0, 1, 0);
   for (let i = 0; i < n; i++) {
     const s = i / (n - 1), k = Math.max(0, (s - still) / (1 - still));
@@ -721,5 +857,5 @@ export function perch(dm: DragonModel, t: number, y: number, z0: number, beat: n
     dm.N[i].crossVectors(up, dm.T[i]).normalize();
     dm.B[i].crossVectors(dm.T[i], dm.N[i]).normalize();
   }
-  dm.pose(t, 1, beat);
+  dm.pose(t, 1, beat, fold);
 }

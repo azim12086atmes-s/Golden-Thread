@@ -7,12 +7,13 @@ import { wardrobeFor } from '../npc/Townsfolk';
 import { REGION_BY_ID, regionCenter, type RegionId } from '../world/regions';
 import { surfaceAt } from '../world/terrain';
 import { Carpet } from './Carpet';
+import { Dragon, DRAGON_SCALE } from '../event/Dragon';
 import { DIMS } from '../characters/CharacterModel';
 import { BUNKS, PET_BEDS, RIDE_CHILD_SEATS, VAN } from '../vehicles/vanLayout';
 
 /** Children are drawn at this scale of an adult. */
 const CHILD_SCALE = 0.62;
-import { arrivalsIn, bringHome, CARPET_L, CARPET_W, CHILDREN, COMPANION_BY_ID, MAX_CHILDREN, TRAVELLER_CLEARANCE, CARPET_SIDE, caravanStep, canJoin, balloonFor, carpetTarget, offerFood, strayHome, PETS, type CompanionDef, type Member, type PetDef } from './caravan';
+import { arrivalsIn, bringHome, CARPET_L, CARPET_W, CHILDREN, COMPANION_BY_ID, MAX_CHILDREN, PET_CARPET_BACK, TRAVELLER_CLEARANCE, CARPET_SIDE, caravanStep, canJoin, balloonFor, carpetTarget, offerFood, strayHome, PETS, type CompanionDef, type Member, type PetDef } from './caravan';
 
 /**
  * The caravan in the world: their brothers and sisters, the children and pets travelling with the
@@ -21,7 +22,9 @@ import { arrivalsIn, bringHome, CARPET_L, CARPET_W, CHILDREN, COMPANION_BY_ID, M
  * each other (caravan.ts proves it). When the travellers take a ground vehicle they ride along
  * and reappear beside them on foot. Whenever the two fly — on the cape, the dragon, the plane or
  * a winged unicorn — the children and pets ride a flying carpet beside them, the brothers and sisters
- * a second carpet just behind it, and they step off where it lands.
+ * a second carpet just behind it, and they step off where it lands. On the Night Dragon the White
+ * Dragon flies beside them instead, the children each in a saddle of their own on her back, and
+ * the pets' carpet follows behind her.
  */
 interface Body { def: CompanionDef; member: Member; child?: CharacterModel; pet?: AnimalModel; ph: number }
 /** A land's pet waiting at the plaza to be met. */
@@ -36,6 +39,10 @@ export class CaravanView {
   /** The brothers' and sisters' own carpet, flying just behind the first. */
   private carpet2 = new Carpet();
   private carpetState: CarpetState = 'off';
+  /** The Light Fury, carrying the children whenever the two ride the Night Dragon (built when first needed). */
+  private light: Dragon | null = null;
+  /** Whether she flies with them this time (they took off on the Night Dragon). */
+  private lightOn = false;
   private carpetHeading = 0;
   private tmp = new THREE.Vector3();
 
@@ -195,6 +202,13 @@ export class CaravanView {
       this.carpet.root.position.set(c.x, surfaceAt(c.x, c.z, c.y + 3) + 0.3, c.z);
       this.carpetHeading = tr.heading;
       this.carpet.open = 0.05;
+      this.lightOn = tr.mode === 'dragon';
+      if (this.lightOn && !this.light) { this.light = new Dragon(DRAGON_SCALE, true, true); g.scene.add(this.light.root); }
+      if (this.light) {
+        this.light.root.visible = this.lightOn;
+        // She sets off from beside the children, where they stand.
+        if (this.lightOn) this.light.root.position.copy(this.carpet.root.position);
+      }
     }
     if (aloft) this.carpetState = 'flying';
     else if (this.carpetState === 'flying') this.carpetState = 'landing';
@@ -231,6 +245,8 @@ export class CaravanView {
 
   /** Where the carpet is relative to her (eased, so it glides into place but never lags behind). */
   private carpetRel = new THREE.Vector3();
+  /** How far the pets' carpet has dropped back behind the Light Fury (eases out after take-off). */
+  private carpetBack = 0;
   private carpetLive = false;
 
   /** The carpet flies beside the two (on the side away from him), then lands and rolls up. */
@@ -274,6 +290,21 @@ export class CaravanView {
       root.position.y += (ground - root.position.y) * (1 - Math.exp(-dt * 2.2));
       if (root.position.y - ground < 0.12) this.carpet.open = Math.max(0, this.carpet.open - dt * 1.4);
     }
+    // On the Night Dragon, the place beside them is the Light Fury's; the pets' carpet follows
+    // a little way behind her, and shows only when there are pets to carry.
+    const light = this.lightOn ? this.light : null;
+    if (light) {
+      const fx = Math.sin(this.carpetHeading), fz = Math.cos(this.carpetHeading);
+      light.root.visible = true;
+      light.root.position.set(root.position.x, root.position.y - 0.3, root.position.z);
+      light.root.rotation.set(0, this.carpetHeading, Math.sin(t * 0.7) * 0.03 * (aloft ? 1 : 0));
+      light.update(dt, aloft ? tr.currentSpeed : 0, t + 1.7);
+      const back = this.carpetBack += ((aloft ? PET_CARPET_BACK : 0) - this.carpetBack) * (1 - Math.exp(-dt * 1.5));
+      root.position.x -= fx * back;
+      root.position.z -= fz * back;
+      if (!aloft) root.position.y = Math.max(root.position.y, surfaceAt(root.position.x, root.position.z, root.position.y + 3) + 0.3);
+      root.visible = this.bodies.some((b) => b.def.kind === 'pet');
+    }
     root.rotation.set(Math.sin(t * 1.3) * 0.03, this.carpetHeading, Math.sin(t * 0.9) * 0.04 * (aloft ? 1 : 0));
     this.carpet.update(dt, t, g.sky.night, aloft ? tr.currentSpeed : 0);
     root.updateMatrixWorld();
@@ -294,8 +325,18 @@ export class CaravanView {
     for (const b of this.bodies) {
       const kind = b.def.kind;
       const seatIdx = kind === 'child' ? ci++ : kind === 'sibling' ? si++ : pi++;
-      const p = (kind === 'sibling' ? this.carpet2 : this.carpet).seat(kind, seatIdx, new THREE.Vector3());
       const r = (b.child ?? b.pet)!.root;
+      if (light && kind === 'child') {
+        // Each child in a saddle of their own on the Light Fury's back.
+        const p = light.seatPoint(seatIdx, new THREE.Vector3());
+        r.visible = true;
+        r.position.set(p.x, p.y - DIMS.hip * CHILD_SCALE * 0.95, p.z);
+        r.rotation.set(0, this.carpetHeading, 0);
+        b.member.x = p.x; b.member.z = p.z; b.member.speed = 0;
+        b.child!.update(dt, { speed: 0, airborne: false, riding: true, t: t + b.ph });
+        continue;
+      }
+      const p = (kind === 'sibling' ? this.carpet2 : this.carpet).seat(kind, seatIdx, new THREE.Vector3());
       r.visible = this.carpet.open > 0.3 || aloft;
       r.position.copy(p);
       r.rotation.y = this.carpetHeading;
@@ -307,6 +348,10 @@ export class CaravanView {
       this.carpetState = 'off';
       root.visible = false;
       this.carpet2.root.visible = false;
+      // The Light Fury settles where she landed and waits out of sight until they fly again.
+      if (this.light) this.light.root.visible = false;
+      this.lightOn = false;
+      this.carpetBack = 0;
     }
   }
 

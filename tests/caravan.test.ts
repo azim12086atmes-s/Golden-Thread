@@ -93,16 +93,16 @@ describe('the flying carpet', () => {
   });
 
   it('flies beside them in every flight mode, clear of both of them and of any wings', async () => {
-    const { carpetTarget, carpetSeats, TRAVELLER_CLEARANCE: TC } = await import('../src/caravan/caravan');
-    // Half-wingspans (measured from the models): biplane 4.5 m, dragon 4.8 m; the cape and unicorns fold close.
-    const wing = { fly: 0.8, unicorn: 1.3, plane: 4.5, dragon: 4.8 } as const;
+    const { carpetTarget, carpetSeats, TRAVELLER_CLEARANCE: TC, NIGHT_HALF_SPAN } = await import('../src/caravan/caravan');
+    // Half-wingspans (measured from the models): biplane 4.5 m, the Night Dragon 5.2 m; the cape and unicorns fold close.
+    const wing = { fly: 0.8, unicorn: 1.3, plane: 4.5, dragon: NIGHT_HALF_SPAN } as const;
     for (const mode of ['fly', 'unicorn', 'plane', 'dragon'] as const) {
       for (let k = 0; k < 24; k++) {
         const heading = k * 0.53, girl = { x: 10, y: 50, z: -4 };
         const rx = Math.cos(heading), rz = -Math.sin(heading);
-        // He flies beside her (on the cape/unicorns), or sits behind her (plane, dragon).
-        const side = k % 2 ? 1 : -1, gap = mode === 'unicorn' ? 2.6 : mode === 'fly' ? 1.95 : 0;
-        const boy = { x: girl.x + rx * side * gap - Math.sin(heading) * (gap ? 0 : 1.5), z: girl.z + rz * side * gap - Math.cos(heading) * (gap ? 0 : 1.5) };
+        // He flies beside her (on the cape/unicorns), sits behind her (plane) or in front of her (the dragon: he drives).
+        const side = k % 2 ? 1 : -1, gap = mode === 'unicorn' ? 2.6 : mode === 'fly' ? 1.95 : 0, ahead = mode === 'dragon' ? 1.4 : -1.5;
+        const boy = { x: girl.x + rx * side * gap + Math.sin(heading) * (gap ? 0 : ahead), z: girl.z + rz * side * gap + Math.cos(heading) * (gap ? 0 : ahead) };
         const c = carpetTarget(mode, girl, boy, heading);
         for (const s of carpetSeats(c.x, c.z, heading)) {
           expect(Math.hypot(s.x - girl.x, s.z - girl.z), `${mode} girl`).toBeGreaterThanOrEqual(TC + 1);
@@ -113,6 +113,31 @@ describe('the flying carpet', () => {
         }
         // Always on the side away from him.
         if (gap) expect(Math.sign((c.x - girl.x) * rx + (c.z - girl.z) * rz)).toBe(-side);
+      }
+    }
+  });
+});
+
+describe('flying with the Light Fury', () => {
+  it('she flies beside the Night Dragon wingtip clear of wingtip, the children in her saddles, the pets\' carpet behind her', async () => {
+    const { dragonEscort, carpetSeats, NIGHT_HALF_SPAN, LIGHT_HALF_SPAN, PET_CARPET_BACK, TRAVELLER_CLEARANCE: TC } = await import('../src/caravan/caravan');
+    const { LIGHT_DRAGON } = await import('../src/event/Dragon');
+    expect(LIGHT_DRAGON.wings!.span / 2).toBeLessThanOrEqual(LIGHT_HALF_SPAN);
+    for (let k = 0; k < 24; k++) {
+      const heading = k * 0.53, girl = { x: 10, y: 50, z: -4 };
+      const rx = Math.cos(heading), rz = -Math.sin(heading), fx = Math.sin(heading), fz = Math.cos(heading);
+      const boy = { x: girl.x + fx * 1.4, z: girl.z + fz * 1.4 };
+      const e = dragonEscort(girl, boy, heading);
+      // Wingtip to wingtip, with room to spare.
+      const lateral = Math.abs((e.light.x - girl.x) * rx + (e.light.z - girl.z) * rz);
+      expect(lateral).toBeGreaterThan(NIGHT_HALF_SPAN + LIGHT_HALF_SPAN + 1.5);
+      // The pets' carpet: behind her, beyond her tail fins, and clear of both of them and his wings.
+      const behind = (e.light.x - e.carpet.x) * fx + (e.light.z - e.carpet.z) * fz;
+      expect(behind).toBeCloseTo(PET_CARPET_BACK);
+      expect(behind).toBeGreaterThan(LIGHT_DRAGON.length);
+      for (const s of carpetSeats(e.carpet.x, e.carpet.z, heading)) {
+        for (const p of [girl, boy]) expect(Math.hypot(s.x - p.x, s.z - p.z)).toBeGreaterThanOrEqual(TC + 1);
+        expect(Math.abs((s.x - girl.x) * rx + (s.z - girl.z) * rz)).toBeGreaterThan(NIGHT_HALF_SPAN + 0.3);
       }
     }
   });

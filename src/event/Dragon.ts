@@ -13,8 +13,10 @@ import { DragonModel, fly, perch, type DragonSpec, type Flight } from '../creatu
  * everyone here it has no eyes and no mouth, and its head floats just clear of its neck. Over
  * the celebration it loops a figure-eight and breathes harmless glitter.
  */
-/** Saddle positions along the body (unscaled): hers in front, his behind. */
+/** Saddle positions along the body (unscaled): his in front (he drives), hers behind (owner, 2026-09-29). */
 export const DRAGON_SADDLES = [0.35, -0.5] as const;
+/** The Light Fury's four small saddles in a row, one for each child (unscaled). */
+export const CHILD_SADDLES = [0.3, -0.08, -0.46, -0.84] as const;
 export const DRAGON_SCALE = 1.6;
 
 export const NIGHT_DRAGON: DragonSpec = {
@@ -23,7 +25,23 @@ export const NIGHT_DRAGON: DragonSpec = {
   back: '#1a1b23', side: '#22232d', belly: '#2c2e3a', rim: '#2e3244',
   crest: ['#111218', '#1a1b24'], mane: ['#111218'], claw: '#2a2b36', horn: '#17181f',
   wings: { span: 10.4, membrane: '#15161e', bone: '#1c1d26', hind: 0.4 },
-  runes: '#7affe0', stars: ['#9ad8ff', '#ffd6f0', '#b99bff'],
+  runes: '#7affe0', stars: ['#9ad8ff', '#ffd6f0', '#b99bff'], prosthetic: '#a3202a',
+};
+
+/**
+ * The Light Fury, the Night Dragon's betrothed, who flies beside him carrying the children (owner,
+ * 2026-09-29): the same cat-like build, a little slimmer and longer in the neck; smooth pearl-white
+ * skin with a lilac-and-blue sheen, no scales and no spines down her back; a smaller, rounder head
+ * with short rounded ear nubs; broad white wings ribbed like fans; a long tail with a small pair of
+ * fins partway along and a heart of two broad ribbed lobes at the tip. No eyes, no mouth; her head
+ * floats clear like his.
+ */
+export const LIGHT_DRAGON: DragonSpec = {
+  id: 'light-fury', name: 'the Light Fury', plan: 'wyrm', build: 'cat', length: 7.2, girth: 0.58, neck: 0.16,
+  head: 'light', crestKind: 'none', tail: 'heart', scales: 'smooth',
+  back: '#eceff6', side: '#f3f4f9', belly: '#e6e8f1', rim: '#c9bfe6',
+  crest: ['#eef0f7', '#e6eaf4'], mane: ['#eef0f7'], claw: '#b4b8c8', horn: '#eceff6',
+  wings: { span: 11.4, membrane: '#f4f6fb', bone: '#e2e6f0', hind: 0.3, ribs: 3 },
 };
 
 /** Where the body sits under the saddles: the neck's height and how far forward it starts. */
@@ -37,23 +55,51 @@ export class Dragon {
   /** Rider's seat height above the root (0 for a dragon that only flies). */
   readonly saddleY: number;
   private phase = 0;
+  /** How folded its wings are: folded at rest, opening as it takes off. */
+  private fold = 1;
   /** Glitter breath: particles blown from the head. */
   readonly breath: THREE.Points;
   private breathAge: Float32Array;
   private breathVel: Float32Array;
 
-  /** `mount`: with two saddles, for riding. */
-  constructor(scale = DRAGON_SCALE, mount = false) {
-    this.model = new DragonModel(NIGHT_DRAGON);
+  /** The saddles' frame: where each saddle sits (for seating riders on the Light Fury). */
+  private tack: THREE.Group | null = null;
+  private saddles: readonly number[] = [];
+
+  /**
+   * `mount`: with saddles, for riding — the Night Dragon's two (his and hers), or, for the white
+   * Light Fury (`light`), four small ones for the children, each its own.
+   */
+  constructor(scale = DRAGON_SCALE, mount = false, light = false) {
+    this.model = new DragonModel(light ? LIGHT_DRAGON : NIGHT_DRAGON);
     this.root.add(this.model.group);
-    if (mount) {
-      const tack = new THREE.Group();
+    if (mount && light) {
+      const tack = this.tack = new THREE.Group();
       tack.scale.setScalar(scale);
       tack.position.y = 1.05;
       this.root.add(tack);
+      this.saddles = CHILD_SADDLES;
+      const silver = new THREE.MeshBasicMaterial({ color: new THREE.Color('#dfe8f5').multiplyScalar(1.2), toneMapped: false });
+      const part = (m: THREE.Mesh) => { m.userData.part = 'accessory'; tack.add(m); return m; };
+      // Four small saddles in sky blue on silver, each with its own back-rest, a low divider between each.
+      CHILD_SADDLES.forEach((z, i) => {
+        part(new THREE.Mesh(new THREE.BoxGeometry(0.3, 0.07, 0.28), std('#8cc4ec'))).position.set(0, 0.36, z);
+        part(new THREE.Mesh(new THREE.BoxGeometry(0.34, 0.035, 0.32), silver)).position.set(0, 0.32, z);
+        part(new THREE.Mesh(new THREE.BoxGeometry(0.28, 0.16, 0.04), std('#8cc4ec'))).position.set(0, 0.44, z - 0.14);
+        const strap = part(new THREE.Mesh(new THREE.TorusGeometry(0.3, 0.015, 5, 20, Math.PI), std('#5a7aa0')));
+        strap.position.set(0, 0.1, z);
+        strap.scale.set(1, 0.8, 1);
+        if (i > 0) part(new THREE.Mesh(new THREE.BoxGeometry(0.22, 0.18, 0.04), silver)).position.set(0, 0.42, (z + CHILD_SADDLES[i - 1]) / 2);
+      });
+    } else if (mount) {
+      const tack = this.tack = new THREE.Group();
+      tack.scale.setScalar(scale);
+      tack.position.y = 1.05;
+      this.root.add(tack);
+      this.saddles = DRAGON_SADDLES;
       const gold = new THREE.MeshBasicMaterial({ color: new THREE.Color('#f5c451').multiplyScalar(1.4), toneMapped: false });
       const part = (m: THREE.Mesh) => { m.userData.part = 'accessory'; tack.add(m); return m; };
-      // Two separate saddles — hers in front, his behind — each with its own back-rest.
+      // Two separate saddles — his in front, hers behind — each with its own back-rest.
       for (const z of DRAGON_SADDLES) {
         part(new THREE.Mesh(new THREE.BoxGeometry(0.4, 0.08, 0.42), std('#f49ac1'))).position.set(0, 0.36, z);
         part(new THREE.Mesh(new THREE.BoxGeometry(0.44, 0.04, 0.46), gold)).position.set(0, 0.32, z);
@@ -80,11 +126,23 @@ export class Dragon {
     this.update(0, 0, 0);
   }
 
+  /** How many saddles it carries. */
+  get seatCount(): number { return this.saddles.length; }
+
+  /** The top of saddle `i` (world), for seating a rider; call after the root is placed. */
+  seatPoint(i: number, out: THREE.Vector3): THREE.Vector3 {
+    if (!this.tack) return out.copy(this.root.position);
+    this.root.updateMatrixWorld();
+    return this.tack.localToWorld(out.set(0, 0.4, this.saddles[Math.min(i, this.saddles.length - 1)]));
+  }
+
   /** As a mount: wings beat with speed (held half-open at rest), the tail sways, the head bobs. */
   update(dt: number, speed: number, t: number): void {
     this.phase += dt * (speed > 8 ? 5.5 : speed > 0.2 ? 2.5 : 1.2);
     const amp = speed > 8 ? 0.65 : speed > 0.2 ? 0.3 : 0.1;
-    perch(this.model, t, BODY_Y, NECK_Z, (speed > 8 ? 0.05 : 0.3) + Math.sin(this.phase) * amp, 0.45, 0.3);
+    const want = speed > 8 ? 0 : speed > 0.2 ? 0.35 : 1;
+    this.fold += (want - this.fold) * Math.min(1, dt * 2.5);
+    perch(this.model, t, BODY_Y, NECK_Z, (speed > 8 ? 0.05 : 0.3) + Math.sin(this.phase) * amp, 0.45, 0.3, this.fold);
     this.model.head.rotateX(Math.sin(t * 1.3) * 0.08);
   }
 

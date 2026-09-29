@@ -62,12 +62,12 @@ describe('the celebration evening', () => {
     expect(IDEAL_GAP).toBeGreaterThan(MIN_GAP);
   });
 
-  it('the night dragon has two separate saddles, hers in front, a seat-gap apart, after the party', () => {
+  it('the night dragon has two separate saddles, his in front (he drives) and hers behind, a seat-gap apart, after the party', () => {
     const d = VEHICLES.dragon;
     expect(d.seats.length).toBe(2);
     const [g, b] = d.seats as [{ x: number; y: number; z: number }, { x: number; y: number; z: number }];
     expect(Math.hypot(g.x - b.x, g.y - b.y, g.z - b.z)).toBeGreaterThanOrEqual(SEAT_GAP);
-    expect(g.z).toBeGreaterThan(b.z);
+    expect(b.z).toBeGreaterThan(g.z);
     expect(d.requires?.flag).toBe(DONE_FLAG);
   });
 

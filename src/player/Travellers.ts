@@ -390,10 +390,14 @@ export class Travellers {
     // between them (never touching him or his pack). Airborne she leans into her flight, tilting
     // them, so there only the distance counts.
     const own = Math.max(this.boy.backReach(), BODY_RADIUS) + 0.2, plane = this.girl.wingPlane();
-    const level = this.mode !== 'fly' && this.grounded;
+    // On the night dragon he sits wholly in front of her (he drives), so her wings open fully
+    // behind her however they fly.
+    const level = (this.mode !== 'fly' && this.grounded) || this.mode === 'dragon';
+    // Measured from where she is: on the dragon her saddle, not its centre.
+    const her = this.mode === 'dragon' && this.vehicle ? this.girl.root.position : this.gPos;
     this.girl.setBackRoom(plane !== null && level
-      ? wingRoom(this.bPos, this.gPos, this.heading, own, plane, MIN_BACK)
-      : Math.hypot(this.gPos.x - this.bPos.x, this.gPos.z - this.bPos.z) - own);
+      ? wingRoom(this.bPos, her, this.heading, own, plane, MIN_BACK)
+      : Math.hypot(her.x - this.bPos.x, her.z - this.bPos.z) - own);
     const def = VEHICLES[this.mode];
     const riding = def.seats.length > 0 || def.kind === 'mount';
     const q = new THREE.Quaternion().setFromEuler(new THREE.Euler(this.pitch, this.heading, this.roll, 'YXZ'));

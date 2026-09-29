@@ -3,7 +3,7 @@ import { describe, expect, it } from 'vitest';
 import { isAllowedPart } from '../src/characters/anatomy';
 import { DragonModel, fly } from '../src/creatures/dragonKit';
 import { DRAGON_HOMES, flightOf, homeCentre } from '../src/creatures/Dragons';
-import { DRAGON_SADDLES, DRAGON_SCALE, Dragon } from '../src/event/Dragon';
+import { CHILD_SADDLES, DRAGON_SADDLES, DRAGON_SCALE, Dragon, LIGHT_DRAGON, NIGHT_DRAGON } from '../src/event/Dragon';
 import { buildRegion } from '../src/world/RegionBuilder';
 import { REGION_BY_ID, regionCenter } from '../src/world/regions';
 import { WATER_Y, terrainHeight } from '../src/world/terrain';
@@ -97,6 +97,40 @@ describe('the dragon kit and every land\'s dragon', () => {
         expect(top).toBeLessThan(bottom + 0.1);
       }
     }
+  });
+
+  it('the Light Fury flies with them: the kit only, her head clear, four saddles of her own for the children on her back', () => {
+    const d = new Dragon(DRAGON_SCALE, true, true);
+    expect(d.model.spec).toBe(LIGHT_DRAGON);
+    expect(LIGHT_DRAGON.prosthetic).toBeUndefined();
+    expect(NIGHT_DRAGON.prosthetic).toBeDefined();
+    expect(d.seatCount).toBe(4);
+    for (const speed of [0, 5, 20]) {
+      d.update(0.1, speed, 3);
+      d.root.traverse((o) => { if ((o as THREE.Mesh).isMesh) expect(isAllowedPart(o.userData.part), `light fury: ${o.userData.part}`).toBe(true); });
+      const head = verts(d.model.head), body = verts(d.model.body);
+      let min = Infinity;
+      for (const a of head) for (const b of body) min = Math.min(min, a.distanceToSquared(b));
+      expect(Math.sqrt(min)).toBeGreaterThan(0.3);
+      // Each saddle rests on her back, and every saddle is a child's own, a clear step from the next.
+      for (const z of CHILD_SADDLES) {
+        const zs = z * DRAGON_SCALE, bottom = 1.05 + 0.3 * DRAGON_SCALE;
+        const top = Math.max(...body.filter((v) => Math.abs(v.x) < 0.2 && Math.abs(v.z - zs) < 0.15).map((v) => v.y));
+        expect(top, `back under the child's saddle at ${z}`).toBeGreaterThan(bottom - 0.15);
+        expect(top).toBeLessThan(bottom + 0.1);
+      }
+      const seats = [0, 1, 2, 3].map((i) => d.seatPoint(i, new THREE.Vector3()));
+      for (let i = 1; i < seats.length; i++) expect(seats[i - 1].distanceTo(seats[i])).toBeGreaterThan(0.55);
+    }
+  });
+
+  it('the Night Dragon folds its wings at rest and opens them to fly', () => {
+    const d = new Dragon(DRAGON_SCALE, true);
+    const span = () => { const b = new THREE.Box3().setFromObject(d.model.group); return b.max.x - b.min.x; };
+    for (let i = 0; i < 60; i++) d.update(0.1, 0, i * 0.1);
+    const folded = span();
+    for (let i = 0; i < 60; i++) d.update(0.1, 20, 6 + i * 0.1);
+    expect(span()).toBeGreaterThan(folded * 2);
   });
 
   it('the festival dragon flies over the Jade Terraces and three little dragons play over the Meadow', () => {

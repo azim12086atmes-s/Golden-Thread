@@ -246,9 +246,25 @@ export const CARPET_W = 2.9, CARPET_L = 3.6;
 
 /**
  * How far to the side the carpet flies (centre to centre), by how the two are flying: beside
- * them on the cape, clear of the unicorn's wings, well clear of the biplane's and the dragon's.
+ * them on the cape, clear of the unicorn's wings, well clear of the biplane's. On the Night Dragon
+ * that place beside them is the Light Fury's, far enough out that the two dragons' wingtips
+ * never meet; the pets' carpet follows behind her (`dragonEscort`).
  */
-export const CARPET_SIDE: Record<'fly' | 'unicorn' | 'plane' | 'dragon', number> = { fly: 4.2, unicorn: 5.5, plane: 8, dragon: 8 };
+export const CARPET_SIDE: Record<'fly' | 'unicorn' | 'plane' | 'dragon', number> = { fly: 4.2, unicorn: 5.5, plane: 8, dragon: 13 };
+/** Half-wingspans, spread (m): the Night Dragon's and the Light Fury's (event/Dragon.ts). */
+export const NIGHT_HALF_SPAN = 5.2, LIGHT_HALF_SPAN = 5.7;
+/** How far behind the Light Fury (centre to centre) the pets' carpet flies: clear of her tail fins and wings. */
+export const PET_CARPET_BACK = 10;
+
+/**
+ * Riding the Night Dragon (owner, 2026-09-29): the Light Fury flies beside them with the
+ * children in her saddles, and the pets' carpet flies behind her, on the same side.
+ */
+export function dragonEscort(girl: { x: number; y: number; z: number }, boy: P2, heading: number): { light: { x: number; y: number; z: number }; carpet: { x: number; y: number; z: number }; side: number } {
+  const light = carpetTarget('dragon', girl, boy, heading);
+  const fx = Math.sin(heading), fz = Math.cos(heading);
+  return { light, carpet: { x: light.x - fx * PET_CARPET_BACK, y: light.y, z: light.z - fz * PET_CARPET_BACK }, side: light.side };
+}
 
 /**
  * Where the carpet should be: beside her on the side away from him, a little behind, a little

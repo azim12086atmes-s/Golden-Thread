@@ -1533,7 +1533,7 @@ export class UI {
       else if (v.price) row.append(btn(`Buy · 🪙${v.price}`, () => { const e = this.g.buyVehicle(v.id); if (e) this.g.toast(e); this.render(); }, 'small', st.coins < v.price));
       body.append(row);
     }
-    body.append(h('p', { class: 'dim' }, 'In every vehicle you sit in separate seats. On unicorns, each of you rides your own; the night dragon has two separate saddles, hers in front and his behind.'));
+    body.append(h('p', { class: 'dim' }, 'In every vehicle you sit in separate seats. On unicorns, each of you rides your own; the night dragon has two separate saddles — he drives from the front one, she rides behind with her wings open, and the Light Fury carries the children.'));
   }
 
   private dialogue(body: HTMLElement, head: HTMLElement): void {
