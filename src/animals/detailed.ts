@@ -15,8 +15,8 @@ import { animalHeadGap, type Part } from '../characters/anatomy';
 
 export type DetailedId =
   | 'cat' | 'dog' | 'horse' | 'unicorn' | 'donkey' | 'fox' | 'sheep' | 'goat' | 'deer' | 'reindeer'
-  | 'cow' | 'buffalo' | 'camel' | 'panda' | 'elephant' | 'rabbit';
-export const DETAILED: readonly DetailedId[] = ['cat', 'dog', 'horse', 'unicorn', 'donkey', 'fox', 'sheep', 'goat', 'deer', 'reindeer', 'cow', 'buffalo', 'camel', 'panda', 'elephant', 'rabbit'];
+  | 'cow' | 'buffalo' | 'camel' | 'panda' | 'elephant' | 'rabbit' | 'monkey' | 'orangutan' | 'komodo';
+export const DETAILED: readonly DetailedId[] = ['cat', 'dog', 'horse', 'unicorn', 'donkey', 'fox', 'sheep', 'goat', 'deer', 'reindeer', 'cow', 'buffalo', 'camel', 'panda', 'elephant', 'rabbit', 'monkey', 'orangutan', 'komodo'];
 export type BirdId = 'duck' | 'crane' | 'peacock' | 'dove' | 'lightbird';
 export const BIRDS: readonly BirdId[] = ['duck', 'crane', 'peacock', 'dove', 'lightbird'];
 
@@ -29,10 +29,10 @@ export interface Built {
 
 type PartFn = (geo: THREE.BufferGeometry, c: string, p: Part, glow?: boolean) => THREE.Mesh;
 
-type Head = 'equine' | 'feline' | 'canine' | 'vulpine' | 'bovine' | 'cervine' | 'ovine' | 'caprine' | 'camelid' | 'ursine' | 'elephant' | 'leporine';
-type Tail = 'curl' | 'plume' | 'strands' | 'brush' | 'tuft' | 'puff' | 'stub' | 'rope';
+type Head = 'equine' | 'feline' | 'canine' | 'vulpine' | 'bovine' | 'cervine' | 'ovine' | 'caprine' | 'camelid' | 'ursine' | 'elephant' | 'leporine' | 'simian' | 'saurian';
+type Tail = 'curl' | 'plume' | 'strands' | 'brush' | 'tuft' | 'puff' | 'stub' | 'rope' | 'long' | 'lizard' | 'none';
 type Foot = 'paw' | 'hoof' | 'cloven' | 'pad' | 'column';
-type Ears = 'pointy' | 'tall' | 'soft' | 'long' | 'round' | 'small' | 'side' | 'fan';
+type Ears = 'pointy' | 'tall' | 'soft' | 'long' | 'round' | 'small' | 'side' | 'fan' | 'cup' | 'none';
 type Horns = 'none' | 'unicorn' | 'antlers' | 'spike' | 'curve' | 'bovine' | 'sweep';
 
 interface Profile {
@@ -44,6 +44,10 @@ interface Profile {
   /** Chest, barrel, hips as fractions of the body ellipsoid, and how high the hips sit. */
   hips: number; chest: number;
   mane?: boolean; bib?: boolean; hump?: boolean; wool?: boolean; trunk?: boolean;
+  /** Legs splayed out to the sides (a lizard's sprawl), radians. */
+  sprawl?: number;
+  /** Long shaggy hair hanging from the flanks and forelegs (an orangutan's). */
+  shag?: boolean;
 }
 
 const P: Record<DetailedId, Profile> = {
@@ -63,6 +67,11 @@ const P: Record<DetailedId, Profile> = {
   panda: { head: 'ursine', ears: 'round', horns: 'none', tail: 'stub', foot: 'column', legR: 0.2, knee: [0.02, 0.2], neckLen: 0.12, tilt: 1.0, neckR: 0.4, hips: 0.02, chest: 1 },
   elephant: { head: 'elephant', ears: 'fan', horns: 'none', tail: 'rope', foot: 'column', legR: 0.16, knee: [0.02, 0.15], neckLen: 0.2, tilt: 1.2, neckR: 0.36, hips: 0.02, chest: 1, trunk: true },
   rabbit: { head: 'leporine', ears: 'long', horns: 'none', tail: 'puff', foot: 'paw', legR: 0.16, knee: [0.1, 1.2], neckLen: 0.06, tilt: 0.6, neckR: 0.4, hips: 0.12, chest: 0.9 },
+  // Monkeys go on all fours with the tail curled up behind; the great ape leans on long arms under a
+  // shaggy coat; the Komodo dragon sprawls low with its long tail along the ground.
+  monkey: { head: 'simian', ears: 'cup', horns: 'none', tail: 'long', foot: 'paw', legR: 0.14, knee: [0.1, 0.85], neckLen: 0.06, tilt: 0.75, neckR: 0.4, hips: 0.1, chest: 0.95 },
+  orangutan: { head: 'simian', ears: 'none', horns: 'none', tail: 'none', foot: 'paw', legR: 0.2, knee: [0.04, 0.45], neckLen: 0.08, tilt: 0.9, neckR: 0.45, hips: -0.08, chest: 1.08, shag: true },
+  komodo: { head: 'saurian', ears: 'none', horns: 'none', tail: 'lizard', foot: 'paw', legR: 0.22, knee: [0.35, 1.0], neckLen: 0.14, tilt: 1.25, neckR: 0.46, hips: 0, chest: 0.92, sprawl: 0.75 },
 };
 
 const UP = new THREE.Vector3(0, 1, 0);
@@ -83,7 +92,7 @@ const tone = (c: string, to: string, k: number) => '#' + new THREE.Color(c).lerp
 export function buildDetailed(
   id: DetailedId, part: PartFn, body: THREE.Group, head: THREE.Group,
   dims: { L: number; H: number; W: number; bodyY: number; headR: number; neck?: number; snout?: number },
-  c: string, accent: string,
+  c: string, accent: string, opts: { noHorns?: boolean } = {},
 ): Built {
   const pf = P[id];
   const { L, H, W, bodyY, headR } = dims;
@@ -125,10 +134,12 @@ export function buildDetailed(
     const front = z > 0;
     const hop = id === 'rabbit' && !front;
     const a0 = front ? pf.knee[0] : -pf.knee[1] * 0.55, a1 = front ? -pf.knee[0] * 1.6 : pf.knee[1];
-    const seg = hipY / (Math.cos(a0) + Math.cos(a0 + a1));
+    const spr = pf.sprawl ?? 0;
+    const seg = hipY / ((Math.cos(a0) + Math.cos(a0 + a1)) * Math.cos(spr));
     const hip = new THREE.Group();
-    hip.position.set(x * W * 0.3, hipY, z * L * (front ? 0.33 : 0.3));
+    hip.position.set(x * W * (spr ? 0.42 : 0.3), hipY, z * L * (front ? 0.33 : 0.3));
     hip.rotation.x = a0;
+    hip.rotation.z = x * spr;
     hip.userData.base = a0;
     const up = new THREE.CylinderGeometry(legR * 0.8, legR * (front ? 1.25 : 1.55), seg, 7);
     up.translate(0, -seg / 2, 0);
@@ -152,6 +163,7 @@ export function buildDetailed(
     const foot = new THREE.Group();
     foot.position.y = -seg;
     foot.rotation.x = -(a0 + a1);
+    foot.rotation.z = -x * (pf.sprawl ?? 0);
     knee.add(foot);
     if (pf.foot === 'hoof' || pf.foot === 'cloven') {
       if (uni) {
@@ -181,9 +193,28 @@ export function buildDetailed(
       paw.position.set(0, legR * 0.45, legR * (hop ? 1.2 : 0.35));
       foot.add(paw);
     }
+    if (pf.shag && front) for (let k = 0; k < 4; k++) {
+      // Long hair hanging from the forearm.
+      const len = seg * (0.5 + (k % 2) * 0.15), g = new THREE.BoxGeometry(legR * 0.5, len, legR * 0.35);
+      g.translate(0, -len / 2, 0);
+      const h = part(g, tone(c, '#3a1a0a', 0.15), 'leg');
+      h.position.set(x * legR * 0.9, -seg * 0.15, (k - 1.5) * legR * 0.5);
+      h.rotation.z = x * 0.18;
+      hip.add(h);
+    }
     body.add(hip);
     legs.push(hip);
     knees.push(knee);
+  }
+  if (pf.shag) for (let k = 0; k < 18; k++) {
+    // The flanks' long coat, in hanging locks.
+    const x = k % 2 ? 1 : -1, zz = (Math.floor(k / 2) / 8 - 0.5) * L * 0.8, len = H * (0.55 + (k % 3) * 0.12);
+    const g = new THREE.BoxGeometry(W * 0.08, len, L * 0.09);
+    g.translate(0, -len / 2, 0);
+    const h = part(g, k % 3 ? c : tone(c, '#3a1a0a', 0.2), 'body');
+    h.position.set(x * W * 0.4, bodyY + H * 0.05, zz);
+    h.rotation.z = x * 0.22;
+    body.add(h);
   }
 
   // Neck.
@@ -227,7 +258,7 @@ export function buildDetailed(
   // The head floats clear of the neck: out along it and lifted a little, so there is air under the jaw too.
   const headBase = anchor.clone().addScaledVector(dir, animalHeadGap(headR) + headR).add(new THREE.Vector3(0, headR * 0.15, 0));
 
-  buildHead(pf, id, part, head, headR, c, accent, light, dims.snout ?? 0.12);
+  buildHead(pf, id, part, head, headR, c, accent, light, dims.snout ?? 0.12, opts.noHorns);
 
   // Tails.
   const tail = new THREE.Group();
@@ -275,6 +306,9 @@ export function buildDetailed(
       tail.add(tuft);
       break;
     }
+    case 'long': chain(12, 0.085, 0.032, (k) => -0.35 + k * 2.9, c); break; // curling up in a question mark
+    case 'lizard': chain(10, L * 0.11, W * 0.3, (k) => -0.28 + k * 0.22, c); break; // thick, low, tapering
+    case 'none': break;
     case 'puff': {
       const puff = part(new THREE.SphereGeometry(0.08, 7, 6), '#ffffff', 'tail');
       puff.position.set(0, 0.04, -0.04);
@@ -293,7 +327,7 @@ export function buildDetailed(
   return { legs, knees, tail, headBase };
 }
 
-function buildHead(pf: Profile, id: DetailedId, part: PartFn, head: THREE.Group, headR: number, c: string, accent: string, light: string, snout: number): void {
+function buildHead(pf: Profile, id: DetailedId, part: PartFn, head: THREE.Group, headR: number, c: string, accent: string, light: string, snout: number, noHorns = false): void {
   const add = (m: THREE.Mesh) => { head.add(m); return m; };
   const sph = (r: number, col: string, x: number, y: number, z: number, sx = 1, sy = 1, sz = 1, p: Part = 'head') => {
     const m = part(new THREE.SphereGeometry(r, 10, 8), col, p);
@@ -389,6 +423,23 @@ function buildHead(pf: Profile, id: DetailedId, part: PartFn, head: THREE.Group,
       sph(headR, c, 0, 0, 0, 0.9, 0.95, 1.1);
       sph(headR * 0.5, light, 0, -headR * 0.35, headR * 0.72, 1.2, 0.8, 0.8);
       break;
+    case 'simian':
+      // A round cranium and a short, rounded muzzle (no brow line: nothing that reads as eyes);
+      // the great ape's broad crown and heavy jowl.
+      sph(headR, c, 0, 0, 0, 1, 1.02, 0.95);
+      sph(headR * 0.52, tone(accent, c, 0.35), 0, -headR * 0.3, headR * 0.62, 1.15, 0.85, 0.75);
+      if (id === 'orangutan') {
+        sph(headR * 0.7, c, 0, headR * 0.5, -headR * 0.1, 1.4, 0.5, 1.1);
+        sph(headR * 0.6, c, 0, -headR * 0.62, headR * 0.2, 1.3, 0.6, 1);
+      }
+      break;
+    case 'saurian': {
+      // A long, flat reptile skull tapering to a blunt snout, a heavy jowl under it.
+      sph(headR, c, 0, 0, 0, 0.9, 0.62, 1.25);
+      add(segment(part, new THREE.Vector3(0, -headR * 0.05, headR * 0.6), new THREE.Vector3(0, -headR * 0.18, headR * 0.6 + snout + headR), headR * 0.62, headR * 0.34, c, 'head'));
+      sph(headR * 0.7, tone(c, '#d8d0b0', 0.2), 0, -headR * 0.42, headR * 0.35, 0.95, 0.5, 1.2);
+      break;
+    }
   }
 
   // Ears.
@@ -445,6 +496,13 @@ function buildHead(pf: Profile, id: DetailedId, part: PartFn, head: THREE.Group,
         e.position.set(x * headR * 0.9, headR * 0.35, -headR * 0.1);
         e.rotation.z = -x * 0.35;
         break;
+      case 'cup':
+        e = part(new THREE.SphereGeometry(headR * 0.3, 7, 5), accent, 'ear');
+        e.scale.set(0.4, 1, 0.85);
+        e.position.set(x * headR * 0.98, headR * 0.1, -headR * 0.08);
+        break;
+      case 'none':
+        continue;
       case 'small':
       default:
         e = part(new THREE.SphereGeometry(headR * 0.22, 5, 4), c, 'ear');
@@ -462,6 +520,7 @@ function buildHead(pf: Profile, id: DetailedId, part: PartFn, head: THREE.Group,
       a = b;
     });
   };
+  if (noHorns) return;
   for (const x of [-1, 1]) {
     const base = new THREE.Vector3(x * headR * 0.45, headR * 0.8, -headR * 0.15);
     if (pf.horns === 'spike') horn('#c9b08a', base, [[x * 0.02, 0.1, 0], [0, 0.08, 0.02]], 0.02);

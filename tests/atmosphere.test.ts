@@ -35,6 +35,18 @@ describe('the living air', () => {
     expect(atmosWeights('meadow', 13).beams).toBe(0);
   });
 
+  it('glints drift through the bright hours; sparks fly from the fires after dark', () => {
+    expect(atmosWeights('aurora', 12).glitter).toBe(1);
+    expect(atmosWeights('aurora', 22).glitter).toBe(0);
+    expect(atmosWeights('desert', 13).glitter).toBe(1);
+    expect(atmosWeights('london', 13).glitter).toBe(0);
+    expect(atmosWeights('desert', 21).embers).toBe(1);
+    expect(atmosWeights('desert', 12).embers).toBe(0);
+    expect(atmosWeights('london', 21).embers).toBe(0);
+    // Sparks need fires: every land with embers has hearth or cold smoke too.
+    for (const id of Object.keys(ATMOS) as RegionId[]) if (ATMOS[id].embers) expect(ATMOS[id].smoke, id).toBeDefined();
+  });
+
   it('every land with hearth smoke builds chimneys, smoke-holes or fires to rise from', () => {
     for (const id of Object.keys(ATMOS) as RegionId[]) {
       if (!ATMOS[id].smoke) continue;

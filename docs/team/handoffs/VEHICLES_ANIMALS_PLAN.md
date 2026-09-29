@@ -40,6 +40,12 @@ what is still missing, the keywords behind it, and the kit parts it needs. ✅ =
 | Nile Crossing | microbus, donkey cart ✅ | felucca ✅ | ibis, sun-barque ✅ | ibis, Egyptian mau cat, donkey ✅ |
 | Tents of Rimal | dune buggy ✅ | — | roc ✅ | fennec, desert hare, saluki |
 
+Animals: every land's list above is built (2026-09-29) — primates on new monkey and orangutan
+plans (golden monkey, macaque, grey langur, orangutan), a Komodo dragon on a sprawling lizard plan,
+the Horangi tiger (stripes) and Marzocco lion (mane) on the cat's, hedgehog (spines), fawn (spots),
+fairy fox (glowing wisps), cardinal, desert hare and Kankrej cattle. Heads float, no faces
+(tests/anatomy.test.ts).
+
 Kites are already in every land's sky by day (`SkyFX.ts` kites on strings; `FestivalAir.ts`
 Basant patang and Bali's bebean), so the "kites" entries above are done.
 

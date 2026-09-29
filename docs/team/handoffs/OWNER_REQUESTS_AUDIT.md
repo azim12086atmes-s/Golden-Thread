@@ -21,6 +21,7 @@ checking. Detailed specifications for the open items are in `OWNER_REQUESTS_SPEC
 | Flying carpet carrying the children and pets beside you in every flight mode | ✅ |
 | Accurate cat, dog and unicorn forms; true structure for all animals | ✅ |
 | Animal heads float by a distance that suits their size | ✅ |
+| Each land's own animals from an animal kit (design method): New Yonder's stray and cyborg cats and dogs, the Sky Isles' star cats, primates, big cats, a Komodo dragon | ✅ 69 species on 24 body plans (19 beasts, 5 birds) with coat overlays (cyber, starry, stripes, mane, spines, spots, fairy) — `animals/detailed.ts`, `AnimalModel.ts`; every land's fauna list in `regions.ts` |
 | People's faces: jawline; headscarf wrapped under the chin; angular beard; flat back and top of head; hair | ✅ |
 | Fur on animals, feathered unicorn wings, Toothless-like scaled dragon | ✅ |
 | Her crown bigger than his | ✅ |

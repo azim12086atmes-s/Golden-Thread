@@ -16,7 +16,10 @@ export type SpeciesId =
   | 'husky' | 'arcticfox' | 'snowhare' | 'muskox' | 'elk' | 'lynx' | 'ibex' | 'stbernard' | 'marmot'
   | 'corgi' | 'squirrel' | 'raccoon' | 'streetcat' | 'cybercat' | 'cyberdog' | 'jindo' | 'shiba' | 'tanuki'
   | 'greyhound' | 'redpanda' | 'fennec' | 'oryx' | 'saluki' | 'mau' | 'nilgai' | 'starcat' | 'cloudsheep'
-  | 'puffin' | 'magpie' | 'ibis' | 'hornbill' | 'parakeet' | 'cormorant' | 'raven';
+  | 'puffin' | 'magpie' | 'ibis' | 'hornbill' | 'parakeet' | 'cormorant' | 'raven'
+  // The kit, part two: primates, a great lizard, big cats, and the rest of each land's own.
+  | 'monkey' | 'orangutan' | 'komodo' | 'goldenmonkey' | 'macaque' | 'langur' | 'tiger' | 'lion'
+  | 'hedgehog' | 'fawn' | 'fairyfox' | 'cardinal' | 'deserthare' | 'kankrej';
 
 interface Species {
   name: string;
@@ -40,9 +43,17 @@ interface Species {
   scale?: number;
   /** Coat colours it may wear (strays, breeds); one is chosen per animal. */
   tints?: string[];
-  /** An overlay: 'cyber' (glowing seams, chrome plates, an antenna — New Yonder's pets) or 'starry' (Sky Isles). */
-  overlay?: 'cyber' | 'starry';
+  /**
+   * An overlay (the kit's coats): 'cyber' (glowing seams, chrome plates, an antenna — New Yonder's
+   * pets), 'starry' (Sky Isles), 'stripes' (a tiger's), 'mane' (a lion's ruff), 'spines' (a
+   * hedgehog's), 'spots' (a fawn's), 'fairy' (glowing wisps and a lit tail tip).
+   */
+  overlay?: Overlay;
+  /** Built without the form's horns (a fawn on the deer's plan). */
+  noHorns?: boolean;
 }
+
+type Overlay = 'cyber' | 'starry' | 'stripes' | 'mane' | 'spines' | 'spots' | 'fairy';
 
 const D = SPECIES_BASE();
 /** A new species on an existing body plan: the plan's dimensions, its own look. */
@@ -72,6 +83,9 @@ function SPECIES_BASE(): Record<string, Species> { return {
   dove: { name: 'Dove', kind: 'bird', body: [0.3, 0.2, 0.2], color: '#f4f4f8', accent: '#c8c8d8', leg: 0.06, headR: 0.08, tail: 'short', diet: 'rice' },
   donkey: { name: 'Donkey', kind: 'quad', body: [1.1, 0.6, 0.45], color: '#8a847a', accent: '#f4f1ea', leg: 0.7, headR: 0.17, neck: 0.35, ears: 'long', tail: 'tuft', extra: 'mane', snout: 0.18, diet: 'feed' },
   lightbird: { name: 'Light Bird', kind: 'bird', body: [0.4, 0.25, 0.25], color: '#fff4c0', accent: '#b8a4ff', leg: 0.1, headR: 0.1, tail: 'fan', extra: 'glow', diet: 'stardust' },
+  monkey: { name: 'Monkey', kind: 'quad', body: [0.55, 0.3, 0.26], color: '#8a6a4a', accent: '#d8c0a0', leg: 0.3, headR: 0.12, tail: 'long', diet: 'coconut' },
+  orangutan: { name: 'Orangutan', kind: 'quad', body: [0.85, 0.7, 0.62], color: '#b8521e', accent: '#6a3a24', leg: 0.42, headR: 0.2, diet: 'coconut' },
+  komodo: { name: 'Komodo Dragon', kind: 'quad', body: [1.6, 0.34, 0.5], color: '#6a6450', accent: '#9a9078', leg: 0.2, headR: 0.13, snout: 0.16, diet: 'rice' },
 }; }
 
 export const SPECIES: Record<SpeciesId, Species> = {
@@ -120,6 +134,21 @@ export const SPECIES: Record<SpeciesId, Species> = {
   parakeet: on('dove', { name: 'Parakeet', color: '#5ac85a', accent: '#e8403a', diet: 'rice', scale: 0.8 }),
   cormorant: on('duck', { name: 'Cormorant', color: '#2a2e2a', accent: '#f2c14e', diet: 'rice', scale: 1.2 }),
   raven: on('dove', { name: 'Raven', color: '#1a1a22', accent: '#3a3a48', diet: 'bread', scale: 1.4 }),
+  // Primates: Jade's golden monkeys, Bali's and Jaipur's macaques, Kerala's grey langurs.
+  goldenmonkey: on('monkey', { name: 'Golden Monkey', color: '#e0a040', accent: '#f4dca8', diet: 'bamboo', scale: 1.2 }),
+  macaque: on('monkey', { name: 'Macaque', color: '#9a8a70', accent: '#d8c4a8', diet: 'rice', tints: ['#9a8a70', '#8a7a60', '#aa9a80'] }),
+  langur: on('monkey', { name: 'Grey Langur', color: '#c8c4bc', accent: '#3a3a40', diet: 'coconut', scale: 1.15 }),
+  // Big cats: Hanok's mountain tiger of the old tales, Firenzia's Marzocco lion.
+  tiger: on('cat', { name: 'Horangi Tiger', color: '#e8872a', accent: '#faf2e6', diet: 'ginseng', scale: 3.3, overlay: 'stripes' }),
+  lion: on('cat', { name: 'Marzocco Lion', color: '#d4a560', accent: '#8a5a2a', diet: 'olive', scale: 3.5, overlay: 'mane' }),
+  // Wanderers' Meadow: hedgehogs in the hedges, spotted fawns, a fairy fox with a lantern tail.
+  hedgehog: on('panda', { name: 'Hedgehog', color: '#9a8468', accent: '#7a6450', diet: 'wildflower', scale: 0.26, overlay: 'spines' }),
+  fawn: on('deer', { name: 'Fawn', color: '#c8905a', accent: '#fbf6ee', diet: 'wildflower', scale: 0.62, overlay: 'spots', noHorns: true }),
+  fairyfox: on('fox', { name: 'Fairy Fox', color: '#ffd6e8', accent: '#fff4c0', diet: 'wildflower', scale: 0.85, overlay: 'fairy' }),
+  // Maple Row's cardinals, Rimal's desert hares, Gulabi Nagar's grey Kankrej cattle.
+  cardinal: on('dove', { name: 'Cardinal', color: '#d8262a', accent: '#3a1a1a', diet: 'rice', scale: 0.9 }),
+  deserthare: on('rabbit', { name: 'Desert Hare', color: '#d8b88a', accent: '#f4e8d4', diet: 'dates', scale: 1.25 }),
+  kankrej: on('cow', { name: 'Kankrej Cow', color: '#cfcac2', accent: '#3a3230', diet: 'marigold', scale: 1.05, produce: 'milk' }),
 } as Record<SpeciesId, Species>;
 
 const cache = new Map<string, THREE.Material>();
@@ -161,7 +190,7 @@ export function tintFor(species: SpeciesId, id: string): string | undefined {
  * little antenna with a light on the (floating) head, the tail tipped with light. 'starry' — the
  * Sky Isles' creatures: a scatter of small glowing stars in their coats.
  */
-function dress(kind: 'cyber' | 'starry', body: THREE.Group, head: THREE.Group, legs: THREE.Group[], tail: THREE.Object3D | undefined, d: { L: number; H: number; W: number; bodyY: number; headR: number }, accent: string): void {
+function dress(kind: Overlay, body: THREE.Group, head: THREE.Group, legs: THREE.Group[], tail: THREE.Object3D | undefined, d: { L: number; H: number; W: number; bodyY: number; headR: number }, accent: string): void {
   const { L, H, W, bodyY, headR } = d;
   if (kind === 'cyber') {
     const neon = ['#5af0ff', '#ff5ad8'][Math.floor(Math.random() * 2)];
@@ -199,6 +228,64 @@ function dress(kind: 'cyber' | 'starry', body: THREE.Group, head: THREE.Group, l
       tip.position.set(0, 0.05, -0.05);
       tail.add(tip);
     }
+  } else if (kind === 'stripes') {
+    // Narrow dark bands arching over the back and down the flanks, rings round the legs and tail.
+    const ink = '#1f1a18';
+    for (let i = 0; i < 7; i++) {
+      const band = part(new THREE.TorusGeometry(0.5, i % 2 ? 0.011 : 0.016, 4, 20, Math.PI), ink, 'body');
+      band.scale.set(W * 0.92, H * 0.92, 1);
+      band.position.set(0, bodyY - H * 0.02, L * 0.32 - (i / 6) * L * 0.66);
+      band.rotation.set(0, 0, (i % 3 - 1) * 0.08);
+      body.add(band);
+    }
+    for (const leg of legs) {
+      const r = part(new THREE.TorusGeometry(W * 0.12, 0.007, 4, 12), ink, 'leg');
+      r.rotation.x = Math.PI / 2;
+      r.position.y = -0.14;
+      leg.add(r);
+    }
+    if (tail) tail.traverse((o) => { if ((o as THREE.Mesh).isMesh && o.userData.part === 'tail' && Math.round(o.position.length() * 40) % 3 === 0) (o as THREE.Mesh).material = mat(ink); });
+  } else if (kind === 'mane') {
+    // A lion's mane framing the (floating) head: two rings of tufts round it, darker behind.
+    for (let ring = 0; ring < 2; ring++) for (let i = 0; i < 14; i++) {
+      const a = (i / 14) * Math.PI * 2 + ring * 0.2;
+      const tuft = part(new THREE.SphereGeometry(headR * (0.36 - ring * 0.04), 7, 5), ring ? '#8a5a2a' : accent, 'mane');
+      tuft.scale.set(1, 1.2, 0.8);
+      const R = headR * (1.0 + ring * 0.12);
+      tuft.position.set(Math.cos(a) * R, Math.sin(a) * R * 1.05 + headR * 0.05, -headR * (0.25 + ring * 0.22));
+      head.add(tuft);
+    }
+    if (tail) { const t = part(new THREE.SphereGeometry(0.035, 6, 5), '#8a5a2a', 'tail'); t.position.set(0, 0.2, -0.55); tail.add(t); }
+  } else if (kind === 'spines') {
+    // A coat of spines over the back and flanks, fanning out from head to rump, pale-tipped.
+    for (let i = 0; i < 160; i++) {
+      const u = (i + 0.5) / 160, a = i * 2.39996, up = 0.15 + 0.85 * Math.sqrt((i % 23) / 22);
+      const side = Math.sqrt(1 - up * up);
+      const dir = new THREE.Vector3(Math.cos(a) * side, up, (0.25 - u) * 1.5).normalize();
+      if (dir.z * L * 0.5 > L * 0.16) continue; // clear of the neck: the head floats free
+      const sp = part(new THREE.ConeGeometry(W * 0.07, H * 0.7, 4), i % 5 ? '#4a3a2c' : '#efe4d0', 'body');
+      sp.position.set(dir.x * W * 0.48, bodyY + dir.y * H * 0.48, dir.z * L * 0.5);
+      sp.quaternion.setFromUnitVectors(new THREE.Vector3(0, 1, 0), dir);
+      body.add(sp);
+    }
+  } else if (kind === 'spots') {
+    // A fawn's white dapples along the back.
+    for (let i = 0; i < 18; i++) {
+      const sd = i % 2 ? 1 : -1, row = Math.floor(i / 2) % 3;
+      const sp = part(new THREE.SphereGeometry(W * 0.07, 6, 4), '#fbf6ee', 'body');
+      sp.scale.set(1, 0.35, 1);
+      sp.position.set(sd * W * (0.16 + row * 0.1), bodyY + H * (0.46 - row * 0.07), L * 0.3 - (Math.floor(i / 6) / 2) * L * 0.55 - row * 0.04);
+      body.add(sp);
+    }
+  } else if (kind === 'fairy') {
+    // Glowing wisps about the flanks and a lantern-lit tail tip.
+    for (let i = 0; i < 7; i++) {
+      const w = part(new THREE.SphereGeometry(0.02 + (i % 3) * 0.008, 6, 5), ['#fff4c0', '#ffd6f0', '#bfe8ff'][i % 3], 'body', true);
+      const a = (i / 7) * Math.PI * 2;
+      w.position.set(Math.cos(a) * W * 0.62, bodyY + H * 0.3 + Math.sin(a * 2) * H * 0.2, Math.sin(a) * L * 0.4);
+      body.add(w);
+    }
+    if (tail) { const t = part(new THREE.SphereGeometry(0.06, 8, 6), '#fff4c0', 'tail', true); t.position.set(0, 0.1, -0.5); tail.add(t); }
   } else {
     for (let i = 0; i < 14; i++) {
       const st = part(new THREE.OctahedronGeometry(0.02 + (i % 3) * 0.008), i % 3 ? '#fff4c0' : '#ffd6f0', 'body', true);
@@ -306,7 +393,7 @@ export class AnimalModel {
     }
 
     if (detailed) {
-      const b = buildDetailed(form as DetailedId, part, body, this.head, { L, H, W, bodyY, headR: s.headR, neck: s.neck, snout: s.snout }, c, a);
+      const b = buildDetailed(form as DetailedId, part, body, this.head, { L, H, W, bodyY, headR: s.headR, neck: s.neck, snout: s.snout }, c, a, { noHorns: s.noHorns });
       this.legs = b.legs;
       this.knees = b.knees;
       this.tail = b.tail;

@@ -95,11 +95,11 @@ sections C1–C7) and `3D_BUILDS_HANDOFF.md` (3D work, sections 2a and 3.x). Tic
 - [x] Real lamplight (`lamplight.ts`); the living air: butterflies, dragonflies, fireflies, spores, chimney smoke, dawn mist, sunbeams (`atmosphere.ts`, `Atmos.ts`); bark by species; per-crystal hues; desert pebbles; Aurora snow tracks; a rough open sea
 - [ ] Screenshot and polish most designs
 - [ ] Vehicles entering and leaving; travel between lands; no pop-in at borders
-- [ ] Junctions, turning, traffic lights, roundabouts
+- [x] Junctions, turning, traffic lights, roundabouts
 - [ ] Stops: bus stops, taxi ranks, ferry piers, jetties, harbours, airports, drone docks; take-off, landing, docking. Done: bus stops in every town; ferries dock at every harbour pier; air taxis land beside every stop and on the Sky Isles stage
 - [ ] Riding buses, taxis, trams, ferries, gondolas, air taxis (separate seats). Done: intercity coach, coastal ferry, air taxi, Sky Isles cable car (`travel/Ride.ts`); left: trams
-- [ ] Time of day (quieter nights, evening lantern boats, daytime kites and balloons)
-- [ ] Townsfolk crossing streets; Sky Isles cable gondolas; distance culling. Done: zebra crossings on the lights; far traffic culled; Sky Isles cable car (`travel/gondola.ts`, `SkyTram.ts`)
+- [x] Time of day (quieter nights, evening lantern boats, daytime kites and balloons)
+- [x] Townsfolk crossing streets; Sky Isles cable gondolas; distance culling. Done: zebra crossings on the lights; far traffic culled; Sky Isles cable car (`travel/gondola.ts`, `SkyTram.ts`)
 - [x] Rebuild the travellers' own vehicles (car, truck, biplane) — keep seats and `SEAT_GAP`: Safar as a split-screen bus in painted steel (`vehicles.ts` `buildVan`); the car and truck in painted steel; the biplane as a 1930s trainer (`buildBiplane`)
 
 ## I2. Ships and the sea (NEW)

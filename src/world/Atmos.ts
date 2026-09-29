@@ -160,17 +160,32 @@ class Wings {
 }
 
 // ---------------------------------------------------------------------------------------------
-// Motes: fireflies (wandering low, blinking) and spores (rising slowly, twinkling). The shader
-// moves them about their seeds, so the CPU only re-seeds the ones left behind.
+// Motes: fireflies (wandering low, blinking), spores (rising slowly, twinkling), glints (drifting
+// down through the sunlit air, flashing as they turn) and embers (sparks flying up from the
+// fires). The shader moves them about their seeds, so the CPU only re-seeds the ones left behind.
+
+/** Which kind the motes are drawing (uMode). */
+const MODE = { fireflies: 0, spores: 1, glitter: 2, embers: 3 } as const;
+type MoteMode = keyof typeof MODE;
 
 const MOTE_VERT = /* glsl */ `
   attribute float aPhase; attribute vec3 aCol;
-  uniform float uTime, uRise, uSize, uAmt;
+  uniform float uTime, uMode, uSize, uAmt;
   varying vec3 vCol; varying float vA;
   void main() {
     float t = uTime + aPhase * 10.0;
     vec3 p = position;
-    if (uRise > 0.5) {
+    if (uMode > 2.5) {
+      // Embers: a quick climb from the fire, swirling, burning out as they rise.
+      float k = fract(t * 0.32 + aPhase);
+      p += vec3(sin(t * 2.1 + aPhase * 9.0) * 0.5 * k, k * 7.0, cos(t * 1.7 + aPhase * 5.0) * 0.5 * k);
+      vA = (1.0 - k) * smoothstep(0.0, 0.08, k) * (0.7 + 0.3 * sin(t * 13.0));
+    } else if (uMode > 1.5) {
+      // Glints: a slow drift down and across, catching the sun in sharp flashes.
+      float k = fract(t * 0.02 + aPhase);
+      p += vec3(sin(t * 0.23) * 1.6 + k * 2.0, -k * 5.0, cos(t * 0.19) * 1.6);
+      vA = pow(max(sin(t * 2.3 + aPhase * 17.0), 0.0), 8.0) * sin(k * 3.14159);
+    } else if (uMode > 0.5) {
       // Spores: up and up, swaying, fading in at the bottom and out at the top.
       float k = fract(t * 0.035 + aPhase);
       p += vec3(sin(t * 0.5) * 0.8, k * 14.0, cos(t * 0.4) * 0.8);
@@ -322,6 +337,7 @@ export class Atmos {
   private motePos = new Float32Array(MOTES * 3);
   private moteCol = new Float32Array(MOTES * 3);
   private moteAlive = new Uint8Array(MOTES);
+  private moteMode: MoteMode | null = null;
   private smoke = new Puffs(PUFFS_PER * CHIMNEYS, 0);
   private mist = new Puffs(MISTS, 1);
   private mistSeeds = Array.from({ length: MISTS }, () => ({ x: 0, z: 0, y: 0, size: 0, seed: Math.random(), alive: false }));
@@ -344,7 +360,7 @@ export class Atmos {
     mg.setAttribute('aPhase', new THREE.BufferAttribute(phase, 1));
     mg.setAttribute('aCol', new THREE.BufferAttribute(this.moteCol, 3));
     this.motes = new THREE.Points(mg, new THREE.ShaderMaterial({
-      uniforms: { uTime: { value: 0 }, uRise: { value: 0 }, uSize: { value: 0.16 }, uAmt: { value: 0 } },
+      uniforms: { uTime: { value: 0 }, uMode: { value: 0 }, uSize: { value: 0.16 }, uAmt: { value: 0 } },
       vertexShader: MOTE_VERT, fragmentShader: MOTE_FRAG, transparent: true, depthWrite: false, blending: THREE.AdditiveBlending, toneMapped: false,
     }));
     this.motes.frustumCulled = false;
@@ -386,7 +402,10 @@ export class Atmos {
 
     this.flyButterflies(dt, t, p, w.flyers * f, light);
     this.flyDragonflies(dt, t, p, w.flyers * f, light);
-    this.moveMotes(t, p, Math.max(w.fireflies, w.spores) * f);
+    // One kind of mote at a time: whichever the hour calls for most.
+    const kinds: Array<[MoteMode, number]> = [['fireflies', w.fireflies], ['spores', w.spores], ['glitter', w.glitter], ['embers', w.embers]];
+    const [mode, amt] = kinds.reduce((a, b) => (b[1] > a[1] ? b : a));
+    this.moveMotes(t, p, amt * f, mode, smoke);
     this.puffSmoke(t, p, w.smoke * f, smoke, night);
     this.lieMist(dt, p, w.mist * f, fogColor);
     this.shineBeams(p, w.beams * f * THREE.MathUtils.smoothstep(sunDir.y, 0.02, 0.1) * (1 - THREE.MathUtils.smoothstep(sunDir.y, 0.35, 0.5)), sunDir);
@@ -403,7 +422,16 @@ export class Atmos {
     this.butterflies.flyers.forEach((_, i) => this.butterflies.colour(i, this.tmp.set(bc[i % bc.length])));
     const dc = this.spec.dragonflies ?? ['#3fb6c9'];
     this.dragonflies.flyers.forEach((_, i) => this.dragonflies.colour(i, this.tmp.set(dc[i % dc.length])));
-    const mc = this.spec.spores ?? [this.spec.fireflies ?? '#fff08a'];
+    this.moteMode = null;
+  }
+
+  /** The motes' colours for the kind now drawn. */
+  private colourMotes(mode: MoteMode): void {
+    const ff = this.spec.fireflies;
+    const mc = mode === 'spores' ? this.spec.spores ?? ['#fff08a']
+      : mode === 'glitter' ? this.spec.glitter ?? ['#ffffff']
+      : mode === 'embers' ? ['#ffb04a', '#ff7a2a', '#ffd27a']
+      : typeof ff === 'string' ? [ff] : ff ?? ['#fff08a'];
     for (let i = 0; i < MOTES; i++) { this.tmp.set(mc[i % mc.length]); this.moteCol.set([this.tmp.r, this.tmp.g, this.tmp.b], i * 3); }
     this.motes.geometry.getAttribute('aCol').needsUpdate = true;
   }
@@ -480,19 +508,30 @@ export class Atmos {
     W.mesh.visible = has && amt > 0.01;
   }
 
-  private moveMotes(t: number, p: THREE.Vector3, amt: number): void {
-    const rise = !!this.spec.spores;
+  private moveMotes(t: number, p: THREE.Vector3, amt: number, mode: MoteMode, tops: readonly THREE.Vector3[]): void {
     const m = this.motes.material.uniforms;
-    m.uTime.value = t; m.uRise.value = rise ? 1 : 0; m.uAmt.value = amt; m.uSize.value = rise ? 0.2 : 0.14;
+    m.uTime.value = t; m.uMode.value = MODE[mode]; m.uAmt.value = amt;
+    m.uSize.value = mode === 'spores' ? 0.2 : mode === 'glitter' ? 0.07 : mode === 'embers' ? 0.09 : 0.14;
     this.motes.visible = amt > 0.01;
     if (!this.motes.visible) return;
+    // A new kind: new colours, and every mote seeded afresh where that kind lives.
+    if (this.moteMode !== mode) { this.moteMode = mode; this.colourMotes(mode); this.moteAlive.fill(0); }
+    // Embers fly up from the nearest fires; everything else about the travellers.
+    const fires = mode === 'embers' ? tops.filter((c) => Math.abs(c.x - p.x) < 60 && Math.abs(c.z - p.z) < 60) : [];
     let moved = false;
     for (let i = 0; i < MOTES; i++) {
       const x = this.motePos[i * 3], z = this.motePos[i * 3 + 2];
-      if (this.moteAlive[i] && Math.hypot(x - p.x, z - p.z) < 40) continue;
-      const g = this.dryGround(p, 3, 36);
-      if (!g) continue;
-      this.motePos.set([g.x, g.y + (rise ? rnd(-0.5, 1) : rnd(0.3, 2.2)), g.z], i * 3);
+      if (this.moteAlive[i] && Math.hypot(x - p.x, z - p.z) < (mode === 'embers' ? 70 : 40)) continue;
+      if (mode === 'embers') {
+        const c = fires[i % Math.max(1, fires.length)];
+        if (!c) { if (this.motePos[i * 3 + 1] > -1e3) { this.motePos[i * 3 + 1] = -1e4; moved = true; } continue; }
+        this.motePos.set([c.x + rnd(-0.3, 0.3), c.y - rnd(0, 0.4), c.z + rnd(-0.3, 0.3)], i * 3);
+      } else {
+        const g = this.dryGround(p, mode === 'glitter' ? 2 : 3, mode === 'glitter' ? 26 : 36);
+        if (!g) continue;
+        const up = mode === 'spores' ? rnd(-0.5, 1) : mode === 'glitter' ? rnd(1.5, 7) : rnd(0.3, 2.2);
+        this.motePos.set([g.x, g.y + up, g.z], i * 3);
+      }
       this.moteAlive[i] = 1;
       moved = true;
     }

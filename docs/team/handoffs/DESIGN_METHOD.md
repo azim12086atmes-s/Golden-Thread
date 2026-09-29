@@ -17,3 +17,15 @@ For any 3D, effect or particle requirement:
 Examples: vehicles — per land, the kinds of vehicle, their components and styles, a vehicle kit,
 then builds. Animals — per land, native and fantasy animals (New Yonder's cyborg pets), an animal
 kit. Institutes — per land, a kit of that land's institutional architecture with its detailing.
+
+## Where each kit stands (2026-09-29)
+- **Vehicles:** road, water and sky kits in `traffic/designs.ts`, every land's own list built
+  (VEHICLES_ANIMALS_PLAN.md); rides — coach, ferry, air taxi, Sky Isles cable car (`travel/`).
+- **Animals:** 24 body plans in `animals/detailed.ts` (monkey, orangutan and Komodo added) with coat
+  overlays in `AnimalModel.ts`; every land's fauna built.
+- **Institutes:** the kit exists for all twenty lands — five wall traditions (classic, timber,
+  masonry, nordic, sky), a land-specific entrance for each land, and each land's own boundary and
+  gate (`instituteFronts.ts`), used by the care institutes (`institutes3d.ts`) and the sciences
+  (`sciences3d.ts`).
+- **Effects:** `atmosphere.ts` / `Atmos.ts` (wings, motes, smoke, mist, beams), `SkyFX.ts`,
+  `FestivalAir.ts`, `RegionFX.ts`.
