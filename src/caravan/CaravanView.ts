@@ -202,13 +202,18 @@ export class CaravanView {
       this.carpet.root.position.set(c.x, surfaceAt(c.x, c.z, c.y + 3) + 0.3, c.z);
       this.carpetHeading = tr.heading;
       this.carpet.open = 0.05;
-      this.lightOn = tr.mode === 'dragon';
-      if (this.lightOn && !this.light) { this.light = new Dragon(DRAGON_SCALE, true, true); g.scene.add(this.light.root); }
-      if (this.light) {
-        this.light.root.visible = this.lightOn;
+    }
+    // The Light Fury flies with them only while they ride the Night Dragon — never with the cape,
+    // the plane or the unicorns (checked every moment they are aloft, not just at take-off).
+    if (aloft) {
+      const want = tr.mode === 'dragon';
+      if (want && !this.lightOn) {
+        if (!this.light) { this.light = new Dragon(DRAGON_SCALE, true, true); g.scene.add(this.light.root); }
         // She sets off from beside the children, where they stand.
-        if (this.lightOn) this.light.root.position.copy(this.carpet.root.position);
+        this.light.root.position.copy(this.carpet.root.position);
       }
+      this.lightOn = want;
+      if (this.light && !want) this.light.root.visible = false;
     }
     if (aloft) this.carpetState = 'flying';
     else if (this.carpetState === 'flying') this.carpetState = 'landing';
@@ -303,14 +308,20 @@ export class CaravanView {
       root.position.x -= fx * back;
       root.position.z -= fz * back;
       if (!aloft) root.position.y = Math.max(root.position.y, surfaceAt(root.position.x, root.position.z, root.position.y + 3) + 0.3);
-      root.visible = this.bodies.some((b) => b.def.kind === 'pet');
     }
+    // Who rides where. On the Night Dragon: the brothers and sisters first, then the children, each
+    // in a saddle of their own on the Light Fury; anyone without a saddle and the pets on the
+    // carpet behind her, and no second carpet. Otherwise the children and pets share the first
+    // carpet and the brothers and sisters have their own.
+    const onLight = new Set<Body>();
+    if (light) for (const kind of ['sibling', 'child'] as const) for (const b of this.bodies) if (b.def.kind === kind && onLight.size < light.seatCount) onLight.add(b);
+    if (light) root.visible = this.bodies.some((b) => !onLight.has(b));
     root.rotation.set(Math.sin(t * 1.3) * 0.03, this.carpetHeading, Math.sin(t * 0.9) * 0.04 * (aloft ? 1 : 0));
     this.carpet.update(dt, t, g.sky.night, aloft ? tr.currentSpeed : 0);
     root.updateMatrixWorld();
     // The second carpet flies a carpet's length behind the first, on the same side, farther still
     // from the two.
-    const r2 = this.carpet2.root, hasSibs = this.bodies.some((b) => b.def.kind === 'sibling');
+    const r2 = this.carpet2.root, hasSibs = !light && this.bodies.some((b) => b.def.kind === 'sibling');
     r2.visible = hasSibs && root.visible;
     if (hasSibs) {
       const fx = Math.sin(this.carpetHeading), fz = Math.cos(this.carpetHeading);
@@ -321,22 +332,25 @@ export class CaravanView {
       r2.updateMatrixWorld();
     }
 
-    let ci = 0, pi = 0, si = 0;
+    let ci = 0, pi = 0, si = 0, li = 0;
     for (const b of this.bodies) {
       const kind = b.def.kind;
-      const seatIdx = kind === 'child' ? ci++ : kind === 'sibling' ? si++ : pi++;
       const r = (b.child ?? b.pet)!.root;
-      if (light && kind === 'child') {
-        // Each child in a saddle of their own on the Light Fury's back.
-        const p = light.seatPoint(seatIdx, new THREE.Vector3());
+      if (light && onLight.has(b)) {
+        // In a saddle of their own on the Light Fury's back, sitting at their own height.
+        const p = light.seatPoint(li++, new THREE.Vector3());
+        const scale = b.def.kind === 'sibling' ? HERO_SCALE.girl + (HERO_SCALE.boy - HERO_SCALE.girl) * b.def.rise : CHILD_SCALE;
         r.visible = true;
-        r.position.set(p.x, p.y - DIMS.hip * CHILD_SCALE * 0.95, p.z);
+        r.position.set(p.x, p.y - DIMS.hip * scale * 0.95, p.z);
         r.rotation.set(0, this.carpetHeading, 0);
         b.member.x = p.x; b.member.z = p.z; b.member.speed = 0;
         b.child!.update(dt, { speed: 0, airborne: false, riding: true, t: t + b.ph });
         continue;
       }
-      const p = (kind === 'sibling' ? this.carpet2 : this.carpet).seat(kind, seatIdx, new THREE.Vector3());
+      // A brother or sister without a saddle rides the carpet in a child's seat.
+      const seatKind = light && kind === 'sibling' ? 'child' : kind;
+      const seatIdx = seatKind === 'child' ? ci++ : seatKind === 'sibling' ? si++ : pi++;
+      const p = (seatKind === 'sibling' ? this.carpet2 : this.carpet).seat(seatKind, seatIdx, new THREE.Vector3());
       r.visible = this.carpet.open > 0.3 || aloft;
       r.position.copy(p);
       r.rotation.y = this.carpetHeading;

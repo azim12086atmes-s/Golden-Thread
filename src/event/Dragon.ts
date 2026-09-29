@@ -15,8 +15,8 @@ import { DragonModel, fly, perch, type DragonSpec, type Flight } from '../creatu
  */
 /** Saddle positions along the body (unscaled): his in front (he drives), hers behind (owner, 2026-09-29). */
 export const DRAGON_SADDLES = [0.35, -0.5] as const;
-/** The Light Fury's four small saddles in a row, one for each child (unscaled). */
-export const CHILD_SADDLES = [0.3, -0.08, -0.46, -0.84] as const;
+/** The Light Fury's four saddles in a row, one each for the brothers and sisters or the children (unscaled). */
+export const CHILD_SADDLES = [0.3, -0.12, -0.54, -0.96] as const;
 export const DRAGON_SCALE = 1.6;
 
 export const NIGHT_DRAGON: DragonSpec = {
@@ -89,9 +89,9 @@ export class Dragon {
       const part = (m: THREE.Mesh) => { m.userData.part = 'accessory'; tack.add(m); return m; };
       // Four small saddles in sky blue on silver, each with its own back-rest, a low divider between each.
       CHILD_SADDLES.forEach((z, i) => {
-        part(new THREE.Mesh(new THREE.BoxGeometry(0.3, 0.07, 0.28), std('#8cc4ec'))).position.set(0, 0.36, z);
-        part(new THREE.Mesh(new THREE.BoxGeometry(0.34, 0.035, 0.32), silver)).position.set(0, 0.32, z);
-        part(new THREE.Mesh(new THREE.BoxGeometry(0.28, 0.16, 0.04), std('#8cc4ec'))).position.set(0, 0.44, z - 0.14);
+        part(new THREE.Mesh(new THREE.BoxGeometry(0.36, 0.07, 0.34), std('#8cc4ec'))).position.set(0, 0.36, z);
+        part(new THREE.Mesh(new THREE.BoxGeometry(0.4, 0.035, 0.38), silver)).position.set(0, 0.32, z);
+        part(new THREE.Mesh(new THREE.BoxGeometry(0.34, 0.2, 0.04), std('#8cc4ec'))).position.set(0, 0.46, z - 0.17);
         const strap = part(new THREE.Mesh(new THREE.TorusGeometry(0.3, 0.015, 5, 20, Math.PI), std('#5a7aa0')));
         strap.position.set(0, 0.1, z);
         strap.scale.set(1, 0.8, 1);
