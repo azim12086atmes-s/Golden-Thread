@@ -13,7 +13,7 @@ import type { GeoBuilder } from './kit';
 /** How thickly desert roses grow in each land's sand (1: the Rimal desert itself). */
 export const ROSE_LANDS: Partial<Record<RegionId, number>> = { desert: 1, middleeast: 0.5, egypt: 0.35 };
 
-const SAND = ['#dcb892', '#e6c7a2', '#cfa47c', '#ebd3b4', '#d8ab8e', '#e2bca0'];
+const SAND = ['#ecd2b0', '#f2dcc0', '#e2c09a', '#f6e6cc', '#e8c4a8', '#f0d2b8'];
 
 /** One blade: a thin lens, cupped upwards, 1 m across (made once, placed many times). */
 let petalGeo: THREE.BufferGeometry | null = null;
@@ -43,17 +43,18 @@ function rosette(g: GeoBuilder, x: number, y: number, z: number, r: number, rng:
   const tiers = 2 + (rng() < 0.5 ? 1 : 0);
   for (let t = 0; t < tiers; t++) {
     const n = 6 + Math.floor(rng() * 4), k = t / tiers;
-    const ty = y + r * (0.08 + k * 0.42), open = 1.25 - k * 0.55;
+    const ty = y + r * (0.08 + k * 0.42), tilt = 0.75 + k * 0.45;
     for (let i = 0; i < n; i++) {
       const a = (i / n) * Math.PI * 2 + t * 0.6 + (rng() - 0.5) * 0.5;
       const pr = r * (0.55 - k * 0.2) * (0.8 + rng() * 0.4);
       _p.set(x + Math.cos(a) * pr * 0.45, ty + (rng() - 0.5) * r * 0.08, z + Math.sin(a) * pr * 0.45);
-      // Each blade faces outwards, tipped up from lying flat by `open` (the inner ones stand taller).
+      // Each blade faces outwards, standing steeply up from the sand (the inner ones more upright),
+      // so the blades cross one another like the petals of a stone flower.
       _e.set(0, -a + Math.PI / 2, 0, 'YXZ');
-      _q.setFromEuler(_e).multiply(new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(1, 0, 0), -(Math.PI / 2 - open) + (rng() - 0.5) * 0.3));
+      _q.setFromEuler(_e).multiply(new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(1, 0, 0), -(tilt + (rng() - 0.5) * 0.35)));
       _s.set(pr, pr, pr);
       const low = Math.max(0, 1 - (ty - y) / r);
-      _c.set(SAND[Math.floor(rng() * SAND.length)]).offsetHSL((rng() - 0.5) * 0.02, 0, (rng() - 0.5) * 0.06 - low * 0.08);
+      _c.set(SAND[Math.floor(rng() * SAND.length)]).offsetHSL((rng() - 0.5) * 0.02, 0, (rng() - 0.5) * 0.06 - low * 0.05);
       g.add(petal(), _c, _m.compose(_p, _q, _s).clone());
     }
   }

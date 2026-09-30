@@ -322,7 +322,7 @@ function nyRoseTower(c: Ctx): Footprint {
   const ringGeo = () => new THREE.TorusGeometry(1, 0.035, 4, 28).rotateX(Math.PI / 2);
   const glow = ['#ff4a8a', '#ff7a6a', '#ffa05a', '#ffc84a', '#ffe07a'];
   for (let t = 0; t < tiers; t++) {
-    const y = 4 + t * step, n = 5, L = core * (1.5 - t * 0.06), tilt = 0.35 + t * 0.03;
+    const y = 4 + t * step, n = 5, L = core * (2.1 - t * 0.08), tilt = 0.35 + t * 0.03;
     for (let i = 0; i < n; i++) {
       const a = (i / n) * Math.PI * 2 + t * 0.63;
       c.g.frame(0, y, 0, a, 1, () => c.glow.frame(0, y, 0, a, 1, () => {
@@ -334,7 +334,7 @@ function nyRoseTower(c: Ctx): Footprint {
   }
   cone(c.g, core * 0.9, 10, '#e8d8c8', 0, H, 0, 16);
   box(c.glow, 0.35, 0.35, 0.35, '#ff3a3a', 0, H + 10, 0);
-  return { r: core + core * 1.5 * 0.9, h: H + 10 };
+  return { r: core * 3, h: H + 10 };
 }
 
 /** Brownstone row house (composed from the facade kit), grown solarpunk: iron fire escapes, a green wall, a rooftop greenhouse and solar panels. */
