@@ -315,7 +315,7 @@ function nyZigzagTower(c: Ctx): Footprint {
  * the colours running from rose to gold up the tower.
  */
 function nyRoseTower(c: Ctx): Footprint {
-  const core = c.rng.range(4.5, 6), tiers = c.rng.int(6, 10), step = c.rng.range(7, 9), H = tiers * step + 6;
+  const core = c.rng.range(3.6, 4.4), tiers = c.rng.int(6, 10), step = c.rng.range(7, 9), H = tiers * step + 6;
   cyl(c.g, core, core * 1.08, H, NY.glass, 0, 0, 0, 16);
   for (let y = 3; y < H - 1; y += 3.4) cyl(c.glow, core + 0.04, core + 0.04, 0.5, NY_WINDOW, 0, y, 0, 16);
   const petalGeo = () => new THREE.SphereGeometry(1, 12, 4);
@@ -334,6 +334,7 @@ function nyRoseTower(c: Ctx): Footprint {
   }
   cone(c.g, core * 0.9, 10, '#e8d8c8', 0, H, 0, 16);
   box(c.glow, 0.35, 0.35, 0.35, '#ff3a3a', 0, H + 10, 0);
+  // Its petals reach out to about three times its core, within the plot.
   return { r: core * 3, h: H + 10 };
 }
 
