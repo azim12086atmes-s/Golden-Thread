@@ -8,6 +8,7 @@ import { REGION_BY_ID, regionCenter, type RegionId } from '../world/regions';
 import { surfaceAt } from '../world/terrain';
 import { Carpet } from './Carpet';
 import { Dragon, DRAGON_SCALE } from '../event/Dragon';
+import { outfitOf } from './dress';
 import { DIMS } from '../characters/CharacterModel';
 import { BUNKS, PET_BEDS, RIDE_CHILD_SEATS, VAN } from '../vehicles/vanLayout';
 
@@ -96,11 +97,11 @@ export class CaravanView {
     const body: Body = { def, member, ph: Math.random() * 10 };
     if (def.kind === 'sibling') {
       // Full grown, at their own heights between hers and his (caravan.ts SIBLINGS).
-      body.child = new CharacterModel(OUTFITS[def.outfit], def.skin, HERO_SCALE.girl + (HERO_SCALE.boy - HERO_SCALE.girl) * def.rise);
+      body.child = new CharacterModel(outfitOf(this.g.st, id) ?? OUTFITS[def.outfit], def.skin, HERO_SCALE.girl + (HERO_SCALE.boy - HERO_SCALE.girl) * def.rise);
       this.g.scene.add(body.child.root);
     } else if (def.kind === 'child') {
       const pool = wardrobeFor(def.origin, def.who, true);
-      const outfit = pool[(def.name.length * 7) % pool.length];
+      const outfit = outfitOf(this.g.st, id) ?? pool[(def.name.length * 7) % pool.length];
       body.child = new CharacterModel(outfit, ['#f1c9a5', '#e0ac85', '#c68b62', '#a8704a'][def.name.length % 4], CHILD_SCALE);
       this.g.scene.add(body.child.root);
     } else {
@@ -108,6 +109,17 @@ export class CaravanView {
       this.g.scene.add(body.pet.root);
     }
     this.bodies.push(body);
+  }
+
+  /** The figure of someone travelling with them (for the dressing room's camera). */
+  figureOf(id: string): CharacterModel | null {
+    return this.bodies.find((x) => x.def.id === id)?.child ?? null;
+  }
+
+  /** Put on what was chosen for them in the dressing room. */
+  redress(id: string): void {
+    const b = this.bodies.find((x) => x.def.id === id), o = outfitOf(this.g.st, id);
+    if (b?.child && o) b.child.setOutfit(o);
   }
 
   /** Nearest companion within reach (for "Chat with Rosie" / "Pet Pip"). */

@@ -32,6 +32,7 @@ import { Npcs, type Npc } from './npc/Npcs';
 import { Townsfolk, type Walker } from './npc/Townsfolk';
 import { talkToFolk } from './npc/folk';
 import { CaravanView } from './caravan/CaravanView';
+import { dress } from './caravan/dress';
 import type { PetDef } from './caravan/caravan';
 import { WonderSites } from './world/WonderSites';
 import { keeperOf } from './npc/people';
@@ -532,15 +533,18 @@ export class Game {
       d.yaw -= this.input.dx * 0.006;
       this.trav.camYaw = d.savedYaw;
     }
-    const who = this.ui.wardrobeWho === 'girl' ? this.trav.girl : this.trav.boy;
+    // Fathima, Azim, or one of the brothers, sisters and children (framed at their own height).
+    const pick = this.ui.wardrobeWho;
+    const who = pick === 'girl' ? this.trav.girl : pick === 'boy' ? this.trav.boy : this.caravan.figureOf(pick) ?? this.trav.girl;
+    const sc = pick === 'girl' || pick === 'boy' ? 1 : who.figureScale;
     const p = who.root.position, face = who.root.rotation.y + d.yaw; // models face +z
     // Frame the whole figure in the band of screen above the shelf.
     const band = THREE.MathUtils.clamp(this.ui.sheetTop() / innerHeight, 0.35, 1);
     const half = THREE.MathUtils.degToRad(this.camera.fov / 2);
-    const dist = 2.1 / (2 * 0.82 * band * Math.tan(half));
-    d.goal.set(p.x + Math.sin(face) * dist, p.y + 1.1, p.z + Math.cos(face) * dist);
+    const dist = (2.1 * sc) / (2 * 0.82 * band * Math.tan(half));
+    d.goal.set(p.x + Math.sin(face) * dist, p.y + 1.1 * sc, p.z + Math.cos(face) * dist);
     // Aim so the figure's middle sits at the centre of that band, not of the screen.
-    const centre = new THREE.Vector3(p.x, p.y + 0.95, p.z);
+    const centre = new THREE.Vector3(p.x, p.y + 0.95 * sc, p.z);
     const toC = centre.clone().sub(d.goal);
     const drop = (0.5 - band / 2) * 2 * half;
     const right = new THREE.Vector3(-Math.cos(face), 0, Math.sin(face));
@@ -826,6 +830,13 @@ export class Game {
     this.van.setOutfits(OUTFITS[this.st.outfits.girl], OUTFITS[this.st.outfits.boy]);
     this.house.setOutfits(OUTFITS[this.st.outfits.girl], OUTFITS[this.st.outfits.boy]);
     this.bus.emit('outfit:changed', { who });
+  }
+
+  /** Dress a brother, sister or child travelling with them (caravan/dress.ts). */
+  dressCompanion(id: string, outfitId: string): string | null {
+    const err = dress(this.st, id, outfitId);
+    if (!err) this.caravan.redress(id);
+    return err;
   }
 
   chooseVehicle(id: VehicleId): string | null {

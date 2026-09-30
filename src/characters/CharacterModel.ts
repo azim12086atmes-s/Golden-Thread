@@ -293,6 +293,9 @@ export class CharacterModel {
     this.build();
   }
 
+  /** How tall this figure is drawn, as a share of the standard figure. */
+  get figureScale(): number { return this.scale; }
+
   /** Whether wings or a jetpack are worn (indoors they are left at the door). */
   private backShown = true;
   /** Her wings open on the Night Dragon whatever she wears (owner, 2026-09-29): hers alone, as always. */

@@ -16,6 +16,7 @@ import type { Animal } from '../animals/Animals';
 import { SPECIES } from '../animals/AnimalModel';
 import { OUTFITS, outfitsFor } from '../characters/outfits';
 import { DRESS_GROUPS, dressGroup, type DressGroup } from '../characters/wardrobe';
+import { choicesFor, dressable, outfitOf } from '../caravan/dress';
 import type { Outfit } from '../characters/modesty';
 import { dayOf, type VanSlot } from '../core/state';
 import { SKY_PAUSED, TIMES, TIME_LABEL, nextTime, timeOfDay } from '../core/time';
@@ -96,7 +97,8 @@ export class UI {
   private dialogueNpc: Npc | null = null;
   private animal: Animal | null = null;
   private msgFriend: string | null = null;
-  wardrobeWho: 'girl' | 'boy' = 'girl';
+  /** Who the dressing room is dressing: the two, or a brother, sister or child (their caravan id). */
+  wardrobeWho: string = 'girl';
   private wardrobeGroup: DressGroup = 'all';
   private wardrobeQuery = '';
   private vanSlot: VanSlot = 'rug';
@@ -678,12 +680,18 @@ export class UI {
   }
 
   private wardrobe(body: HTMLElement): void {
-    const st = this.g.st, who = this.wardrobeWho;
-    const worn = OUTFITS[st.outfits[who]];
+    const st = this.g.st;
+    const family = dressable(st);
+    // Someone who has gone home (or left) can no longer be dressed here.
+    if (this.wardrobeWho !== 'girl' && this.wardrobeWho !== 'boy' && !family.some((f) => f.id === this.wardrobeWho)) this.wardrobeWho = 'girl';
+    const who = this.wardrobeWho, hero = who === 'girl' || who === 'boy';
+    const kin = hero ? null : family.find((f) => f.id === who)!;
+    const worn = hero ? OUTFITS[st.outfits[who as 'girl' | 'boy']] : outfitOf(st, who);
     const top = h('div', { class: 'sheet-row' },
       h('div', { class: 'seg', role: 'tablist' },
         btn(`${st.names.girl}`, () => { this.wardrobeWho = 'girl'; this.render(); }, who === 'girl' ? 'on' : ''),
-        btn(`${st.names.boy}`, () => { this.wardrobeWho = 'boy'; this.render(); }, who === 'boy' ? 'on' : '')),
+        btn(`${st.names.boy}`, () => { this.wardrobeWho = 'boy'; this.render(); }, who === 'boy' ? 'on' : ''),
+        ...family.map((f) => btn(`${f.kind === 'child' ? '🧒 ' : ''}${f.name}`, () => { this.wardrobeWho = f.id; this.render(); }, who === f.id ? 'on' : ''))),
       worn ? h('div', { class: 'worn' }, h('b', {}, worn.name), h('small', {}, worn.culture), worn.merged.length ? h('small', { class: 'merged' }, `+ ${worn.merged.join(', ')}`) : null) : null,
     );
     const search = h('input', { type: 'search', placeholder: 'Search outfits', 'aria-label': 'Search outfits', value: this.wardrobeQuery }) as HTMLInputElement;
@@ -692,12 +700,13 @@ export class UI {
     const shelf = h('div', { class: 'shelf', role: 'list' });
     const fill = () => {
       const q = this.wardrobeQuery.trim().toLowerCase();
-      const list = outfitsFor(who).filter((o) => (this.wardrobeGroup === 'all' || dressGroup(o) === this.wardrobeGroup)
+      const pool = kin ? choicesFor(kin) : outfitsFor(who as 'girl' | 'boy');
+      const list = pool.filter((o) => (this.wardrobeGroup === 'all' || dressGroup(o) === this.wardrobeGroup)
         && (!q || `${o.name} ${o.culture}`.toLowerCase().includes(q)));
       shelf.replaceChildren(...list.map((o) => {
-        const on = st.outfits[who] === o.id;
+        const on = worn?.id === o.id;
         const card = h('button', { class: `outfit ${on ? 'on' : ''}`, type: 'button', role: 'listitem', title: o.note ?? o.name }, swatch(o), h('b', {}, o.name), h('small', {}, o.culture));
-        card.addEventListener('click', () => { this.g.wear(who, o.id); this.render(); });
+        card.addEventListener('click', () => { if (kin) this.g.dressCompanion(kin.id, o.id); else this.g.wear(who as 'girl' | 'boy', o.id); this.render(); });
         return card;
       }));
       if (!list.length) shelf.append(h('p', { class: 'dim' }, 'Nothing matches. Try another shelf.'));
