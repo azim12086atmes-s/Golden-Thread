@@ -136,6 +136,8 @@ sections C1–C7) and `3D_BUILDS_HANDOFF.md` (3D work, sections 2a and 3.x). Tic
 - [x] Wildlife lives its day: grazing and pecking, herds keeping together, day animals resting at night and night animals out, befriended animals coming to greet the travellers (`animals/behaviour.ts`)
 - [x] Seasons (a week each; autumn gold and winter frost on the temperate lands' leaves) and the weather of the day per land: showers with falling rain, snow flurries, sandstorms, morning fog; the clock shows both (`world/seasons.ts`, `Weather.ts`)
 - [x] Performance: a dragon out of view is not re-bent each frame, a far one every third frame (`Dragons.ts`)
+- [x] Build any house from the game on your land (owner): a catalogue of every land's house kinds (about 80), built as a shell (level 1) and improved to finished, a garden, and lit for the evening; storeys on top as before; rooms inside shaped like the house (`housing/designs.ts`, the "Build a house" panel)
+- [x] The grandmother is Syeda Sarvatara, who calls Fathima "Shumaela" (owner); landing together fixed — the Light Fury glides down to rest beside the Night Dragon
 - [ ] Houses in the remaining lands, rendered one land at a time
 - [ ] Performance: a fixed light pool, merged people meshes, land builds sliced over frames
 - [ ] Energy and machines (the owner: "we will come to this")
