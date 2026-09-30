@@ -61,6 +61,8 @@ export interface DragonSpec {
   build?: 'cat';
   /** A twin tail's left fin is a prosthetic of leather and steel, this colour (the Night Dragon's red). */
   prosthetic?: string;
+  /** The soft light round its silhouette (by default its rim colour, or a pale tint of its flank when that is dark). */
+  aura?: string;
 }
 
 // ───── the body's girth along its length (s: 0 at the neck … 1 at the tail tip) ─────
@@ -693,6 +695,41 @@ function buildWing(d: DragonSpec, sx: number, share = 1): Wing {
 
 // ───── the dragon ─────
 
+/**
+ * Night, shared by every dragon (0 by day … 1 at night; the game sets it from the sky). Each
+ * dragon's body carries a soft light round its silhouette, its aura — faint by day, so a dark
+ * dragon still reads against the sky and the monument it circles, and brighter at night, when the
+ * Night Dragon's edges glow his plasma blue and the Light Fury's shimmer pearl and lilac (owner,
+ * 2026-09-30: "make the dragons better and easy to see near the monuments").
+ */
+export const DRAGON_NIGHT = { value: 0 };
+
+/** The aura's colour: its own, else its rim colour, or a pale tint of its flank when the rim is dark. */
+export function auraOf(d: DragonSpec): THREE.Color {
+  if (d.aura) return new THREE.Color(d.aura);
+  const rim = new THREE.Color(d.rim), hsl = { h: 0, s: 0, l: 0 };
+  rim.getHSL(hsl);
+  return hsl.l > 0.45 ? rim : new THREE.Color(d.side).lerp(new THREE.Color('#ffffff'), 0.6);
+}
+
+/** Light the edges of a material that faces away from the eye (a Fresnel rim), by day and more by night. */
+function withAura(mat: THREE.MeshStandardMaterial, colour: THREE.Color, day = 0.22, night = 0.85): void {
+  mat.onBeforeCompile = (sh) => {
+    sh.uniforms.auraC = { value: colour };
+    sh.uniforms.auraNight = DRAGON_NIGHT;
+    sh.fragmentShader = sh.fragmentShader
+      .replace('#include <common>', `#include <common>
+uniform vec3 auraC;
+uniform float auraNight;`)
+      .replace('#include <emissivemap_fragment>', `#include <emissivemap_fragment>
+{
+  float rimF = 1.0 - abs(dot(normalize(normal), normalize(vViewPosition)));
+  totalEmissiveRadiance += auraC * pow(rimF, 2.6) * mix(${day.toFixed(3)}, ${night.toFixed(3)}, auraNight);
+}`);
+  };
+  mat.customProgramCacheKey = () => `dragon-aura-${day}-${night}`;
+}
+
 const SEG = 150, RAD = 14;
 
 export class DragonModel {
@@ -747,6 +784,9 @@ export class DragonModel {
     this.bitsLay = sb.lay; this.glowLay = gb.lay;
     this.bits = new THREE.Mesh(sb.geo, new THREE.MeshStandardMaterial({ vertexColors: true, roughness: 0.5, metalness: metal ? 0.6 : 0.2, emissive: d.emissive ?? '#201000', emissiveIntensity: 0.3, side: THREE.DoubleSide, transparent: !!d.translucent, opacity: d.translucent ? 0.85 : 1 }));
     this.glowBits = new THREE.Mesh(gb.geo, new THREE.MeshBasicMaterial({ vertexColors: true, toneMapped: false, side: THREE.DoubleSide }));
+    const aura = auraOf(d);
+    withAura(this.body.material as THREE.MeshStandardMaterial, aura);
+    withAura(this.bits.material as THREE.MeshStandardMaterial, aura, 0.12, 0.5);
 
     // Clear of the neck by a gap that shrinks with a small dragon (the big ones' half a metre).
     this.headAhead = buildHead(d, this.head) + 0.5 * Math.min(1, R0 / 1.3) + ANIMAL_HEAD_GAP * 4;
@@ -883,10 +923,11 @@ export function fly(dm: DragonModel, f: Flight, t: number): void {
 
 /**
  * Hold the dragon in its own frame, for a mount: the neck at (0, y, z0), the body straight back
- * along −z, only the tail (behind `still`) swaying from side to side; wings beat by `beat`.
+ * along −z, only the tail (behind `still`) swaying from side to side; wings beat by `beat`;
+ * `glance` turns the head (+ to its left) without bending the neck.
  * Forward is +z here, as for every vehicle.
  */
-export function perch(dm: DragonModel, t: number, y: number, z0: number, beat: number, still = 0.45, lift = 0, fold = 0, steer = 0, climb = 0): void {
+export function perch(dm: DragonModel, t: number, y: number, z0: number, beat: number, still = 0.45, lift = 0, fold = 0, steer = 0, climb = 0, glance = 0): void {
   const n = dm.samples, L = dm.spec.length, up = new THREE.Vector3(0, 1, 0);
   for (let i = 0; i < n; i++) {
     const s = i / (n - 1), k = Math.max(0, (s - still) / (1 - still));
@@ -896,8 +937,8 @@ export function perch(dm: DragonModel, t: number, y: number, z0: number, beat: n
     dm.P[i].set(Math.sin(t * 1.8 - s * 7) * k * k * L * 0.07 + steer * L * 0.09 * bend - steer * k * k * L * 0.06,
       y + arch + Math.sin(t * 1.3 - s * 5) * k * L * 0.015, z0 - s * L);
   }
-  // The head leads the turn and lifts to climb or dips to dive.
-  dm.look.yaw = steer * 0.35;
+  // The head leads the turn and lifts to climb or dips to dive; at rest it looks about (`glance`).
+  dm.look.yaw = steer * 0.35 + glance;
   dm.look.pitch = climb * 0.3;
   for (let i = 0; i < n; i++) {
     const a = dm.P[Math.max(0, i - 1)], b = dm.P[Math.min(n - 1, i + 1)];

@@ -125,6 +125,8 @@ export interface VehicleModel {
   /** Rebuild decor that is visible from outside (van). */
   /** [girl's mount, boy's mount] — each rides their own. */
   unicorns?: [Mount, Mount];
+  /** The Night Dragon, when this is him. */
+  dragon?: Dragon;
 }
 
 export function buildVehicle(id: VehicleId, van?: { lights: string; rug: string }): VehicleModel | null {
@@ -209,6 +211,7 @@ export function buildVehicle(id: VehicleId, van?: { lights: string; rug: string 
   return {
     root,
     unicorns,
+    dragon,
     update(dt, speed, t) {
       for (const s of spinners) s.rotation.z += dt * (8 + speed * 2);
       root.traverse((o) => { if (o.userData.wheel) o.rotation.x += (speed * dt) / 0.4; });

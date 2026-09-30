@@ -42,6 +42,11 @@ export class Travellers {
   private boyUnicorn: Mount | null = null;
   parkedVan: { model: VehicleModel; pos: THREE.Vector3; heading: number } | null = null;
   /**
+   * The Night Dragon where they landed and stepped down: he stays there, standing with his wings
+   * folded and looking about, until they ride him again (from close by) or go far away.
+   */
+  parkedDragon: { model: VehicleModel; pos: THREE.Vector3; heading: number } | null = null;
+  /**
    * Riding someone else's vehicle (the coach, the ferry, the air taxi; travel/Ride.ts): its body,
    * their two seats in its frame — separate seats either side of an aisle or a divider — and the
    * family's behind. While set they sit and ride.
@@ -109,6 +114,9 @@ export class Travellers {
       const at = this.gPos.clone();
       if (prev === 'van') {
         this.parkedVan = { model: this.vehicle, pos: at.clone(), heading: this.heading };
+      } else if (prev === 'dragon') {
+        this.dropParkedDragon();
+        this.parkedDragon = { model: this.vehicle, pos: at.clone(), heading: this.heading };
       } else {
         this.scene.remove(this.vehicle.root);
       }
@@ -136,7 +144,15 @@ export class Travellers {
         this.gPos.copy(this.parkedVan.pos);
         this.heading = this.parkedVan.heading;
         this.parkedVan = null;
+      } else if (id === 'dragon' && this.parkedDragon && this.parkedDragon.pos.distanceTo(this.gPos) < 40) {
+        // Back up into the saddles of the dragon who waited for them.
+        this.vehicle = this.parkedDragon.model;
+        if (this.vehicle.dragon) this.vehicle.dragon.gaze = 0;
+        this.gPos.copy(this.parkedDragon.pos);
+        this.heading = this.parkedDragon.heading;
+        this.parkedDragon = null;
       } else {
+        if (id === 'dragon') this.dropParkedDragon();
         if (id === 'van' && this.parkedVan) {
           this.scene.remove(this.parkedVan.model.root);
           this.parkedVan = null;
@@ -171,17 +187,26 @@ export class Travellers {
     }
   }
 
+  /** The waiting Night Dragon goes home (they rode off another way, or went far). */
+  private dropParkedDragon(): void {
+    if (!this.parkedDragon) return;
+    this.scene.remove(this.parkedDragon.model.root);
+    this.parkedDragon = null;
+  }
+
   teleport(x: number, z: number): void {
     // Travelling on lands you: the "land the plane first" rule is for the player, not the road.
     this.grounded = true;
     if (this.mode !== 'walk' && !this.mounted) this.setMode('walk');
+    this.dropParkedDragon();
     this.gPos.set(x, surfaceAt(x, z, 1e9), z);
     this.world.resolve(this.gPos, 0.5);
     this.bPos.set(x + 1.95, surfaceAt(x + 1.95, z, 1e9), z);
     // Safar comes along — it is how they travel.
     if (this.parkedVan) {
-      this.parkedVan.pos.set(x - 7, 0, z + 3);
-      this.parkedVan.pos.y = surfaceAt(this.parkedVan.pos.x, this.parkedVan.pos.z, 1e9);
+      const at = parkingNear(x - 7, z + 3, (px, pz) => { const q = new THREE.Vector3(px, 0, pz); this.world.resolve(q, 3.2); return Math.hypot(q.x - px, q.z - pz) < 0.05; });
+      this.parkedVan.pos.set(at.x, 0, at.z);
+      this.parkedVan.pos.y = surfaceAt(at.x, at.z, 1e9);
     }
     this.camInit = false;
   }
@@ -438,6 +463,15 @@ export class Travellers {
       this.parkedVan.model.root.position.copy(this.parkedVan.pos);
       this.parkedVan.model.root.rotation.set(0, this.parkedVan.heading, 0);
     }
+    const pd = this.parkedDragon;
+    if (pd) {
+      if (pd.pos.distanceTo(this.gPos) > 300) this.dropParkedDragon();
+      else {
+        pd.model.root.position.copy(pd.pos);
+        pd.model.root.rotation.set(0, pd.heading, 0);
+        pd.model.update(dt, 0, t);
+      }
+    }
 
     const flying = this.mode === 'fly' || (!this.grounded && !riding);
     this.girl.update(dt, { speed: this.currentSpeed, airborne: flying, riding, t });
@@ -521,3 +555,26 @@ function turnToward(a: number, b: number, k: number): number {
   while (d < -Math.PI) d += Math.PI * 2;
   return a + d * Math.min(1, k);
 }
+
+/**
+ * Where Safar parks when they arrive somewhere: the spot asked for if it is dry ground, else the
+ * nearest dry, open ground round it (never on the sea, a river, or a pier over the water; bugs
+ * seen 2026-09-27). `clear` says whether a spot is free of buildings.
+ */
+export function parkingNear(x: number, z: number, clear: (x: number, z: number) => boolean = () => true): { x: number; z: number } {
+  const dry = (px: number, pz: number) => {
+    // Its whole length on land: the middle and both ends a few metres out.
+    for (const [dx, dz] of [[0, 0], [3.5, 0], [-3.5, 0], [0, 3.5], [0, -3.5]]) if (terrainHeight(px + dx, pz + dz) < WATER_Y + 0.4) return false;
+    return clear(px, pz);
+  };
+  if (dry(x, z)) return { x, z };
+  for (let r = 4; r <= 160; r += 4) {
+    const n = Math.max(8, Math.round(r * 0.8));
+    for (let i = 0; i < n; i++) {
+      const a = (i / n) * Math.PI * 2, px = x + Math.cos(a) * r, pz = z + Math.sin(a) * r;
+      if (dry(px, pz)) return { x: px, z: pz };
+    }
+  }
+  return { x, z };
+}
+

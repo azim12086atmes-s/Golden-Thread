@@ -29,6 +29,12 @@ export interface DragonHome {
   dives?: 'sand' | 'sea';
   /** Several that fly together (the little meadow dragons), each on its own wider, higher circle. */
   flock?: number;
+  /**
+   * How far the circle swings in and out (1: by about a quarter of its radius). The dragons that
+   * circle close round their monument keep a steadier circle (0.35), threading between the monument
+   * and the town round it (owner, 2026-09-30: "easy to see near the monuments").
+   */
+  wobble?: number;
 }
 
 const lung = (o: Partial<DragonSpec> & Pick<DragonSpec, 'id' | 'name' | 'back' | 'side' | 'belly' | 'rim' | 'crest' | 'mane' | 'claw' | 'horn'>): DragonSpec =>
@@ -36,31 +42,31 @@ const lung = (o: Partial<DragonSpec> & Pick<DragonSpec, 'id' | 'name' | 'back' |
 
 export const DRAGON_HOMES: DragonHome[] = [
   {
-    land: 'china', at: [0, 0], radius: 34, alt: 30, bob: 12, speed: 11,
+    land: 'china', at: [0, 0], radius: 34, alt: 34, bob: 12, speed: 11,
     spec: lung({ id: 'jade-lung', name: 'the great dragon of the Jade Terraces', length: 72, girth: 2.1, claws: 5,
       back: '#8e1010', side: '#c81e1e', belly: '#f7dc8a', rim: '#ffd25a', crest: ['#ff7a2a', '#f2c24a'], mane: ['#2fae6a', '#f2c24a', '#ff7a2a'],
       claw: '#f2c24a', horn: '#f2c24a', pearl: '#fff4c8', emissive: '#5a0a0a' }),
   },
   {
-    land: 'china', at: [0, 0], radius: 170, alt: 70, bob: 8, speed: 10,
+    land: 'china', at: [0, 0], radius: 105, alt: 36, bob: 8, speed: 10, wobble: 0.35,
     spec: lung({ id: 'festival-dragon', name: 'the festival dragon', length: 40, girth: 1.3, claws: 5, scales: 'silk',
       back: '#b81e1e', side: '#e8342a', belly: '#ffd23a', rim: '#ffd23a', crest: ['#ffd23a', '#2fae6a'], mane: ['#ffd23a', '#2fae6a', '#ffffff'],
       claw: '#ffd23a', horn: '#ffd23a', pearl: '#ffe6a0', emissive: '#6a1a08' }),
   },
   {
-    land: 'meadow', at: [0, 0], radius: 150, alt: 60, bob: 6, speed: 12, flock: 3,
+    land: 'meadow', at: [0, 0], radius: 45, alt: 37, bob: 5, speed: 9, flock: 3, wobble: 0.35,
     spec: { id: 'little-dragon', name: 'the little dragons of the Meadow', plan: 'wyrm', length: 5, girth: 0.38, head: 'lung', crestKind: 'fins', tail: 'frond', scales: 'shingle', claws: 3,
       back: '#3a9a78', side: '#5ac8a0', belly: '#fff0b8', rim: '#bff4dc', crest: ['#ffd23a', '#8affc8'], mane: ['#ffd23a', '#fff0b8'], claw: '#fff0b8', horn: '#ffd23a',
       wings: { span: 6.5, membrane: '#8affc8', bone: '#3a9a78' } },
   },
   {
-    land: 'japan', at: [0, 0], radius: 70, alt: 60, bob: 10, speed: 10,
+    land: 'japan', at: [0, 0], radius: 50, alt: 31, bob: 9, speed: 10, wobble: 0.35,
     spec: lung({ id: 'sakura-ryu', name: 'the ryū of Sakura Hollow', length: 48, girth: 1.5, claws: 3, tail: 'frond',
       back: '#1f5a5a', side: '#2f8a7a', belly: '#ece4cc', rim: '#bfe8d8', crest: ['#e8f4f0', '#9fd4c8'], mane: ['#ffffff', '#e8f4f0', '#9fd4c8'],
       claw: '#ece4cc', horn: '#ece4cc', pearl: '#dff4ff' }),
   },
   {
-    land: 'korea', at: [0, 0], radius: 75, alt: 55, bob: 9, speed: 10,
+    land: 'korea', at: [0, 0], radius: 55, alt: 27, bob: 8, speed: 10, wobble: 0.35,
     spec: lung({ id: 'hanok-yong', name: 'the azure yong of Hanok Village', length: 52, girth: 1.6, claws: 4,
       back: '#1f3f8a', side: '#2f5fb8', belly: '#f4f0e0', rim: '#e8f0ff', crest: ['#ffffff', '#8fb8ff'], mane: ['#ffffff', '#2fae8a'],
       claw: '#f2c24a', horn: '#f2c24a', pearl: '#8affd0' }),
@@ -72,31 +78,31 @@ export const DRAGON_HOMES: DragonHome[] = [
       claw: '#fff4c0', horn: '#fff4c0', pearl: '#fff4c0', runes: '#fff4c0', emissive: '#6a5a8a', translucent: true }),
   },
   {
-    land: 'aurora', at: [0, 0], radius: 110, alt: 70, bob: 8, speed: 14,
+    land: 'aurora', at: [0, 0], radius: 55, alt: 34, bob: 7, speed: 12, wobble: 0.35,
     spec: { id: 'frost-wyrm', name: 'the frost wyrm of Aurora Huts', plan: 'wyrm', length: 26, girth: 1.65, head: 'frost', crestKind: 'crystal', tail: 'crystal', scales: 'shingle',
       back: '#bcd8ea', side: '#e8f4fa', belly: '#ffffff', rim: '#9fd0ff', crest: ['#bfe8ff', '#8affc8'], mane: ['#e8f4fa'], claw: '#9fd0ff', horn: '#bfe8ff',
       wings: { span: 28, membrane: '#d8ecf8', bone: '#e8f4fa' }, runes: '#8affc8' },
   },
   {
-    land: 'switzerland', at: [0, 0], radius: 130, alt: 90, bob: 12, speed: 13,
+    land: 'switzerland', at: [0, 0], radius: 45, alt: 51, bob: 8, speed: 11, wobble: 0.35,
     spec: { id: 'alpine-drake', name: 'the mountain drake of Alpenrose', plan: 'wyrm', length: 24, girth: 1.55, head: 'drake', crestKind: 'spines', tail: 'spade', scales: 'shingle',
       back: '#4a5058', side: '#6a7078', belly: '#b8b09a', rim: '#8a9a6a', crest: ['#5a6a4a', '#8a9a6a'], mane: ['#5a6a4a'], claw: '#d8d0c0', horn: '#d8d0c0',
       wings: { span: 28, membrane: '#5a6068', bone: '#4a5058' } },
   },
   {
-    land: 'london', at: [0, 0], radius: 120, alt: 140, bob: 8, speed: 13,
+    land: 'london', at: [0, 0], radius: 75, alt: 47, bob: 7, speed: 12, wobble: 0.35,
     spec: { id: 'red-wyvern', name: 'the red wyvern of Old London', plan: 'wyvern', length: 20, girth: 1.3, head: 'drake', crestKind: 'spines', tail: 'spade', scales: 'shingle',
       back: '#8e1a1a', side: '#c8282a', belly: '#f2c24a', rim: '#f2c24a', crest: ['#f2c24a', '#c8282a'], mane: ['#8e1a1a'], claw: '#f2c24a', horn: '#f2c24a',
       wings: { span: 24, membrane: '#b82428', bone: '#8e1a1a' } },
   },
   {
-    land: 'renaissance', at: [0, 0], radius: 115, alt: 120, bob: 8, speed: 11,
+    land: 'renaissance', at: [0, 0], radius: 85, alt: 51, bob: 8, speed: 11, wobble: 0.35,
     spec: { id: 'clockwork-dragon', name: "Leonardo's clockwork dragon", plan: 'wyrm', length: 22, girth: 1.35, head: 'brass', crestKind: 'plates', tail: 'fins', scales: 'plate',
       back: '#a8782a', side: '#c8963a', belly: '#8a5a2a', rim: '#f2d27a', crest: ['#8a5a2a', '#c8963a'], mane: ['#8a5a2a'], claw: '#6a4a2a', horn: '#c8963a',
       wings: { span: 26, membrane: '#efe4c8', bone: '#6a4a2a', panels: true } },
   },
   {
-    land: 'newyork', at: [0, 0], radius: 190, alt: 230, bob: 10, speed: 16,
+    land: 'newyork', at: [0, 0], radius: 80, alt: 133, bob: 8, speed: 14, wobble: 0.35,
     spec: { id: 'drone-dragon', name: 'the drone dragon of New Yonder', plan: 'wyvern', length: 22, girth: 1.3, head: 'mech', crestKind: 'plates', tail: 'fins', scales: 'hex',
       back: '#d8dce4', side: '#eef0f4', belly: '#9aa0aa', rim: '#5af0ff', crest: ['#3a3e4a', '#c8ccd4'], mane: ['#3a3e4a'], claw: '#3a3e4a', horn: '#3a3e4a',
       wings: { span: 24, membrane: '#c8ccd4', bone: '#3a3e4a', panels: true }, runes: '#5af0ff' },
@@ -127,11 +133,11 @@ export function homeCentre(h: DragonHome): { x: number; z: number } {
 /** A dragon's flight round its home. */
 export function flightOf(h: DragonHome, member = 0): Flight {
   const c = homeCentre(h), g0 = terrainHeight(c.x, c.z), R = h.radius * (1 + member * 0.07), alt = h.alt + member * 5;
-  const winged = !!h.spec.wings;
+  const winged = !!h.spec.wings, wob = h.wobble ?? 1;
   return {
     scale: R, speed: h.speed, ripple: winged ? 0.25 : 1,
     path(phi, out) {
-      const r = R + R * 0.18 * Math.sin(phi * 0.5) + R * 0.08 * Math.sin(phi * 1.7);
+      const r = R + R * wob * (0.18 * Math.sin(phi * 0.5) + 0.08 * Math.sin(phi * 1.7));
       const x = c.x + Math.cos(phi) * r, z = c.z + Math.sin(phi) * r;
       let y: number;
       if (h.dives === 'sand') y = terrainHeight(x, z) + Math.sin(phi * 3) * h.bob - 3;

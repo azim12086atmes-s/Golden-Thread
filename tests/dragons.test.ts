@@ -1,9 +1,12 @@
 import * as THREE from 'three';
 import { describe, expect, it } from 'vitest';
 import { isAllowedPart } from '../src/characters/anatomy';
-import { DragonModel, fly } from '../src/creatures/dragonKit';
+import { Rng } from '../src/core/rng';
+import { DragonModel, auraOf, fly } from '../src/creatures/dragonKit';
 import { DRAGON_HOMES, flightOf, homeCentre } from '../src/creatures/Dragons';
 import { CHILD_SADDLES, DRAGON_SADDLES, DRAGON_SCALE, Dragon, LIGHT_DRAGON, NIGHT_DRAGON } from '../src/event/Dragon';
+import { buildLandmark } from '../src/world/architecture';
+import { GeoBuilder } from '../src/world/kit';
 import { buildRegion } from '../src/world/RegionBuilder';
 import { REGION_BY_ID, regionCenter } from '../src/world/regions';
 import { WATER_Y, terrainHeight } from '../src/world/terrain';
@@ -51,20 +54,59 @@ describe('the dragon kit and every land\'s dragon', () => {
     expect(Math.max(s.x, s.z)).toBeGreaterThan(30);
   });
 
-  it('flies clear over every house, tower and landmark of its land', () => {
+  it('flies clear over every house, tower and landmark of its land, and clear round its monument, wings and all', () => {
+    const lands = new Map<string, { cols: Array<{ x: number; z: number; r: number; h: number }>; cells: Array<{ x: number; z: number; y: number }> }>();
     for (const h of DRAGON_HOMES) {
       if (h.dives) continue;
-      const inst = buildRegion(REGION_BY_ID[h.land], solid, glow), f = flightOf(h), g = h.spec.girth;
+      let L = lands.get(h.land);
+      if (!L) {
+        // The town's colliders, and the monument as built (its spires and roofs, in 4 m cells).
+        const r = REGION_BY_ID[h.land], c = regionCenter(r), inst = buildRegion(r, solid, glow);
+        const g = new GeoBuilder(), gl = new GeoBuilder(), w = new GeoBuilder();
+        g.cards = [];
+        buildLandmark({ g, glow: gl, water: w, rng: new Rng(`landmark:${h.land}`), s: r });
+        const cells = new Map<string, { x: number; z: number; y: number }>();
+        for (const m of [g.build(solid), gl.build(glow)]) {
+          if (!m) continue;
+          const p = m.geometry.getAttribute('position');
+          for (let i = 0; i < p.count; i++) {
+            const x = Math.floor((p.getX(i) + c.x) / 4) * 4 + 2, z = Math.floor((p.getZ(i) + c.z) / 4) * 4 + 2, k = `${x},${z}`;
+            const q = cells.get(k);
+            if (!q) cells.set(k, { x, z, y: p.getY(i) }); else q.y = Math.max(q.y, p.getY(i));
+          }
+        }
+        L = { cols: inst.colliders, cells: [...cells.values()] };
+        lands.set(h.land, L);
+      }
+      // Clear by its girth, and by half its span where it has wings (and they dip as it banks).
+      const g = h.spec.girth, half = h.spec.wings ? h.spec.wings.span / 2 : 0, side = Math.max(g * 3, half) + 6, over = g * 3 + 3 + half * 0.5;
       const p = new THREE.Vector3();
-      for (let phi = 0; phi < Math.PI * 4; phi += 0.05) {
-        f.path(phi, p);
-        expect(p.y - terrainHeight(p.x, p.z), `${h.spec.id} over the ground`).toBeGreaterThan(g * 3 + 4);
-        for (const col of inst.colliders) {
-          if (Math.hypot(p.x - col.x, p.z - col.z) < col.r + g * 3 + 6) expect(p.y, `${h.spec.id} over a building`).toBeGreaterThan(col.h + g * 3 + 3);
+      for (let k = 0; k < (h.flock ?? 1); k++) {
+        const f = flightOf(h, k);
+        for (let phi = 0; phi < Math.PI * 4; phi += 0.05) {
+          f.path(phi, p);
+          expect(p.y - terrainHeight(p.x, p.z), `${h.spec.id} over the ground`).toBeGreaterThan(g * 3 + 4);
+          for (const col of L.cols) {
+            if (Math.hypot(p.x - col.x, p.z - col.z) < col.r + side) expect(p.y, `${h.spec.id} over a building`).toBeGreaterThan(col.h + over);
+          }
+          for (const q of L.cells) {
+            if (Math.abs(p.x - q.x) < side + 3 && Math.abs(p.z - q.z) < side + 3 && Math.hypot(p.x - q.x, p.z - q.z) < side + 3) expect(p.y, `${h.spec.id} round its monument`).toBeGreaterThan(q.y + over);
+          }
         }
       }
     }
-  }, 300_000);
+  }, 600_000);
+
+  it('the dragons circle close enough to their monuments to be seen from the town square', () => {
+    for (const h of DRAGON_HOMES) {
+      if (h.dives || h.spec.id === 'cloud-dragon') continue;
+      const c = homeCentre(h), f = flightOf(h), p = new THREE.Vector3();
+      let far = 0;
+      for (let phi = 0; phi < Math.PI * 2; phi += 0.1) { f.path(phi, p); far = Math.max(far, Math.hypot(p.x - c.x, p.z - c.z, p.y - terrainHeight(c.x, c.z))); }
+      // From the square (about 55 m out) no dragon is ever more than a short flight away.
+      expect(far, h.spec.id).toBeLessThan(170);
+    }
+  });
 
   it('the sand wyrm arcs in and out of the dunes; the sea naga keeps to deep water', () => {
     const p = new THREE.Vector3();
@@ -137,6 +179,29 @@ describe('the dragon kit and every land\'s dragon', () => {
     for (let k = 0; k < 40; k++) { r.root.rotation.set(0, k * 0.03, 0); r.update(1 / 60, 20, k / 60); }
     expect(r.model.look.yaw).toBeGreaterThan(0.1);
     expect(r.model.P[0].x).toBeGreaterThan(0.1);
+  });
+
+  it('every dragon carries a soft aura round its silhouette, pale enough to read against the sky', () => {
+    const hsl = { h: 0, s: 0, l: 0 };
+    for (const spec of [...DRAGON_HOMES.map((h) => h.spec), NIGHT_DRAGON, LIGHT_DRAGON]) {
+      auraOf(spec).getHSL(hsl);
+      expect(hsl.l, spec.id).toBeGreaterThan(0.4);
+      const d = new DragonModel(spec);
+      expect(typeof (d.body.material as THREE.Material).onBeforeCompile, spec.id).toBe('function');
+    }
+    // The Night Dragon glows his plasma blue at night.
+    const c = auraOf(NIGHT_DRAGON);
+    expect(c.b).toBeGreaterThan(c.r * 2);
+  });
+
+  it('resting, a ridden dragon looks about and turns its head to what it watches', () => {
+    const d = new Dragon(DRAGON_SCALE, true, true);
+    d.gaze = 0.6;
+    for (let i = 0; i < 120; i++) d.update(1 / 30, 0, i / 30);
+    expect(d.model.look.yaw).toBeGreaterThan(0.2);
+    // Flying, the head only leads the turns.
+    for (let i = 0; i < 120; i++) d.update(1 / 30, 25, 4 + i / 30);
+    expect(Math.abs(d.model.look.yaw)).toBeLessThan(0.1);
   });
 
   it('the Night Dragon folds its wings at rest and opens them to fly', () => {

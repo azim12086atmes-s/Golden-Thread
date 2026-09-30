@@ -60,6 +60,7 @@ import { tickInventions } from './economy/inventions';
 import { befriend, befriendMet } from './social/friends';
 import { tickHomes } from './economy/storage';
 import { Dragons } from './creatures/Dragons';
+import { DRAGON_NIGHT } from './creatures/dragonKit';
 import { keepInTouch, tickLearning } from './charity/upskill';
 import { carryNews } from './economy/economy';
 import { expireErrands } from './npc/folk';
@@ -430,6 +431,7 @@ export class Game {
     FOLIAGE_UNIFORMS.uSunDir.value.copy(this.sky.sunDirection);
     FOLIAGE_UNIFORMS.uLeafNight.value = this.sky.night;
     setVehicleNight(this.sky.night);
+    DRAGON_NIGHT.value = this.sky.night;
     this.world.setWaterLook(this.t, this.sky.night, this.region.id, this.sky.sunDirection);
     this.world.update(this.trav.gPos, this.sky.night);
     // Lamplight: the nearest lamps light the ground and walls round them after dusk (a few times a second).

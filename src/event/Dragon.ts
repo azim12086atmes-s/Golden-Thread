@@ -25,7 +25,7 @@ export const NIGHT_DRAGON: DragonSpec = {
   back: '#1a1b23', side: '#22232d', belly: '#2c2e3a', rim: '#2e3244',
   crest: ['#111218', '#1a1b24'], mane: ['#111218'], claw: '#7a7e8c', horn: '#17181f',
   wings: { span: 10.4, membrane: '#15161e', bone: '#1c1d26', hind: 0.4 },
-  runes: '#7affe0', stars: ['#9ad8ff', '#ffd6f0', '#b99bff'], prosthetic: '#a3202a',
+  runes: '#7affe0', stars: ['#9ad8ff', '#ffd6f0', '#b99bff'], prosthetic: '#a3202a', aura: '#3f9cff',
 };
 
 /**
@@ -41,7 +41,7 @@ export const LIGHT_DRAGON: DragonSpec = {
   head: 'light', crestKind: 'none', tail: 'heart', scales: 'smooth',
   back: '#eceff6', side: '#f3f4f9', belly: '#e6e8f1', rim: '#c9bfe6',
   crest: ['#eef0f7', '#e6eaf4'], mane: ['#eef0f7'], claw: '#b4b8c8', horn: '#eceff6',
-  wings: { span: 11.4, membrane: '#f4f6fb', bone: '#e2e6f0', hind: 0.3, ribs: 3 },
+  wings: { span: 11.4, membrane: '#f4f6fb', bone: '#e2e6f0', hind: 0.3, ribs: 3 }, aura: '#cfc2ff',
 };
 
 /** Where the body sits under the saddles: the neck's height and how far forward it starts. */
@@ -61,6 +61,12 @@ export class Dragon {
   private steer = 0;
   private climb = 0;
   private lastYaw: number | null = null;
+  /**
+   * Where it looks while resting on the ground (radians, + to its left; the Light Fury turns to
+   * him), besides looking gently about. Riding, the head only leads the turns.
+   */
+  gaze = 0;
+  private gazeNow = 0;
   private lastY = 0;
   private euler = new THREE.Euler();
   /** Glitter breath: particles blown from the head. */
@@ -157,7 +163,11 @@ export class Dragon {
       this.climb += (THREE.MathUtils.clamp((y - this.lastY) / dt / 10, -1, 1) - this.climb) * k;
     }
     this.lastYaw = yaw; this.lastY = y;
-    perch(this.model, t, BODY_Y, NECK_Z, (speed > 8 ? 0.05 : 0.3) + Math.sin(this.phase) * amp, 0.45, 0.55 - 0.3 * (1 - this.fold), this.fold, this.steer, this.climb);
+    // Resting (wings folded), it looks about now and then, and towards whatever it is watching.
+    const rest = THREE.MathUtils.smoothstep(this.fold, 0.6, 1);
+    const about = Math.sin(t * 0.31 + this.model.spec.length) * 0.45 + Math.sin(t * 0.83) * 0.15;
+    this.gazeNow += (THREE.MathUtils.clamp(this.gaze + about * (this.gaze ? 0.4 : 1), -0.8, 0.8) * rest - this.gazeNow) * Math.min(1, dt * 1.5);
+    perch(this.model, t, BODY_Y, NECK_Z, (speed > 8 ? 0.05 : 0.3) + Math.sin(this.phase) * amp, 0.45, 0.55 - 0.3 * (1 - this.fold), this.fold, this.steer, this.climb, this.gazeNow);
     this.model.head.rotateX(Math.sin(t * 1.3) * 0.08);
   }
 

@@ -141,6 +141,26 @@ describe('flying with the Light Fury', () => {
       }
     }
   });
+
+  it('she plays as they fly — drifting out and back, rising and dipping — but never nearer him than her place', async () => {
+    const { dragonEscort, lightPlay, LIGHT_PLAY, NIGHT_HALF_SPAN, LIGHT_HALF_SPAN } = await import('../src/caravan/caravan');
+    let widest = 0;
+    for (let k = 0; k < 12; k++) {
+      const heading = k * 0.53, girl = { x: 10, y: 50, z: -4 };
+      const rx = Math.cos(heading), rz = -Math.sin(heading), fx = Math.sin(heading), fz = Math.cos(heading);
+      const boy = { x: girl.x + fx * 1.4, z: girl.z + fz * 1.4 };
+      const e = dragonEscort(girl, boy, heading), base = Math.abs((e.light.x - girl.x) * rx + (e.light.z - girl.z) * rz);
+      for (let t = 0; t < 40; t += 0.25) {
+        const p = lightPlay(t, heading, e.side);
+        const lateral = Math.abs((e.light.x + p.x - girl.x) * rx + (e.light.z + p.z - girl.z) * rz);
+        expect(lateral).toBeGreaterThanOrEqual(base - 1e-9);
+        expect(lateral - base).toBeLessThanOrEqual(LIGHT_PLAY + 1e-9);
+        expect(lateral).toBeGreaterThan(NIGHT_HALF_SPAN + LIGHT_HALF_SPAN + 1.5);
+        widest = Math.max(widest, lateral - base);
+      }
+    }
+    expect(widest).toBeGreaterThan(LIGHT_PLAY * 0.9);
+  });
 });
 
 describe('meeting the pets', () => {

@@ -266,6 +266,20 @@ export function dragonEscort(girl: { x: number; y: number; z: number }, boy: P2,
   return { light, carpet: { x: light.x - fx * PET_CARPET_BACK, y: light.y, z: light.z - fz * PET_CARPET_BACK }, side: light.side };
 }
 
+/** How far out she drifts at most as she plays beside them (m), always away from him. */
+export const LIGHT_PLAY = 2.2;
+
+/**
+ * The Light Fury at play as they fly (owner, 2026-09-30: "the two dragons playing"): she drifts
+ * out from him and back, rises and dips, and leans into each swing. `side` is the side she flies
+ * on (+1 her right, from dragonEscort); the drift is only ever outward, so her wings never come
+ * nearer his than her place beside them.
+ */
+export function lightPlay(t: number, heading: number, side: number): { x: number; y: number; z: number; roll: number } {
+  const rx = Math.cos(heading), rz = -Math.sin(heading), out = (1 - Math.cos(t * 0.33)) * (LIGHT_PLAY / 2);
+  return { x: rx * side * out, y: Math.sin(t * 0.47) * 0.9, z: rz * side * out, roll: -side * Math.sin(t * 0.33) * 0.12 };
+}
+
 /**
  * Where the carpet should be: beside her on the side away from him, a little behind, a little
  * below. `heading` is her facing (0 = +Z). Returns world x/z/y and its facing.
