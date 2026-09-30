@@ -299,7 +299,7 @@ export class CaravanView {
 
   /**
    * Where the Light Fury rests once they have landed: a wingspan and a half beside the Night
-   * Dragon, facing the way he faces, on the side away from the two of them. Null when he is not
+   * Dragon, facing the way he faces, on the side she flew on (away from the two). Null when he is not
    * waiting (they came down another way).
    */
   private restSpot(): { x: number; z: number; heading: number } | null {
@@ -307,7 +307,10 @@ export class CaravanView {
     const at = tr.parkedDragon ?? (tr.mode === 'dragon' ? { pos: tr.gPos, heading: tr.heading } : null);
     if (!at) return null;
     const rx = Math.cos(at.heading), rz = -Math.sin(at.heading);
-    const side = (tr.gPos.x - at.pos.x) * rx + (tr.gPos.z - at.pos.z) * rz > 0 ? -1 : 1;
+    // On the side she is already on (she flew on the side away from the two), never across his back.
+    const L = this.light?.root.position, ref = L ?? tr.gPos;
+    const off = (ref.x - at.pos.x) * rx + (ref.z - at.pos.z) * rz;
+    const side = L ? (off >= 0 ? 1 : -1) : off > 0 ? -1 : 1;
     return { x: at.pos.x + rx * side * LIGHT_REST_SIDE, z: at.pos.z + rz * side * LIGHT_REST_SIDE, heading: at.heading };
   }
 
