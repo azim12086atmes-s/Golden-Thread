@@ -62,6 +62,8 @@ export const HOUSE_SHAPE: Record<string, RoomShape> = {
 };
 /** What each kind of house is called at its door. */
 export const HOUSE_NAME: Record<string, string> = {
+  fairykeep: 'a fairy keep', fairytower: 'a fairy tower', storycottage: 'a storybook cottage', toadstool: 'a toadstool house', wizardtower: "a wizard's tower",
+  decotower: 'an art-deco tower', glasstower: 'a glass tower', twisttower: 'a twisting tower', zigzagtower: 'a zig-zag tower', rosetower: 'a desert-rose tower', brownstone: 'a brownstone', loft: 'a cast-iron loft',
   penthouse: 'a penthouse', igloo: 'an igloo', glassigloo: 'a glass igloo', lavvu: 'a lavvu', goahti: 'a goahti', roundtent: 'a round tent', bedouintent: 'a Bedouin tent',
   logcabin: 'a log cabin', glasscabin: 'a glass cabin', rorbu: 'a rorbu', bryggen: 'a Bryggen house', sorlandet: 'a Sørlandet house',
   chalet: 'a chalet', engadin: 'an Engadin house', bernese: 'a Bernese farmhouse', mews: 'a mews cottage', georgian: 'a terraced house',

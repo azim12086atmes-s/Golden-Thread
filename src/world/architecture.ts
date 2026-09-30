@@ -86,11 +86,11 @@ const houses: Partial<Record<RegionId, HouseFn>> = {
   meadow(c) {
     // Wanderers' Meadow: a storybook land. Five kinds of fantasy house.
     const k = c.rng.next();
-    if (k < 0.18) return fairyKeep(c);
-    if (k < 0.4) return fairyTower(c);
-    if (k < 0.7) return storyCottage(c);
-    if (k < 0.85) return toadstool(c);
-    return wizardTower(c);
+    if (k < 0.18) return { ...fairyKeep(c), kind: 'fairykeep' };
+    if (k < 0.4) return { ...fairyTower(c), kind: 'fairytower' };
+    if (k < 0.7) return { ...storyCottage(c), kind: 'storycottage' };
+    if (k < 0.85) return { ...toadstool(c), kind: 'toadstool' };
+    return { ...wizardTower(c), kind: 'wizardtower' };
   },
 
   norway(c) {
@@ -116,13 +116,13 @@ const houses: Partial<Record<RegionId, HouseFn>> = {
     // real types, and the city's new forms (owner): towers that twist, zig-zag, or open like a
     // desert rose, each lit in its own neon pattern rather than in bands.
     const k = c.rng.next();
-    if (k < 0.22) return nyDecoTower(c);
-    if (k < 0.3) return nyTwistTower(c);
-    if (k < 0.5) return nyGlassTower(c);
-    if (k < 0.57) return nyZigzagTower(c);
-    if (k < 0.63) return nyRoseTower(c);
-    if (k < 0.82) return nyBrownstone(c);
-    return nyLoft(c);
+    if (k < 0.22) return { ...nyDecoTower(c), kind: 'decotower' };
+    if (k < 0.3) return { ...nyTwistTower(c), kind: 'twisttower' };
+    if (k < 0.5) { const fp = nyGlassTower(c); return { ...fp, kind: fp.kind ?? 'glasstower' }; }
+    if (k < 0.57) return { ...nyZigzagTower(c), kind: 'zigzagtower' };
+    if (k < 0.63) return { ...nyRoseTower(c), kind: 'rosetower' };
+    if (k < 0.82) return { ...nyBrownstone(c), kind: 'brownstone' };
+    return { ...nyLoft(c), kind: 'loft' };
   },
 
   renaissance(c) {
