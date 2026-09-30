@@ -7,6 +7,7 @@ import type { RegionInstance } from '../world/RegionBuilder';
 import { regionCenter } from '../world/regions';
 import { WATER_Y, surfaceAt } from '../world/terrain';
 import { AnimalModel, SPECIES, type SpeciesId, tintFor } from './AnimalModel';
+import { awake, greetSpot, herds, nextActivity, wanderTarget, type Activity } from './behaviour';
 
 export interface Animal {
   id: string;
@@ -19,6 +20,8 @@ export interface Animal {
   heading: number;
   speed: number;
   wait: number;
+  /** What it is doing now (behaviour.ts), and for how much longer. */
+  act: Activity;
   region: string;
   /** Kept on the travellers' land. */
   plotId?: string;
@@ -65,7 +68,7 @@ export class Animals {
     const home = new THREE.Vector3(x, surfaceAt(x, z, 1e9), z);
     model.root.position.copy(home);
     this.scene.add(model.root);
-    const a: Animal = { id, species, model, pos: home.clone(), home, range, target: home.clone(), heading: Math.random() * 6.28, speed: 0, wait: Math.random() * 3, region, plotId };
+    const a: Animal = { id, species, model, pos: home.clone(), home, range, target: home.clone(), heading: Math.random() * 6.28, speed: 0, wait: Math.random() * 3, act: 'rest', region, plotId };
     this.list.push(a);
     return a;
   }
@@ -91,35 +94,65 @@ export class Animals {
     }
   }
 
-  update(dt: number, t: number, player: THREE.Vector3): void {
+  /**
+   * Each animal near the travellers lives its day (behaviour.ts): wandering, grazing, resting —
+   * the day animals settling at night and the night animals coming out — herds drifting together,
+   * wild ones keeping a shy distance, and friends trotting over to greet them.
+   */
+  update(dt: number, t: number, player: THREE.Vector3, hour = 12): void {
+    // Where each herd is gathered (per land and species), for the herd animals to keep near.
+    const herdAt = new Map<string, { x: number; z: number; n: number }>();
     for (const a of this.list) {
-      if (a.pos.distanceTo(player) > 160) continue;
-      const friend = this.st.animals[a.id]?.befriended;
+      if (a.plotId || !herds(a.species)) continue;
+      const k = `${a.region}:${a.species}`, h = herdAt.get(k) ?? { x: 0, z: 0, n: 0 };
+      h.x += a.pos.x; h.z += a.pos.z; h.n++;
+      herdAt.set(k, h);
+    }
+    for (const a of this.list) {
       const near = a.pos.distanceTo(player);
+      if (near > 160) continue;
+      const friend = this.st.animals[a.id]?.befriended;
       a.wait -= dt;
-      // Wild animals keep a shy distance until befriended; friends come a little closer.
+      const greet = friend && awake(a.species, hour) ? greetSpot(a.pos, player) : null;
       if (!friend && near < 3.5 && !a.plotId) {
+        // Wild animals keep a shy distance until befriended.
         const away = a.pos.clone().sub(player).setY(0).normalize();
         a.target.copy(a.pos).addScaledVector(away, 4);
+        a.act = 'wander';
         a.wait = 1;
+      } else if (greet) {
+        a.act = 'greet';
+        a.target.set(greet.x, 0, greet.z);
+      } else if (a.act === 'greet') {
+        // Arrived: it stands with them a while, looking up at them.
+        a.act = 'rest';
+        a.wait = 4 + Math.random() * 4;
+      } else if (a.wait <= 0) {
+        const next = nextActivity(a.species, hour, Math.random);
+        a.act = next.act;
+        a.wait = next.secs;
+        if (next.act === 'wander') {
+          const h = herdAt.get(`${a.region}:${a.species}`);
+          const w = wanderTarget(a.home, a.range, !a.plotId && h && h.n > 1 ? { x: h.x / h.n, z: h.z / h.n } : null, Math.random);
+          const half = PLOT_SIZE / 2 - 2;
+          a.target.set(a.plotId ? clampTo(w.x, a.home.x, half) : w.x, 0, a.plotId ? clampTo(w.z, a.home.z, half) : w.z);
+        } else a.target.set(a.pos.x, 0, a.pos.z);
       }
       const to = a.target.clone().sub(a.pos).setY(0);
-      if (a.wait <= 0 && to.length() < 0.5) {
-        const ang = Math.random() * 6.28, r = Math.random() * a.range;
-        const half = PLOT_SIZE / 2 - 2;
-        let tx = a.home.x + Math.cos(ang) * r, tz = a.home.z + Math.sin(ang) * r;
-        if (a.plotId) { tx = clampTo(tx, a.home.x, half); tz = clampTo(tz, a.home.z, half); }
-        a.target.set(tx, 0, tz);
-        a.wait = 2 + Math.random() * 7;
-      }
       const s = SPECIES[a.species];
-      const pace = s.kind === 'bird' ? 1 : Math.min(2.5, 0.8 + s.body[0]);
-      if (to.length() > 0.5) {
+      const pace = (s.kind === 'bird' ? 1 : Math.min(2.5, 0.8 + s.body[0])) * (a.act === 'greet' ? 1.3 : 1);
+      const moving = (a.act === 'wander' || a.act === 'greet') && to.length() > 0.5;
+      if (moving) {
         a.speed = damp(a.speed, pace, 3, dt);
         a.heading += wrap(Math.atan2(to.x, to.z) - a.heading) * Math.min(1, dt * 3);
         a.pos.x += Math.sin(a.heading) * a.speed * dt;
         a.pos.z += Math.cos(a.heading) * a.speed * dt;
-      } else a.speed = damp(a.speed, 0, 4, dt);
+      } else {
+        a.speed = damp(a.speed, 0, 4, dt);
+        // A friend close by turns to look at them.
+        if (friend && near < 6) a.heading += wrap(Math.atan2(player.x - a.pos.x, player.z - a.pos.z) - a.heading) * Math.min(1, dt * 2);
+      }
+      a.model.graze = damp(a.model.graze, a.act === 'graze' && !moving ? 1 : 0, 2.5, dt);
       a.pos.y = surfaceAt(a.pos.x, a.pos.z, a.home.y + 2);
       if (a.species === 'lightbird') a.pos.y += 1.5 + Math.sin(t + a.home.x) * 0.5;
       a.model.root.position.copy(a.pos);

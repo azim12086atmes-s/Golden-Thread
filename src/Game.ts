@@ -484,7 +484,7 @@ export class Game {
     this.plotsView.update(dt, this.t, this.sky.night, this.housing.plotAt(this.trav.gPos.x, this.trav.gPos.z)?.id ?? null, this.camera.position);
     this.townsfolk.update(dt, this.t, this.trav.gPos, this.st.errands);
     this.dressing.update(this.sky.night);
-    this.animals.update(dt, this.t, this.trav.gPos);
+    this.animals.update(dt, this.t, this.trav.gPos, hourOf(this.st.minutes));
     this.animateNodes();
     if (this.housingDirty) {
       this.housingView.refresh((d) => this.housing.growth(d));

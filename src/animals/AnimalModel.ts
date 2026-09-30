@@ -509,6 +509,12 @@ export class AnimalModel {
   private folded: THREE.Group[] = [];
   private phase = Math.random() * 10;
   private headBase = new THREE.Vector3();
+  /**
+   * How far its head is down to graze (0 up … 1 down at the grass): the head drops forward and
+   * dips its nose, still floating clear of the body (animals/behaviour.ts decides when).
+   */
+  graze = 0;
+  private grazeDrop = -1;
   /** Seat height for rideable animals. */
   readonly saddleY: number;
 
@@ -798,6 +804,28 @@ export class AnimalModel {
     }
   }
 
+  /** How far the head can drop to graze: its lowest point, tipped nose-down, a few centimetres above the ground. */
+  private lowestDrop(): number {
+    const hr = SPECIES[this.species].headR, box = new THREE.Box3(), tmp = new THREE.Box3();
+    const prev = this.head.position.clone(), prevR = this.head.rotation.x;
+    this.head.position.set(0, 0, 0);
+    this.head.rotation.set(0.7, 0, 0);
+    this.head.updateMatrixWorld(true);
+    // In the head's own frame (its parent's transform aside).
+    const inv = new THREE.Matrix4().copy(this.head.parent ? this.head.parent.matrixWorld : new THREE.Matrix4()).invert();
+    this.head.traverse((o) => {
+      const m = o as THREE.Mesh;
+      if (!m.isMesh) return;
+      m.geometry.computeBoundingBox();
+      tmp.copy(m.geometry.boundingBox!).applyMatrix4(m.matrixWorld).applyMatrix4(inv);
+      box.union(tmp);
+    });
+    this.head.position.copy(prev);
+    this.head.rotation.x = prevR;
+    const low = box.isEmpty() ? -hr : box.min.y;
+    return Math.max(0, this.headBase.y + low - 0.08) * 0.9;
+  }
+
   update(dt: number, speed: number, t: number): void {
     const moving = speed > 0.15;
     this.phase += dt * (moving ? 3 + speed * 1.5 : 1);
@@ -808,7 +836,13 @@ export class AnimalModel {
       const leg = this.legs[i], swing = (leg.rotation.x - (leg.userData.base ?? 0));
       k.rotation.x = k.userData.base + (k.userData.front ? -Math.max(0, -swing) * 1.2 : Math.max(0, swing) * 0.9);
     });
-    this.head.position.y = this.headBase.y + Math.sin(t * 2 + this.phase * 0.2) * 0.015;
+    // Grazing, the head drops forward towards the grass and nods as it crops — down to just above
+    // the ground, measured from the head's own lowest point once it is tipped (a snout, a beak).
+    const hr = SPECIES[this.species].headR, g = this.graze;
+    if (this.grazeDrop < 0) this.grazeDrop = this.lowestDrop();
+    const drop = this.grazeDrop;
+    this.head.position.set(this.headBase.x, this.headBase.y - drop * g + Math.sin(t * 2 + this.phase * 0.2) * 0.015 + (g > 0.5 ? Math.sin(t * 4.5 + this.phase) * 0.03 * g : 0), this.headBase.z + hr * 0.9 * g);
+    this.head.rotation.x = 0.7 * g;
     if (this.tail) this.tail.rotation.y = Math.sin(t * 3 + this.phase) * 0.3;
     this.folded.forEach((w, i) => (w.rotation.z = (i ? -1 : 1) * (Math.max(0, Math.sin(t * 1.3 + this.phase)) * 0.12 + (moving ? Math.abs(Math.sin(this.phase * 2)) * 0.2 : 0))));
     if (this.wings.length) {
