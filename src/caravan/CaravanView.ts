@@ -297,6 +297,20 @@ export class CaravanView {
     L.update(dt, 0, t + 1.7);
   }
 
+  /**
+   * Where the Light Fury rests once they have landed: a wingspan and a half beside the Night
+   * Dragon, facing the way he faces, on the side away from the two of them. Null when he is not
+   * waiting (they came down another way).
+   */
+  private restSpot(): { x: number; z: number; heading: number } | null {
+    const tr = this.g.trav;
+    const at = tr.parkedDragon ?? (tr.mode === 'dragon' ? { pos: tr.gPos, heading: tr.heading } : null);
+    if (!at) return null;
+    const rx = Math.cos(at.heading), rz = -Math.sin(at.heading);
+    const side = (tr.gPos.x - at.pos.x) * rx + (tr.gPos.z - at.pos.z) * rz > 0 ? -1 : 1;
+    return { x: at.pos.x + rx * side * LIGHT_REST_SIDE, z: at.pos.z + rz * side * LIGHT_REST_SIDE, heading: at.heading };
+  }
+
   /** Where the carpet is relative to her (eased, so it glides into place but never lags behind). */
   private carpetRel = new THREE.Vector3();
   /** How far the pets' carpet has dropped back behind the Light Fury (eases out after take-off). */
@@ -348,27 +362,38 @@ export class CaravanView {
     // a little way behind her, and shows only when there are pets to carry.
     const light = this.lightOn ? this.light : null;
     if (light) {
-      const fx = Math.sin(this.carpetHeading), fz = Math.cos(this.carpetHeading);
       light.root.visible = true;
-      light.root.position.set(root.position.x, root.position.y - 0.3, root.position.z);
-      // She plays as they fly: drifting out a little way from him and back, rising and dipping,
-      // leaning into each swing — only ever outward, so her wings never come nearer his.
-      let roll = Math.sin(t * 0.7) * 0.03;
       if (aloft) {
+        const fx = Math.sin(this.carpetHeading), fz = Math.cos(this.carpetHeading);
+        light.root.position.set(root.position.x, root.position.y - 0.3, root.position.z);
+        // She plays as they fly: drifting out a little way from him and back, rising and dipping,
+        // leaning into each swing — only ever outward, so her wings never come nearer his.
         const rx = Math.cos(this.carpetHeading), rz = -Math.sin(this.carpetHeading);
         const side = Math.sign((root.position.x - tr.gPos.x) * rx + (root.position.z - tr.gPos.z) * rz) || 1;
         const play = lightPlay(t, this.carpetHeading, side);
         light.root.position.x += play.x;
         light.root.position.y += play.y;
         light.root.position.z += play.z;
-        roll += play.roll;
-      } else roll = 0;
-      light.root.rotation.set(0, this.carpetHeading, roll);
+        light.root.rotation.set(0, this.carpetHeading, Math.sin(t * 0.7) * 0.03 + play.roll);
+        // The pets' carpet a little way behind her (the carpet is placed afresh each frame aloft).
+        const back = this.carpetBack += (PET_CARPET_BACK - this.carpetBack) * (1 - Math.exp(-dt * 1.5));
+        root.position.x -= fx * back;
+        root.position.z -= fz * back;
+      } else {
+        // Coming in to land: she glides down to her resting place beside him, turning to face
+        // the way he faces; the carpet comes down where it is.
+        const p = light.root.position, rest = this.restSpot(), k = 1 - Math.exp(-dt * 1.6);
+        let yaw = light.root.rotation.y;
+        if (rest) {
+          p.x += (rest.x - p.x) * k;
+          p.z += (rest.z - p.z) * k;
+          yaw += Math.atan2(Math.sin(rest.heading - yaw), Math.cos(rest.heading - yaw)) * k;
+        }
+        p.y += (surfaceAt(p.x, p.z, p.y + 3) - p.y) * (1 - Math.exp(-dt * 2.2));
+        light.root.rotation.set(0, yaw, 0);
+        root.position.y = Math.max(root.position.y, surfaceAt(root.position.x, root.position.z, root.position.y + 3) + 0.3);
+      }
       light.update(dt, aloft ? tr.currentSpeed : 0, t + 1.7);
-      const back = this.carpetBack += ((aloft ? PET_CARPET_BACK : 0) - this.carpetBack) * (1 - Math.exp(-dt * 1.5));
-      root.position.x -= fx * back;
-      root.position.z -= fz * back;
-      if (!aloft) root.position.y = Math.max(root.position.y, surfaceAt(root.position.x, root.position.z, root.position.y + 3) + 0.3);
     }
     // Who rides where. On the Night Dragon: the brothers and sisters first, then the children, each
     // in a saddle of their own on the Light Fury; anyone without a saddle and the pets on the
@@ -426,15 +451,11 @@ export class CaravanView {
       // The Light Fury lands with him: she stays where she came down, beside the Night Dragon,
       // while he waits for them (restLight); otherwise she waits out of sight until they fly again.
       this.lightResting = !!this.light && this.lightOn && (!!tr.parkedDragon || tr.mode === 'dragon');
-      if (this.light && this.lightResting) {
-        // She settles a wingspan and a half beside him, facing the way he faces, on the side away
-        // from the two of them — so they rest together, wherever the carpet came down.
-        const at = tr.parkedDragon ?? { pos: tr.gPos, heading: tr.heading };
-        const rx = Math.cos(at.heading), rz = -Math.sin(at.heading);
-        const side = (tr.gPos.x - at.pos.x) * rx + (tr.gPos.z - at.pos.z) * rz > 0 ? -1 : 1;
-        const x = at.pos.x + rx * side * LIGHT_REST_SIDE, z = at.pos.z + rz * side * LIGHT_REST_SIDE;
-        this.light.root.position.set(x, surfaceAt(x, z, at.pos.y + 3), z);
-        this.light.root.rotation.set(0, at.heading, 0);
+      const rest = this.restSpot();
+      if (this.light && this.lightResting && rest) {
+        // She settles in her place beside him, wherever the carpet came down.
+        this.light.root.position.set(rest.x, surfaceAt(rest.x, rest.z, this.light.root.position.y + 3), rest.z);
+        this.light.root.rotation.set(0, rest.heading, 0);
       }
       if (this.light && !this.lightResting) this.light.root.visible = false;
       this.lightOn = false;
