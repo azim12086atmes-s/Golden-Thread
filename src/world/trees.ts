@@ -23,9 +23,9 @@ import { LeafKind } from './foliage';
  *  - Flame tree (gulmohar): a wide umbrella of long, near-horizontal limbs, red flowers on top.
  *  - Ginkgo: a leader with irregular, ascending tiers; gold fan leaves.
  *  - Willow: short trunk, arching limbs, curtains of foliage hanging from the tips.
- *  - Rainbow gum: very tall, bare, many-coloured trunk; high, irregular crown.
+ *  - Rainbow gum: very tall bare trunk streaked green, orange, blue and maroon; high, irregular crown.
  *  - Dragon blood tree: forks again and again under a dense umbrella cap.
- *  - Wisteria: a twisting vine-trunk with cascades of violet blossom.
+ *  - Wisteria: a twisting vine-trunk; long racemes of violet blossom hang from under a green canopy.
  */
 
 export interface Habit {
@@ -72,8 +72,10 @@ export interface Habit {
   card: number;
   /** Blossom colours mixed among the leaves (flame tree, magnolia). */
   flowers?: string[];
-  /** The trunk in coloured bands (rainbow gum). */
+  /** The trunk streaked in these colours, long strips of peeling bark (rainbow gum). */
   bands?: string[];
+  /** Green leaves over the hanging blossom (the wisteria's racemes hang under a green canopy). */
+  canopy?: string[];
 }
 
 const H = (o: Partial<Habit> & Pick<Habit, 'h' | 'bark' | 'leaves'>): Habit => ({
@@ -101,7 +103,7 @@ export const HABITS: Partial<Record<Flora, Habit>> = {
   cloud: H({ classic: true, h: 6.2, trunk: 0.32, r: 0.22, forks: 5, spread: 0.8, lift: -0.1, limb: 0.42, shrink: 0.7, blob: 0.15, squash: 1.8, gnarl: 0.4, weep: true, bark: '#e8e4f4', leaves: ['#f4f4ff', '#e8f0ff', '#fff4fa'], card: LeafKind.Small }),
   candy: H({ classic: true, h: 5, trunk: 0.26, r: 0.22, forks: 5, spread: 1, lift: 0.08, limb: 0.46, shrink: 0.68, blob: 0.18, squash: 0.7, gnarl: 0.3, bark: '#e8d0e8', leaves: ['#ffb8d8', '#b8d8ff', '#d8b8ff', '#fff0a8', '#b8ffd8'], card: LeafKind.Blossom }),
   glowtree: H({ classic: true, h: 5.6, trunk: 0.3, r: 0.2, leader: true, tiers: 4, forks: 3, spread: 0.85, lift: 0.2, limb: 0.34, shrink: 0.62, blob: 0.16, squash: 0.8, bark: '#4a4a6a', leaves: ['#7affd0', '#9ad8ff', '#c8a8ff'], card: LeafKind.Crystal }),
-  wisteria: H({ h: 4.6, trunk: 0.34, r: 0.2, forks: 4, spread: 0.9, lift: -0.05, limb: 0.4, shrink: 0.7, blob: 0.15, squash: 1.5, gnarl: 0.7, weep: true, bark: '#6b5040', leaves: ['#b58ae0', '#d9b8ff', '#a47ad6'], card: LeafKind.Blossom }),
+  wisteria: H({ curtain: true, h: 4.6, trunk: 0.34, r: 0.2, forks: 4, spread: 0.9, lift: -0.05, limb: 0.4, shrink: 0.7, blob: 0.16, squash: 1.1, gnarl: 0.7, weep: true, bark: '#6b5040', leaves: ['#b58ae0', '#d9b8ff', '#a47ad6', '#c9a2f2'], canopy: ['#6fa04a', '#7cae56'], card: LeafKind.Blossom }),
 };
 
 /** The height a species grows to at scale 1 (for sizing giants). */
@@ -204,6 +206,17 @@ export function growTree(g: GeoBuilder, hb: Habit, x: number, y: number, z: numb
       branch(fork, dir, h * hb.limb * (0.85 + rng() * 0.3), r0 * 0.62, 1);
     }
   }
+  if (hb.bands) {
+    // Long streaks of freshly peeled bark down the trunk, each its own colour, overlapping.
+    const bare = h * hb.trunk, n = 11;
+    for (let i = 0; i < n; i++) {
+      const y0 = bare * rng() * 0.45, y1 = Math.min(bare, y0 + bare * (0.35 + rng() * 0.55));
+      const rr0 = r0 * (1 - (y0 / bare) * 0.2) * 1.035, rr1 = r0 * (1 - (y1 / bare) * 0.2) * 1.035;
+      const geo = new THREE.CylinderGeometry(rr1, rr0, y1 - y0, 3, 1, true, (i / n) * Math.PI * 2 + rng() * 0.4, 0.5 + rng() * 0.5);
+      geo.translate(0, (y0 + y1) / 2, 0);
+      g.add(geo, hb.bands[1 + (i % (hb.bands.length - 1))], tmpM.compose(base, tmpQ.setFromUnitVectors(UP, lean), ONE).clone());
+    }
+  }
   if (hb.marks) {
     // Bark marks on the trunk: birch's dark bands, the plane's patches.
     for (let i = 1; i < 6; i++) {
@@ -257,8 +270,10 @@ function openCrown(g: GeoBuilder, hb: Habit, c: THREE.Vector3, r: number, leafCo
 const strandGeo = new THREE.IcosahedronGeometry(1, 0);
 function curtainCrown(g: GeoBuilder, hb: Habit, c: THREE.Vector3, r: number, leafCol: string, baseY: number, h: number, rng: () => number): void {
   const col = new THREE.Color(leafCol);
-  g.add(clumpGeometry(Math.floor(rng() * CLUMPS)), col.clone().multiplyScalar(0.86), tmpM.compose(c, tmpQ.setFromAxisAngle(UP, rng() * Math.PI * 2), new THREE.Vector3(r * 0.8, r * 0.45, r * 0.8)).clone());
-  leafCards(g, { ...hb, squash: 0.45, weep: false }, c, r * 0.8, leafCol, baseY, h, rng);
+  // The canopy: the willow's own leaves, or the wisteria's green over its blossom.
+  const top = hb.canopy ? hb.canopy[Math.floor(rng() * hb.canopy.length)] : leafCol;
+  g.add(clumpGeometry(Math.floor(rng() * CLUMPS)), new THREE.Color(top).multiplyScalar(0.86), tmpM.compose(c, tmpQ.setFromAxisAngle(UP, rng() * Math.PI * 2), new THREE.Vector3(r * 0.8, r * 0.45, r * 0.8)).clone());
+  leafCards(g, { ...hb, squash: 0.45, weep: false, card: hb.canopy ? LeafKind.Small : hb.card, flowers: hb.canopy ? hb.leaves : hb.flowers }, c, r * 0.8, top, baseY, h, rng);
   const n = 7;
   for (let i = 0; i < n; i++) {
     const a = (i / n) * Math.PI * 2 + rng() * 0.6, out = new THREE.Vector3(Math.cos(a), 0, Math.sin(a));

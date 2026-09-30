@@ -306,12 +306,14 @@ export type Flora =
   /** Pink-and-white saucer blossom (London, New York). */
   | 'magnolia'
   /** Quivering gold leaves (Norway, Switzerland). */
-  | 'aspen';
+  | 'aspen'
+  /** The mountain fir: a dense green cone of tiers down to the ground (Switzerland, Norway). */
+  | 'fir';
 
 /** Each species' bark (surfaces.ts); unlisted kinds (crystal, cloud, candy trees) keep plain wood. */
 const BARK: Partial<Record<Flora, number>> = {
   oak: SURF.barkFurrowed, maple: SURF.barkFurrowed, olive: SURF.barkFurrowed, willow: SURF.barkFurrowed, jacaranda: SURF.barkFurrowed,
-  ginkgo: SURF.barkFurrowed, wisteria: SURF.barkFurrowed, pine: SURF.barkFurrowed, snowpine: SURF.barkFurrowed, cypress: SURF.barkFurrowed,
+  ginkgo: SURF.barkFurrowed, wisteria: SURF.barkFurrowed, pine: SURF.barkFurrowed, fir: SURF.barkFurrowed, snowpine: SURF.barkFurrowed, cypress: SURF.barkFurrowed,
   plane: SURF.barkPlates, birch: SURF.barkLenticel, aspen: SURF.barkLenticel, sakura: SURF.barkLenticel,
   orange: SURF.barkSmooth, magnolia: SURF.barkSmooth, flame: SURF.barkSmooth, rainbowgum: SURF.barkSmooth, dragonblood: SURF.barkSmooth,
   banana: SURF.barkSmooth, baobab: SURF.barkSmooth, bamboo: SURF.barkSmooth, palm: SURF.barkRinged, coconut: SURF.barkRinged,
@@ -331,6 +333,7 @@ export function tree(g: GeoBuilder, kind: Flora, x: number, y: number, z: number
     else if (kind === 'palm' || kind === 'coconut') palm(g, x, y, z, s, rng, kind === 'coconut');
     else if (kind === 'pine') conifer(g, x, y, z, s, rng, 'pine');
     else if (kind === 'snowpine') conifer(g, x, y, z, s, rng, 'spruce', true);
+    else if (kind === 'fir') conifer(g, x, y, z, s, rng, 'fir');
     else if (kind === 'cypress') conifer(g, x, y, z, s, rng, 'cypress');
     else if (kind === 'bamboo') bamboo(g, x, y, z, s, rng);
     else if (kind === 'banana') banana(g, x, y, z, s, rng);

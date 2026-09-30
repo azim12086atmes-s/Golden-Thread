@@ -109,25 +109,28 @@ export function palm(g: GeoBuilder, x: number, y: number, z: number, s: number, 
 /**
  * A conifer: a straight trunk with a leader, and whorls of branches, each a sweep of needle
  * cards. `form`: pine (open tiers, orange-brown upper bark, a rounded top), spruce (a dense cone
- * of drooping tiers to the ground, snow on each), cypress (a tall narrow flame).
+ * of drooping tiers to the ground, snow on each), fir (the mountain fir: a clean, full green cone
+ * of level tiers to the ground, each tier a little shorter than the one below), cypress (a tall
+ * narrow flame).
  */
-export function conifer(g: GeoBuilder, x: number, y: number, z: number, s: number, rng: () => number, form: 'pine' | 'spruce' | 'cypress', snow = false): void {
-  const h = (form === 'cypress' ? 9 : form === 'spruce' ? 8 : 9) * s * (0.85 + rng() * 0.3);
+export function conifer(g: GeoBuilder, x: number, y: number, z: number, s: number, rng: () => number, form: 'pine' | 'spruce' | 'fir' | 'cypress', snow = false): void {
+  const h = (form === 'cypress' ? 9 : form === 'spruce' ? 8 : form === 'fir' ? 8.6 : 9) * s * (0.85 + rng() * 0.3);
   const r0 = (form === 'cypress' ? 0.18 : 0.26) * s;
   g.leafy = false;
   stem(g, new THREE.Vector3(x, y - 0.2, z), new THREE.Vector3(x, y + h * 0.55, z), r0 * 1.4, r0 * 0.8, '#6a4a32');
   stem(g, new THREE.Vector3(x, y + h * 0.55, z), new THREE.Vector3(x, y + h, z), r0 * 0.8, r0 * 0.15, form === 'pine' ? '#b0683a' : '#6a4a32');
-  const needle = form === 'cypress' ? '#2f5a3a' : form === 'spruce' ? '#2a5a3e' : '#3a6a42';
-  const tiers = form === 'cypress' ? 14 : form === 'spruce' ? 11 : 7;
-  const bottom = form === 'spruce' ? 0.08 : form === 'cypress' ? 0.1 : 0.4;
+  const needle = form === 'cypress' ? '#2f5a3a' : form === 'spruce' ? '#2a5a3e' : form === 'fir' ? '#2f6440' : '#3a6a42';
+  const tiers = form === 'cypress' ? 14 : form === 'spruce' ? 11 : form === 'fir' ? 12 : 7;
+  const bottom = form === 'spruce' ? 0.08 : form === 'fir' ? 0.1 : form === 'cypress' ? 0.1 : 0.4;
   for (let t = 0; t < tiers; t++) {
     const f = t / (tiers - 1), ty = y + h * (bottom + (1 - bottom) * f * 0.94);
     // Crown radius at this height.
     const R = form === 'cypress' ? h * 0.13 * Math.sin(Math.min(1, f * 1.3 + 0.15) * Math.PI) * (1 - f * 0.4)
       : form === 'spruce' ? h * 0.36 * (1 - f) + 0.3 * s
-        : h * 0.3 * Math.sin((0.25 + f * 0.75) * Math.PI) * 0.9 + 0.3 * s;
-    const n = form === 'cypress' ? 5 : Math.max(4, Math.round(R * 2.6));
-    const droop = form === 'spruce' ? 0.35 : form === 'pine' ? -0.1 : 0.05;
+        : form === 'fir' ? h * 0.31 * (1 - f) ** 1.1 + 0.25 * s
+          : h * 0.3 * Math.sin((0.25 + f * 0.75) * Math.PI) * 0.9 + 0.3 * s;
+    const n = form === 'cypress' ? 5 : Math.max(4, Math.round(R * (form === 'fir' ? 3 : 2.6)));
+    const droop = form === 'spruce' ? 0.35 : form === 'fir' ? 0.16 : form === 'pine' ? -0.1 : 0.05;
     for (let k = 0; k < n; k++) {
       const a = (k / n) * Math.PI * 2 + t * 0.7 + rng() * 0.4, out = new THREE.Vector3(Math.cos(a), 0, Math.sin(a));
       const tip = new THREE.Vector3(x, ty - R * droop, z).addScaledVector(out, R * (0.8 + rng() * 0.3));
