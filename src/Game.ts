@@ -1299,7 +1299,7 @@ export class Game {
   }
 
   private wakeToast(): void {
-    this.toast(`${this.st.names.girl} and ${this.st.names.boy} set out from Wanderers' Meadow. Grandmother Noor is waiting by the Great Oak.`, 'story');
+    this.toast(`${this.st.names.girl} and ${this.st.names.boy} set out from Wanderers' Meadow. Grandmother Syeda Sarvatara is waiting by the Great Oak.`, 'story');
   }
 
   /** The story of the journey, over the world (replayable from the journal). */

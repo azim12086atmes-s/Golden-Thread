@@ -101,9 +101,9 @@ export function storyline(st: GameState): Shot[] {
       land: 'meadow', focus: 'noor', hour: 9.2, dur: 11, radius: 7, height: 2.2, spin: 0.3,
       lines: [
         sibs.length
-          ? `Grandmother Noor: "There you all are. ${names(sibs.map((c) => c.name))} — look after these two, and let them look after you. Everyone you meet on the road is carrying something. Help them carry it."`
-          : 'Grandmother Noor: "There you both are. Everyone you meet on the road is carrying something. Help them carry it."',
-        'Grandmother Noor: "Go and become part of the people out there. But stay connected to home: write to me, and come back to tell me everything."',
+          ? `Grandmother Sarvatara: "There you all are. Shumaela, my dear, come here. ${names(sibs.map((c) => c.name))} — look after these two, and let them look after you. Everyone you meet on the road is carrying something. Help them carry it."`
+          : 'Grandmother Sarvatara: "There you both are. Shumaela, my dear, come here. Everyone you meet on the road is carrying something. Help them carry it."',
+        'Grandmother Sarvatara: "Go and become part of the people out there. But stay connected to home: write to me, and come back to tell me everything."',
       ],
     },
     {

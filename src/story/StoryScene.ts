@@ -9,7 +9,7 @@ import { storyline, type Shot } from './storyline';
 /**
  * The story, told over the world itself: the camera visits real places — the meadow at dawn, a
  * waking market, busy towns, the castle at dusk, the two walking the road with the children and
- * pets who travel with them, a word from Grandmother Noor — while captions appear word by word.
+ * pets who travel with them, a word from Grandmother Sarvatara — while captions appear word by word.
  * The travellers are placed where each shot is so that land streams in, and are put back exactly
  * where they were at the end. Skippable at any moment.
  */
@@ -28,7 +28,7 @@ export class StoryScene {
   private centre = new THREE.Vector3();
   private shown = -1;
   view = null;
-  /** The caravan walks on screen during the road, children, pets and Noor shots. */
+  /** The caravan walks on screen during the road, children, pets and Sarvatara shots. */
   caravan = false;
   onDone?: () => void;
 
@@ -134,7 +134,7 @@ export class StoryScene {
     const tr = this.g.trav;
     const V = (x: number, y: number, z: number) => new THREE.Vector3(x, y, z);
     if (this.walking(s)) {
-      // They walk together (towards Noor, they stop a few steps short and face her).
+      // They walk together (towards Sarvatara, they stop a few steps short and face her).
       const stopZ = s.focus === 'noor' ? this.target.z + 3.2 : -Infinity;
       if (tr.gPos.z > stopZ) {
         tr.gPos.z = Math.max(stopZ, tr.gPos.z - 1.4 * dt);
@@ -149,7 +149,7 @@ export class StoryScene {
         camera.position.set(who.x + Math.sin(a) * s.radius, who.y + s.height, who.z - Math.cos(a) * s.radius);
         camera.lookAt(who.x, who.y + (s.focus === 'siblings' ? 1.2 : s.focus === 'children' ? 0.7 : 0.3), who.z);
       } else if (s.focus === 'noor') {
-        // A two-shot from the side: the travellers on one side, Noor on the other.
+        // A two-shot from the side: the travellers on one side, Sarvatara on the other.
         const mid = V((p.x + this.target.x) / 2, p.y, (p.z + this.target.z) / 2);
         camera.position.set(mid.x + s.radius, mid.y + s.height, mid.z + 1.5 - u * 1.2);
         camera.lookAt(mid.x, mid.y + 1.1, mid.z);

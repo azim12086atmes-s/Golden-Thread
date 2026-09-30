@@ -25,7 +25,7 @@ const W = (land: RegionId, name: string, kind: WonderKind, hint: string, story: 
   ({ id: `wonder-${land}`, land, name, kind, hint, story });
 
 export const WONDERS: WonderDef[] = [
-  W('meadow', 'The Moonflower Ring', 'glade', 'A ring of pale flowers that only opens for travellers.', 'Grandmother Noor says whoever finds it will never be lonely on the road.'),
+  W('meadow', 'The Moonflower Ring', 'glade', 'A ring of pale flowers that only opens for travellers.', 'Grandmother Sarvatara says whoever finds it will never be lonely on the road.'),
   W('japan', 'The Hidden Hot Spring', 'spring', 'Steam rising among the pines, away from the town.', 'Warm water, cold air and a stone seat for two, a respectful step apart.'),
   W('korea', 'The Pavilion of Clear Wind', 'overlook', 'A high place where poets once wrote about the valley.', 'Someone has left a brush and ink, and a poem with half its lines still blank.'),
   W('china', 'The Bamboo Whispering Grove', 'grove', 'Where the bamboo is tallest, listen.', 'The wind in the stalks sounds like people laughing at a shared meal.'),

@@ -42,7 +42,7 @@ Everything here is to be rebuilt as original procedural low-poly geometry.
 
 **(b) Hero landmark** — **The Great Oak & Wishing Well**: a huge rounded oak canopy (low-poly
 clumped spheres) with a rope-and-bucket well under it; lanterns hang from the lower branches, and
-Grandmother Noor's cottage sits beside it.
+Grandmother Sarvatara's cottage sits beside it.
 
 **(c) Man-made props** — straw skeps on stands · rope-and-bucket wishing well · dry-stone walls
 with stile steps · wooden five-bar gates · hay bales (round) · milk churns · wooden signposts with

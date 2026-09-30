@@ -63,7 +63,7 @@ arrive in a land ─► meet people & animals ─► learn what they need
 ## 5. Story — *The Golden Thread*
 
 The lanterns of the world have dimmed. People have drifted apart, and each land's Lantern Keeper
-can no longer light the lamp at its heart. Grandmother Noor of Wanderers' Meadow gives the two
+can no longer light the lamp at its heart. Grandmother Sarvatara of Wanderers' Meadow gives the two
 travellers her old van, *Safar*, and says only: "A thread is strong because it is shared."
 
 Each land is a chapter. Arrive, meet its Keeper, help its people with what you have learned, and

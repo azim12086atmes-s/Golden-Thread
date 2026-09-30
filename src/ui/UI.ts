@@ -114,8 +114,8 @@ export class UI {
   private storyOpen = false;
   private mapSel: RegionId | null = null;
   private hudTimer = 0;
-  /** Grandmother Noor's letter (the guided tour, guide/tour.ts): which one shows, folded or open. */
-  private tourEl = h('div', { class: 'tour', role: 'complementary', 'aria-label': 'A letter from Grandmother Noor' });
+  /** Grandmother Sarvatara's letter (the guided tour, guide/tour.ts): which one shows, folded or open. */
+  private tourEl = h('div', { class: 'tour', role: 'complementary', 'aria-label': 'A letter from Grandmother Sarvatara' });
   private tourId = '';
   private tourFolded = false;
   private tourTimer = 0;
@@ -196,7 +196,7 @@ export class UI {
   }
 
   /**
-   * Grandmother Noor's letter, bottom left: why the next thing matters and how to do it, "Show me"
+   * Grandmother Sarvatara's letter, bottom left: why the next thing matters and how to do it, "Show me"
    * (the right panel, or the golden trail to the right place), "Later", and a fold to a small pill.
    * It steps aside while a panel, a story, a cutscene or a room is open, and thanks them when a
    * step is done.
@@ -211,7 +211,7 @@ export class UI {
     const prev = TOUR_BY_ID[this.tourId];
     if (prev && prev.done(st)) {
       const p = tourProgress(st);
-      this.toast(`💛 ${prev.icon} ${prev.title} — done. Grandmother Noor would be so proud. (${p.done} of ${p.of})`, 'reward');
+      this.toast(`💛 ${prev.icon} ${prev.title} — done. Grandmother Sarvatara would be so proud. (${p.done} of ${p.of})`, 'reward');
       this.tourFolded = false;
     }
     this.tourId = id;
@@ -235,9 +235,10 @@ export class UI {
     fold.setAttribute('aria-label', 'Fold the letter');
     this.tourEl.replaceChildren(
       fold,
-      h('div', { class: 'eyebrow' }, `A letter from Grandmother Noor · ${p.done + 1} of ${p.of}`),
+      h('div', { class: 'eyebrow' }, `A letter from Grandmother Sarvatara · ${p.done + 1} of ${p.of}`),
       h('h3', {}, `${step.icon} ${step.title}`),
-      h('p', { class: 'letter' }, step.letter),
+      // She writes to Fathima by her pet name, Shumaela (owner, 2026-09-30), and to him by his.
+      h('p', { class: 'letter' }, `My dear Shumaela, and dear ${st.names.boy.trim().split(/\s+/).pop()}: ${step.letter}`),
       h('p', { class: 'how' }, step.how),
       h('div', { class: 'acts' },
         step.show ? btn('Show me', show, 'small primary') : null,
@@ -257,7 +258,7 @@ export class UI {
     body.append(tabs);
     if (this.guideTab === 'letters') {
       const p = tourProgress(st);
-      body.append(h('p', { class: 'dim' }, `Grandmother Noor's letters walk you through the journey, one thing at a time. ${p.done} of ${p.of} done.`));
+      body.append(h('p', { class: 'dim' }, `Grandmother Sarvatara's letters walk you through the journey, one thing at a time. ${p.done} of ${p.of} done.`));
       for (const s of TOUR) {
         const done = s.done(st), now = currentStep(st)?.id === s.id;
         const card = h('div', { class: `quest ${done ? '' : now ? 'main' : ''}` },
@@ -1896,5 +1897,5 @@ const HOW_IT_WORKS: Array<[string, string, string]> = [
   ['🌾', 'Farming and supply', 'Buy a field, plant, water and harvest, or employ a farmhand. Couriers and ships carry your harvest to markets or to your kitchens and clinics. Markets pay less the more you sell to them.'],
   ['🏛️', 'Institutes', 'Every land has an institute of its own science. Take a course, assist the professor, write a thesis, and found an institute of your own, stage by stage.'],
   ['🚐', 'Travelling', 'Walk, fly on the cape of light (F), drive Safar, ride a unicorn or the Night Dragon, or take the coach, tram, ferry or air taxi (V). The map (M) takes you to lands you know.'],
-  ['🏮', 'The story', 'In each land, help its Keeper and light its lantern together. The objective panel (O) always shows the next step; Grandmother Noor\'s letters show you everything else.'],
+  ['🏮', 'The story', 'In each land, help its Keeper and light its lantern together. The objective panel (O) always shows the next step; Grandmother Sarvatara\'s letters show you everything else.'],
 ];

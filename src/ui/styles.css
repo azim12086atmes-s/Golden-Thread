@@ -369,7 +369,7 @@ body.cinematic #ui > .feed { opacity: 0; }
 .meter { block-size: 8px; border-radius: 999px; background: rgba(255, 255, 255, 0.12); overflow: hidden; margin-block: 6px 10px; }
 .meter i { display: block; block-size: 100%; background: linear-gradient(90deg, #7fb35a, #f5c451); }
 
-/* Grandmother Noor's letter (the guided tour): bottom left, in the storybook's voice. */
+/* Grandmother Sarvatara's letter (the guided tour): bottom left, in the storybook's voice. */
 .tour { position: absolute; z-index: 3; inset-block-end: 86px; inset-inline-start: 14px; inline-size: min(340px, calc(100vw - 28px)); pointer-events: auto; animation: in 0.4s ease-out; }
 .tour:not(:empty):has(h3) { padding: 16px 16px 14px; border-radius: 18px; background: linear-gradient(180deg, rgba(40, 30, 72, 0.94), rgba(26, 22, 56, 0.94)); border: 1px solid rgba(245, 196, 81, 0.45); box-shadow: var(--shadow), 0 0 24px rgba(245, 196, 81, 0.12); display: grid; gap: 8px; backdrop-filter: blur(8px); }
 .tour .eyebrow { font-size: 10.5px; letter-spacing: 0.2em; text-transform: uppercase; color: var(--gold); padding-inline-end: 30px; }

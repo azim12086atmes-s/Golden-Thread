@@ -110,11 +110,11 @@ describe('the story cinematic', () => {
     const total = shots.reduce((a, s) => a + s.dur, 0);
     expect(total).toBeGreaterThan(45);
     expect(total).toBeLessThan(120);
-    // Their brothers and sisters and the pets travelling with them are introduced by name, and Noor speaks.
+    // Their brothers and sisters and the pets travelling with them are introduced by name, and Sarvatara speaks.
     for (const n of ['Aasima', 'Suvaibia', 'Maryam', 'Abdur Rahim', 'Pip', 'Clover']) expect(text).toContain(n);
     expect(shots.some((s) => s.focus === 'siblings')).toBe(true);
     expect(shots.some((s) => s.focus === 'market')).toBe(true);
-    expect(text).toContain('Grandmother Noor: "');
+    expect(text).toContain('Grandmother Sarvatara: "');
   });
 });
 

@@ -126,7 +126,7 @@ export interface GameState {
   caravan: string[];
   /** What the brothers, sisters and children wear, chosen in the dressing room (caravan/dress.ts). */
   companionOutfits: Record<string, string>;
-  /** Grandmother Noor's guided tour: put away entirely, and letters put aside for later (guide/tour.ts). */
+  /** Grandmother Sarvatara's guided tour: put away entirely, and letters put aside for later (guide/tour.ts). */
   tour: { off: boolean; later: string[] };
   /** The homes given to her parents and to his (plot ids of homes they own; housing/parents.ts), and when they last visited. */
   parents: { hers?: string; his?: string; visited?: Record<string, number> };
@@ -147,7 +147,7 @@ export function newGame(): GameState {
     minutes: 8 * 60, // morning of day one
     coins: 40,
     light: 1,
-    player: { x: 6, y: 0, z: 34, heading: Math.PI }, // by the Great Oak, facing Noor
+    player: { x: 6, y: 0, z: 34, heading: Math.PI }, // by the Great Oak, facing Sarvatara
     outfits: { girl: 'g-kurti-jeans', boy: 'b-kurta-jeans' },
     inventory: { wood: 2, wool: 1, tea: 2 },
     skills: {

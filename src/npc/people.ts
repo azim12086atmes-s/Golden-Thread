@@ -29,11 +29,12 @@ const TOP = [Math.cos(15 * 0.9) * (70 - 15 * 3.2) + 6, Math.sin(15 * 0.9) * (70 
 
 export const PEOPLE: NpcDef[] = [
   // Wanderers' Meadow
-  P('noor', 'Grandmother Noor', 'meadow', 'Keeper of the Meadow Lantern', 'girl', 'g-nomad', 1, [
-    'There you both are. The thread between you is bright this morning.',
+  // Grandmother Syeda Sarvatara (owner, 2026-09-30), who calls Fathima by her pet name, Shumaela.
+  P('noor', 'Grandmother Sarvatara', 'meadow', 'Syeda Sarvatara · Keeper of the Meadow Lantern', 'girl', 'g-nomad', 1, [
+    'There you both are, Shumaela. The thread between you is bright this morning.',
     'A thread is strong because it is shared. Remember that on the road.',
     'The lanterns of the world have dimmed, little ones. People forget each other.',
-  ], ['Did you eat today? Both of you? Good.', 'The oak dropped its first acorns. I saved you one.', 'Come home when the road is tired of you. The kettle is always warm.'], { keeper: true, at: [10, 18] }),
+  ], ['Did you eat today, Shumaela? Both of you? Good.', 'The oak dropped its first acorns. I saved you one.', 'Come home when the road is tired of you. The kettle is always warm.'], { keeper: true, at: [10, 18] }),
   P('yusuf', 'Yusuf', 'meadow', 'Shepherd', 'boy', 'b-meadow', 3, [
     'The sheep wander further every day. Like you two.',
     'If you are kind to the flock, they will follow you home.',

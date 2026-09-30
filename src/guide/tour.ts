@@ -3,7 +3,7 @@ import { LEVEL_XP } from '../economy/items';
 import { COMPANION_BY_ID, STARTING_CARAVAN } from '../caravan/caravan';
 
 /**
- * The guided tour (owner, 2026-09-30): letters from Grandmother Noor that walk the travellers
+ * The guided tour (owner, 2026-09-30): letters from Grandmother Sarvatara that walk the travellers
  * through everything the journey holds, one thing at a time — dressing the family, meeting a pet,
  * befriending an animal and a person, caring for someone, working, starting a business, making a
  * home, finding their parents a home, and going further afield. Each letter says why it matters
@@ -23,7 +23,7 @@ export interface TourStep {
   id: string;
   icon: string;
   title: string;
-  /** Grandmother Noor's letter: why this matters. */
+  /** Grandmother Sarvatara's letter: why this matters. */
   letter: string;
   /** Plainly, how to do it. */
   how: string;

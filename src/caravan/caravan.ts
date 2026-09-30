@@ -88,7 +88,7 @@ export const PETS: PetDef[] = [
 export const SIBLINGS: SiblingDef[] = [
   { kind: 'sibling', id: 'sib-aasima', name: 'Aasima', who: 'girl', origin: 'meadow', outfit: 'g-abaya', skin: '#e0b08a', rise: 0.25, help: 'lifts-spirits', blurb: 'Always the first to greet a new friend on the road, and the last to say goodbye.' },
   { kind: 'sibling', id: 'sib-suvaibia', name: 'Suvaibia', who: 'girl', origin: 'meadow', outfit: 'g-kurti-jeans', skin: '#e3b58f', rise: -0.3, help: 'finds-resources', blurb: 'Spots the ripest fruit on every stall and the kindest face in every crowd.' },
-  { kind: 'sibling', id: 'sib-maryam', name: 'Maryam', who: 'girl', origin: 'meadow', outfit: 'g-angrakha', skin: '#dcaa82', rise: 0.45, help: 'carries-letters', blurb: 'Keeps the letters home to Grandmother Noor, and writes the best ones.' },
+  { kind: 'sibling', id: 'sib-maryam', name: 'Maryam', who: 'girl', origin: 'meadow', outfit: 'g-angrakha', skin: '#dcaa82', rise: 0.45, help: 'carries-letters', blurb: 'Keeps the letters home to Grandmother Sarvatara, and writes the best ones.' },
   { kind: 'sibling', id: 'sib-abdurrahim', name: 'Abdur Rahim', who: 'boy', origin: 'meadow', outfit: 'b-pathani', skin: '#c99a74', rise: 0.45, help: 'learns-craft', blurb: 'Carries the heaviest bags without being asked, and fixes whatever breaks.' },
 ];
 

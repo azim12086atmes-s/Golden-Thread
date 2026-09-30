@@ -86,7 +86,7 @@ describe('quests', () => {
     const qs = new QuestSystem(st, bus);
     expect(qs.offeredBy('noor').map((q) => q.id)).toContain('main-meadow');
     expect(qs.start('main-meadow')).toBe(true);
-    expect(qs.step('main-meadow')?.kind).toBe('deliver'); // talking to Noor to start it counted as meeting her
+    expect(qs.step('main-meadow')?.kind).toBe('deliver'); // talking to Sarvatara to start it counted as meeting her
     teach(st, 'weaving');
     addItem(st, 'wool', 2);
     expect(craft(st, 'scarf').ok).toBe(true);

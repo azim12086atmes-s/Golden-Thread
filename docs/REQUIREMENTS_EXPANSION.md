@@ -70,3 +70,10 @@ GT-PROD-001 (MUST, Production, In Progress): Use actual Blender for new 3D asset
 C-07: Mysuru supersedes Wanderers' Meadow as the visible starting-region identity. Preserve the internal `meadow` ID and quest/save keys for compatibility. The fantasy meadow becomes outskirts/visual accents. Author an interpreted compressed map, not a navigable real-world replica.
 
 - 2026-09-26: Recorded Mysuru/Maps/corpus/Claude steering; started delegated Pinterest research, primary-source map research and original Blender starting-region work.
+
+## Owner amendment 2026-09-30: the grandmother's name
+
+The grandmother of Wanderers' Meadow is **Syeda Sarvatara** (in the story, *Grandmother Sarvatara*;
+she was Grandmother Noor). She calls Fathima by her pet name, **Shumaela**: in her spoken lines, the
+opening film and her letters ("My dear Shumaela, and dear Azim: …"). Her NPC id stays `noor` so old
+saves keep their friendship and quests.

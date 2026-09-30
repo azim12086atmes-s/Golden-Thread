@@ -377,7 +377,7 @@ looser than the other cities, a garden town rather than a metropolis. Core y ≈
     a knoll so it reads from afar.
   - **Round Cottage Circles.**
   - **Windmill Ridge.**
-  - **Noor's Garage**, where the van lives.
+  - **Sarvatara's Garage**, where the van lives.
   - **Brookside Market.**
 - *Role:* the **hub**, where five highway spokes start.
 - *Special:* rainbows by day, fireflies and stars by night.

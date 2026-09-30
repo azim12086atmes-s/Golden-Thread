@@ -65,7 +65,7 @@ describe('a home for their parents', () => {
   });
 });
 
-describe('Grandmother Noor\'s guided tour', () => {
+describe('Grandmother Sarvatara\'s guided tour', () => {
   it('offers one letter at a time, ticks each off when it is really done, and can be set aside', () => {
     const st = newGame();
     expect(currentStep(st)!.id).toBe('dress');

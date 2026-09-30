@@ -21,7 +21,7 @@ function started(id: string, patch: (st: GameState) => void = () => {}): GameSta
 }
 
 describe('guide: where to begin', () => {
-  it('a new journey points at Grandmother Noor in the meadow', () => {
+  it('a new journey points at Grandmother Sarvatara in the meadow', () => {
     const o = currentObjective(newGame(), MEADOW);
     expect(o.questId).toBeNull();
     expect(o.title).toContain('Two Wanderers');
@@ -40,11 +40,11 @@ describe('guide: where to begin', () => {
 });
 
 describe('guide: the first chapter, step by step', () => {
-  it('breaks "bring Noor a scarf" into gather → make → give, and checks each off', () => {
+  it('breaks "bring Sarvatara a scarf" into gather → make → give, and checks each off', () => {
     const st = newGame();
     const bus = new EventBus();
     const qs = new QuestSystem(st, bus);
-    qs.start('main-meadow'); // talking to Noor completes the "meet" step
+    qs.start('main-meadow'); // talking to Sarvatara completes the "meet" step
     let o = currentObjective(st, MEADOW);
     expect(o.questId).toBe('main-meadow');
     expect(o.step).toEqual([2, 3]);

@@ -47,7 +47,7 @@ Each lesson names where it came from and what it means for this game specificall
    what you earn.
 2. **Hub and spokes** (*Spiritfarer*'s boat, *Stardew*'s town). A home you return to between
    ventures gives the story a place to be *absorbed*. We have two hubs: the **Meadow** (where
-   Noor is, where the story begins and ends) and the **van**, which is a hub that travels. Story
+   Sarvatara is, where the story begins and ends) and the **van**, which is a hub that travels. Story
    beats that need reflection happen in the van at night.
 3. **Count-based acts in an open world.** Because chapters can be played in any order, act
    transitions fire on *how many* lanterns are lit, and act text never names the land you just
@@ -162,7 +162,7 @@ Each lesson names where it came from and what it means for this game specificall
 
 The lanterns at the heart of every land have dimmed. Nobody can say when it started. People have
 drifted into their own houses; letters go unwritten; strangers do not share tables. In Wanderers'
-Meadow, old **Grandmother Noor** gives two young travellers her van, *Safar* ("journey"), and says
+Meadow, old **Grandmother Sarvatara** gives two young travellers her van, *Safar* ("journey"), and says
 only: *"A thread is strong because it is shared."*
 
 The two are joined by a **golden thread of light** that nobody else can explain. It glows brighter
@@ -186,7 +186,7 @@ The names mean the premise; the journal can say so once, softly, in the prologue
 
 | | **Amal** (player) | **Rafiq** (companion) |
 |---|---|---|
-| Where from | Grew up in Wanderers' Meadow, the baker Lina's niece. Restless; always looking down the road. | Arrived in the Meadow three years ago with a travelling carpenter who moved on without him. Noor took him in. |
+| Where from | Grew up in Wanderers' Meadow, the baker Lina's niece. Restless; always looking down the road. | Arrived in the Meadow three years ago with a travelling carpenter who moved on without him. Sarvatara took him in. |
 | What they are good at | Seeing what people need before they say it. | Fixing things. Noticing small animals. Cooking when nobody asked him to. |
 | What they are afraid of | Being ordinary; never having left. | Being left again. |
 | Why they travel | To see the world and to be of use in it. | Because she is going, and because he wants to belong somewhere he has chosen. |
@@ -197,7 +197,7 @@ The names mean the premise; the journal can say so once, softly, in the prologue
 Islamic principles. In Islamic practice a married couple may touch, and an unmarried couple should
 not travel and sleep alone together (*khalwa*). The game must pick a framing that holds up:
 
-- **Option A (recommended, owner's choice): committed.** In the prologue Noor, as the elder who took Rafiq in,
+- **Option A (recommended, owner's choice): committed.** In the prologue Sarvatara, as the elder who took Rafiq in,
   blesses their *khitbah* (engagement). They travel as committed companions with a strict household
   of rules: Safar has a partition curtain and two bunks at opposite ends; on most nights Rafiq
   sleeps in the roof tent or at the lodge (§2.6), and they are hosted in homes wherever possible,
@@ -240,7 +240,7 @@ cutscene:
    declare it.
 10. **Words.** Their lines to each other are short, warm and practical: *"Did you eat?"*,
     *"Wait — look."*, *"I'll get the kettle."* Never flirtation. Tenderness is in care, like
-    Noor's letters.
+    Sarvatara's letters.
 
 ### 2.3 The central mystery: why the lanterns dimmed
 
@@ -251,16 +251,16 @@ will fix the world.
 *carried to it from somewhere else* — a letter from a friend in another land, a guest at the table,
 goods that came from far away, a traveller who stayed three days. Kenji already says it in
 `people.ts`: *light carried from far away burns longest*. For forty years, two travellers carried
-that light between the lands in a van called *Safar*: **Noor** and her husband **Yaqub**.
+that light between the lands in a van called *Safar*: **Sarvatara** and her husband **Yaqub**.
 
-When Yaqub died, peacefully and old, Noor stopped travelling. Nobody took the road after them.
+When Yaqub died, peacefully and old, Sarvatara stopped travelling. Nobody took the road after them.
 Slowly, without anyone noticing, the lands stopped visiting each other, and one by one the
 lanterns dimmed — not from any darkness, only from *nobody coming*.
 
-Noor knows all of this. She did not tell them, because she wanted them to find out whether they
+Sarvatara knows all of this. She did not tell them, because she wanted them to find out whether they
 would go for their own reasons.
 
-**How the player finds out: the Letters in the Lanterns.** When Yaqub and Noor lit each lantern,
+**How the player finds out: the Letters in the Lanterns.** When Yaqub and Sarvatara lit each lantern,
 Yaqub left a short letter folded into its base, addressed *"to whoever carries the thread next"*.
 Every time the travellers relight a lantern, they find that land's letter. There are 20. Read in any
 order, they build the picture:
@@ -269,13 +269,13 @@ order, they build the picture:
   pretends to like it."*);
 - middle letters mention "N." more, and the van by name;
 - two letters mention a thread (*"hers is gold, and I have never seen it tangle"*);
-- the Sky Isles letter is to Noor herself, and is only readable after the finale.
+- the Sky Isles letter is to Sarvatara herself, and is only readable after the finale.
 
 Physical clues echo the letters: Amira's old scroll with two travellers drawn on it (already her
 letter in `people.ts`); Mehrunissa's miniature of a van; Abu Salim saying "a caravan brought news
 of you two" and then, at 5 hearts, "…and of the two before you". The **revelation** is Act IV's
 beat, triggered by the 15th lantern, when enough letters are held to recognise the handwriting on
-Noor's own old letters in the van.
+Sarvatara's own old letters in the van.
 
 **Why this ending works.** The finale is not *defeating* the dark. It is the travellers realising
 that the work was never one lantern each; it was *keeping the road open*. So the post-game is not
@@ -290,18 +290,18 @@ the grid. Text in act beats never names the land the player has just finished.
 
 | Stage | Lanterns | Suggested lands | Theme | Beat that closes it (trigger) |
 |---|---|---|---|---|
-| **Prologue — The Meadow** | 0 → 1 | Wanderers' Meadow | Leaving home. The first thing you make is for someone else. | Noor hands over *Safar*'s keys. First night in the van at the meadow's edge. |
-| **Act I — The Near Roads** | 1 → 4 | Sakura Hollow, Alpenrose, Firenzia | Being a guest. Learning that help is a kind of conversation. | **"The Logbook"** (4th lantern). Warda the post-rider brings a parcel from Noor: Safar's old logbook, all pages blank except a hand-drawn map with 20 small stars and the initials *N. & Y.* The first question mark. |
+| **Prologue — The Meadow** | 0 → 1 | Wanderers' Meadow | Leaving home. The first thing you make is for someone else. | Sarvatara hands over *Safar*'s keys. First night in the van at the meadow's edge. |
+| **Act I — The Near Roads** | 1 → 4 | Sakura Hollow, Alpenrose, Firenzia | Being a guest. Learning that help is a kind of conversation. | **"The Logbook"** (4th lantern). Warda the post-rider brings a parcel from Sarvatara: Safar's old logbook, all pages blank except a hand-drawn map with 20 small stars and the initials *N. & Y.* The first question mark. |
 | **Act II — The Long Cold** | 4 → 8 | Fjordhavn, Aurora Huts, Old London, New Yonder | Loneliness in crowds and in the cold. Light that makes people come *out*. | **"The Ascent"** (8th lantern). The cape can now reach the high isles. They fly to the Sky Isles and meet the Lamplighter, who says the Great Lantern takes light from *every* land, and that she has been waiting a very long time — "longer than the last time". She gives them a star-lamp *frame*, empty. |
-| **Act III — Threads of Silk and Paper** | 8 → 12 | Hanok Village, Jade Terraces, Nusa Rinjani, Kaveri Coast | Patience, tradition, work done over generations. | **"The Flicker"** (12th lantern). That night the thread flickers and nearly goes out. Rafiq has a fever; they have been working without rest for weeks. The player must *not* do any work: cook him broth, set it down, sit by the van, sleep. By morning the thread is brighter than ever. Noor writes that rest is part of the road too, and that Yaqub once forgot it for a whole summer. The *Kiki* lesson, non-punishing: it cannot be failed, only waited through. |
-| **Act IV — The Warm South** | 12 → 15 | Gulabi Nagar, Bagh-e-Noor, Nile Crossing | Abundance, festivals, justice. | **"N. & Y."** (15th lantern). With the letters they hold, Amal recognises the handwriting on Noor's old letters. The mystery resolves: Noor and Yaqub were the travellers before them. A letter to Noor: *"We know."* She answers with one line: *"Then you know why I gave you the van."* |
-| **Act V — The Guest and the Host** | 15 → 19 | Maple Row, Madinat an-Nur, Souq al-Qamar, Tents of Rimal | Hospitality. Becoming the ones who welcome. | **"Three Days"** (19th lantern). The travellers host a three-day gathering at their own land (any owned plot) for friends from every land who have reached 3 hearts. It is the first time guests come to *them*. Noor arrives last. |
+| **Act III — Threads of Silk and Paper** | 8 → 12 | Hanok Village, Jade Terraces, Nusa Rinjani, Kaveri Coast | Patience, tradition, work done over generations. | **"The Flicker"** (12th lantern). That night the thread flickers and nearly goes out. Rafiq has a fever; they have been working without rest for weeks. The player must *not* do any work: cook him broth, set it down, sit by the van, sleep. By morning the thread is brighter than ever. Sarvatara writes that rest is part of the road too, and that Yaqub once forgot it for a whole summer. The *Kiki* lesson, non-punishing: it cannot be failed, only waited through. |
+| **Act IV — The Warm South** | 12 → 15 | Gulabi Nagar, Bagh-e-Noor, Nile Crossing | Abundance, festivals, justice. | **"N. & Y."** (15th lantern). With the letters they hold, Amal recognises the handwriting on Sarvatara's old letters. The mystery resolves: Sarvatara and Yaqub were the travellers before them. A letter to Sarvatara: *"We know."* She answers with one line: *"Then you know why I gave you the van."* |
+| **Act V — The Guest and the Host** | 15 → 19 | Maple Row, Madinat an-Nur, Souq al-Qamar, Tents of Rimal | Hospitality. Becoming the ones who welcome. | **"Three Days"** (19th lantern). The travellers host a three-day gathering at their own land (any owned plot) for friends from every land who have reached 3 hearts. It is the first time guests come to *them*. Sarvatara arrives last. |
 | **Finale — The Great Lantern** | 19 + ascent | The Sky Isles | Everything carried comes home. | Crafting and delivering the Star Lamp; lighting the Great Lantern. Its light runs down every road they drove, and then — the reveal — **a thread of light appears between every pair of friends they introduced to each other**, crossing the world map. They were never carrying *light*; they were carrying *each other's news*. |
-| **Post-game — The Long Road** | — | Everywhere | Keeping the road open. | Noor travels with them once more (rear bench). The Musafir family takes the road. Community builds in every land. The nikah in the Meadow (Option A). |
+| **Post-game — The Long Road** | — | Everywhere | Keeping the road open. | Sarvatara travels with them once more (rear bench). The Musafir family takes the road. Community builds in every land. The nikah in the Meadow (Option A). |
 
 **The finale's last beat.** On the top isle, the Lamplighter hands Amal the last letter: Yaqub's,
-to Noor. The player carries it home to the Meadow — by road, not teleport, the one enforced drive
-in the game — and hands it to Noor. Noor reads it on the bench under the Great Oak. The travellers
+to Sarvatara. The player carries it home to the Meadow — by road, not teleport, the one enforced drive
+in the game — and hands it to Sarvatara. Sarvatara reads it on the bench under the Great Oak. The travellers
 sit on the next bench (the "sit together" mechanic). No words. Credits roll over the lit map.
 
 ### 2.5 The lands: one chapter each
@@ -319,10 +319,10 @@ in §4.9.
 ---
 
 #### Prologue — Wanderers' Meadow
-- **Keeper:** Grandmother Noor. **Residents:** Yusuf (shepherd), Lina (baker).
-- **Problem:** The Meadow's lantern under the Great Oak has dimmed; Noor is too old for the road.
-- **Craft:** Weaving. **Makes:** 1 scarf for Noor (`main-meadow`).
-- **Beat:** The first thing you make is for someone else. Noor wraps the scarf around her shoulders.
+- **Keeper:** Grandmother Sarvatara. **Residents:** Yusuf (shepherd), Lina (baker).
+- **Problem:** The Meadow's lantern under the Great Oak has dimmed; Sarvatara is too old for the road.
+- **Craft:** Weaving. **Makes:** 1 scarf for Sarvatara (`main-meadow`).
+- **Beat:** The first thing you make is for someone else. Sarvatara wraps the scarf around her shoulders.
 - **Letter:** Yaqub, years ago: the oak was a sapling when they left; he hopes whoever reads this
   sits under it when it is grown.
 - **Interlude — "First Night":** They park at the meadow's edge. Two mugs on the van table. Rafiq
@@ -333,7 +333,7 @@ in §4.9.
 |---|---|---|---|
 | `S-meadow-turnip` · **The Enormous Turnip** | Russian cumulative tale (Afanasyev, 1863) | Yusuf grew a turnip too big to pull. He pulls; Lina pulls; the travellers pull; a sheep, a rabbit and a duck join; out it comes. | Talk to Yusuf after `main-meadow` → `befriend` sheep, rabbit, duck (any), then `talk` Yusuf at his field → 60 coins, 3 *turnip (new)*, recipe *turnip stew (new)*, hearts Yusuf +1, Lina +1. |
 | `S-meadow-juha` · **The Man on the Backwards Donkey** | Juha / Nasreddin Hodja | On the road out, a man rides his donkey facing its tail. "So I can see where I have been." He becomes a recurring character (§2.6). | First time leaving the Meadow by road → `talk` Juha → collection *Juha's Tales 1/12*; unlocks Juha in other lands. |
-| `S-meadow-oak` · **Under the Great Oak** | original | Noor asks them to plant an acorn from the Great Oak on land they own, anywhere in the world. | 5 hearts with Noor → `build` decor `tree` on any owned plot using *oak acorn (new)* → decor *Meadow Oak (new)*, Noor letter chain. |
+| `S-meadow-oak` · **Under the Great Oak** | original | Sarvatara asks them to plant an acorn from the Great Oak on land they own, anywhere in the world. | 5 hearts with Sarvatara → `build` decor `tree` on any owned plot using *oak acorn (new)* → decor *Meadow Oak (new)*, Sarvatara letter chain. |
 | existing `side-lamb`, `side-olives`, `side-unicorns` | — | keep as is | keep as is |
 
 ---
@@ -496,7 +496,7 @@ in §4.9.
 | `S-china-brush` · **The Magic Brush** | *Ma Liang and the Magic Paintbrush* | A poor boy who draws in the dirt with a stick. The travellers give him a real brush and paint. What he paints does not come alive — but the village sees what it needs (a well, a bench, a bridge), and builds it. (The greedy official becomes an official who learns to ask the boy what the village needs.) | `deliver` 2 paint + 1 bamboo → `project` build 3 things he painted → decor *painted mural (new)*, hearts Mei +1, Wei +1. |
 | `S-china-riddles` · **Lantern Riddles** | Lantern Festival riddles (*cai dengmi*, since the Song dynasty) | On the fifteenth night, riddles hang on lanterns. Solve them for small gifts. Riddles are original and translated-friendly (answer choices, not typing). | Winter day 7, night → answer 5 riddles (multiple choice) → 5 small gifts, collection *Riddles*. Yearly, new set each year from a pool of 30. |
 | `S-china-afanti` · **Afanti and the Shadow** | Afanti (Uyghur Nasreddin) | A rich man sells Afanti the tree's shade but not the tree; Afanti follows the shade wherever it falls, including into the rich man's house, until the man learns to share shade freely. Played for laughs; the rich man is fine and ends up hosting tea. | `S-meadow-juha` done → Juha appears as Afanti → `sit` in the shade 3 times through the day (`time` 9h, 13h, 17h) → *Juha's Tales +1*. |
-| `S-china-mooncake` · **Round Cakes, Round Moon** | Mid-Autumn reunion customs | Mid-autumn: families gather and share round cakes under the full moon. Make mooncakes and bring them to people who are far from family — including, by letter, to Noor. | Autumn day 4 → `craft` 4 *mooncake (new)* → `deliver` 3 + `gift` 1 by letter → hearts +1 each, festival decor *moon lanterns (new)*. Yearly. |
+| `S-china-mooncake` · **Round Cakes, Round Moon** | Mid-Autumn reunion customs | Mid-autumn: families gather and share round cakes under the full moon. Make mooncakes and bring them to people who are far from family — including, by letter, to Sarvatara. | Autumn day 4 → `craft` 4 *mooncake (new)* → `deliver` 3 + `gift` 1 by letter → hearts +1 each, festival decor *moon lanterns (new)*. Yearly. |
 | existing `side-mei`, `side-panda` | — | keep | keep |
 
 ##### Nusa Rinjani (Indonesia)
@@ -668,7 +668,7 @@ in §4.9.
 - **Craft:** Lampcraft. **Makes:** the Star Lamp (lampcraft 3) from the empty frame she gave them at
   the Ascent + star dust.
 - **Beat:** The Great Lantern wakes; light runs down every road; threads appear between friends.
-- **Letter:** Yaqub's letter to Noor (carried home, §2.4).
+- **Letter:** Yaqub's letter to Sarvatara (carried home, §2.4).
 
 | ID · Title | Inspired by | Premise | Trigger → Completion → Reward |
 |---|---|---|---|
@@ -718,16 +718,16 @@ Legend: ♥ = hearts; `L` = `state.light`; "lanterns" = `state.lanterns.length`;
 
 | ID | Title | Trigger | Completion | Reward |
 |---|---|---|---|---|
-| `main-meadow` | Two Wanderers | New game | Scarf delivered to Noor; Meadow lantern lit | 40 coins, L +1, Noor ♥2 (existing) · Letter 1 · flag `van-keys` · Interlude *First Night* |
+| `main-meadow` | Two Wanderers | New game | Scarf delivered to Sarvatara; Meadow lantern lit | 40 coins, L +1, Sarvatara ♥2 (existing) · Letter 1 · flag `van-keys` · Interlude *First Night* |
 | `main-<region>` × 18 | (existing titles) | `main-meadow` done | Keeper met, item delivered, lantern lit | Existing reward, **with coins scaled by act** (§4.4) · that land's Letter · `house-<region>` decor (existing rule) · Interlude on leaving |
 | `beat-logbook` | The Logbook | lanterns ≥ 4 | Auto: Warda meets them at the next lodge or road stop; `talk` Warda | Item *Safar's logbook (new)* (journal map of 20 stars); journal tab *Letters* |
 | `sky-ascent` *(new, split from `main-skyisles`)* | The Ascent | lanterns ≥ 8 | `visit` skyisles; reach the top isle; `talk` Lamplighter | *star-lamp frame (new)*; L +1; cloud veil lifts (§4.3) |
-| `beat-flicker` | The Flicker | lanterns ≥ 12, next time the van is entered at night | Cook any food and set it down (`deliver` to Rafiq), then sleep | L +1; thread cosmetic *steady glow*; Noor letter |
-| `beat-revelation` | N. & Y. | lanterns ≥ 15 and letters held ≥ 10 (else waits until 10) | `talk` Noor (by letter or in the Meadow) | Journal page *The Travellers Before*; Noor ♥ to 5; unlocks Noor's post-game letters |
-| `beat-threedays` | Three Days | lanterns ≥ 19 | `host` guests for 3 game days at any owned plot (if none, Noor lends her garden, free) | Every friend ≥ 3♥ visits; Noor arrives last and gives 3 *star dust* |
+| `beat-flicker` | The Flicker | lanterns ≥ 12, next time the van is entered at night | Cook any food and set it down (`deliver` to Rafiq), then sleep | L +1; thread cosmetic *steady glow*; Sarvatara letter |
+| `beat-revelation` | N. & Y. | lanterns ≥ 15 and letters held ≥ 10 (else waits until 10) | `talk` Sarvatara (by letter or in the Meadow) | Journal page *The Travellers Before*; Sarvatara ♥ to 5; unlocks Sarvatara's post-game letters |
+| `beat-threedays` | Three Days | lanterns ≥ 19 | `host` guests for 3 game days at any owned plot (if none, Sarvatara lends her garden, free) | Every friend ≥ 3♥ visits; Sarvatara arrives last and gives 3 *star dust* |
 | `main-skyisles` | The Great Lantern | `sky-ascent` + `beat-threedays` done; **lanternsNeeded 19** (was 8) | Star Lamp crafted and delivered; Great Lantern lit | 500 coins, L +3, flag `finale`, decor `star-arch` (existing) · **thread web** revealed (§2.7) |
-| `beat-homeward` | The Last Letter | `main-skyisles` done | Drive to the Meadow (map travel disabled for this one trip) and give Noor Yaqub's letter | Credits; flag `homeward`; post-game opens |
-| `post-noor` | One More Road | `beat-homeward` done | Noor rides the rear bench to 3 lands of the player's choice | Decor *Noor's bench (new)* |
+| `beat-homeward` | The Last Letter | `main-skyisles` done | Drive to the Meadow (map travel disabled for this one trip) and give Sarvatara Yaqub's letter | Credits; flag `homeward`; post-game opens |
+| `post-noor` | One More Road | `beat-homeward` done | Sarvatara rides the rear bench to 3 lands of the player's choice | Decor *Sarvatara's bench (new)* |
 | `post-musafir` | Passing the Thread | `beat-homeward` done, Musafir family met in all 5 acts | Teach Zayd's parents one craft in each of 3 lands; see them off | The Musafirs keep writing forever; achievement *The road stays open* |
 | `post-nikah` (Option A) | The Walima | `beat-homeward` done | `host` a feast in the Meadow with ≥ 20 friends at 5♥ | Modest wedding outfits, decor *wedding arch (new)*; closing scene |
 
@@ -778,7 +778,7 @@ Applied to each `RegionId`. The land's journal page shows these as a ring of eig
 
 | NPC | Loves | 3♥ story | 5♥ keepsake *(new)* |
 |---|---|---|---|
-| noor | minttea, scarf, datecake | Tells of "a road she once drove" without naming it | Noor's kettle (van) |
+| noor | minttea, scarf, datecake | Tells of "a road she once drove" without naming it | Sarvatara's kettle (van) |
 | yusuf | feed, wildflower, bread | A lamb is born; he asks the travellers to name her | Lamb's bell |
 | lina | olive, bread, datecake | Her famous burnt-bread recipe | Lina's bread tin + recipe *honey loaf* |
 | haruka | tea, minttea, vase | Reads her old teacher's letter aloud | Tea bowl |
@@ -990,7 +990,7 @@ litter at a viewpoint · light a neighbour's lamp at dusk · draw a kolam (Kaver
 | `W-tajir` | Weekly order | Each game week, truck owned | One trade order | §3.3 |
 | `E-<festival>` × ~26 | Festivals | Calendar (§4.8) | Be in the land during the festival window and do its activity | Festival decor; +30 friendship with residents; repeats yearly |
 | `E-lantern-week` | Lantern Week | Game calendar, or real Ramadan if opted in (§4.8) | Craft and give 5 *fanous*; host one *table of mercy* at sunset | Decor *fanous string*; Warda's lantern letter |
-| `E-eid-lanterns` | Eid of Lanterns | Day after Lantern Week | Wear a new outfit; visit 5 friends in person; give sweets to 5 children | Outfit gift from Noor; +50 friendship with each friend visited |
+| `E-eid-lanterns` | Eid of Lanterns | Day after Lantern Week | Wear a new outfit; visit 5 friends in person; give sweets to 5 children | Outfit gift from Sarvatara; +50 friendship with each friend visited |
 | `E-eid-sharing` | Feast of Sharing | 13 days after Lantern Week begins | Cook for and host 10 guests; send 3 food gifts by letter | Barakah +10; decor *long table* |
 | `E-season-<s>` × 4 | The turning year | Each season start | See the season's 3 sightings anywhere | Seasonal van curtain |
 
@@ -1132,7 +1132,7 @@ export interface Reward {
   keepsake?: string;                     // decor id added to unlockedDecor + collections.keepsakes
   introduce?: [string, string];
   upgrade?: 'glide' | 'sled' | 'lodges' | 'veil';
-  letter?: string;                       // a story letter id (Letters in the Lanterns, Noor…)
+  letter?: string;                       // a story letter id (Letters in the Lanterns, Sarvatara…)
   points?: Record<string, number>;       // friendship points (finer than hearts)
   barakah?: number;
 }
@@ -1399,7 +1399,7 @@ it resolves with every NPC.
 
 **8. Chains.** After an introduction, the two NPCs "write" to each other on their own schedule
 (`introductions` pairs; no stored messages, only an occasional mention to the player:
-"Seo-yeon sent me a poem!"). Story letters (Noor after each act, Letters in the Lanterns) bypass the
+"Seo-yeon sent me a poem!"). Story letters (Sarvatara after each act, Letters in the Lanterns) bypass the
 global pace but still respect the delivery window.
 
 **9. Replies.** Keep the three `REPLY_OPTIONS`. "How are you?" gives +15 points deterministically
@@ -1535,7 +1535,7 @@ story. Recipes marked † are unlocked by their story rather than by level alone
 | dye | Madder Dye | material | 4 | desert | gardening 0: marigold 1 or rose 1 | `S-rimal-sadu` |
 | lampframe | Star-lamp Frame | good | 0 | skyisles | — (quest) | `sky-ascent` |
 | logbook | Safar's Logbook | good | 0 | meadow | — (quest) | `beat-logbook` |
-| acorn | Oak Acorn | seed | 0 | meadow | — (gift) | Noor letter |
+| acorn | Oak Acorn | seed | 0 | meadow | — (gift) | Sarvatara letter |
 | cloudflower | Cloud Flower | crop | 14 | skyisles | crop `cloud` | `S-sky-cloudgarden` |
 
 The Star Lamp recipe becomes `{ lampframe: 1, stardust: 2 }` (lampcraft 3), replacing `lantern: 1`,
@@ -1545,7 +1545,7 @@ so the Ascent is structurally required.
 (cowbell arch, moon lanterns, fanous string, kite, kolam threshold, long table, broom & basket), project
 builds (placed in towns, not plots), and plot decor: blossom tree, meadow oak, apple tree, magpie bridge
 (miniature), puppet theatre, picnic cloth, chess table, gourd planter, rattan pavilion, milestone with
-cat, star tile, petition scroll, palm-leaf basket, ebony horse toy, Noor's bench, wedding arch,
+cat, star tile, petition scroll, palm-leaf basket, ebony horse toy, Sarvatara's bench, wedding arch,
 scarecrow, feed trough, signpost of your lands. All must keep the anatomy invariant (anything
 creature-shaped has no face).
 

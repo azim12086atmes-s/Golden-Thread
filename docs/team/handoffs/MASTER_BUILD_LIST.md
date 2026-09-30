@@ -124,7 +124,7 @@ sections C1–C7) and `3D_BUILDS_HANDOFF.md` (3D work, sections 2a and 3.x). Tic
 
 ## L0. Owner requests of 2026-09-30
 - [x] Wardrobe for the brothers, sisters and children (`caravan/dress.ts`, the family tabs in the dressing room)
-- [x] A guided tour: Grandmother Noor's letters, one mechanic at a time, with "Show me" (`guide/tour.ts`); the guidebook (letters, how things work, every land's page from the game's data, `guide/lands.ts`)
+- [x] A guided tour: Grandmother Sarvatara's letters, one mechanic at a time, with "Show me" (`guide/tour.ts`); the guidebook (letters, how things work, every land's page from the game's data, `guide/lands.ts`)
 - [x] Keeper meeting films: the first meeting with each land's Keeper is a short film (`story/MeetScene.ts`)
 - [x] Homes for both sets of parents, visits and letters (`housing/parents.ts`)
 - [x] Dragons easy to see near their monuments: each circles close round its monument, clear of it and of the town, wings and all (`creatures/Dragons.ts`, tests/dragons.test.ts); a soft aura round every dragon's silhouette, brighter at night (the Night Dragon's plasma blue, the Light Fury's pearl) (`dragonKit.ts` `DRAGON_NIGHT`)
