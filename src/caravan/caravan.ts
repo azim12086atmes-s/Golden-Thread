@@ -266,6 +266,9 @@ export function dragonEscort(girl: { x: number; y: number; z: number }, boy: P2,
   return { light, carpet: { x: light.x - fx * PET_CARPET_BACK, y: light.y, z: light.z - fz * PET_CARPET_BACK }, side: light.side };
 }
 
+/** Where the Light Fury rests after landing: this far to the side of the Night Dragon (m, centre to centre; their folded wings well apart). */
+export const LIGHT_REST_SIDE = 9;
+
 /** How far out she drifts at most as she plays beside them (m), always away from him. */
 export const LIGHT_PLAY = 2.2;
 

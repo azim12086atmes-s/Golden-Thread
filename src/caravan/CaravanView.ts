@@ -14,7 +14,7 @@ import { BUNKS, PET_BEDS, RIDE_CHILD_SEATS, VAN } from '../vehicles/vanLayout';
 
 /** Children are drawn at this scale of an adult. */
 const CHILD_SCALE = 0.62;
-import { arrivalsIn, bringHome, CARPET_L, CARPET_W, CHILDREN, COMPANION_BY_ID, MAX_CHILDREN, PET_CARPET_BACK, TRAVELLER_CLEARANCE, CARPET_SIDE, caravanStep, canJoin, balloonFor, carpetTarget, lightPlay, offerFood, strayHome, PETS, type CompanionDef, type Member, type PetDef } from './caravan';
+import { arrivalsIn, bringHome, CARPET_L, CARPET_W, CHILDREN, COMPANION_BY_ID, MAX_CHILDREN, PET_CARPET_BACK, TRAVELLER_CLEARANCE, CARPET_SIDE, caravanStep, canJoin, balloonFor, carpetTarget, lightPlay, LIGHT_REST_SIDE, offerFood, strayHome, PETS, type CompanionDef, type Member, type PetDef } from './caravan';
 
 /**
  * The caravan in the world: their brothers and sisters, the children and pets travelling with the
@@ -426,6 +426,16 @@ export class CaravanView {
       // The Light Fury lands with him: she stays where she came down, beside the Night Dragon,
       // while he waits for them (restLight); otherwise she waits out of sight until they fly again.
       this.lightResting = !!this.light && this.lightOn && (!!tr.parkedDragon || tr.mode === 'dragon');
+      if (this.light && this.lightResting) {
+        // She settles a wingspan and a half beside him, facing the way he faces, on the side away
+        // from the two of them — so they rest together, wherever the carpet came down.
+        const at = tr.parkedDragon ?? { pos: tr.gPos, heading: tr.heading };
+        const rx = Math.cos(at.heading), rz = -Math.sin(at.heading);
+        const side = (tr.gPos.x - at.pos.x) * rx + (tr.gPos.z - at.pos.z) * rz > 0 ? -1 : 1;
+        const x = at.pos.x + rx * side * LIGHT_REST_SIDE, z = at.pos.z + rz * side * LIGHT_REST_SIDE;
+        this.light.root.position.set(x, surfaceAt(x, z, at.pos.y + 3), z);
+        this.light.root.rotation.set(0, at.heading, 0);
+      }
       if (this.light && !this.lightResting) this.light.root.visible = false;
       this.lightOn = false;
       this.carpetBack = 0;
