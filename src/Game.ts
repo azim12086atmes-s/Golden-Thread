@@ -480,7 +480,7 @@ export class Game {
     this.sky.moonHidden = this.skyFx.hideMoon;
     this.npcs.update(dt, this.t, this.trav.gPos);
     this.needFolk.update(dt, this.t, this.camera.position);
-    this.dragons.update(this.t, this.camera.position, (land) => this.world.isLoaded(land));
+    this.dragons.update(this.t, this.camera, (land) => this.world.isLoaded(land));
     this.plotsView.update(dt, this.t, this.sky.night, this.housing.plotAt(this.trav.gPos.x, this.trav.gPos.z)?.id ?? null, this.camera.position);
     this.townsfolk.update(dt, this.t, this.trav.gPos, this.st.errands);
     this.dressing.update(this.sky.night);

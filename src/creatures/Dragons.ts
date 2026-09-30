@@ -157,10 +157,27 @@ export class Dragons {
     scene.add(this.group);
   }
 
-  update(t: number, camera: THREE.Vector3, loaded: (land: RegionId) => boolean): void {
+  private frustum = new THREE.Frustum();
+  private viewM = new THREE.Matrix4();
+  private ball = new THREE.Sphere();
+  private frame = 0;
+
+  /**
+   * Fly each dragon whose land is near. Bending a dragon's body is the costly part, so a dragon
+   * whose whole circle is out of view is not bent at all this frame, and a far one (over 450 m)
+   * only every third frame; its flight is by the clock, so it is always where it should be.
+   */
+  update(t: number, camera: THREE.Camera, loaded: (land: RegionId) => boolean): void {
+    const cam = camera.position;
+    this.frame++;
+    this.frustum.setFromProjectionMatrix(this.viewM.multiplyMatrices(camera.projectionMatrix, camera.matrixWorldInverse));
     for (const h of DRAGON_HOMES) {
-      const c = homeCentre(h);
-      const near = loaded(h.land) && Math.hypot(camera.x - c.x, camera.z - c.z) < 1100;
+      const c = homeCentre(h), dist = Math.hypot(cam.x - c.x, cam.z - c.z);
+      const near = loaded(h.land) && dist < 1100;
+      // Everywhere its circle (and its body trailing round it) could reach.
+      this.ball.center.set(c.x, terrainHeight(c.x, c.z) + h.alt, c.z);
+      this.ball.radius = h.radius * 1.45 + h.spec.length + h.bob + 30;
+      const seen = this.frustum.intersectsSphere(this.ball);
       for (let k = 0; k < (h.flock ?? 1); k++) {
         const key = k ? `${h.spec.id}~${k}` : h.spec.id;
         let d = this.built.get(key);
@@ -171,6 +188,7 @@ export class Dragons {
           this.group.add(d.model.group);
         }
         d.model.group.visible = true;
+        if (!seen || (dist > 450 && (this.frame + k) % 3 !== 0)) continue;
         // The flock plays tag: each a little behind the one before.
         fly(d.model, d.flight, t - k * 2.2);
       }
