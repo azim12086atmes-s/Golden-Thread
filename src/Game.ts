@@ -34,6 +34,7 @@ import { talkToFolk } from './npc/folk';
 import { CaravanView } from './caravan/CaravanView';
 import { dress } from './caravan/dress';
 import { parentsAsResidents, tickParents, visit, type Whose } from './housing/parents';
+import { MeetScene, metFlag } from './story/MeetScene';
 import { PETS, strayHome, type PetDef } from './caravan/caravan';
 import { WonderSites } from './world/WonderSites';
 import { PEOPLE, keeperOf } from './npc/people';
@@ -760,6 +761,15 @@ export class Game {
 
   talk(npc: Npc): void {
     const def = npc.def;
+    // The first meeting with a land's Keeper is a short film, then the conversation.
+    if (def.keeper && !this.st.flags.includes(metFlag(def.id)) && !this.cutscene && !this.inVan && this.trav.mode === 'walk') {
+      this.st.flags.push(metFlag(def.id));
+      this.ui.closePanel();
+      const scene = new MeetScene(this, npc);
+      this.cutscene = scene;
+      scene.onDone = () => { this.cutscene = null; this.talk(npc); };
+      return;
+    }
     // Meeting a Keeper for the first time teaches their land's craft.
     if (def.keeper) {
       const skill = REGION_BY_ID[def.region].skill;
