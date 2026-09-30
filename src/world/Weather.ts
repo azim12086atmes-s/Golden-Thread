@@ -1,6 +1,7 @@
 import * as THREE from 'three';
 import type { RegionId } from './regions';
 import { currentWind } from './wind';
+import type { WeatherEvent } from './seasons';
 
 /**
  * Weather you can see the wind in. Each land has its own: sheets of dust racing low over the
@@ -11,7 +12,7 @@ import { currentWind } from './wind';
  * grass and trees, and both fading out as you cross into the next land.
  */
 
-export type WeatherKind = 'dust' | 'snow' | 'mist' | 'pollen' | 'haze' | 'none';
+export type WeatherKind = 'dust' | 'snow' | 'mist' | 'pollen' | 'haze' | 'rain' | 'none';
 
 export interface WeatherDef {
   kind: WeatherKind;
@@ -46,6 +47,27 @@ export const WEATHER: Record<RegionId, WeatherDef> = {
   aurora: W('snow', '#ffffff', 1, 0.6),
   skyisles: W('mist', '#f4eeff', 0.45, 0.8),
 };
+
+/**
+ * A land's weather during an event of the day (seasons.ts): a shower of rain, a snow flurry, a
+ * sandstorm twice as thick as the usual dust, or a white morning fog. The same object each time
+ * for the same land and event, so the weather cross-fades only when it really changes.
+ */
+const eventCache = new Map<string, WeatherDef>();
+export function weatherFor(land: RegionId, event: WeatherEvent): WeatherDef {
+  const base = WEATHER[land];
+  if (event === 'none') return base;
+  const k = `${land}:${event}`;
+  let d = eventCache.get(k);
+  if (!d) {
+    d = event === 'shower' ? W('rain', '#c8d6ea', 0.85, 0.7)
+      : event === 'flurry' ? W('snow', '#ffffff', 0.8, 0.6)
+        : event === 'sandstorm' ? W('dust', base.kind === 'dust' ? base.color : '#f2d6a8', Math.min(1, Math.max(0.6, base.amount) * 1.8), 0.4)
+          : W('mist', '#eef2f6', 0.95, 0.8);
+    eventCache.set(k, d);
+  }
+  return d;
+}
 
 const WISPS = 150, STREAKS = 700, GUSTS = 500, BOX = 120;
 
@@ -142,8 +164,8 @@ export class Weather {
   }
 
   /** Which land's weather, how bright the day is, and where the travellers are. */
-  update(dt: number, t: number, land: RegionId, focus: THREE.Vector3, night: number, groundY: number): void {
-    const def = WEATHER[land];
+  update(dt: number, t: number, land: RegionId, focus: THREE.Vector3, night: number, groundY: number, event: WeatherEvent = 'none'): void {
+    const def = weatherFor(land, event);
     // Cross-fade: fade the old weather out, switch, fade the new one in.
     if (def !== this.cur) {
       this.level = Math.max(0, this.level - dt * 0.6);
@@ -155,8 +177,8 @@ export class Weather {
     this.color.set(d.color);
     if (night > 0.5) this.color.multiplyScalar(0.55 + (d.kind === 'mist' ? 0.25 : 0));
     const wind = currentWind();
-    // Dust and snow race; mist and haze drift; pollen floats.
-    const pace = d.kind === 'dust' ? 9 : d.kind === 'snow' ? 7 : d.kind === 'pollen' ? 1.2 : 2;
+    // Dust and snow race; mist and haze drift; pollen floats; rain slants with the wind.
+    const pace = d.kind === 'dust' ? 9 : d.kind === 'snow' ? 7 : d.kind === 'pollen' ? 1.2 : d.kind === 'rain' ? 3 : 2;
     const vx = wind.x * (0.6 + wind.strength) * pace, vz = wind.z * (0.6 + wind.strength) * pace;
     const half = BOX / 2;
     if (!this.started) {
@@ -181,11 +203,28 @@ export class Weather {
     (this.wisps.geometry.getAttribute('wisp') as THREE.BufferAttribute).needsUpdate = true;
     (this.wisps.geometry.getAttribute('alpha') as THREE.BufferAttribute).needsUpdate = true;
     const u = this.wisps.material.uniforms;
-    u.strength.value = strength * (d.kind === 'mist' ? 1.1 : d.kind === 'dust' ? 1.6 : d.kind === 'snow' ? 1.3 : 0.8);
+    u.strength.value = strength * (d.kind === 'mist' ? 1.1 : d.kind === 'dust' ? 1.6 : d.kind === 'snow' ? 1.3 : d.kind === 'rain' ? 0.35 : 0.8);
 
+    // Rain: drops falling fast, slanting with the wind, all round them.
+    if (d.kind === 'rain') {
+      const m = this.gusts.material;
+      m.color.copy(this.color);
+      m.opacity = strength * 0.5;
+      for (let i = 0; i < GUSTS; i++) {
+        const s = this.seed[(i * 5) % STREAKS];
+        let x = this.gustHead[i * 3] + vx * dt, z = this.gustHead[i * 3 + 2] + vz * dt;
+        let y = this.gustHead[i * 3 + 1] - dt * (11 + s * 4);
+        if (x - focus.x > half) x -= BOX; else if (x - focus.x < -half) x += BOX;
+        if (z - focus.z > half) z -= BOX; else if (z - focus.z < -half) z += BOX;
+        if (y < groundY) y = groundY + 10 + s * 6;
+        this.gustHead[i * 3] = x; this.gustHead[i * 3 + 1] = y; this.gustHead[i * 3 + 2] = z;
+        this.gustPos.set([x, y, z, x - vx * 0.05, y + 0.55, z - vz * 0.05], i * 6);
+      }
+      this.gusts.geometry.attributes.position.needsUpdate = true;
+    }
     // Gusts: dust and blown snow race low over the ground as streaks, so you can see the wind.
     const gusty = d.kind === 'dust' || d.kind === 'snow';
-    this.gusts.visible = gusty;
+    this.gusts.visible = gusty || d.kind === 'rain';
     if (gusty) {
       const m = this.gusts.material;
       m.color.copy(this.color).lerp(WHITE, 0.35);

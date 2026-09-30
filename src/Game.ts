@@ -82,6 +82,7 @@ import { Weather } from './world/Weather';
 import { surfaceAt, terrainHeight } from './world/terrain';
 import { World } from './world/World';
 import { FOLIAGE_UNIFORMS, updateWind } from './world/wind';
+import { EVENT_TEXT, leafSeason, seasonOf, weatherEvent, type WeatherEvent } from './world/seasons';
 import { setLamps } from './world/lamplight';
 import { Atmos } from './world/Atmos';
 import { Ride, airRide, coachRide, ferryRide, streetTramRide, tramRide } from './travel/Ride';
@@ -159,6 +160,9 @@ export class Game {
   /** Each land's traffic: its roads, waters and skies alive with vehicles, boats, craft and creatures. */
   readonly traffic = new Traffic();
   private charityClock = 0;
+  /** The weather event over the land they are in (seasons.ts), checked every couple of seconds. */
+  weatherNow: WeatherEvent = 'none';
+  private tmpTint = new THREE.Vector3();
   private floorsSig = '';
   readonly quests: QuestSystem;
   readonly msgs: Messages;
@@ -442,7 +446,13 @@ export class Game {
     this.ambience.update(dt, this.trav.gPos, this.t, this.sky.night);
     this.regionFx.setRegion(this.region.id);
     this.regionFx.update(dt, this.trav.gPos, this.t, this.sky.night);
-    this.weather.update(dt, this.t, this.region.id, this.trav.gPos, this.sky.night, surfaceAt(this.trav.gPos.x, this.trav.gPos.z, this.trav.gPos.y + 2));
+    // The season turns the leaves of the temperate lands (eased, so crossing a border is gentle).
+    {
+      const ls = leafSeason(this.region.id, seasonOf(Math.floor(this.st.minutes / DAY_MINUTES))), k = Math.min(1, dt * 0.5);
+      FOLIAGE_UNIFORMS.uSeasonTint.value.lerp(this.tmpTint.set(...ls.tint), k);
+      FOLIAGE_UNIFORMS.uSeasonAmt.value += (ls.amount - FOLIAGE_UNIFORMS.uSeasonAmt.value) * k;
+    }
+    this.weather.update(dt, this.t, this.region.id, this.trav.gPos, this.sky.night, surfaceAt(this.trav.gPos.x, this.trav.gPos.z, this.trav.gPos.y + 2), this.weatherNow);
     this.skyLanterns.everyLand = this.region.id === 'meadow' && this.celebration.festivities.level > 0.5;
     this.skyLanterns.update(dt, this.t, this.trav.gPos, this.region.id, this.sky.night);
     this.festivalAir.update(dt, this.t, this.region.id, this.sky.night);
@@ -470,6 +480,12 @@ export class Game {
       while (carryNews.length) this.toast(carryNews.shift()!, 'info');
       for (const n of tickWeavers(this.st)) this.toast(`🧶 ${n.text}`, 'reward');
       for (const n of tickParents(this.st)) this.toast(n.text, 'story');
+      // The day's weather over this land: a shower, a flurry, a sandstorm or a morning fog.
+      const ev = weatherEvent(this.region.id, Math.floor(this.st.minutes / DAY_MINUTES), hourOf(this.st.minutes));
+      if (ev !== this.weatherNow) {
+        if (ev !== 'none' && this.started) this.toast(`${EVENT_TEXT[ev].icon} ${EVENT_TEXT[ev].words} ${this.region.name}.`, 'info');
+        this.weatherNow = ev;
+      }
       this.fieldsView.update();
       this.harboursView.update();
       this.bridgesView.update();

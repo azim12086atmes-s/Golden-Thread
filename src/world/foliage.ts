@@ -168,14 +168,23 @@ export function cardMaterial(): THREE.MeshLambertMaterial {
         gl_Position = projectionMatrix * mvPosition;`);
     sh.fragmentShader = sh.fragmentShader
       .replace('#include <common>', `#include <common>
-        varying float vKind; varying vec3 vCW; uniform vec3 uSunDir; uniform float uLeafNight;`)
+        varying float vKind; varying vec3 vCW; uniform vec3 uSunDir; uniform float uLeafNight;
+        uniform vec3 uSeasonTint; uniform float uSeasonAmt;`)
       .replace('#include <color_fragment>', `
         vec3 tx = diffuseColor.rgb;
         #ifdef USE_COLOR
           // Blossom cards: only the petals take the tree's colour; leaves and hearts keep their paint.
           float petalW = vKind > 2.5 ? smoothstep(0.7, 0.85, min(tx.r, min(tx.g, tx.b))) : 1.0;
           diffuseColor.rgb = mix(tx * vec3(0.55, 0.85, 0.5), tx * vColor.rgb, petalW);
-        #endif`)
+        #endif
+        {
+          // The season (seasons.ts): green broad and small leaves turn, sprig by sprig; needles,
+          // blossom, fronds and crystals never do.
+          float greenC = smoothstep(0.02, 0.1, diffuseColor.g - max(diffuseColor.r, diffuseColor.b)) * step(vKind, 1.5);
+          float hv = fract(sin(dot(floor(vCW * 2.3), vec3(12.9898, 78.233, 37.719))) * 43758.5453);
+          vec3 turnedC = uSeasonTint * dot(diffuseColor.rgb, vec3(0.35, 0.5, 0.15)) * 1.9 * mix(0.8, 1.2, hv);
+          diffuseColor.rgb = mix(diffuseColor.rgb, turnedC, uSeasonAmt * greenC * (0.6 + 0.4 * hv));
+        }`)
       .replace('#include <emissivemap_fragment>', `#include <emissivemap_fragment>
         {
           // Sunlight coming through the leaves, and a soft light within so crowns never go dead-dark.

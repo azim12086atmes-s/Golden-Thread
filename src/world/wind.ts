@@ -73,6 +73,9 @@ export const WIND_GLSL = /* glsl */ `
 export const FOLIAGE_UNIFORMS = {
   uSunDir: { value: new THREE.Vector3(0, 1, 0) },
   uLeafNight: { value: 0 },
+  /** The season's turn of the green leaves (seasons.ts `leafSeason`): the colour, and how far. */
+  uSeasonTint: { value: new THREE.Vector3(1, 1, 1) },
+  uSeasonAmt: { value: 0 },
 };
 
 /**
@@ -102,6 +105,10 @@ const LEAF_FRAG = /* glsl */ `
     }
     float onLeaf = smoothstep(0.02, 0.12, best);
     vec3 base = diffuseColor.rgb;
+    // The season (seasons.ts): green leaves turn towards the season's colour, leaf by leaf.
+    float greenLeaf = smoothstep(0.02, 0.1, base.g - max(base.r, base.b));
+    vec3 turned = uSeasonTint * dot(base, vec3(0.35, 0.5, 0.15)) * 1.9 * mix(0.85, 1.15, hue);
+    base = mix(base, turned, uSeasonAmt * greenLeaf * (0.7 + 0.3 * hue));
     float sat = max(base.r, max(base.g, base.b)) - min(base.r, min(base.g, base.b));
     float colourful = smoothstep(0.05, 0.25, sat) * (1.0 - smoothstep(0.0, 0.08, base.g - max(base.r, base.b)));
     vec3 tint = hue < 0.5 ? vec3(1.14, 0.94, 0.9) : vec3(0.92, 0.98, 1.14);
@@ -132,6 +139,7 @@ export function swayMaterial<T extends THREE.Material>(mat: T, amount = 0.45, le
     sh.fragmentShader = sh.fragmentShader
       .replace('#include <common>', `#include <common>
         varying float vLeaf; varying vec3 vLW; varying vec3 vLN; uniform vec3 uSunDir; uniform float uLeafNight;
+        uniform vec3 uSeasonTint; uniform float uSeasonAmt;
         ${LAMP_GLSL}${surfaces ? `\nvarying float vSurf;\n${SURFACE_GLSL}` : ''}`)
       .replace('#include <color_fragment>', `#include <color_fragment>
         float vLeafGlow = 0.0, vLeafLum = 0.0;
