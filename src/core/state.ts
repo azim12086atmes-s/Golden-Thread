@@ -126,6 +126,10 @@ export interface GameState {
   caravan: string[];
   /** What the brothers, sisters and children wear, chosen in the dressing room (caravan/dress.ts). */
   companionOutfits: Record<string, string>;
+  /** Grandmother Noor's guided tour: put away entirely, and letters put aside for later (guide/tour.ts). */
+  tour: { off: boolean; later: string[] };
+  /** The homes given to her parents and to his (plot ids of homes they own; housing/parents.ts), and when they last visited. */
+  parents: { hers?: string; his?: string; visited?: Record<string, number> };
   /** Certificates from institute courses: `${who}:${skill}` → the certified level (institutions/certificates.ts). */
   certificates: Record<string, import('../institutions/certificates').Certificate>;
   /** Children brought home to their destinations: child id → where and on which day. */
@@ -190,6 +194,8 @@ export function newGame(): GameState {
     tracked: '',
     caravan: ['sib-aasima', 'sib-suvaibia', 'sib-maryam', 'sib-abdurrahim', 'pet-sheepdog', 'pet-clover'],
     companionOutfits: {},
+    tour: { off: false, later: [] },
+    parents: {},
     homecomings: {},
     certificates: {},
     playSeconds: 0,

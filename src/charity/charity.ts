@@ -29,6 +29,8 @@ export interface Person {
   hope: string;
   /** The craft they would love to learn (the seed of teaching and institutes). */
   learn: SkillId;
+  /** Woman or man, when it is known (the travellers' parents); otherwise it follows from their id. */
+  who?: 'girl' | 'boy';
 }
 
 export const NEED_LABEL: Record<NeedKind, { name: string; icon: string; needs: string }> = {

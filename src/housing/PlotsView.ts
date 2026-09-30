@@ -1,5 +1,6 @@
 import * as THREE from 'three';
 import { PERSON_BY_ID, residentsOf } from '../charity/charity';
+import { parentsIn } from './parents';
 import { CharacterModel } from '../characters/CharacterModel';
 import type { GameState } from '../core/state';
 import { wardrobeFor } from '../npc/Townsfolk';
@@ -119,6 +120,25 @@ export class PlotsView {
         model.root.rotation.y = Math.atan2(p.x - x, p.z - 3 - z) + Math.PI;
         this.scene.add(model.root);
         this.folk.set(key, { model, ph: i * 1.3 });
+      });
+    }
+    // Her parents or his, in a home of their children's: standing either side of the door to
+    // welcome them (the house stands at local z −5, its door facing +z).
+    for (const p of PLOTS) {
+      if (!this.lawns.has(p.id)) continue;
+      const whose = parentsIn(this.st, p.id);
+      if (!whose) continue;
+      (['girl', 'boy'] as const).forEach((who, i) => {
+        const key = `${p.id}:parents-${whose}-${who}`;
+        want.add(key);
+        if (this.folk.has(key)) return;
+        const pool = wardrobeFor(whose === 'hers' ? 'indianorth' : 'mughal', who);
+        const model = new CharacterModel(pool[(whose === 'hers' ? 3 : 7) % pool.length], whose === 'hers' ? '#dfad86' : '#c99a74', who === 'girl' ? 0.95 : 1.02);
+        const x = p.x + (i ? 1.7 : -1.7), z = p.z - 1.2;
+        model.root.position.set(x, terrainHeight(x, z), z);
+        model.root.rotation.y = i ? -0.25 : 0.25;
+        this.scene.add(model.root);
+        this.folk.set(key, { model, ph: 2 + i });
       });
     }
     for (const [key, f] of this.folk) {

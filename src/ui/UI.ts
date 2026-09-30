@@ -1,7 +1,7 @@
 import { ASSIST_LEVEL, PROFESSORS, THESIS_LEVEL, TOPIC_BY_ID, assist, dayProgress, startThesis, topicsAt, workOnThesis } from '../institutions/research';
 import { INSTITUTE_BY_KIND, institutesOf, type InstituteKind } from '../institutions/catalogue';
 import { isEmployed, SERVE_PER_DAY, pantryOf, servesWith, stockPantry, COURSE_FEE, DAILY_INCOME, EXPERTS, EXPERT_BY_ID, SITE_BY_ID, assignStaff, buildStage, candidates, employ, freelanceFee, hireOf, instituteAt, intern, isBuilding, kindFood, landScience, learnerLevel, standingStage, takeCourse, teachClass, teachLearner, wage, type Staff } from '../institutions/institutions';
-import { hasMet, needSpot, DAY_COINS, FLOOR_COST, MAX_FLOORS, NEED_LABEL, PEOPLE_IN_NEED, PERSON_BY_ID, buildFloor, daysLeft, floorBuilding, floorsOf, giftsFor, give, homeCapacity, ownedHomes, residentsOf, sponsorOf, takeHome, type Person } from '../charity/charity';
+import { hasMet, needSpot, DAY_COINS, FLOOR_COST, MAX_FLOORS, NEED_LABEL, PEOPLE_IN_NEED, PERSON_BY_ID, buildFloor, daysLeft, floorBuilding, floorsOf, giftsFor, give, homeCapacity, ownedHomes, ownsHome, residentsOf, sponsorOf, takeHome, type Person } from '../charity/charity';
 import * as THREE from 'three';
 import { FIELD_BY_ID, FIELD_ROWS, barnCount, buyField, fieldGrowTime, fieldGrowth, fieldYield, harvestField, plantField, setHand, takeFromBarn, waterField, type Hand } from '../economy/fields';
 import { addRoute, bestMarkets, destLabel, destLand, homeDest, marketDest, pantryDest, removeRoute, shipmentOf, tripMinutes } from '../economy/supply';
@@ -17,6 +17,9 @@ import { SPECIES } from '../animals/AnimalModel';
 import { OUTFITS, outfitsFor } from '../characters/outfits';
 import { DRESS_GROUPS, dressGroup, type DressGroup } from '../characters/wardrobe';
 import { choicesFor, dressable, outfitOf } from '../caravan/dress';
+import { TOUR, TOUR_BY_ID, currentStep, later, setTour, tourProgress } from '../guide/tour';
+import { LAND_PAGES } from '../guide/lands';
+import { WHOSE, familyName, giveToParents, lastLetter, parentsHome, parentsIn, visitedToday } from '../housing/parents';
 import type { Outfit } from '../characters/modesty';
 import { dayOf, type VanSlot } from '../core/state';
 import { SKY_PAUSED, TIMES, TIME_LABEL, nextTime, timeOfDay } from '../core/time';
@@ -52,7 +55,7 @@ import { CIVIC_LABEL, civicDoor, civicOf } from '../world/neighbourhood';
 import { FIELD_SITES } from '../world/plots';
 import type { Game } from '../Game';
 
-type Panel = 'finder' | 'work' | 'harbour' | 'bus' | 'tram' | 'air' | 'field' | 'institute' | 'care' | 'wardrobe' | 'bag' | 'journal' | 'map' | 'messages' | 'vehicles' | 'dialogue' | 'animal' | 'build' | 'van' | 'house' | 'farm' | 'market' | 'help' | 'homes' | 'property' | null;
+type Panel = 'guidebook' | 'finder' | 'work' | 'harbour' | 'bus' | 'tram' | 'air' | 'field' | 'institute' | 'care' | 'wardrobe' | 'bag' | 'journal' | 'map' | 'messages' | 'vehicles' | 'dialogue' | 'animal' | 'build' | 'van' | 'house' | 'farm' | 'market' | 'help' | 'homes' | 'property' | null;
 
 const h = (tag: string, attrs: Record<string, string> = {}, ...kids: Array<Node | string | null | false>) => {
   const el = document.createElement(tag);
@@ -110,13 +113,19 @@ export class UI {
   private storyOpen = false;
   private mapSel: RegionId | null = null;
   private hudTimer = 0;
+  /** Grandmother Noor's letter (the guided tour, guide/tour.ts): which one shows, folded or open. */
+  private tourEl = h('div', { class: 'tour', role: 'complementary', 'aria-label': 'A letter from Grandmother Noor' });
+  private tourId = '';
+  private tourFolded = false;
+  private tourTimer = 0;
+  private guideTab: 'letters' | 'how' | 'lands' = 'letters';
   private labelEls = new Map<string, HTMLElement>();
   private bubbleEls: HTMLElement[] = [];
 
   constructor(private g: Game) {
     document.body.append(this.root);
     this.root.append(this.labels, this.tl, this.tr, this.tracker, this.feed, this.prompt, this.dock, this.panelEl, this.card, this.flash, this.title);
-    this.root.append(this.touchActions);
+    this.root.append(this.touchActions, this.tourEl);
     this.buildTouchActions();
     this.buildDock();
     this.buildTitle();
@@ -181,6 +190,109 @@ export class UI {
       this.prompt.classList.add('show');
     } else this.prompt.classList.remove('show');
     this.renderLabels();
+    this.tourTimer -= dt;
+    if (this.tourTimer <= 0) { this.tourTimer = 0.5; this.renderTour(); }
+  }
+
+  /**
+   * Grandmother Noor's letter, bottom left: why the next thing matters and how to do it, "Show me"
+   * (the right panel, or the golden trail to the right place), "Later", and a fold to a small pill.
+   * It steps aside while a panel, a story, a cutscene or a room is open, and thanks them when a
+   * step is done.
+   */
+  private renderTour(): void {
+    const g = this.g, st = g.st;
+    const away = !g.started || this.modal || !!g.cutscene || g.inHouse || g.inVan;
+    this.tourEl.hidden = away;
+    if (away) return;
+    const step = currentStep(st), id = step?.id ?? '';
+    if (id === this.tourId && this.tourEl.dataset.folded === String(this.tourFolded)) return;
+    const prev = TOUR_BY_ID[this.tourId];
+    if (prev && prev.done(st)) {
+      const p = tourProgress(st);
+      this.toast(`💛 ${prev.icon} ${prev.title} — done. Grandmother Noor would be so proud. (${p.done} of ${p.of})`, 'reward');
+      this.tourFolded = false;
+    }
+    this.tourId = id;
+    this.tourEl.dataset.folded = String(this.tourFolded);
+    if (!step) { this.tourEl.replaceChildren(); this.tourEl.hidden = true; return; }
+    const p = tourProgress(st);
+    if (this.tourFolded) {
+      this.tourEl.replaceChildren(btn(`✉ ${step.icon} ${step.title}`, () => { this.tourFolded = false; this.renderTour(); }, 'tour-pill'));
+      return;
+    }
+    const show = () => {
+      const sm = step.show;
+      if (!sm) return;
+      if ('panel' in sm) { this.open(sm.panel); return; }
+      const e = g.showTourPlace(sm.place);
+      this.toast(e ?? '✨ Follow the golden motes — they lead the way.', e ? 'info' : 'reward');
+      this.tourFolded = true;
+      this.renderTour();
+    };
+    const fold = btn('✕', () => { this.tourFolded = true; this.renderTour(); }, 'tour-fold');
+    fold.setAttribute('aria-label', 'Fold the letter');
+    this.tourEl.replaceChildren(
+      fold,
+      h('div', { class: 'eyebrow' }, `A letter from Grandmother Noor · ${p.done + 1} of ${p.of}`),
+      h('h3', {}, `${step.icon} ${step.title}`),
+      h('p', { class: 'letter' }, step.letter),
+      h('p', { class: 'how' }, step.how),
+      h('div', { class: 'acts' },
+        step.show ? btn('Show me', show, 'small primary') : null,
+        btn('Later', () => { later(st, step.id); this.renderTour(); }, 'small ghost'),
+        btn('Guidebook', () => { this.guideTab = 'letters'; this.open('guidebook'); }, 'small ghost')));
+  }
+
+  /**
+   * The guidebook: every letter of the tour and how far along they are; how each part of the
+   * journey works; and a page for each land — what to see, whom to meet, what to learn there.
+   */
+  private guidebook(body: HTMLElement): void {
+    const g = this.g, st = g.st;
+    const tabs = h('div', { class: 'seg', role: 'tablist' },
+      ...([['letters', '✉ Letters'], ['how', '📜 How things work'], ['lands', '🗺️ The lands']] as const).map(([id, label]) =>
+        btn(label, () => { this.guideTab = id; this.render(); }, this.guideTab === id ? 'on' : '')));
+    body.append(tabs);
+    if (this.guideTab === 'letters') {
+      const p = tourProgress(st);
+      body.append(h('p', { class: 'dim' }, `Grandmother Noor's letters walk you through the journey, one thing at a time. ${p.done} of ${p.of} done.`));
+      for (const s of TOUR) {
+        const done = s.done(st), now = currentStep(st)?.id === s.id;
+        const card = h('div', { class: `quest ${done ? '' : now ? 'main' : ''}` },
+          h('b', {}, `${done ? '✓' : s.icon} ${s.title}`), h('p', { class: 'story' }, s.letter), h('small', {}, s.how));
+        if (!done && s.show) card.append(h('div', { class: 'acts' }, btn('Show me', () => {
+          const sm = s.show!;
+          if ('panel' in sm) this.open(sm.panel);
+          else { const e = g.showTourPlace(sm.place); this.toast(e ?? '✨ Follow the golden motes — they lead the way.', e ? 'info' : 'reward'); this.closePanel(); }
+        }, 'small')));
+        body.append(card);
+      }
+      body.append(h('div', { class: 'acts' },
+        st.tour.off || st.tour.later.length
+          ? btn('Bring back all the letters', () => { setTour(st, true); this.tourFolded = false; this.render(); }, 'small primary')
+          : btn('Put the letters away', () => { setTour(st, false); this.render(); }, 'small ghost')));
+      return;
+    }
+    if (this.guideTab === 'how') {
+      for (const [icon, title, text] of HOW_IT_WORKS) body.append(h('div', { class: 'quest' }, h('b', {}, `${icon} ${title}`), h('p', { class: 'story' }, text)));
+      return;
+    }
+    body.append(h('p', { class: 'dim' }, `Twenty lands, each with its own sky, its own science and its own people. You have found ${st.discovered.length}.`));
+    const list = (label: string, xs: string[]) => xs.length ? h('small', {}, h('b', {}, `${label} `), xs.join(' · ')) : null;
+    for (const lp of LAND_PAGES) {
+      const known = st.discovered.includes(lp.id);
+      body.append(h('div', { class: `quest ${known ? 'main' : ''}` },
+        h('b', {}, `${known ? '' : '🔒 '}${lp.name}`), h('small', { class: 'dim' }, lp.subtitle),
+        list('Keeper:', [`${lp.keeper.name} (${lp.keeper.role.replace('Keeper · ', '')}) teaches ${lp.keeper.craft}`]),
+        list('Learn:', [lp.science]),
+        list('See:', [lp.monument, ...(lp.dragon ? [lp.dragon] : [])]),
+        list('Pets waiting:', lp.pets),
+        list('Animals:', lp.animals),
+        list('Fields grow:', lp.crops),
+        list('Glad to receive:', lp.wanted),
+        known ? h('div', { class: 'acts' }, btn('Travel there', () => { g.travelTo(lp.id); this.closePanel(); }, 'small ghost')) : null));
+    }
   }
 
   /** The clock is a button: tap it (or press T) to move on to dawn, day, dusk or night. */
@@ -483,7 +595,7 @@ export class UI {
   }
 
   private buildDock(): void {
-    const items: Array<[Panel, string, string]> = [['wardrobe', '👗', 'Dressing room (C)'], ['bag', '🎒', 'Bag & crafts (I)'], ['journal', '📖', 'Journal (J)'], ['map', '🗺️', 'Map (M)'], ['messages', '💌', 'Messages (N)'], ['vehicles', '🚐', 'Travel (V)'], ['homes', '🏡', 'Homes & land (L)'], ['care', '🤲', 'Care & sponsorship (K)'], ['finder', '🔎', 'People finder (Y)'], ['work', '💼', 'Work & services (U)'], ['help', '❔', 'Help (H)']];
+    const items: Array<[Panel, string, string]> = [['wardrobe', '👗', 'Dressing room (C)'], ['bag', '🎒', 'Bag & crafts (I)'], ['journal', '📖', 'Journal (J)'], ['map', '🗺️', 'Map (M)'], ['messages', '💌', 'Messages (N)'], ['vehicles', '🚐', 'Travel (V)'], ['homes', '🏡', 'Homes & land (L)'], ['care', '🤲', 'Care & sponsorship (K)'], ['finder', '🔎', 'People finder (Y)'], ['work', '💼', 'Work & services (U)'], ['guidebook', '📜', 'Guidebook'], ['help', '❔', 'Help (H)']];
     for (const [p, icon, label] of items) {
       const b = btn(icon, () => this.toggle(p), 'dock-btn');
       b.dataset.p = p ?? '';
@@ -633,7 +745,7 @@ export class UI {
 
   render(): void {
     const body = h('div', { class: 'body' });
-    const titles: Record<string, string> = { wardrobe: 'Dressing room', bag: 'Bag & Crafts', journal: 'Journal', map: 'The World', messages: 'Messages', vehicles: 'Ways to Travel', dialogue: '', animal: '', build: 'Build', van: 'Inside Safar', house: this.g.houseTitle(), farm: 'Farm bed', market: 'Market stall', help: 'How to play', care: 'Care & sponsorship', institute: this.instituteTitle(), field: this.fieldTitle(), work: `Work in ${this.g.region.name}`, finder: 'People finder', harbour: `The harbour of ${REGION_BY_ID[this.harbourLand]?.name ?? ''}`, bus: `Bus stop · ${this.busStop ? REGION_BY_ID[this.busStop.land].name : ''}`, tram: `Tram stop · ${this.tramStop ? `${this.tramStop.name}, ${REGION_BY_ID[this.tramStop.land].name}` : ''}`, air: 'Air taxi · the Sky Isles', homes: 'Homes & Land', property: 'Land for sale' };
+    const titles: Record<string, string> = { guidebook: 'Guidebook', wardrobe: 'Dressing room', bag: 'Bag & Crafts', journal: 'Journal', map: 'The World', messages: 'Messages', vehicles: 'Ways to Travel', dialogue: '', animal: '', build: 'Build', van: 'Inside Safar', house: this.g.houseTitle(), farm: 'Farm bed', market: 'Market stall', help: 'How to play', care: 'Care & sponsorship', institute: this.instituteTitle(), field: this.fieldTitle(), work: `Work in ${this.g.region.name}`, finder: 'People finder', harbour: `The harbour of ${REGION_BY_ID[this.harbourLand]?.name ?? ''}`, bus: `Bus stop · ${this.busStop ? REGION_BY_ID[this.busStop.land].name : ''}`, tram: `Tram stop · ${this.tramStop ? `${this.tramStop.name}, ${REGION_BY_ID[this.tramStop.land].name}` : ''}`, air: 'Air taxi · the Sky Isles', homes: 'Homes & Land', property: 'Land for sale' };
     const head = this.panel === 'van'
       ? h('header', {}, h('h2', {}, titles.van),
         h('span', { class: 'head-acts' },
@@ -660,6 +772,7 @@ export class UI {
       case 'farm': this.farmPanel(body); break;
       case 'market': this.marketPanel(body); break;
       case 'help': this.help(body); break;
+      case 'guidebook': this.guidebook(body); break;
       case 'homes': this.homes(body); break;
       case 'care': this.carePanel(body); break;
       case 'institute': this.institutePanel(body); break;
@@ -760,10 +873,35 @@ export class UI {
     const st = this.g.st, hs = this.g.housing;
     body.append(h('p', { class: 'dim' }, `Every land has two plots for sale just outside its town. Buy the bare land and build it yourself, or buy a ready-made home in that land's own style (land + ${HOME_PRICE} coins). You have 🪙 ${st.coins}.`));
     const owned = PLOTS.filter((p) => hs.owns(p.id));
+    // Your parents and his: a home each, and a visit whenever you like (housing/parents.ts).
+    body.append(h('h3', {}, '👪 Your parents'));
+    const fam = h('div', { class: 'cards' });
+    for (const w of WHOSE) {
+      const home = parentsHome(st, w), letter = lastLetter(st, w);
+      fam.append(h('div', { class: `quest ${home ? 'main' : ''}` },
+        h('b', {}, familyName(st, w)),
+        h('small', {}, home ? `Living in your home in ${REGION_BY_ID[PLOT_BY_ID[home].region].name}${visitedToday(st, w) ? ' · visited today' : ''}` : ownedHomes(st).length ? 'Give them one of your homes below.' : 'Buy or build a home first, then give it to them.'),
+        letter ? h('p', { class: 'story' }, `“${letter}”`) : null,
+        home ? h('div', { class: 'acts' }, btn(`Visit ${w === 'hers' ? 'her' : 'his'} parents`, () => { const e = this.g.visitParents(w); if (e) this.g.toast(e, 'info'); else this.closePanel(); }, 'small primary')) : null));
+    }
+    body.append(fam);
     if (owned.length) {
       body.append(h('h3', {}, 'Yours'));
-      for (const p of owned) body.append(h('div', { class: 'quest main' }, h('b', {}, `🏡 ${REGION_BY_ID[p.region].name}`), h('small', {}, `${st.plots[p.id].decor.length} things built · stand on it and press B to build`),
-        btn('Show the way', () => this.showWay(p, `Your land in ${REGION_BY_ID[p.region].name}`), 'small')));
+      for (const p of owned) {
+        const lives = parentsIn(st, p.id);
+        const card = h('div', { class: 'quest main' }, h('b', {}, `🏡 ${REGION_BY_ID[p.region].name}`),
+          h('small', {}, `${st.plots[p.id].decor.length} things built · stand on it and press B to build${lives ? ` · ${familyName(st, lives)} live here` : ''}`));
+        const acts = h('div', { class: 'acts' }, btn('Show the way', () => this.showWay(p, `Your land in ${REGION_BY_ID[p.region].name}`), 'small'));
+        if (ownsHome(st, p.id)) for (const w of WHOSE) if (lives !== w) {
+          acts.append(btn(`Give to ${w === 'hers' ? 'her' : 'his'} parents`, () => {
+            const e = giveToParents(st, p.id, w);
+            this.g.toast(e ?? `🏡 ${familyName(st, w)} move into your home in ${REGION_BY_ID[p.region].name}. Visit them whenever you pass.`, e ? 'info' : 'reward');
+            this.render();
+          }, 'small ghost', lives !== null));
+        }
+        card.append(acts);
+        body.append(card);
+      }
     }
     body.append(h('p', { class: 'dim' }, st.penthouses.length
       ? `🏙️ Your ${st.penthouses.length === 1 ? 'penthouse' : `${st.penthouses.length} penthouses`} above New Yonder — take the lift up from the tower's lobby.`
@@ -1710,6 +1848,7 @@ export class UI {
         btn('🎂 Replay the opening', () => this.g.playOpening(), 'ghost'),
         btn('🏰 Replay the celebration evening', () => this.g.celebration.replay(), 'ghost'),
         btn('🧭 Objectives & features', () => { this.closePanel(); this.showIntroGuide(); }, 'ghost'),
+        btn('📜 Guidebook', () => this.open('guidebook'), 'ghost'),
         btn('▶ Watch the story', () => this.g.playStory(), 'ghost')),
       h('h3', {}, 'Day and night'),
       h('p', { class: 'dim' }, 'Choose the sky: the clock moves forward to that hour, as if you rested. T (or tapping the clock) moves on to the next part of the day.'),
@@ -1741,3 +1880,20 @@ function swatch(o: Outfit): HTMLElement {
   return h('span', { class: 'swatch' }, ...cols.map((c) => h('i', { style: `background:${c}` })));
 }
 
+
+/** The guidebook's "How things work": each part of the journey, plainly. */
+const HOW_IT_WORKS: Array<[string, string, string]> = [
+  ['🧵', 'The two of you', 'You play as her; he follows, joined by the golden thread. You never touch: in every vehicle you sit in separate seats, on unicorns each rides your own, and on the Night Dragon he drives from the front saddle while she rides behind.'],
+  ['👗', 'Clothes', 'The dressing room (C) dresses the two of you and your brothers, sisters and the children travelling with you. Every outfit is fully covering; where an inspiration was not, sleeves, trousers or a headscarf were merged in.'],
+  ['🐾', 'Pets', 'Each land has a pet waiting at its plaza. Offer it the food it loves (E) and it joins the caravan; up to four pets travel with you, riding in the van or on the flying carpet.'],
+  ['🦌', 'Animals', 'Wild animals are shy. Walk up gently and offer what they eat (E) to befriend them. Friends can live on land you own, in a pen you build.'],
+  ['💛', 'People and friends', 'Talk to people (E). Help with what they need and they become friends: they write to you (Messages, N), ask for small things, and remember you.'],
+  ['🤲', 'Caring for people', 'The People finder (Y) shows who needs help in each town. Sponsor them in coins or in kind from Care & sponsorship (K), teach them a craft, and give them a room in a home you own.'],
+  ['🏡', 'Homes and land', 'Every land has plots for sale. Buy bare land and build (B), or a home in the land\'s own style. Add floors to house more people, grow food in farm beds, and give a home to your parents and his, then visit them.'],
+  ['💼', 'Work', 'Work & services (U): a shift a day at an employer raises your skill and your pay; freelance jobs are posted fresh each day. Certificates from institutes open the higher ranks.'],
+  ['🏪', 'Businesses', 'Begin in one town by taking orders yourself. Teach the trade to someone who wants work, hand out the orders, then appoint a manager who runs the day. Pay with care, a wage, or keep (a room and food).'],
+  ['🌾', 'Farming and supply', 'Buy a field, plant, water and harvest, or employ a farmhand. Couriers and ships carry your harvest to markets or to your kitchens and clinics. Markets pay less the more you sell to them.'],
+  ['🏛️', 'Institutes', 'Every land has an institute of its own science. Take a course, assist the professor, write a thesis, and found an institute of your own, stage by stage.'],
+  ['🚐', 'Travelling', 'Walk, fly on the cape of light (F), drive Safar, ride a unicorn or the Night Dragon, or take the coach, tram, ferry or air taxi (V). The map (M) takes you to lands you know.'],
+  ['🏮', 'The story', 'In each land, help its Keeper and light its lantern together. The objective panel (O) always shows the next step; Grandmother Noor\'s letters show you everything else.'],
+];

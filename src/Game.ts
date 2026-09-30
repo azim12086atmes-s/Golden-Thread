@@ -33,9 +33,10 @@ import { Townsfolk, type Walker } from './npc/Townsfolk';
 import { talkToFolk } from './npc/folk';
 import { CaravanView } from './caravan/CaravanView';
 import { dress } from './caravan/dress';
-import type { PetDef } from './caravan/caravan';
+import { parentsAsResidents, tickParents, visit, type Whose } from './housing/parents';
+import { PETS, strayHome, type PetDef } from './caravan/caravan';
 import { WonderSites } from './world/WonderSites';
-import { keeperOf } from './npc/people';
+import { PEOPLE, keeperOf } from './npc/people';
 import { Travellers } from './player/Travellers';
 import { QuestSystem } from './quests/QuestSystem';
 import { Messages } from './social/Messages';
@@ -46,7 +47,7 @@ import { PERSON_BY_ID, floorBuilding, floorsOf, residentsOf, tickCharity } from 
 import { InstitutesView } from './institutions/InstitutesView';
 import { NeedFolkView } from './charity/NeedFolkView';
 import { PlotsView } from './housing/PlotsView';
-import { NEED_LABEL, hasMet, meet, type Person } from './charity/charity';
+import { NEED_LABEL, PEOPLE_IN_NEED, hasMet, meet, needSpot, sponsorOf, type Person } from './charity/charity';
 import { FieldsView } from './economy/FieldsView';
 import { HarboursView } from './economy/HarboursView';
 import { harbours } from './world/harbours';
@@ -465,6 +466,7 @@ export class Game {
       for (const name of expireErrands(this.st)) this.toast(`${name} could not wait any longer and went on with their day.`, 'info');
       while (carryNews.length) this.toast(carryNews.shift()!, 'info');
       for (const n of tickWeavers(this.st)) this.toast(`🧶 ${n.text}`, 'reward');
+      for (const n of tickParents(this.st)) this.toast(n.text, 'story');
       this.fieldsView.update();
       this.harboursView.update();
       this.bridgesView.update();
@@ -926,6 +928,67 @@ export class Game {
       : `🚌 ${name}. You step down at the stop together.`, 'story');
   }
 
+  /**
+   * The guided tour's "Show me" for a place (guide/tour.ts): light the golden trail to the nearest
+   * one — the Keeper, a pet waiting at a plaza, someone in need, an animal, people to talk to, or
+   * land for sale. Returns a note when there is nothing of that kind near.
+   */
+  showTourPlace(place: 'stray' | 'needy' | 'animal' | 'friend' | 'plot' | 'keeper'): string | null {
+    const land = this.region.id, c = regionCenter(REGION_BY_ID[land]), here = this.trav.gPos;
+    const pin = (title: string, text: string, x: number, z: number, region: RegionId = land) => { this.guide.pin({ title, text, x, z, region }); return null; };
+    switch (place) {
+      case 'keeper': {
+        const k = keeperOf(land), [kx, kz] = k.at ?? [0, 30];
+        return pin(`${k.name}, the Keeper`, `Talk to ${k.name} (E): they teach their land's craft.`, c.x + kx, c.z + kz);
+      }
+      case 'stray': {
+        const waiting = PETS.filter((p) => !this.st.caravan.includes(p.id));
+        const own = waiting.filter((p) => p.origin === land);
+        const def = own[0] ?? waiting.filter((p) => this.st.discovered.includes(p.origin)).sort((a, b) => {
+          const ca = regionCenter(REGION_BY_ID[a.origin]), cb = regionCenter(REGION_BY_ID[b.origin]);
+          return Math.hypot(ca.x - here.x, ca.z - here.z) - Math.hypot(cb.x - here.x, cb.z - here.z);
+        })[0] ?? waiting[0];
+        if (!def) return 'Every pet on the island already travels with you.';
+        const pc = regionCenter(REGION_BY_ID[def.origin]), h = strayHome(def);
+        return pin(`${def.name} the ${def.species}`, `${def.name} waits at the plaza of ${REGION_BY_ID[def.origin].name} and loves ${ITEMS[def.likes]?.name ?? def.likes}.`, pc.x + h.x, pc.z + h.z, def.origin);
+      }
+      case 'needy': {
+        const p = PEOPLE_IN_NEED.find((q) => q.land === land && !sponsorOf(this.st, q.id)) ?? PEOPLE_IN_NEED.find((q) => !sponsorOf(this.st, q.id));
+        if (!p) return 'Everyone in need on the island is already in your care.';
+        const at = needSpot(p);
+        return pin(p.name, `${p.name} is waiting for someone to notice. Talk to them (E).`, at.x, at.z, p.land);
+      }
+      case 'animal': {
+        const a = this.animals.nearest(here, 400);
+        if (!a) return 'No animals nearby just now — try the edge of town.';
+        const sp = SPECIES[a.species];
+        return pin(`A ${sp.name.toLowerCase()}`, `Walk up gently and offer it ${ITEMS[sp.diet]?.name ?? 'its food'} (E).`, a.pos.x, a.pos.z);
+      }
+      case 'friend': {
+        const f = PEOPLE.find((q) => q.region === land && !q.keeper && q.at && !this.st.friends[q.id]?.befriended) ?? keeperOf(land);
+        const [fx, fz] = f.at ?? [0, 30];
+        return pin(f.name, `${f.name} (${f.role}). Talk to them and ask how you can help (E).`, c.x + fx, c.z + fz);
+      }
+      case 'plot': {
+        const p = PLOTS.find((q) => q.region === land && !this.housing.owns(q.id)) ?? PLOTS.filter((q) => !this.housing.owns(q.id)).sort((a, b) => Math.hypot(a.x - here.x, a.z - here.z) - Math.hypot(b.x - here.x, b.z - here.z))[0];
+        if (!p) return 'You own every plot on the island.';
+        return pin(`Land for sale in ${REGION_BY_ID[p.region].name}`, 'Stand on the land and open Homes & land (L) to buy it.', p.x, p.z, p.region);
+      }
+    }
+  }
+
+  /** Visit her parents or his at the home they live in: the road takes you to their door. */
+  visitParents(whose: Whose): string | null {
+    const r = visit(this.st, whose);
+    if ('error' in r) return r.error;
+    const p = PLOT_BY_ID[r.plotId];
+    if (!this.st.discovered.includes(p.region)) this.st.discovered.push(p.region);
+    this.trav.teleport(p.x, p.z + 9);
+    this.trav.heading = Math.PI;
+    this.toast(`👪 ${r.text}`, 'story');
+    return null;
+  }
+
   travelTo(id: RegionId): void {
     if (!this.st.discovered.includes(id)) return;
     const c = regionCenter(REGION_BY_ID[id]);
@@ -1053,7 +1116,8 @@ export class Game {
     this.inHouse = true;
     this.target = null;
     const plot = d.kind === 'home' ? d.id.slice(5) : '';
-    const residents = plot ? residentsOf(this.st, plot).map((r) => PERSON_BY_ID[r.id]).filter((p) => !!p) : [];
+    // Her parents or his first, if they live here, then the people in your care.
+    const residents = plot ? [...parentsAsResidents(this.st, plot), ...residentsOf(this.st, plot).map((r) => PERSON_BY_ID[r.id]).filter((p) => !!p)] : [];
     // Institutes and caverns have nothing to gather inside.
     const gathered = d.kind === 'institute' || d.kind === 'cavern' || this.houseGathered(d);
     this.house.enter(d, this.sky.night, gathered, plot ? this.homeDecor(plot) : undefined, residents);
