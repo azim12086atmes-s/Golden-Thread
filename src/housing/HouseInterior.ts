@@ -225,7 +225,8 @@ export class HouseInterior {
     } else {
       for (let i = 0; i < 12; i++) box(g, 0.74, 0.05, F - B, i % 2 ? pa : pb, -W + 0.37 + i * 0.75, 0, 0);
     }
-    const shape = HOUSE_SHAPE[door.kind] ?? 'box';
+    // A home you built takes the shape of the house it was built as (housing/designs.ts).
+    const shape = (door.shape && HOUSE_SHAPE[door.shape]) || HOUSE_SHAPE[door.kind] || 'box';
     const round = shape === 'dome' || shape === 'glassdome' || shape === 'cone' || shape === 'tent';
     if (round) roundRoom(g, glow, shape, W, B, F, night, land, rng);
     // Walls: plaster over a wainscot, the land's frieze band, a cornice.

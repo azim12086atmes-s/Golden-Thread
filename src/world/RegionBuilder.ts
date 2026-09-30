@@ -76,7 +76,7 @@ export interface RegionInstance {
 }
 
 /** A building's front door. `kind` is the building type ('house' for the land's own homes). */
-export interface Door { id: string; land: string; x: number; z: number; y: number; facing: number; kind: string; r: number; /** For doors made on the spot (institutes, caverns): what is inside, for the title. */ name?: string }
+export interface Door { id: string; land: string; x: number; z: number; y: number; facing: number; kind: string; r: number; /** For doors made on the spot (institutes, caverns): what is inside, for the title. */ name?: string; /** A home's house kind, for the shape of its rooms. */ shape?: string }
 
 const AVENUE = 9, RING = 140;
 /** People are ~1.8 m tall: trees reach 8–16 m and houses stand a little larger than they were drawn. */

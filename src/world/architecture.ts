@@ -511,9 +511,14 @@ function wizardTower(c: Ctx): Footprint {
   return { r: r + 2.2, h: h + 6 };
 }
 
-export function buildHouse(c: Ctx): Footprint {
+/**
+ * A house of the land. `bare`: just the house itself — walls, roof, door and windows — without the
+ * lived-in touches of a finished home (a house the travellers are building begins so; housing/designs.ts).
+ */
+export function buildHouse(c: Ctx, bare = false): Footprint {
   // Lands with a traditional kit build from it (traditions.ts); the rest from their own builders.
   const fp = buildTradition(c) ?? houses[c.s.id]!(c);
+  if (bare) return fp;
   if (c.s.id !== 'desert' && c.s.id !== 'skyisles' && c.s.id !== 'aurora') houseDetails(c, fp);
   houseDecor(c, fp);
   return fp;

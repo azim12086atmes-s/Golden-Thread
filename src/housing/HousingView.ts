@@ -10,19 +10,55 @@ import { REGION_BY_ID, type RegionId } from '../world/regions';
 import { surfaceAt } from '../world/terrain';
 import type { World } from '../world/World';
 import { CROPS, DECOR_BY_ID, PLOT_BY_ID } from './housing';
+import { designById } from './designs';
+
+/**
+ * A house's garden (level 3): a stone path from its door to the front of the plot, a flower bed
+ * either side and a low fence along the front; lit (level 4): a lamp either side of the path and a
+ * string of lights along the eaves. In the house's own frame, its door facing +z.
+ */
+function houseGarden(c: { g: GeoBuilder; glow: GeoBuilder; rng: Rng; s: (typeof REGION_BY_ID)[RegionId] }, fp: { r: number; h: number }, lit: boolean): void {
+  const g = c.g, glow = c.glow, z0 = fp.r + 0.4, z1 = Math.min(fp.r + 9, 19), stone = '#cfc6b4';
+  for (let z = z0; z < z1; z += 1.1) box(g, 1.1, 0.08, 0.8, stone, (c.rng.next() - 0.5) * 0.15, 0.02, z);
+  for (const sx of [-1, 1]) {
+    box(g, 2.6, 0.25, 1.1, '#6b4a2a', sx * 2.4, 0, z0 + 2.2);
+    flowers(g, sx * 2.4, 0.25, z0 + 2.2, c.s.flowers, () => c.rng.next(), 10);
+  }
+  // The low fence along the front, with a gap for the path.
+  for (let x = -10; x <= 10; x += 1.25) {
+    if (Math.abs(x) < 1.2) continue;
+    box(g, 0.12, 0.8, 0.12, '#f4efe4', x, 0, z1 + 0.4);
+  }
+  for (const sx of [-1, 1]) box(g, 8.8, 0.08, 0.06, '#f4efe4', sx * 5.6, 0.62, z1 + 0.4);
+  if (!lit) return;
+  for (const sx of [-1, 1]) {
+    cyl(g, 0.06, 0.08, 2.2, '#2a2a30', sx * 1.1, 0, z1 - 0.6, 6);
+    sphere(glow, 0.2, c.s.glow, sx * 1.1, 2.35, z1 - 0.6, 8);
+  }
+  // Lights along the eaves: little lamps round the house just under its roof line.
+  const y = Math.min(fp.h * 0.55, 5.5), n = 22;
+  for (let i = 0; i < n; i++) {
+    const a = (i / n) * Math.PI * 2;
+    sphere(glow, 0.06, ['#ffd98a', '#ffb3d9', '#b3e6ff', '#fff2c8'][i % 4], Math.sin(a) * (fp.r * 0.78), y + Math.sin(i * 1.7) * 0.08, Math.cos(a) * (fp.r * 0.78), 4);
+  }
+}
 
 /** Builds the look of a piece of decor. Used for placed decor and for the build-mode ghost. */
-export function buildDecor(kind: string, region: RegionId, seed: string, growth = 0, crop?: string, storeys?: { floors: number; scaffold: boolean }): { g: GeoBuilder; glow: GeoBuilder } {
+export function buildDecor(kind: string, region: RegionId, seed: string, growth = 0, crop?: string, storeys?: { floors: number; scaffold: boolean }, house?: { design?: string; level?: number }): { g: GeoBuilder; glow: GeoBuilder } {
   const g = new GeoBuilder(), glow = new GeoBuilder();
-  const rng = new Rng(seed);
+  const design = house?.design ? designById(house.design) : undefined;
+  const rng = new Rng(design?.seed ?? seed);
   const spec = REGION_BY_ID[region];
   const ctx = { g, glow, rng, s: spec };
   const def = DECOR_BY_ID[kind];
   if (def?.style) {
-    const hc = { ...ctx, s: REGION_BY_ID[def.style] };
-    const fp = buildHouse(hc);
+    // A house of any land, built from its design (housing/designs.ts), as far as it has been improved.
+    const level = house?.level ?? 2;
+    const hc = { ...ctx, s: REGION_BY_ID[design?.land ?? def.style] };
+    const fp = buildHouse(hc, level <= 1);
     // A home that has grown floors (charity/charity.ts) — or has one being built — gets its storeys.
     if (storeys && (storeys.floors > 0 || storeys.scaffold)) addStoreys(hc, fp, storeys.floors, storeys.scaffold);
+    if (level >= 3) houseGarden(hc, fp, level >= 4);
     return { g, glow };
   }
   switch (kind) {
@@ -159,7 +195,7 @@ export class HousingView {
       for (const d of plot.decor) {
         const y = surfaceAt(site.x + d.x, site.z + d.z);
         const storeys = d.kind.startsWith('house-') ? { floors: floorsOf(this.st, plotId), scaffold: floorBuilding(this.st, plotId) !== null } : undefined;
-        const built = buildDecor(d.kind, site.region, d.id, growthOf(d), d.crop?.seed, storeys);
+        const built = buildDecor(d.kind, site.region, d.id, growthOf(d), d.crop?.seed, storeys, { design: d.design, level: d.level });
         const m1 = built.g.build(this.world.solid), m2 = built.glow.build(this.world.glow);
         for (const m of [m1, m2]) {
           if (!m) continue;

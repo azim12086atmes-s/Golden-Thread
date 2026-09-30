@@ -61,6 +61,7 @@ import { befriend, befriendMet } from './social/friends';
 import { tickHomes } from './economy/storage';
 import { Dragons } from './creatures/Dragons';
 import { DRAGON_NIGHT } from './creatures/dragonKit';
+import { designOf } from './housing/designs';
 import { keepInTouch, tickLearning } from './charity/upskill';
 import { carryNews } from './economy/economy';
 import { expireErrands } from './npc/folk';
@@ -1182,6 +1183,11 @@ export class Game {
     return `${cv.style === 'ice' ? 'Blue light glimmers through the ice.' : cv.style === 'crystal' ? 'The crystals ring softly and light the way in every colour.' : 'Your lantern finds the glint of the cave walls.'} You bring out ${got.map((id) => `${ITEMS[id].icon} ${ITEMS[id].name}`).join(' and ')}.`;
   }
 
+  /** Something on your land changed (a house built or improved): redraw the homes. */
+  housingChanged(): void {
+    this.housingDirty = true;
+  }
+
   /** The front doors of the homes you own (a home stands on the plot once you buy it). */
   homeDoors(): Door[] {
     const out: Door[] = [];
@@ -1190,8 +1196,8 @@ export class Game {
       if (!site) continue;
       for (const d of plot.decor) {
         if (!d.kind.startsWith('house-')) continue;
-        const reach = 5.4, x = site.x + d.x + Math.sin(d.rot) * reach, z = site.z + d.z + Math.cos(d.rot) * reach;
-        out.push({ id: `home:${plotId}`, land: site.region, x, z, y: terrainHeight(x, z), facing: d.rot, kind: 'home', r: 5 });
+        const reach = (designOf(d)?.r ?? 5) + 0.4, x = site.x + d.x + Math.sin(d.rot) * reach, z = site.z + d.z + Math.cos(d.rot) * reach;
+        out.push({ id: `home:${plotId}`, land: site.region, x, z, y: terrainHeight(x, z), facing: d.rot, kind: 'home', r: 5, shape: designOf(d)?.kind });
         break;
       }
     }

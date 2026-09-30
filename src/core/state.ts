@@ -33,6 +33,9 @@ export interface PlacedDecor {
   rot: number;
   /** For farm beds: what is planted and when. */
   crop?: { seed: string; plantedAt: number; watered?: boolean };
+  /** For a house: the design it was built from (housing/designs.ts) and how far it is improved (1–4). */
+  design?: string;
+  level?: number;
 }
 
 export interface AnimalState {

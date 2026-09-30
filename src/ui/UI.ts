@@ -12,6 +12,7 @@ import { ferryFare } from '../travel/ferry';
 import { airDestinations, airFare, airPointAtStop, skyPadPoint, type AirPoint } from '../travel/air';
 import { RANKS, doGig, gigsFor, jobsIn, shiftPay, titleAt, workShift, workedToday } from '../economy/services';
 import { buySeed } from '../housing/housing';
+import { DESIGN_LANDS, LEVELS, MAX_LEVEL, buildCost, buildDesign, designOf, designsOf, houseOn, levelOf, upgradeCost, upgradeHouse } from '../housing/designs';
 import type { Animal } from '../animals/Animals';
 import { SPECIES } from '../animals/AnimalModel';
 import { OUTFITS, outfitsFor } from '../characters/outfits';
@@ -56,7 +57,7 @@ import { CIVIC_LABEL, civicDoor, civicOf } from '../world/neighbourhood';
 import { FIELD_SITES } from '../world/plots';
 import type { Game } from '../Game';
 
-type Panel = 'guidebook' | 'finder' | 'work' | 'harbour' | 'bus' | 'tram' | 'air' | 'field' | 'institute' | 'care' | 'wardrobe' | 'bag' | 'journal' | 'map' | 'messages' | 'vehicles' | 'dialogue' | 'animal' | 'build' | 'van' | 'house' | 'farm' | 'market' | 'help' | 'homes' | 'property' | null;
+type Panel = 'guidebook' | 'finder' | 'work' | 'harbour' | 'bus' | 'tram' | 'air' | 'field' | 'institute' | 'care' | 'wardrobe' | 'bag' | 'journal' | 'map' | 'messages' | 'vehicles' | 'dialogue' | 'animal' | 'build' | 'van' | 'house' | 'farm' | 'market' | 'help' | 'homes' | 'houses' | 'property' | null;
 
 const h = (tag: string, attrs: Record<string, string> = {}, ...kids: Array<Node | string | null | false>) => {
   const el = document.createElement(tag);
@@ -747,7 +748,7 @@ export class UI {
 
   render(): void {
     const body = h('div', { class: 'body' });
-    const titles: Record<string, string> = { guidebook: 'Guidebook', wardrobe: 'Dressing room', bag: 'Bag & Crafts', journal: 'Journal', map: 'The World', messages: 'Messages', vehicles: 'Ways to Travel', dialogue: '', animal: '', build: 'Build', van: 'Inside Safar', house: this.g.houseTitle(), farm: 'Farm bed', market: 'Market stall', help: 'How to play', care: 'Care & sponsorship', institute: this.instituteTitle(), field: this.fieldTitle(), work: `Work in ${this.g.region.name}`, finder: 'People finder', harbour: `The harbour of ${REGION_BY_ID[this.harbourLand]?.name ?? ''}`, bus: `Bus stop · ${this.busStop ? REGION_BY_ID[this.busStop.land].name : ''}`, tram: `Tram stop · ${this.tramStop ? `${this.tramStop.name}, ${REGION_BY_ID[this.tramStop.land].name}` : ''}`, air: 'Air taxi · the Sky Isles', homes: 'Homes & Land', property: 'Land for sale' };
+    const titles: Record<string, string> = { guidebook: 'Guidebook', wardrobe: 'Dressing room', bag: 'Bag & Crafts', journal: 'Journal', map: 'The World', messages: 'Messages', vehicles: 'Ways to Travel', dialogue: '', animal: '', build: 'Build', van: 'Inside Safar', house: this.g.houseTitle(), farm: 'Farm bed', market: 'Market stall', help: 'How to play', care: 'Care & sponsorship', institute: this.instituteTitle(), field: this.fieldTitle(), work: `Work in ${this.g.region.name}`, finder: 'People finder', harbour: `The harbour of ${REGION_BY_ID[this.harbourLand]?.name ?? ''}`, bus: `Bus stop · ${this.busStop ? REGION_BY_ID[this.busStop.land].name : ''}`, tram: `Tram stop · ${this.tramStop ? `${this.tramStop.name}, ${REGION_BY_ID[this.tramStop.land].name}` : ''}`, air: 'Air taxi · the Sky Isles', homes: 'Homes & Land', houses: 'Build a house', property: 'Land for sale' };
     const head = this.panel === 'van'
       ? h('header', {}, h('h2', {}, titles.van),
         h('span', { class: 'head-acts' },
@@ -776,6 +777,7 @@ export class UI {
       case 'help': this.help(body); break;
       case 'guidebook': this.guidebook(body); break;
       case 'homes': this.homes(body); break;
+      case 'houses': this.houseCatalogue(body); break;
       case 'care': this.carePanel(body); break;
       case 'institute': this.institutePanel(body); break;
       case 'field': this.fieldPanel(body); break;
@@ -871,6 +873,36 @@ export class UI {
   }
 
   /** Every piece of land in the world: where it is, its price, and the way there. */
+  /** Which plot the house catalogue builds on, and which land's houses it shows. */
+  private designPlot = '';
+  private designLand: RegionId = 'meadow';
+
+  /**
+   * The house catalogue: every kind of house in the world, land by land; choose one and it is
+   * built on your land as its bare shell, to be improved a level at a time.
+   */
+  private houseCatalogue(body: HTMLElement): void {
+    const st = this.g.st, site = PLOT_BY_ID[this.designPlot];
+    if (!site || !st.plots[site.id]) { body.append(h('p', { class: 'dim' }, 'Choose a plot you own in Homes & land first.')); return; }
+    body.append(h('p', { class: 'dim' }, `Any house from any land can stand on your land in ${REGION_BY_ID[site.region].name}. It begins as its shell — walls, roof and door — and you improve it from there: finished, a garden, lit for the evening; and you can add storeys. You have 🪙 ${st.coins} and ${count(st, 'wood')} wood.`));
+    const tabs = h('div', { class: 'chips wrap' }, ...DESIGN_LANDS.map((id) => btn(REGION_BY_ID[id].name, () => { this.designLand = id; this.render(); }, `small ${this.designLand === id ? 'primary' : 'ghost'}`)));
+    body.append(tabs);
+    const now = houseOn(st, site.id);
+    const cards = h('div', { class: 'cards' });
+    for (const d of designsOf(this.designLand)) {
+      const c = buildCost(d), here = now?.design === d.id;
+      cards.append(h('div', { class: `quest ${here ? 'main' : ''}` },
+        h('b', {}, `🏠 ${d.name}`),
+        h('small', {}, `${REGION_BY_ID[d.land].name} · about ${Math.round(d.r * 2)} m across, ${Math.round(d.h)} m high${here ? ' · standing on your land' : ''}`),
+        h('div', { class: 'acts' }, btn(here ? 'Built' : `Build · ${c.coins}🪙 + ${c.wood} wood`, () => {
+          const e = buildDesign(st, site.id, d.id);
+          this.g.toast(e ?? `🏗️ The builders raise the shell of ${d.name.toLowerCase().startsWith('the ') ? d.name : `your ${d.name.toLowerCase()}`} in ${REGION_BY_ID[site.region].name}. Improve it from Homes & land.`, e ? 'info' : 'reward');
+          if (!e) { this.g.housingChanged(); this.open('homes'); }
+        }, 'small primary', here || st.coins < c.coins || count(st, 'wood') < c.wood))));
+    }
+    body.append(cards);
+  }
+
   private homes(body: HTMLElement): void {
     const st = this.g.st, hs = this.g.housing;
     body.append(h('p', { class: 'dim' }, `Every land has two plots for sale just outside its town. Buy the bare land and build it yourself, or buy a ready-made home in that land's own style (land + ${HOME_PRICE} coins). You have 🪙 ${st.coins}.`));
@@ -893,7 +925,20 @@ export class UI {
         const lives = parentsIn(st, p.id);
         const card = h('div', { class: 'quest main' }, h('b', {}, `🏡 ${REGION_BY_ID[p.region].name}`),
           h('small', {}, `${st.plots[p.id].decor.length} things built · stand on it and press B to build${lives ? ` · ${familyName(st, lives)} live here` : ''}`));
+        // The house: any design from any land, improved a level at a time (housing/designs.ts).
+        const house = houseOn(st, p.id), design = house ? designOf(house) : undefined, lvl = house ? levelOf(house) : 0;
+        if (house) card.append(h('small', {}, `🏠 ${design?.name ?? `${REGION_BY_ID[DECOR_BY_ID[house.kind]?.style ?? p.region].name} house`} · level ${lvl} of ${MAX_LEVEL} — ${LEVELS[lvl - 1].name}`));
         const acts = h('div', { class: 'acts' }, btn('Show the way', () => this.showWay(p, `Your land in ${REGION_BY_ID[p.region].name}`), 'small'));
+        acts.append(btn(house ? '🏗️ Build a different house' : '🏗️ Choose a house to build', () => { this.designPlot = p.id; this.designLand = design?.land ?? p.region; this.open('houses'); }, 'small'));
+        if (house && lvl < MAX_LEVEL) {
+          const c = upgradeCost(lvl + 1);
+          acts.append(btn(`⬆️ ${LEVELS[lvl].name} · ${c.coins}🪙 + ${c.wood} wood`, () => {
+            const e = upgradeHouse(st, p.id);
+            this.g.toast(e ?? `🏠 ${LEVELS[lvl].does}`, e ? 'info' : 'reward');
+            if (!e) this.g.housingChanged();
+            this.render();
+          }, 'small primary', st.coins < c.coins));
+        }
         if (ownsHome(st, p.id)) for (const w of WHOSE) if (lives !== w) {
           acts.append(btn(`Give to ${w === 'hers' ? 'her' : 'his'} parents`, () => {
             const e = giveToParents(st, p.id, w);
