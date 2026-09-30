@@ -86,9 +86,9 @@ sections C1–C7) and `3D_BUILDS_HANDOFF.md` (3D work, sections 2a and 3.x). Tic
 - [x] Balloons (logic): children hold one at festivities, in the Meadow and Maple Row, and on market days (`caravan.ts` `balloonFor`, `CharacterModel.holdBalloon`); a Balloons decor item for everyone
 - [x] 3D: `heldBalloon` and `balloonCluster` models (`world/models/balloons.ts`, `CHATGPT_3D_MODELS.md` §10); balloon clusters in the skies
 - [x] Nature by terrain — logic (zones, species per zone, sizes; `world/nature.ts`)
-- [ ] Nature by terrain — pines, palms and 10 more species rebuilt (3D). Done: the understory by land and ground — reeds, papyrus, mangroves, heather, juniper, cotton-grass, alpenrose, edelweiss and gentians, saltbush, tussock, ferns, tea, lavender, flowering shrubs, crystal blooms (`world/understory.ts`); lotus ponds
+- [x] Nature by terrain — pines, palms and 10 more species rebuilt (3D): conifers (pine, spruce, the mountain fir, cypress), palms and coconuts, bamboo, banana, baobab and the branch-grown broadleaf habits (`species.ts`, `trees.ts`). Also done: the understory by land and ground — reeds, papyrus, mangroves, heather, juniper, cotton-grass, alpenrose, edelweiss and gentians, saltbush, tussock, ferns, tea, lavender, flowering shrubs, crystal blooms (`world/understory.ts`); lotus ponds
 - [x] Caves — logic (placement, explore once a day; `world/caves.ts`)
-- [ ] Caves and caverns — models (3D)
+- [x] Caves and caverns — models (3D): organic caves and dens shaped by their land (`models/caves.ts`), cavern interiors (`interiors3d.ts`)
 
 ## I. Traffic (section 3.5)
 - [x] ~85 designs moving on every land's roads, waters and skies
@@ -132,7 +132,10 @@ sections C1–C7) and `3D_BUILDS_HANDOFF.md` (3D work, sections 2a and 3.x). Tic
 - [x] Trees: the mountain fir (a true cone, Alpenrose and Fjordhavn), rainbow gum streaked down its trunk, wisteria racemes hanging under a green canopy (`species.ts`, `trees.ts`). The Sky Isles' approved trees are unchanged.
 - [x] Desert roses: rosettes in the sand and great bouquets taller than the travellers (the Tents of Rimal, and fewer in Souq al-Qamar and Nile Crossing) (`world/desertRoses.ts`)
 - [x] New Yonder: twisting, zig-zag and desert-rose towers, each with its own neon pattern (corner spirals, chevrons, petal outlines) in seven neon colours (`architecture.ts`)
-- [ ] Sky Isles: more bridges and waterfalls, richer island surfaces (the approved trees stay)
+- [x] Sky Isles: moonstone stepping-stone paths across each isle from bridge to bridge, pastel flower beds, springs spilling in waterfalls from most isles (`monuments.ts` skyisles, `architecture.ts` `floatingIsland`); the approved trees are unchanged
+- [x] Wildlife lives its day: grazing and pecking, herds keeping together, day animals resting at night and night animals out, befriended animals coming to greet the travellers (`animals/behaviour.ts`)
+- [x] Seasons (a week each; autumn gold and winter frost on the temperate lands' leaves) and the weather of the day per land: showers with falling rain, snow flurries, sandstorms, morning fog; the clock shows both (`world/seasons.ts`, `Weather.ts`)
+- [x] Performance: a dragon out of view is not re-bent each frame, a far one every third frame (`Dragons.ts`)
 - [ ] Houses in the remaining lands, rendered one land at a time
 - [ ] Performance: a fixed light pool, merged people meshes, land builds sliced over frames
 - [ ] Energy and machines (the owner: "we will come to this")
