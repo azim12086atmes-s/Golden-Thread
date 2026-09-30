@@ -9,7 +9,7 @@ import { mashrabiya, banana, kolam, kuthuvilakku, ratha, bambooFence, brassLante
 import { ANIMAL_HEAD_GAP, HEAD_GAP } from '../characters/anatomy';
 import { rangoli } from './gulabi';
 import { saduBand } from './traditions';
-import { M, archPanel, box, cone, cyl, gable, sphere, sweptRoof, tree } from './kit';
+import { M, archPanel, box, cone, cyl, flowers, gable, sphere, sweptRoof, tree } from './kit';
 import { HABITS, growTree, type Habit } from './trees';
 import { lanternGeometry } from './lanterns';
 import type { RegionId } from './regions';
@@ -2520,6 +2520,25 @@ const skyisles: Monument = (c, o) => {
     const a = tops[i], b = tops[i + 1], d = b.clone().sub(a).setY(0).normalize();
     const rb = i + 1 === 15 ? 20 : 8;
     lightBridge(c, a.clone().addScaledVector(d, 8).setY(a.y + 0.2), b.clone().addScaledVector(d, -rb).setY(b.y + 0.2));
+  }
+  // Across each isle, a path of moonstone stepping stones from where one bridge lands to where the
+  // next sets off, curving by the isle's middle; pastel flowers in beds on the lawn either side.
+  const pastel = ['#ffc8f0', '#bfe8ff', '#fff0b0', '#d8c8ff', '#c8ffe0'];
+  for (let i = 1; i < 15; i++) {
+    const T0 = tops[i], din = T0.clone().sub(tops[i - 1]).setY(0).normalize(), dout = tops[i + 1].clone().sub(T0).setY(0).normalize();
+    const p0 = T0.clone().addScaledVector(din, -8), p2 = T0.clone().addScaledVector(dout, 8), p1 = T0.clone().lerp(p0.clone().lerp(p2, 0.5), 0.3);
+    const len = p0.distanceTo(p1) + p1.distanceTo(p2), n = Math.max(4, Math.round(len / 1.35));
+    for (let k = 0; k <= n; k++) {
+      const t = k / n, q = p0.clone().multiplyScalar((1 - t) ** 2).addScaledVector(p1, 2 * t * (1 - t)).addScaledVector(p2, t * t);
+      surf(c, SURF.marble, () => cyl(c.g, 0.5 + c.rng.next() * 0.12, 0.55, 0.12, moon, q.x + c.rng.range(-0.15, 0.15), T0.y - 0.02, q.z + c.rng.range(-0.15, 0.15), 8));
+    }
+    // Two flower beds, off the path to either side (not where a moon pavilion stands).
+    if (i % 4 === 2) continue;
+    const side = new THREE.Vector3(-(dout.z + din.z), 0, dout.x + din.x).normalize();
+    for (const sd of [-1, 1]) {
+      const f = T0.clone().addScaledVector(side, sd * c.rng.range(3.2, 4.4));
+      flowers(c.g, f.x, T0.y - 0.05, f.z, pastel, () => c.rng.next(), 9);
+    }
   }
   // ═══ The Temple of the Great Lantern on the highest isle. ═══
   const T = tops[15];

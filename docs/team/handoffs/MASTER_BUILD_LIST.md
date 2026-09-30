@@ -122,6 +122,21 @@ sections C1–C7) and `3D_BUILDS_HANDOFF.md` (3D work, sections 2a and 3.x). Tic
 - [x] Logic: doors ask `buildInterior` first (monuments, institutes via “Step inside”, caverns after exploring, castle, penthouses) and use its seats, spots, gather point and camera; scenes seating the two closer than 2.2 m are refused (`HouseInterior.safeInterior`); the institute panel opens from inside
 - [x] Logic: penthouses to buy (`housing/penthouses.ts`, the penthouse panel inside, Homes & Land). The castle door is done (`event/site.ts` `CASTLE_DOOR`)
 
+## L0. Owner requests of 2026-09-30
+- [x] Wardrobe for the brothers, sisters and children (`caravan/dress.ts`, the family tabs in the dressing room)
+- [x] A guided tour: Grandmother Noor's letters, one mechanic at a time, with "Show me" (`guide/tour.ts`); the guidebook (letters, how things work, every land's page from the game's data, `guide/lands.ts`)
+- [x] Keeper meeting films: the first meeting with each land's Keeper is a short film (`story/MeetScene.ts`)
+- [x] Homes for both sets of parents, visits and letters (`housing/parents.ts`)
+- [x] Dragons easy to see near their monuments: each circles close round its monument, clear of it and of the town, wings and all (`creatures/Dragons.ts`, tests/dragons.test.ts); a soft aura round every dragon's silhouette, brighter at night (the Night Dragon's plasma blue, the Light Fury's pearl) (`dragonKit.ts` `DRAGON_NIGHT`)
+- [x] Landing together: the Night Dragon waits where they land; the Light Fury lands beside him, and they look about and turn to each other; she plays beside them in flight, only ever drifting outward (`Travellers.parkedDragon`, `CaravanView.restLight`, `caravan.lightPlay`)
+- [x] Trees: the mountain fir (a true cone, Alpenrose and Fjordhavn), rainbow gum streaked down its trunk, wisteria racemes hanging under a green canopy (`species.ts`, `trees.ts`). The Sky Isles' approved trees are unchanged.
+- [x] Desert roses: rosettes in the sand and great bouquets taller than the travellers (the Tents of Rimal, and fewer in Souq al-Qamar and Nile Crossing) (`world/desertRoses.ts`)
+- [x] New Yonder: twisting, zig-zag and desert-rose towers, each with its own neon pattern (corner spirals, chevrons, petal outlines) in seven neon colours (`architecture.ts`)
+- [ ] Sky Isles: more bridges and waterfalls, richer island surfaces (the approved trees stay)
+- [ ] Houses in the remaining lands, rendered one land at a time
+- [ ] Performance: a fixed light pool, merged people meshes, land builds sliced over frames
+- [ ] Energy and machines (the owner: "we will come to this")
+
 ## L. Claude's logic queue — still to do (in order)
 
 Logic (rules, state, placement, wiring, UI, tests). The 3D models are Claude's too now (sections above).
@@ -167,8 +182,8 @@ Logic (rules, state, placement, wiring, UI, tests). The 3D models are Claude's t
     - A real-GPU frame-rate check.
 12. **Research notes**: cite the real sources for each land's science and institutes (B).
 13. **Bugs seen in the 2026-09-27 screenshots**
-    - Safar parks on the sea when the travellers are teleported onto a pier: park it on the nearest dry ground.
-    - Grass and flowers grow over the tilled rows of owned fields, and on harbour quays: keep them off both.
+    - Done: Safar parks on the nearest dry ground when they arrive on a pier (`Travellers.parkingNear`, tests/parking.test.ts).
+    - Done: grass and flowers keep off fields, plots and harbour quays (`paved.ts`, `Meadow.openGround`).
 14. **Contracts Codex creates, for Claude to wire when they appear** (see `CHATGPT_3D_MODELS.md` §0.5)
     - `lotusPond`: place formal lotus ponds by the plazas and gardens of the six lotus lands.
     - `screens.ts`: add `c.screen` to the land's `Ctx` and tick `uTime`/`uNight`.

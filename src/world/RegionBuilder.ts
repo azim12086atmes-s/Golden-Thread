@@ -8,6 +8,7 @@ import { TRADITIONS } from './traditions';
 import { NATURE, pickTree, zoneAt } from './nature';
 import { UNDERSTORY, plant, understoryFor } from './understory';
 import { CAVES, type Cave } from './caves';
+import { ROSE_LANDS, desertRose } from './desertRoses';
 import { buildCave } from './models/caves';
 import { buildBanks } from './banks';
 import { neighbours } from '../traffic/schedule';
@@ -598,6 +599,33 @@ export function buildRegion(spec: RegionSpec, solid: THREE.Material, glowMat: TH
       }
     }
     if (planted) recordDecor(spec.id, 'nature: understory');
+  }
+  // Desert roses in the sand (desertRoses.ts): little rosettes scattered over the dunes, and out in
+  // the open desert a few great ones, bouquets of stone petals taller than the travellers.
+  const roses = ROSE_LANDS[spec.id];
+  if (roses) {
+    const rrng = new Rng(`roses:${spec.id}`);
+    let small = 0, big = 0;
+    for (let i = 0; i < 400 && (small < 26 * roses || big < 6 * roses); i++) {
+      const great = big < 6 * roses && rrng.chance(0.3);
+      const x = rrng.range(-half, half), z = rrng.range(-half, half), d = Math.hypot(x, z);
+      if (d < CITY_RADIUS + (great ? 40 : 12)) continue;
+      const size = great ? rrng.range(2.6, 5.5) : rrng.range(0.45, 1.1);
+      if (onStreet(x, z, size + 2) || nearPlot(x, z, size + 2) || onTowpath(x, z, size + 1)) continue;
+      const y = H(x, z);
+      if (y < WATER_Y + 0.4) continue;
+      const slope = Math.hypot(H(x + 2, z) - H(x - 2, z), H(x, z + 2) - H(x, z - 2)) / 4;
+      const zone = zoneAt(spec, y, slope, waterEdge(c.x + x, c.z + z).d, dunesHere, duneShape(c.x + x, c.z + z));
+      if (zone !== 'sand' && zone !== 'dune' && zone !== 'rock') continue;
+      if (buildings.some((b) => Math.hypot(x - b.x, z - b.z) < b.r + size + 1) || cavesHere.some((cv) => Math.hypot(x - cv.x, z - cv.z) < cv.r + size + 2)) continue;
+      if (grove.near(x, z, size)) continue;
+      grove.add(x, z, size);
+      const reach = desertRose(g, x, y, z, size, () => rrng.next());
+      if (great) { big++; colliders.push({ x: c.x + x, z: c.z + z, r: reach * 0.8, h: y + size }); }
+      else small++;
+    }
+    if (small) recordDecor(spec.id, 'nature: desert roses', small);
+    if (big) recordDecor(spec.id, 'nature: great desert roses', big);
   }
   // Caves out in the wild (caves.ts), built by the 3D side's buildCave.
   const caves = CAVES.filter((cv) => cv.land === spec.id);

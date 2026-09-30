@@ -112,11 +112,16 @@ const houses: Partial<Record<RegionId, HouseFn>> = {
   },
 
   newyork(c) {
-    // New Yonder: New York grown solarpunk. Four kinds of building, each after a real type.
+    // New Yonder: New York grown solarpunk. Deco setbacks, glass towers, brownstones and lofts after
+    // real types, and the city's new forms (owner): towers that twist, zig-zag, or open like a
+    // desert rose, each lit in its own neon pattern rather than in bands.
     const k = c.rng.next();
-    if (k < 0.3) return nyDecoTower(c);
-    if (k < 0.55) return nyGlassTower(c);
-    if (k < 0.8) return nyBrownstone(c);
+    if (k < 0.22) return nyDecoTower(c);
+    if (k < 0.3) return nyTwistTower(c);
+    if (k < 0.5) return nyGlassTower(c);
+    if (k < 0.57) return nyZigzagTower(c);
+    if (k < 0.63) return nyRoseTower(c);
+    if (k < 0.82) return nyBrownstone(c);
     return nyLoft(c);
   },
 
@@ -140,7 +145,7 @@ const houses: Partial<Record<RegionId, HouseFn>> = {
  * solar skins and crowns, vertical gardens, sky gardens with real trees, wind turbines, neon.
  * --------------------------------------------------------------------------------------------- */
 const NY = { limestone: '#b8b2a6', brownstone: '#8a7a6a', steel: '#c9c2b5', glass: '#6a7a8a', brick: '#a0522d' };
-const NEON = ['#3ae8ff', '#ff3ad8', '#7aff9a', '#ffd23a'];
+const NEON = ['#3ae8ff', '#ff3ad8', '#7aff9a', '#ffd23a', '#ff7a3a', '#a86bff', '#ff4a6a'];
 const SOLAR = '#1d3566', SOLAR_FRAME = '#c9ccd6', IRON = '#1f1f24', LEAF = '#4f9a4a';
 
 /** A field of tilted solar panels on a roof (w × d, at height y). */
@@ -242,6 +247,94 @@ function nyGlassTower(c: Ctx): Footprint {
   // A holographic billboard on the corner.
   box(c.glow, 0.1, 8, 6, c.rng.pick(NEON), w / 2 + 0.3, h * 0.35, d / 4);
   return { r: Math.max(w, d) * 0.62, h: h + 6, ...(top ? { kind: 'penthouse' } : {}) };
+}
+
+/**
+ * A twisting tower: each floor plate turned a little further than the one below, so the glass
+ * corkscrews into the sky. Its windows turn with it, and neon runs up its four corners in two
+ * colours, spiralling as the tower turns.
+ */
+function nyTwistTower(c: Ctx): Footprint {
+  const w = c.rng.range(13, 17), floors = c.rng.int(18, 28), fh = 3.6, turn = c.rng.range(0.035, 0.055) * (c.rng.chance(0.5) ? 1 : -1);
+  const na = c.rng.pick(NEON), nb = c.rng.pick(NEON.filter((n) => n !== na));
+  for (let f = 0; f < floors; f++) {
+    const y = f * fh;
+    c.g.frame(0, y, 0, f * turn, 1, () => c.glow.frame(0, y, 0, f * turn, 1, () => {
+      box(c.g, w, fh - 0.5, w, NY.glass);
+      box(c.g, w + 0.6, 0.5, w + 0.6, NY.steel, 0, fh - 0.5, 0);
+      // Tall windows two to a bay, not a band: the mullions turn with the floor.
+      for (let i = 0; i < 6; i++) for (const [sx, sz, ry] of [[0, 1, 0], [0, -1, Math.PI], [1, 0, Math.PI / 2], [-1, 0, -Math.PI / 2]] as const) {
+        const u = -w / 2 + (i + 0.5) * (w / 6);
+        box(c.glow, w / 6 - 0.7, fh - 1.5, 0.08, NY_WINDOW, sz ? u : sx * (w / 2 + 0.03), 0.5, sx ? u : sz * (w / 2 + 0.03), ry);
+      }
+      for (let q = 0; q < 4; q++) {
+        const cx = (q & 1 ? 1 : -1) * (w / 2 + 0.15), cz = (q & 2 ? 1 : -1) * (w / 2 + 0.15);
+        box(c.glow, 0.22, fh, 0.22, (q + f) % 2 ? na : nb, cx, 0, cz);
+      }
+    }));
+  }
+  const top = floors * fh, ry = floors * turn;
+  c.g.frame(0, top, 0, ry, 1, () => c.glow.frame(0, top, 0, ry, 1, () => {
+    solarField(c, w - 2, w - 2, 0);
+    neonEdge(c, w, w, 0.3, na);
+    cyl(c.g, 0.5, 0.9, 14, NY.steel, 0, 0, 0, 8);
+    box(c.glow, 0.35, 0.35, 0.35, '#ff3a3a', 0, 14, 0);
+  }));
+  return { r: w * 0.75, h: top + 14 };
+}
+
+/**
+ * A zig-zag tower: blocks of four floors stepping out to one side and back, again and again, so
+ * its outline zig-zags; each step's overhang carries a planted terrace, and neon chevrons point up
+ * its front, one to each block, in colours that change as it climbs.
+ */
+function nyZigzagTower(c: Ctx): Footprint {
+  const w = c.rng.range(13, 16), d = c.rng.range(12, 15), blocks = c.rng.int(6, 10), bh = 4 * 3.5, shift = c.rng.range(2.2, 3.4);
+  const hue = c.rng.int(0, NEON.length - 1);
+  for (let b = 0; b < blocks; b++) {
+    const x = (b % 2 ? 1 : -1) * shift / 2, y = b * bh, col = NEON[(hue + b) % NEON.length];
+    box(c.g, w, bh - 0.4, d, b % 3 === 2 ? NY.limestone : NY.glass, x, y, 0);
+    box(c.g, w + 0.4, 0.4, d + 0.4, NY.steel, x, y + bh - 0.4, 0);
+    // Windows in vertical strips on the sides, staggered from block to block.
+    for (let i = 0; i < 5; i++) for (const sx of [-1, 1]) box(c.glow, 0.08, bh - 2.4, 1.2, NY_WINDOW, x + sx * (w / 2 + 0.03), y + 1, -d / 2 + (i + (b % 2 ? 0.25 : 0.75)) * (d / 5));
+    // The chevron: two strips meeting at the middle of the front, pointing up.
+    const hx = w / 2 - 0.8, hy = (bh - 2) / 2, len = Math.hypot(hx, hy), ang = Math.atan2(hy, hx);
+    for (const s of [-1, 1]) c.glow.add(new THREE.BoxGeometry(len, 0.35, 0.12), col, M(x + (s * hx) / 2, y + 1 + hy / 2, d / 2 + 0.08, 0, 1, 1, 1, 0, -s * ang));
+    // Where the next block steps back, the ledge is a terrace of planters.
+    if (b < blocks - 1) box(c.g, shift, 0.6, d - 1, '#6b5a4a', x + (b % 2 ? 1 : -1) * (w / 2 - shift / 2), y + bh, 0);
+  }
+  const top = blocks * bh, lx = (blocks % 2 ? -1 : 1) * shift / 2;
+  box(c.g, w * 0.5, 4, d * 0.5, NY.steel, lx, top, 0);
+  neonEdge(c, w * 0.5, d * 0.5, top + 4, NEON[(hue + blocks) % NEON.length]);
+  return { r: Math.max(w + shift, d) * 0.62, h: top + 5 };
+}
+
+/**
+ * A desert-rose tower: a round glass core with tiers of great curved petals opening from it like
+ * the blades of a desert rose, each tier turned from the one below; every petal edged in neon,
+ * the colours running from rose to gold up the tower.
+ */
+function nyRoseTower(c: Ctx): Footprint {
+  const core = c.rng.range(4.5, 6), tiers = c.rng.int(6, 10), step = c.rng.range(7, 9), H = tiers * step + 6;
+  cyl(c.g, core, core * 1.08, H, NY.glass, 0, 0, 0, 16);
+  for (let y = 3; y < H - 1; y += 3.4) cyl(c.glow, core + 0.04, core + 0.04, 0.5, NY_WINDOW, 0, y, 0, 16);
+  const petalGeo = () => new THREE.SphereGeometry(1, 12, 4);
+  const ringGeo = () => new THREE.TorusGeometry(1, 0.035, 4, 28).rotateX(Math.PI / 2);
+  const glow = ['#ff4a8a', '#ff7a6a', '#ffa05a', '#ffc84a', '#ffe07a'];
+  for (let t = 0; t < tiers; t++) {
+    const y = 4 + t * step, n = 5, L = core * (1.5 - t * 0.06), tilt = 0.35 + t * 0.03;
+    for (let i = 0; i < n; i++) {
+      const a = (i / n) * Math.PI * 2 + t * 0.63;
+      c.g.frame(0, y, 0, a, 1, () => c.glow.frame(0, y, 0, a, 1, () => {
+        const px = 0, py = Math.sin(tilt) * L * 0.5, pz = core * 0.8 + Math.cos(tilt) * L * 0.5;
+        c.g.add(petalGeo(), t % 2 ? '#e8d8c8' : '#cfd8e2', M(px, py, pz, 0, L * 0.45, 0.22, L * 0.55, -tilt));
+        c.glow.add(ringGeo(), glow[Math.min(glow.length - 1, Math.floor((t / tiers) * glow.length))], M(px, py + 0.12, pz, 0, L * 0.45, 1, L * 0.55, -tilt));
+      }));
+    }
+  }
+  cone(c.g, core * 0.9, 10, '#e8d8c8', 0, H, 0, 16);
+  box(c.glow, 0.35, 0.35, 0.35, '#ff3a3a', 0, H + 10, 0);
+  return { r: core + core * 1.5 * 0.9, h: H + 10 };
 }
 
 /** Brownstone row house (composed from the facade kit), grown solarpunk: iron fire escapes, a green wall, a rooftop greenhouse and solar panels. */
@@ -1150,8 +1243,8 @@ export function floatingIsland(c: Ctx, x: number, y: number, z: number, size: nu
       tree(c.g, c.rng.chance(0.5) ? 'cloud' : 'crystal', Math.cos(a) * r, 0.1, Math.sin(a) * r, 0.9, () => c.rng.next());
     }
   }));
-  // One island in three has a spring that spills over its edge in a long waterfall into the clouds.
-  if (size < 20 && c.rng.chance(0.4)) {
+  // Most islands have a spring that spills over the edge in a long waterfall into the clouds.
+  if (size < 20 && c.rng.chance(0.65)) {
     const a = c.rng.range(0, Math.PI * 2), r = size * 0.95;
     c.g.frame(x, y, z, 0, 1, () => {
       const edge = r * 0.92, ry = Math.atan2(Math.cos(a), Math.sin(a));
