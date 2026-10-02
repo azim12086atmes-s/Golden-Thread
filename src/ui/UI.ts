@@ -143,6 +143,11 @@ export class UI {
     return this.panelEl.classList.contains('sheet') && this.panelEl.classList.contains('show') ? this.panelEl.getBoundingClientRect().top : innerHeight;
   }
 
+  /** The panel that is open, if any. */
+  get panelId(): string | null {
+    return this.panel;
+  }
+
   get modal(): boolean {
     return this.storyOpen || (this.panel !== null && this.panel !== 'build');
   }

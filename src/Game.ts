@@ -401,11 +401,18 @@ export class Game {
 
     if (this.inHouse) {
       if (!this.st.flags.includes(SKY_PAUSED)) this.st.minutes += dt * MINUTES_PER_SECOND;
-      this.house.update(dt);
+      // They walk about the room (housing/roomWalk.ts) while only the room's own panel is open.
+      this.input.blocked = this.ui.modal && this.ui.panelId !== 'house';
+      this.house.update(dt, this.input);
       this.guide.update(dt, this.t);
       this.renderer.render(this.house.scene, this.house.camera);
       this.ui.update(dt);
-      if (this.input.hit('escape') || this.input.hit('e')) this.exitHouse();
+      if (this.input.hit('escape')) this.exitHouse();
+      else if (this.input.hit('e') && !this.input.blocked) {
+        const did = this.house.interact();
+        if (did === 'exit') this.exitHouse();
+        else if (did === 'sit') this.toast('You sit down together. E to stand up again.', 'info');
+      }
       this.input.endFrame();
       return;
     }
@@ -1151,6 +1158,10 @@ export class Game {
     const gathered = d.kind === 'institute' || d.kind === 'cavern' || this.houseGathered(d);
     this.house.enter(d, this.sky.night, gathered, plot ? this.homeDecor(plot) : undefined, residents);
     this.ui.openHouse(d);
+    if (!this.st.flags.includes('walk-inside')) {
+      this.st.flags.push('walk-inside');
+      this.toast('Walk about inside (WASD, drag to look round). Press E by your seats to sit down together, or at the door (or Esc anywhere) to step out.', 'info');
+    }
   }
 
   /** Step inside an institute: the town's own, or one you have founded (its standing stage). */

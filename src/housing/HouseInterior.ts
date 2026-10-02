@@ -1,4 +1,10 @@
 import * as THREE from 'three';
+import { enforceGap, followStep } from '../characters/follow';
+import type { Input } from '../core/Input';
+import { INDOOR_GAP, atDoor, entryPoints, indoorCamera, keepInside, nearSeats, stepGirl, walkArea, yawOf, type Area, type P2, type Room } from './roomWalk';
+
+/** The indoor gap (INDOOR_GAP) between two points on the floor. */
+const enforceGapP = (p: P2, from: P2): P2 => { const q = enforceGap({ x: p.x, y: 0, z: p.z }, { x: from.x, y: 0, z: from.z }, INDOOR_GAP); return { x: q.x, z: q.z }; };
 import { buildInterior, type InteriorBuild, type InteriorSpec } from '../world/models/interiors';
 import { CharacterModel, DIMS, HERO_SCALE } from '../characters/CharacterModel';
 import type { Outfit } from '../characters/modesty';
@@ -158,6 +164,21 @@ export class HouseInterior {
   private mote: THREE.Mesh;
   private t = 0;
   door: Door | null = null;
+  /**
+   * Walking about the room (housing/roomWalk.ts): where each of them stands and faces, how fast
+   * they move, where the camera looks from, and the seats they can sit down at together.
+   */
+  walking = true;
+  private dims: Room = { ...ROOM };
+  private area: Area = walkArea(ROOM, false);
+  private seatPose: Array<{ x: number; y: number; z: number; ry: number }> = [];
+  private gp: P2 = { x: 0, z: 0 };
+  private bp: P2 = { x: 1.8, z: 0 };
+  private gHead = Math.PI;
+  private bHead = Math.PI;
+  private gSpeed = 0;
+  private bSpeed = 0;
+  private camYaw = 0;
 
   constructor(girl: Outfit, boy: Outfit) {
     this.scene.background = new THREE.Color('#1f1a33');
@@ -322,6 +343,7 @@ export class HouseInterior {
         this.residents.push(m);
       });
       this.camera.position.set(0, 2.4, F + 1.2); this.camera.lookAt(0, 0.9, -1.2);
+      this.beginWalk(ROOM, round);
       return;
     }
     const who = rng.chance(0.5) ? 'girl' : 'boy';
@@ -332,6 +354,7 @@ export class HouseInterior {
 
     this.camera.position.set(0, 2.4, F + 1.2);
     this.camera.lookAt(0, 0.9, -1.2);
+    this.beginWalk(ROOM, round);
   }
 
   /** Step into a built interior: the two at its seats facing each other, others at its spots. */
@@ -369,17 +392,111 @@ export class HouseInterior {
     this.camLook.set(...b.camera.look);
     this.camera.position.copy(this.camBase);
     this.camera.lookAt(this.camLook);
+    this.beginWalk(b.room, false);
   }
+
+  /**
+   * They come in standing just inside the door, side by side, and walk where they like. Where they
+   * would sit (placed above) is kept, for when they sit down together.
+   */
+  private beginWalk(room: Room, round: boolean): void {
+    this.dims = { ...room };
+    this.area = walkArea(room, round);
+    this.seatPose = [this.girl, this.boy].map((m) => ({ x: m.root.position.x, y: m.root.position.y, z: m.root.position.z, ry: m.root.rotation.y }));
+    const e = entryPoints(this.area);
+    this.gp = keepInside(e.girl, this.area, this.people());
+    this.bp = keepInside(e.boy, this.area, this.people());
+    this.gHead = this.bHead = Math.PI;
+    this.walking = true;
+    this.placeWalkers(0);
+    const c = indoorCamera(this.gp, this.camBase.toArray(), this.camLook.toArray());
+    this.camYaw = yawOf(c.pos, c.look);
+    this.camera.position.set(...c.pos);
+    this.lookNow.set(...c.look);
+    this.camera.lookAt(this.lookNow);
+  }
+
+  /** Where the others in the room stand (they are left room). */
+  private people(): P2[] {
+    return [this.host, ...this.residents].filter((m): m is CharacterModel => !!m).map((m) => ({ x: m.root.position.x, z: m.root.position.z }));
+  }
+
+  private placeWalkers(dt: number): void {
+    this.girl.root.position.set(this.gp.x, 0, this.gp.z);
+    this.girl.root.rotation.y = this.gHead;
+    this.boy.root.position.set(this.bp.x, 0, this.bp.z);
+    this.boy.root.rotation.y = this.bHead;
+    this.girl.update(dt, { speed: this.gSpeed, airborne: false, riding: false, t: this.t });
+    this.boy.update(dt, { speed: this.bSpeed, airborne: false, riding: false, t: this.t + 1 });
+  }
+
+  /**
+   * E inside: by their seats they sit down together (and E again stands them up); at the door they
+   * step out. Returns what happened.
+   */
+  interact(): 'sit' | 'stand' | 'exit' | null {
+    if (!this.walking) {
+      // Up from their seats: each stands where they sat.
+      this.walking = true;
+      const [sg, sb] = this.seatPose;
+      this.gp = keepInside({ x: sg.x, z: sg.z }, this.area, this.people());
+      this.bp = keepInside({ x: sb.x, z: sb.z }, this.area, this.people());
+      if (Math.hypot(this.gp.x - this.bp.x, this.gp.z - this.bp.z) < INDOOR_GAP) this.bp = keepInside(enforceGapP(this.bp, this.gp), this.area);
+      return 'stand';
+    }
+    // By their seats E sits them down (Esc always steps out); elsewhere by the door, E steps out.
+    if (this.seatPose.length === 2 && nearSeats(this.gp, this.seatPose)) {
+      this.walking = false;
+      const [sg, sb] = this.seatPose;
+      this.girl.root.position.set(sg.x, sg.y, sg.z); this.girl.root.rotation.y = sg.ry;
+      this.boy.root.position.set(sb.x, sb.y, sb.z); this.boy.root.rotation.y = sb.ry;
+      return 'sit';
+    }
+    if (atDoor(this.gp, this.dims)) return 'exit';
+    return null;
+  }
+
+  /** Walk one frame: she by the stick, he beside her, the camera turning to follow; never nearer than INDOOR_GAP. */
+  private walk(dt: number, input: Input): void {
+    const step = stepGirl(this.gp, input.axis(), this.camYaw, dt);
+    const people = this.people();
+    const g = keepInside(step.pos, this.area, people);
+    if (step.heading !== null) this.gHead = step.heading;
+    const f = followStep({ boy: { x: this.bp.x, y: 0, z: this.bp.z }, girl: { x: g.x, y: 0, z: g.z }, heading: this.gHead, speed: step.speed, dt, airborne: false, gap: INDOOR_GAP });
+    const apart = (q: P2) => Math.hypot(q.x - g.x, q.z - g.z) >= INDOOR_GAP;
+    let b = keepInside({ x: f.pos.x, z: f.pos.z }, this.area, people);
+    if (!apart(b)) b = keepInside(enforceGapP(b, g), this.area, people);
+    // Where the walls leave him no room to step, he waits where he is (if that is still a full
+    // gap from her); the rule above all: if neither will do, nobody moves.
+    if (!apart(b)) b = this.bp;
+    if (apart(b)) {
+      const bdx = b.x - this.bp.x, bdz = b.z - this.bp.z;
+      if (Math.hypot(bdx, bdz) > 0.01) this.bHead = Math.atan2(bdx, bdz);
+      this.bSpeed = dt > 0 ? Math.hypot(bdx, bdz) / dt : 0;
+      this.gp = g; this.bp = b; this.gSpeed = step.speed;
+    } else { this.gSpeed = 0; this.bSpeed = 0; }
+    this.placeWalkers(dt);
+    const c = indoorCamera(this.gp, this.camBase.toArray(), this.camLook.toArray()), k = Math.min(1, dt * 4);
+    this.camera.position.lerp(this.tmpV.set(...c.pos), k);
+    this.lookNow.lerp(this.tmpV.set(...c.look), k);
+    this.camera.lookAt(this.lookNow);
+    this.camYaw = yawOf(this.camera.position.toArray(), this.lookNow.toArray());
+  }
+  private tmpV = new THREE.Vector3();
+  private lookNow = new THREE.Vector3();
 
   /** The item has been gathered today: the mote goes out. */
   setGathered(v: boolean): void {
     this.mote.visible = !v;
   }
 
-  update(dt: number): void {
+  update(dt: number, input?: Input): void {
     this.t += dt;
-    this.girl.update(dt, { speed: 0, airborne: false, riding: true, t: this.t });
-    this.boy.update(dt, { speed: 0, airborne: false, riding: true, t: this.t + 1 });
+    if (this.walking && input) this.walk(dt, input);
+    else {
+      this.girl.update(dt, { speed: 0, airborne: false, riding: true, t: this.t });
+      this.boy.update(dt, { speed: 0, airborne: false, riding: true, t: this.t + 1 });
+    }
     this.residents.forEach((r, i) => r.update(dt, { speed: 0, airborne: false, riding: false, t: this.t + 3 + i }));
     if (this.host) {
       this.host.offer = Math.max(0, Math.sin(this.t * 0.8)) * 0.5;
@@ -388,6 +505,7 @@ export class HouseInterior {
     }
     this.mote.rotation.y += dt * 1.5;
     this.mote.position.y = 1.2 + Math.sin(this.t * 2) * 0.1;
+    if (this.walking && input) return;
     this.camera.position.set(this.camBase.x + Math.sin(this.t * 0.12) * 0.5, this.camBase.y, this.camBase.z);
     this.camera.lookAt(this.camLook);
   }
