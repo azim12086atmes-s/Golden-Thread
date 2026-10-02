@@ -7,6 +7,20 @@ Read `AGENTS.md`, `docs/GAME_DESIGN.md`, `docs/ROADMAP.md`, `docs/REQUIREMENTS_E
 unchanged and tested: the two never touch or share a seat/mount; no eyes and floating heads on every person and
 animal; modest clothing via `modestify()`.
 
+## Update — 2026-10-02 (cloud)
+
+Shipped on `claudes-current-work` (tests: `tests/roomWalk`, `diary`, `profiles`, `wings`, `interiorGlow`):
+
+| Area | Where |
+|---|---|
+| Walk about inside every room (WASD); E by the seats sits them down, E in the doorway (or Esc) steps out; the boy keeps the 2.2 m indoor gap and steps aside round furniture | `housing/roomWalk.ts`, `HouseInterior.walk` |
+| Furniture is mapped from each room's own geometry (`Blocks`), so nobody walks through sofas or tables | `roomWalk.ts` `Blocks`, `HouseInterior.furnitureOf` |
+| Brothers, sisters and caravan children come indoors and gather round the two | `roomWalk.ts` `folkStep`, `CaravanView.indoorFolk` |
+| Owned penthouses are furnished slot by slot like plot homes (`st.homes['penthouse:<door id>']`) | `HouseInterior` `furnishBuilt`, `Game.homeKey`, UI `decorSection` |
+| Sign in by name (+ optional PIN); the first player takes the device's existing journey (copied, never erased); guests play as before; keepsake files carry a journey to another device. All local — there is no server | `core/profiles.ts`, `ui/AccountPanel.ts`, `Game.switchJourney` |
+| My Diary (Q): a page per real day, a daily question, moods, seven lanterns + streak, kind replies, gifts at streak milestones | `diary/diary.ts`, `ui/DiaryPanel.ts`, `Game.writeDiary` |
+| Her wings 5× her height and 0.95 as broad; a silky lagging, fluttering beat that never spreads past `MIN_BACK`; camera keeps back past the tips | `characters/wings.ts`, `Travellers.updateCamera` |
+
 ## Handoff — session 2026-09-27 (cloud). START HERE.
 
 **Then read `docs/team/handoffs/NEXT_WORK_2026-09-27.md`** — the owner's newest requests verbatim (charity and
