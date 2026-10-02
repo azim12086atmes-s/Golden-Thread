@@ -2,6 +2,7 @@ import * as THREE from 'three';
 import { AnimalModel } from '../animals/AnimalModel';
 import { CharacterModel, HERO_SCALE } from '../characters/CharacterModel';
 import { OUTFITS } from '../characters/outfits';
+import type { Outfit } from '../characters/modesty';
 import type { Game } from '../Game';
 import { wardrobeFor } from '../npc/Townsfolk';
 import { REGION_BY_ID, regionCenter, type RegionId } from '../world/regions';
@@ -109,6 +110,11 @@ export class CaravanView {
       this.g.scene.add(body.pet.root);
     }
     this.bodies.push(body);
+  }
+
+  /** Their brothers, sisters and the children travelling with them, as they look now (they come indoors too). */
+  indoorFolk(): Array<{ id: string; outfit: Outfit; skin: string; scale: number }> {
+    return this.bodies.flatMap((b) => b.child ? [{ id: b.def.id, outfit: b.child.outfit, skin: b.child.skinTone, scale: b.child.figureScale }] : []);
   }
 
   /** The figure of someone travelling with them (for the dressing room's camera). */

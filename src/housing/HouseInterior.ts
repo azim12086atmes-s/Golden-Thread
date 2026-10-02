@@ -1,7 +1,7 @@
 import * as THREE from 'three';
 import { enforceGap, followStep } from '../characters/follow';
 import type { Input } from '../core/Input';
-import { INDOOR_GAP, atDoor, entryPoints, indoorCamera, keepInside, nearSeats, stepGirl, walkArea, yawOf, type Area, type P2, type Room } from './roomWalk';
+import { INDOOR_GAP, atDoor, entryPoints, folkSlots, folkStep, indoorCamera, keepInside, nearSeats, stepGirl, walkArea, yawOf, type Area, type Folk, type P2, type Room } from './roomWalk';
 
 /** The indoor gap (INDOOR_GAP) between two points on the floor. */
 const enforceGapP = (p: P2, from: P2): P2 => { const q = enforceGap({ x: p.x, y: 0, z: p.z }, { x: from.x, y: 0, z: from.z }, INDOOR_GAP); return { x: q.x, z: q.z }; };
@@ -179,6 +179,9 @@ export class HouseInterior {
   private gSpeed = 0;
   private bSpeed = 0;
   private camYaw = 0;
+  /** Their brothers, sisters and the children travelling with them, who come in too (roomWalk.ts folkStep). */
+  private folkLooks: Array<{ id: string; outfit: Outfit; skin: string; scale: number }> = [];
+  private folk: Array<{ model: CharacterModel; at: Folk; head: number }> = [];
 
   constructor(girl: Outfit, boy: Outfit) {
     this.scene.background = new THREE.Color('#1f1a33');
@@ -190,6 +193,11 @@ export class HouseInterior {
     this.scene.add(this.girl.root, this.boy.root);
     this.mote = new THREE.Mesh(new THREE.OctahedronGeometry(0.14), new THREE.MeshBasicMaterial({ color: new THREE.Color('#fff2a8').multiplyScalar(1.6), toneMapped: false }));
     this.scene.add(this.mote);
+  }
+
+  /** Who travels with them now (set before stepping in): they all come indoors too. */
+  setCompanions(list: Array<{ id: string; outfit: Outfit; skin: string; scale: number }>): void {
+    this.folkLooks = list;
   }
 
   setOutfits(g: Outfit, b: Outfit): void {
@@ -221,7 +229,7 @@ export class HouseInterior {
     // A built interior from the 3D side, when there is one for this door.
     const ispec = interiorSpecFor(door, night);
     const built = ispec ? safeInterior(buildInterior(ispec)) : null;
-    if (built) return this.enterBuilt(built, land, rng, gathered, !!home, residents);
+    if (built) return this.enterBuilt(built, land, rng, gathered, home, residents);
 
     const g = new GeoBuilder(), glow = new GeoBuilder();
     const { halfW: W, back: B, front: F, height: H } = ROOM;
@@ -358,8 +366,18 @@ export class HouseInterior {
   }
 
   /** Step into a built interior: the two at its seats facing each other, others at its spots. */
-  private enterBuilt(b: InteriorBuild, land: RegionId, rng: Rng, gathered: boolean, home: boolean, residents: Person[]): void {
+  private enterBuilt(b: InteriorBuild, land: RegionId, rng: Rng, gathered: boolean, decor: Record<VanSlot, string> | undefined, residents: Person[]): void {
+    const home = !!decor;
     this.room.add(b.group);
+    // A built home of your own (a penthouse) is furnished with what you have made, too.
+    if (decor) {
+      const g = new GeoBuilder(), glow = new GeoBuilder();
+      furnishBuilt(g, glow, decor, b.room, b.seats);
+      const solid = g.build(new THREE.MeshStandardMaterial({ vertexColors: true, flatShading: true, roughness: 0.85 }));
+      const lit = glow.build(new THREE.MeshBasicMaterial({ vertexColors: true, toneMapped: false }));
+      if (solid) this.room.add(solid);
+      if (lit) this.room.add(lit);
+    }
     const l = new THREE.PointLight('#ffd8a0', 16, Math.max(12, b.room.halfW * 3));
     l.position.set(0, Math.min(b.room.height - 0.3, 3), (b.room.back + b.room.front) / 2);
     this.scene.add(l);
@@ -408,12 +426,62 @@ export class HouseInterior {
     this.bp = keepInside(e.boy, this.area, this.people());
     this.gHead = this.bHead = Math.PI;
     this.walking = true;
+    this.bringFolk();
     this.placeWalkers(0);
     const c = indoorCamera(this.gp, this.camBase.toArray(), this.camLook.toArray());
     this.camYaw = yawOf(c.pos, c.look);
     this.camera.position.set(...c.pos);
     this.lookNow.set(...c.look);
     this.camera.lookAt(this.lookNow);
+  }
+
+  /** Where the two stand now (to keep their places when the room is redrawn, e.g. after decorating). */
+  standing(): { gp: P2; bp: P2; head: number } | null {
+    return this.walking ? { gp: { ...this.gp }, bp: { ...this.bp }, head: this.gHead } : null;
+  }
+
+  /** Put the two back where they stood (still inside, still a full gap apart). */
+  standAt(at: { gp: P2; bp: P2; head: number } | null): void {
+    if (!at || !this.walking) return;
+    const gp = keepInside(at.gp, this.area, this.people()), bp = keepInside(at.bp, this.area, this.people());
+    if (Math.hypot(gp.x - bp.x, gp.z - bp.z) < INDOOR_GAP) return;
+    this.gp = gp; this.bp = bp; this.gHead = this.bHead = at.head;
+    this.bringFolk();
+    this.placeWalkers(0);
+    const c = indoorCamera(this.gp, this.camBase.toArray(), this.camLook.toArray());
+    this.camera.position.set(...c.pos);
+    this.lookNow.set(...c.look);
+    this.camera.lookAt(this.lookNow);
+    this.camYaw = yawOf(c.pos, c.look);
+  }
+
+  /** The companions come in after them and take their places round the two. */
+  private bringFolk(): void {
+    for (const f of this.folk) this.scene.remove(f.model.root);
+    const slots = folkSlots(this.gp, this.bp, this.gHead, this.folkLooks.length);
+    const start = this.folkLooks.map((_, i) => ({ ...slots[i], speed: 0 }));
+    // Settle them into the room, clear of everyone, before they are seen.
+    const at = folkStep(start, this.gp, this.bp, this.gHead, this.area, this.dims, 0, this.people());
+    this.folk = this.folkLooks.map((l, i) => {
+      const model = new CharacterModel(l.outfit, l.skin, l.scale);
+      model.hideBack();
+      this.scene.add(model.root);
+      return { model, at: at[i], head: this.gHead };
+    });
+    this.placeFolk(0);
+  }
+
+  private placeFolk(dt: number): void {
+    const cx = (this.gp.x + this.bp.x) / 2, cz = (this.gp.z + this.bp.z) / 2;
+    this.folk.forEach((f, i) => {
+      // Walking, they face where they go; standing, they turn toward the two.
+      const want = f.at.speed > 0.15 ? f.head : Math.atan2(cx - f.at.x, cz - f.at.z);
+      let d = want - f.head; d = Math.atan2(Math.sin(d), Math.cos(d));
+      f.head += d * Math.min(1, dt * 6 || 1);
+      f.model.root.position.set(f.at.x, 0, f.at.z);
+      f.model.root.rotation.y = f.head;
+      f.model.update(dt, { speed: f.at.speed, airborne: false, riding: false, t: this.t + 5 + i });
+    });
   }
 
   /** Where the others in the room stand (they are left room). */
@@ -476,6 +544,14 @@ export class HouseInterior {
       this.gp = g; this.bp = b; this.gSpeed = step.speed;
     } else { this.gSpeed = 0; this.bSpeed = 0; }
     this.placeWalkers(dt);
+    const was = this.folk.map((f) => f.at);
+    const now = folkStep(was, this.gp, this.bp, this.gHead, this.area, this.dims, dt, people);
+    this.folk.forEach((f, i) => {
+      const dx = now[i].x - was[i].x, dz = now[i].z - was[i].z;
+      if (Math.hypot(dx, dz) > 0.005) f.head = Math.atan2(dx, dz);
+      f.at = now[i];
+    });
+    this.placeFolk(dt);
     const c = indoorCamera(this.gp, this.camBase.toArray(), this.camLook.toArray()), k = Math.min(1, dt * 4);
     this.camera.position.lerp(this.tmpV.set(...c.pos), k);
     this.lookNow.lerp(this.tmpV.set(...c.look), k);
@@ -496,6 +572,8 @@ export class HouseInterior {
     else {
       this.girl.update(dt, { speed: 0, airborne: false, riding: true, t: this.t });
       this.boy.update(dt, { speed: 0, airborne: false, riding: true, t: this.t + 1 });
+      for (const f of this.folk) f.at = { ...f.at, speed: 0 };
+      this.placeFolk(dt);
     }
     this.residents.forEach((r, i) => r.update(dt, { speed: 0, airborne: false, riding: false, t: this.t + 3 + i }));
     if (this.host) {
@@ -703,6 +781,39 @@ function furnishHome(g: GeoBuilder, glow: GeoBuilder, home: Record<VanSlot, stri
   if (lamp.length) { cyl(g, 0.05, 0.12, 1.2, '#3a2a22', 3.4, 0, 0.9, 6); sphere(glow, 0.2, lamp[0], 3.4, 1.35, 0.9, 8); }
   const cush = opt('cushions').colors;
   for (const [x, i] of [[-1.7, 0], [1.7, 1]] as const) box(g, 0.6, 0.18, 0.6, cush[i % cush.length], x, 0.47, 1.35);
+}
+
+/**
+ * A built home of your own (a penthouse) furnished slot by slot, fitted to its room: a rug between
+ * the seats, cushions on them, curtains at the back corners, string lights along the back wall,
+ * plants and a quilt chest by the back wall, art on a side wall and a lamp beside her seat.
+ */
+function furnishBuilt(g: GeoBuilder, glow: GeoBuilder, home: Record<VanSlot, string>, room: Room, seats: ReadonlyArray<readonly [number, number, number]>): void {
+  const opt = (s: VanSlot) => VAN_OPTIONS[s].find((o) => o.id === home[s]) ?? VAN_OPTIONS[s][0];
+  const { halfW: W, back: B, height: H } = room;
+  const [sg, sb] = seats.length >= 2 ? seats : [[-1.3, 0.45, 0.6], [1.3, 0.45, 0.6]] as const;
+  const cx = (sg[0] + sb[0]) / 2, cz = (sg[2] + sb[2]) / 2, span = Math.hypot(sb[0] - sg[0], sb[2] - sg[2]);
+  const rug = opt('rug').colors;
+  box(g, span + 1.2, 0.025, 2.2, rug[0], cx, 0.03, cz - 0.6);
+  if (rug.length > 1) { box(g, span + 0.8, 0.03, 1.8, rug[1], cx, 0.03, cz - 0.6); box(g, 1.0, 0.035, 0.7, rug[2] ?? rug[0], cx, 0.03, cz - 0.6); }
+  const cush = opt('cushions').colors;
+  [sg, sb].forEach((s, i) => box(g, 0.55, 0.16, 0.5, cush[i % cush.length], s[0], Math.max(s[1], 0.25) + 0.08, s[2] - 0.05));
+  const cur = opt('curtains').colors[0];
+  for (const x of [-W + 0.35, W - 0.35]) for (const dx of [-0.2, 0.2]) box(g, 0.32, H - 0.4, 0.08, cur, x + dx, 0.1, B + 0.22);
+  const lights = opt('lights').colors;
+  if (lights.length) for (let i = 0; i < 28; i++) sphere(glow, 0.05, lights[i % lights.length], -W + 0.5 + (i / 27) * (W * 2 - 1), H - 0.45 - Math.sin((i / 27) * Math.PI * 5) ** 2 * 0.15, B + 0.3, 5);
+  const quilt = opt('quilt').colors;
+  box(g, 1.3, 0.45, 0.6, '#8a6a4a', W * 0.25, 0, B + 0.6);
+  quilt.forEach((c, i) => box(g, 1.1, 0.07, 0.5, c, W * 0.25, 0.45 + i * 0.07, B + 0.6));
+  const plant = opt('plant').colors;
+  if (plant.length) for (const x of [-W * 0.25, W * 0.55]) {
+    cyl(g, 0.24, 0.18, 0.42, '#e8e4dc', x, 0, B + 0.55, 8);
+    for (let k = 0; k < 5; k++) sphere(g, 0.19, k % 2 ? plant[0] : '#4f9a44', x + Math.cos(k * 1.3) * 0.12, 0.58 + (k % 3) * 0.12, B + 0.55 + Math.sin(k * 1.3) * 0.12, 5);
+  }
+  const art = opt('art').colors;
+  if (art.length) { box(g, 0.06, 1.0, 1.5, art[0], -W + 0.05, 1.6, cz - 1.6); box(g, 0.07, 0.75, 1.2, art[1] ?? '#fff4e0', -W + 0.07, 1.72, cz - 1.6); }
+  const lamp = opt('lamp').colors;
+  if (lamp.length) { const lx = sg[0] - 1.1, lz = sg[2] - 0.6; cyl(g, 0.05, 0.12, 1.2, '#3a2a22', lx, 0, lz, 6); sphere(glow, 0.18, lamp[0], lx, 1.35, lz, 8); }
 }
 
 /** A room with no straight walls: a snow or glass dome, a cone of hides, a black tent on poles. Open at the front for the eye. */

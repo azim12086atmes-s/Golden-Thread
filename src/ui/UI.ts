@@ -731,6 +731,7 @@ export class UI {
           own ? btn('🌙 Stay until night', () => { g.setTimeOfDay('night'); this.houseNote = 'The city lights up below the terrace.'; this.render(); }, 'ghost') : null,
           btn('🚪 Take the lift down', () => g.exitHouse(), 'ghost')));
       if (this.houseNote) body.append(h('p', { class: 'story' }, this.houseNote));
+      if (own) { body.append(h('h3', {}, '🛋️ Make it yours')); this.decorSection(body, `penthouse:${d.id}`); }
       return;
     }
     if (d.kind === 'institute' || d.kind === 'cavern') {
@@ -1821,6 +1822,17 @@ export class UI {
 
   /** Your own home: furnish it slot by slot with things you have made, as in the van. */
   private homePanel(body: HTMLElement, plotId: string): void {
+    const g = this.g;
+    this.decorSection(body, plotId);
+    body.append(h('div', { class: 'acts' },
+      btn('🌅 Rest until morning', () => { g.setTimeOfDay('dawn'); this.render(); }, 'ghost small'),
+      btn('🌙 Stay until night', () => { g.setTimeOfDay('night'); this.render(); }, 'ghost small'),
+      btn('🚪 Step outside', () => g.exitHouse(), 'ghost small')));
+    this.storeSection(body, plotId);
+  }
+
+  /** Furnish a home of yours (a plot's, or a penthouse), slot by slot, with what you have made. */
+  private decorSection(body: HTMLElement, plotId: string): void {
     const g = this.g, st = g.st, home = g.homeDecor(plotId);
     const slots = Object.keys(VAN_OPTIONS) as VanSlot[];
     const slot = this.vanSlot;
@@ -1837,11 +1849,7 @@ export class UI {
       card.addEventListener('click', () => { const e = g.setHomeSlot(plotId, slot, o.id); if (e) g.toast(e); this.render(); });
       shelf.append(card);
     }
-    body.append(shelf, h('div', { class: 'acts' },
-      btn('🌅 Rest until morning', () => { g.setTimeOfDay('dawn'); this.render(); }, 'ghost small'),
-      btn('🌙 Stay until night', () => { g.setTimeOfDay('night'); this.render(); }, 'ghost small'),
-      btn('🚪 Step outside', () => g.exitHouse(), 'ghost small')));
-    this.storeSection(body, plotId);
+    body.append(shelf);
   }
 
   /** A store (the van, or a home): what is in it, what you carry, and moving things between them. */

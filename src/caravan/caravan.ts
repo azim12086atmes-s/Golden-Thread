@@ -196,7 +196,7 @@ export function caravanStep(members: Member[], girl: P2, boy: P2, heading: numbe
  * close together (their clear zones overlap), so if a point is still inside either zone it walks
  * outward from the pair's midpoint until it is clear of both — this always terminates.
  */
-function clearOfTravellers(m: P2, girl: P2, boy: P2): void {
+export function clearOfTravellers(m: P2, girl: P2, boy: P2): void {
   const C = TRAVELLER_CLEARANCE;
   const clear = () => Math.hypot(m.x - girl.x, m.z - girl.z) >= C && Math.hypot(m.x - boy.x, m.z - boy.z) >= C;
   pushOut(m, girl, C);

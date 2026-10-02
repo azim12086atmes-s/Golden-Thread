@@ -92,7 +92,7 @@ import { tramBoarding } from './travel/gondola';
 import { ferryFare } from './travel/ferry';
 import { airFare, skyPadPoint, type AirPoint } from './travel/air';
 import { busFare, busStops, type BusStop } from './travel/bus';
-import { PENTHOUSE_PRICE, buyPenthouse } from './housing/penthouses';
+import { PENTHOUSE_PRICE, buyPenthouse, ownsPenthouse } from './housing/penthouses';
 import { TRAM_FARE, TRAM_NAME, TRAM_TOWNS, tramStops, type TramStop } from './travel/streetTram';
 
 /** Real seconds per game minute: a day lasts 16 real minutes. */
@@ -927,6 +927,9 @@ export class Game {
     if (r === 'owned') return 'It is yours already.';
     this.bus.emit('coins:changed', { coins: this.st.coins });
     this.save();
+    // Yours now: the room is redrawn as your home, ready to furnish.
+    const d = this.house.door;
+    if (this.inHouse && d?.id === id) { const at = this.house.standing(); this.buildRoom(d, true); this.house.standAt(at); }
     return '🏙️ The keys are yours. A home above New Yonder — the pool, the pergola and the whole city at your feet.';
   }
 
@@ -1148,15 +1151,28 @@ export class Game {
     return last !== undefined && this.st.minutes - last < DAY_MINUTES;
   }
 
+  /** Which home of yours this door opens (its key in `st.homes`), or '' if it is not yours. */
+  homeKey(d: Door): string {
+    if (d.kind === 'home') return d.id.slice(5);
+    if (d.kind === 'penthouse' && ownsPenthouse(this.st, d.id)) return `penthouse:${d.id}`;
+    return '';
+  }
+
+  /** Build the room behind a door, with who lives there and the brothers, sisters and children coming in with you. */
+  private buildRoom(d: Door, gathered: boolean): void {
+    const key = this.homeKey(d), plot = d.kind === 'home' ? key : '';
+    // Her parents or his first, if they live here, then the people in your care.
+    const residents = plot ? [...parentsAsResidents(this.st, plot), ...residentsOf(this.st, plot).map((r) => PERSON_BY_ID[r.id]).filter((p) => !!p)] : [];
+    this.house.setCompanions(this.caravan.indoorFolk());
+    this.house.enter(d, this.sky.night, gathered, key ? this.homeDecor(key) : undefined, residents);
+  }
+
   enterHouse(d: Door): void {
     this.inHouse = true;
     this.target = null;
-    const plot = d.kind === 'home' ? d.id.slice(5) : '';
-    // Her parents or his first, if they live here, then the people in your care.
-    const residents = plot ? [...parentsAsResidents(this.st, plot), ...residentsOf(this.st, plot).map((r) => PERSON_BY_ID[r.id]).filter((p) => !!p)] : [];
     // Institutes and caverns have nothing to gather inside.
     const gathered = d.kind === 'institute' || d.kind === 'cavern' || this.houseGathered(d);
-    this.house.enter(d, this.sky.night, gathered, plot ? this.homeDecor(plot) : undefined, residents);
+    this.buildRoom(d, gathered);
     this.ui.openHouse(d);
     if (!this.st.flags.includes('walk-inside')) {
       this.st.flags.push('walk-inside');
@@ -1215,7 +1231,7 @@ export class Game {
     return out;
   }
 
-  /** How a home you own is furnished (plain until you decorate it). */
+  /** How a home you own is furnished (plain until you decorate it): a plot's, or `penthouse:<door id>`. */
   homeDecor(plotId: string): Record<VanSlot, string> {
     return (this.st.homes[plotId] ??= { rug: 'plain', curtains: 'plain', quilt: 'plain', lights: 'none', plant: 'none', art: 'none', lamp: 'none', cushions: 'plain' });
   }
@@ -1228,8 +1244,9 @@ export class Game {
     if (home[slot] === optionId) return null;
     if (!removeItems(this.st, opt.cost)) return `Needs ${Object.entries(opt.cost).map(([k, n]) => `${n}× ${ITEMS[k].name}`).join(', ')}.`;
     home[slot] = optionId;
+    // Redraw the room with it, the two staying where they stand.
     const d = this.house.door;
-    if (d) this.house.enter(d, this.sky.night, true, home, residentsOf(this.st, plotId).map((r) => PERSON_BY_ID[r.id]).filter((p) => !!p));
+    if (d && this.homeKey(d) === plotId) { const at = this.house.standing(); this.buildRoom(d, true); this.house.standAt(at); }
     return null;
   }
 

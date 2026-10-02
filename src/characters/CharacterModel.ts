@@ -295,6 +295,8 @@ export class CharacterModel {
 
   /** How tall this figure is drawn, as a share of the standard figure. */
   get figureScale(): number { return this.scale; }
+  /** The skin tone it was drawn with. */
+  get skinTone(): string { return this.skin; }
 
   /** Whether wings or a jetpack are worn (indoors they are left at the door). */
   private backShown = true;

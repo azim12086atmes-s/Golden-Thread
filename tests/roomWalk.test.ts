@@ -3,7 +3,8 @@ import { OUTFITS } from '../src/characters/outfits';
 import { PEOPLE_IN_NEED } from '../src/charity/charity';
 import type { Input } from '../src/core/Input';
 import { HouseInterior, ROOM } from '../src/housing/HouseInterior';
-import { INDOOR_GAP, atDoor, entryPoints, keepInside, stepGirl, walkArea } from '../src/housing/roomWalk';
+import { INDOOR_GAP, atDoor, entryPoints, folkStep, keepInside, stepGirl, walkArea } from '../src/housing/roomWalk';
+import { CHILDREN, MEMBER_CLEARANCE, SIBLINGS, TRAVELLER_CLEARANCE } from '../src/caravan/caravan';
 import { REGIONS } from '../src/world/regions';
 
 /** A stick held in one direction (x right, y forward), and no drag. */
@@ -74,5 +75,35 @@ describe('walking about inside', () => {
     walkTo({ x: 0, z: ROOM.front }, 0.1);
     expect(atDoor(s.gp, ROOM)).toBe(true);
     expect(room.interact()).toBe('exit');
+  });
+
+  it('their brothers, sisters and the children come in too, and keep clear of the two and of each other, inside the room', () => {
+    const room = new HouseInterior(OUTFITS['g-kurti-jeans'], OUTFITS['b-kurta-jeans']);
+    const folk = [...SIBLINGS, ...CHILDREN.slice(0, 4)].map((d, i) => ({ id: d.id, outfit: OUTFITS[i % 2 ? 'b-kurta-jeans' : 'g-kurti-jeans'], skin: '#e0ac85', scale: i < 4 ? 0.98 : 0.62 }));
+    room.setCompanions(folk);
+    const s = room as unknown as { gp: { x: number; z: number }; bp: { x: number; z: number }; folk: Array<{ at: { x: number; z: number } }> };
+    for (const [id, land, kind] of [['meadow:3', 'meadow', 'house'], ['aurora:3', 'aurora', 'igloo'], ['newyork:2', 'newyork', 'penthouse']] as const) {
+      room.enter({ id, land, x: 0, z: 0, y: 0, facing: 0, kind, r: 5 }, 0.3, false);
+      expect(s.folk.length).toBe(folk.length);
+      const moves: Array<[number, number]> = [[0, 1], [1, 1], [1, 0], [0, -1], [-1, 0]];
+      for (const [x, y] of moves) for (let i = 0; i < 30; i++) {
+        room.update(1 / 30, stick(x, y));
+        expect(Math.hypot(s.gp.x - s.bp.x, s.gp.z - s.bp.z)).toBeGreaterThanOrEqual(INDOOR_GAP - 1e-6);
+        for (const f of s.folk) for (const t of [s.gp, s.bp]) expect(Math.hypot(f.at.x - t.x, f.at.z - t.z), id).toBeGreaterThanOrEqual(TRAVELLER_CLEARANCE * 0.75);
+      }
+    }
+  }, 120_000);
+
+  it('companions step toward their places and stay within the walls', () => {
+    const area = walkArea(ROOM, false), girl = { x: -1.25, z: 1.9 }, boy = { x: 1.25, z: 1.9 };
+    let f = Array.from({ length: 8 }, () => ({ x: 0, z: 0, speed: 0 }));
+    for (let i = 0; i < 120; i++) f = folkStep(f, girl, boy, Math.PI, area, ROOM, 1 / 30);
+    for (const m of f) {
+      expect(Math.abs(m.x)).toBeLessThanOrEqual(ROOM.halfW);
+      expect(m.z).toBeGreaterThanOrEqual(ROOM.back);
+      expect(m.z).toBeLessThanOrEqual(ROOM.front);
+      for (const t of [girl, boy]) expect(Math.hypot(m.x - t.x, m.z - t.z)).toBeGreaterThanOrEqual(TRAVELLER_CLEARANCE - 1e-6);
+    }
+    for (let i = 0; i < f.length; i++) for (let j = i + 1; j < f.length; j++) expect(Math.hypot(f[i].x - f[j].x, f[i].z - f[j].z)).toBeGreaterThan(MEMBER_CLEARANCE * 0.5);
   });
 });

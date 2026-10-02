@@ -2,6 +2,8 @@ import * as THREE from 'three';
 import { describe, expect, it } from 'vitest';
 import { OUTFITS } from '../src/characters/outfits';
 import { HOUSE_SHAPE, HouseInterior } from '../src/housing/HouseInterior';
+import { VAN_OPTIONS } from '../src/housing/VanInterior';
+import type { VanSlot } from '../src/core/state';
 import { REGIONS } from '../src/world/regions';
 
 /**
@@ -53,4 +55,14 @@ describe('no glowing sheet across the view', () => {
     }
     expect(bad).toEqual([]);
   }, 120_000);
+
+  it('in a penthouse of your own, furnished with everything lit', () => {
+    const room = new HouseInterior(OUTFITS['g-kurti-jeans'], OUTFITS['b-kurta-jeans']);
+    const decor = Object.fromEntries(Object.entries(VAN_OPTIONS).map(([k, opts]) => [k, opts[opts.length - 1].id])) as Record<VanSlot, string>;
+    for (const night of [0, 1]) {
+      room.enter({ id: 'newyork:2', land: 'newyork', x: 0, z: 0, y: 0, facing: 0, kind: 'penthouse', r: 5 }, night, false, decor);
+      // (The penthouse's own lit ceiling and city lie beyond; nothing you add may glow near the lens.)
+      expect(glowNearCamera(room).near).toBeGreaterThan(3);
+    }
+  });
 });
