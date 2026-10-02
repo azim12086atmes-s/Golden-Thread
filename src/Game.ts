@@ -237,6 +237,9 @@ export class Game {
     this.renderer.shadowMap.enabled = true;
     // (PCFSoftShadowMap is no longer offered by three.js and fell back to this anyway.)
     this.renderer.shadowMap.type = THREE.PCFShadowMap;
+    // Shadows are redrawn every other frame (Game.frame): the scene drawn a second time for
+    // shadows was half the work, and the sun moves too slowly for it to show.
+    this.renderer.shadowMap.autoUpdate = false;
     this.renderer.toneMapping = THREE.ACESFilmicToneMapping;
     this.renderer.toneMappingExposure = 1.0;
     host.appendChild(this.renderer.domElement);
@@ -328,6 +331,7 @@ export class Game {
    * lands and monuments are compiled the same way before they are shown.
    */
   private ready = false;
+  private shadowTick = 0;
   private async warmUp(): Promise<void> {
     const wait = (ms: number) => new Promise((r) => setTimeout(r, ms));
     for (let i = 0; i < 30 && !this.world.loadedRegions().length; i++) await wait(100);
@@ -595,8 +599,11 @@ export class Game {
     this.wonders.update(dt, this.t);
     this.guide.update(dt, this.t);
     const view = this.cutscene?.view;
-    if (view) this.renderer.render(view.scene, view.camera);
-    else if (this.ready) this.composer.render();
+    if (view) { this.renderer.shadowMap.needsUpdate = true; this.renderer.render(view.scene, view.camera); }
+    else if (this.ready) {
+      if ((this.shadowTick = (this.shadowTick + 1) % 2) === 0) this.renderer.shadowMap.needsUpdate = true;
+      this.composer.render();
+    }
     this.ui.update(dt);
     this.input.endFrame();
   }

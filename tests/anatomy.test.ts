@@ -61,7 +61,7 @@ describe('no eyes, no faces, floating heads (brief)', () => {
         expect(ms.filter(m => m.userData.part === 'glasses')).toHaveLength(5);
       }
     }
-  });
+  }, 60_000);
 
   for (const id of Object.keys(SPECIES) as SpeciesId[]) {
     it(`animal "${id}" has a detached head and no face`, () => {

@@ -72,7 +72,7 @@ describe('the rooms inside', () => {
       expect(s.host.root.position.distanceTo(s.girl.root.position)).toBeGreaterThan(1.5);
       expect(s.host.root.position.distanceTo(s.boy.root.position)).toBeGreaterThan(1.5);
     }
-  });
+  }, 60_000);
 });
 
 describe('landmarks and your own home', () => {

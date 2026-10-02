@@ -1,4 +1,5 @@
 import * as THREE from 'three';
+import { mergeStaticMeshes, referencedObjects } from '../characters/merge';
 import { animalHeadGap, type Part } from '../characters/anatomy';
 import { type Skin, featherGeometry, skinMaterial } from './skins';
 import { BIRDS, DETAILED, buildBird, buildDetailed, type BirdId, type DetailedId } from './detailed';
@@ -608,6 +609,7 @@ export class AnimalModel {
       body.add(this.head);
       if (s.overlay) dress(s.overlay, body, this.head, this.legs, this.tail, { L, H, W, bodyY, headR: s.headR }, a);
       if (s.fantasy) this.wings.push(...enchant(s.fantasy, body, this.head, this.legs, this.tail, { L, H, W, bodyY, headR: s.headR }, c, a));
+      this.mergeStatic();
       return;
     }
     if (bird) {
@@ -620,6 +622,7 @@ export class AnimalModel {
       body.add(this.head);
       if (s.overlay) dress(s.overlay, body, this.head, this.legs, this.tail, { L, H, W, bodyY, headR: s.headR }, a);
       if (s.fantasy) enchant(s.fantasy, body, this.head, this.legs, this.tail, { L, H, W, bodyY, headR: s.headR }, c, a, b.wings);
+      this.mergeStatic();
       return;
     }
 
@@ -802,6 +805,18 @@ export class AnimalModel {
       body.add(t);
       this.tail = t;
     }
+    // Fewer draw calls: what never moves by itself is merged within each moving part.
+    this.mergeStatic();
+  }
+
+  /**
+   * Fewer draw calls: what never moves by itself is merged within each moving part (legs, tail,
+   * feathers, trappings). The torso and head keep their pieces (their structure is checked).
+   */
+  private mergeStatic(): void {
+    const headParts = new Set<THREE.Object3D>();
+    this.head.traverse((o) => { headParts.add(o); });
+    mergeStaticMeshes(this.root, referencedObjects(this), (m) => m.userData.part === 'body' || headParts.has(m), headParts);
   }
 
   /** How far the head can drop to graze: its lowest point, tipped nose-down, a few centimetres above the ground. */

@@ -1,6 +1,7 @@
 import * as THREE from 'three';
 import { heldBalloon } from '../world/models/balloons';
 import { mergeGeometries } from 'three/addons/utils/BufferGeometryUtils.js';
+import { mergeStaticMeshes } from './merge';
 import { mergeVertices } from 'three/addons/utils/BufferGeometryUtils.js';
 import { HEAD_GAP, type Part } from './anatomy';
 import { fabricMaterial, tileUVs } from './fabric';
@@ -592,34 +593,8 @@ export class CharacterModel {
     for (const f of this.flow) for (const r of f.rigid) keepTree(r.o);
     keep.add(this.handAnchor);
     const moving = new Set<THREE.BufferAttribute>(this.flow.flatMap((f) => f.verts.map((v) => v.pos)));
-    const parents: THREE.Object3D[] = [];
-    this.root.traverse((o) => { if (o.children.length > 1 && !keep.has(o)) parents.push(o); });
-    for (const parent of parents) {
-      const groups = new Map<string, THREE.Mesh[]>();
-      for (const c of parent.children) {
-        const m = c as THREE.Mesh;
-        if (!m.isMesh || keep.has(m) || m.children.length || Array.isArray(m.material) || !m.visible) continue;
-        // Identity (GT-CHAR-001: glasses, beard, hair) and named pieces stay exactly as built.
-        if (IDENTITY_PARTS.has(m.userData.part) || m.name) continue;
-        const pos = m.geometry.getAttribute('position') as THREE.BufferAttribute | undefined;
-        if (!pos || moving.has(pos) || m.geometry.morphAttributes.position) continue;
-        const attrs = Object.keys(m.geometry.attributes).sort().join(',');
-        const key = `${m.material.uuid}|${m.userData.part}|${m.castShadow}|${m.receiveShadow}|${m.renderOrder}|${m.geometry.index ? 'i' : 'n'}|${attrs}`;
-        (groups.get(key) ?? groups.set(key, []).get(key)!).push(m);
-      }
-      for (const list of groups.values()) {
-        if (list.length < 2) continue;
-        const geos = list.map((m) => { m.updateMatrix(); return m.geometry.clone().applyMatrix4(m.matrix); });
-        const merged = mergeGeometries(geos, false);
-        for (const g of geos) g.dispose();
-        if (!merged) continue;
-        const first = list[0], out = new THREE.Mesh(merged, first.material);
-        out.userData.part = first.userData.part;
-        out.castShadow = first.castShadow; out.receiveShadow = first.receiveShadow; out.renderOrder = first.renderOrder;
-        for (const m of list) parent.remove(m);
-        parent.add(out);
-      }
-    }
+    // Identity (GT-CHAR-001: glasses, beard, hair), named pieces and swinging cloth stay exactly as built.
+    mergeStaticMeshes(this.root, keep, (m) => IDENTITY_PARTS.has(m.userData.part) || !!m.name || moving.has(m.geometry.getAttribute('position') as THREE.BufferAttribute), keep);
   }
 
   /** Let these hang and swing from `top` down to `bottom` (see `flow`). */
