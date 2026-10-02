@@ -513,7 +513,9 @@ export class Travellers {
   updateCamera(cam: THREE.PerspectiveCamera, dt: number): void {
     const target = this.gPos.clone().add(new THREE.Vector3(0, VEHICLES[this.mode].kind === 'ground' ? 2.2 : 1.5, 0));
     const cp = Math.cos(this.camPitch), sp = Math.sin(this.camPitch);
-    const want = target.clone().add(new THREE.Vector3(-Math.sin(this.camYaw) * cp * this.camDist, sp * this.camDist, -Math.cos(this.camYaw) * cp * this.camDist));
+    // With her wings on, the camera stays back past their swept tips, so the glass never fills the view.
+    const dist = Math.max(this.camDist, this.girl.hasWings && !this.mounted ? this.girl.backReach() + 3 : 0);
+    const want = target.clone().add(new THREE.Vector3(-Math.sin(this.camYaw) * cp * dist, sp * dist, -Math.cos(this.camYaw) * cp * dist));
     const floor = surfaceAt(want.x, want.z, want.y) + 0.8;
     // Below the travellers the camera stops at the ground and tilts up instead, so turning the
     // view down past them looks up into the sky.

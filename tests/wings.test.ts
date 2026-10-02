@@ -5,14 +5,15 @@ import { CharacterModel, HERO_SCALE } from '../src/characters/CharacterModel';
 import { BODY_RADIUS, MIN_GAP, aheadOf, followStep, wingRoom } from '../src/characters/follow';
 import { JET_REACH } from '../src/characters/jetpack';
 import { OUTFITS } from '../src/characters/outfits';
-import { HINGE_Z, MAX_BACK, MIN_BACK, WING_H, WING_REACH, WING_W } from '../src/characters/wings';
+import { HINGE_Z, MAX_BACK, MIN_BACK, WING_H, WING_REACH, WING_W, bendPoint, wingAngle, type Beat } from '../src/characters/wings';
 
 const parts = (c: CharacterModel) => { const out: string[] = []; c.root.traverse((m) => { if ((m as THREE.Mesh).isMesh || (m as THREE.Points).isPoints) out.push(m.userData.part); }); return out; };
 
 describe('her stained-glass wings and his jetpack', () => {
-  it('the wings are over three times her height and broad, spreading wide and sweeping back', () => {
-    expect(WING_H).toBeCloseTo(4.3 * 1.78, 1);
-    expect(WING_W).toBeGreaterThan(6);
+  it('the wings are five times her height and nearly as broad, spreading wide and sweeping back', () => {
+    expect(WING_H).toBeCloseTo(5 * 1.78, 1);
+    expect(WING_W).toBeGreaterThan(8);
+    expect(WING_W / WING_H).toBeGreaterThan(0.9);
     expect(MIN_BACK).toBeLessThan(0.5); // spread wide
     expect(MAX_BACK).toBeGreaterThan(1.2);
     expect(WING_REACH).toBeCloseTo(WING_W + Math.abs(HINGE_Z));
@@ -83,5 +84,24 @@ describe('with her wings on, he stands in front of them; in flight, behind her',
       b = followStep({ boy: b, girl: g, heading: 0, speed: 3, dt: 1 / 30, airborne: true, gap: MIN_GAP, stance: { forward: -far * 0.8, side: far * 0.6, up: -0.5 } }).pos;
       if (i > 200) { expect(aheadOf(b, g, 0)).toBeLessThan(0); expect(Math.hypot(b.x - g.x, b.z - g.z)).toBeGreaterThan(WING_REACH * HERO_SCALE.girl + own - 0.3); }
     }
+  });
+});
+
+describe('the wings flutter softly, like silk', () => {
+  const beat = (phase: number, time: number, flutter = 0.22): Beat => ({ phase, mid: (MIN_BACK + MAX_BACK) / 2, amp: (MAX_BACK - MIN_BACK) / 2 * 0.95, flutter, curl: Math.max(0, Math.cos(phase) * 0.5 + 0.15), lift: 0.45, time });
+  it('the stroke travels out to the tips (they lag the root), and never spreads further forward than MIN_BACK', () => {
+    let lagged = 0;
+    for (let i = 0; i < 400; i++) {
+      const b = beat(i * 0.07, i * 0.05);
+      for (let s = 0; s <= 1.0001; s += 0.1) for (const y of [-2, 0, 3, 6]) expect(wingAngle(s, y, b).th).toBeGreaterThanOrEqual(MIN_BACK);
+      if (Math.abs(wingAngle(0.05, 0, b).th - wingAngle(1, 0, b).th) > 0.15) lagged++;
+      // Nothing of the wing is ever further out than its reach.
+      for (const [x, y] of [[WING_W, 0], [WING_W * 0.6, 4], [WING_W * 0.9, -1]]) {
+        const [px, , pz] = bendPoint(x, y, 1, b);
+        expect(Math.hypot(px, pz)).toBeLessThanOrEqual(WING_REACH + 1e-6);
+        expect(pz).toBeLessThanOrEqual(1e-9); // always behind her back's plane
+      }
+    }
+    expect(lagged).toBeGreaterThan(100);
   });
 });

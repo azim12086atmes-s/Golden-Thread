@@ -3,12 +3,12 @@ import * as THREE from 'three';
 /**
  * Her stained-glass butterfly wings (owner's brief, OWNER_REQUESTS_SPEC §6.2 and §12): a giant
  * swallowtail — great pointed forewings sweeping up above her, smaller scalloped hindwings below,
- * each ending in a long tail with a jewelled eyespot beside it — vast and expansive, over three times her
- * height and broad, reaching up far above her and down to her feet. The glass is one flowing colour, not patches: pink in the middle at her back, turning
+ * each ending in a long tail with a jewelled eyespot beside it — vast and expansive, five times her
+ * height and nearly as broad, reaching up far above her and down to her feet. The glass is one flowing colour, not patches: pink in the middle at her back, turning
  * outward through the rainbow to the edges. It is fragmented by thick black leading with gold in it,
  * and by curved veins sweeping out from the root. It shines, a light moves over it, glitter twinkles
- * in it, and glitter drifts off it as they beat. They spread wide and flap heavily, slowly, and
- * curve as they flap — the tips lag the root.
+ * in it, and glitter drifts off it as they beat. They spread wide and flutter softly, the stroke
+ * rippling out to the tips like silk — the tips lag the root.
  *
  * They are wide, so on the ground the boy stands in front of them (they only ever reach behind
  * her back), and in flight he keeps behind her, beyond their reach (`WING_REACH`, Travellers,
@@ -17,8 +17,11 @@ import * as THREE from 'three';
 
 /** Her height on the unscaled body (floating head included). */
 const HER_HEIGHT = 1.78;
-/** One wing: 4.3 times her height tall and 0.8 as broad — the forewing tall and vast, the hindwing vast and of middling height. */
-export const WING_H = 4.3 * HER_HEIGHT, WING_W = WING_H * 0.8;
+/**
+ * One wing: five times her height tall and nearly as broad (owner: "increase the wing size even
+ * more and make it broader") — the forewing tall and vast, the hindwing vast and of middling height.
+ */
+export const WING_H = 5 * HER_HEIGHT, WING_W = WING_H * 0.95;
 /** Across the pair, open flat. */
 export const WING_SPAN = 2 * WING_W;
 /** How far back the wings sweep from straight out sideways (radians): spread wide ... folded back. */
@@ -239,24 +242,52 @@ function sparkTexture(): THREE.Texture | null {
 
 // ───── the wings ─────
 
-/** Where a point of the wing (distance out from the hinge, height) is as the wing beats. Shared by the shader and the glitter. */
+/**
+ * The beat (owner: "more fluttery and silky in movement"): a light, quick flutter over a soft
+ * stroke, and the stroke travels out from her back to the tips like a wave through silk — the tips
+ * lag the root — while a gentle ripple runs out through the glass and the trailing edge billows.
+ * The wing never spreads further forward than MIN_BACK (what keeps him clear of it). Mirrored in
+ * `bendPoint` for the glitter and the draw order.
+ */
+export interface Beat { phase: number; mid: number; amp: number; flutter: number; curl: number; lift: number; time: number }
+/** How far the stroke lags from root to tip (radians of the beat). */
+const LAG = 1.35;
+
+export function wingAngle(s: number, y: number, b: Beat): { th: number; ph: number } {
+  const ph = b.phase - LAG * s;
+  const beat = Math.sin(ph + 0.35 * Math.sin(ph)) + b.flutter * Math.sin(3 * ph + 0.6);
+  const th = b.mid - beat * b.amp + b.curl * s * s + 0.08 * s * Math.sin(b.time * 2.4 - s * 4 + y * 0.5);
+  return { th: Math.max(MIN_BACK, th), ph };
+}
+
+export function bendPoint(x: number, y: number, side: number, b: Beat): [number, number, number] {
+  const s = x / WING_W, { th, ph } = wingAngle(s, y, b);
+  const lift = b.lift * Math.sin(ph + 0.6) * s * s + 0.14 * s * Math.sin(b.time * 1.9 - s * 3 + y * 0.7);
+  return [side * x * Math.cos(th), y + lift, -x * Math.sin(th)];
+}
+
 const BEND_GLSL = /* glsl */ `
+  float wingTh;
   vec3 bendWing(float x, float y, float side) {
     float s = x / ${WING_W.toFixed(3)};
-    float th = uBack + uCurl * s * s + 0.05 * sin(uTime * 1.7 + y * 1.1) * s;
-    return vec3(side * x * cos(th), y + uLift * s * s, -x * sin(th));
+    float ph = uPhase - ${LAG.toFixed(3)} * s;
+    float beat = sin(ph + 0.35 * sin(ph)) + uFlutter * sin(3.0 * ph + 0.6);
+    float th = uMid - beat * uAmp + uCurl * s * s + 0.08 * s * sin(uTime * 2.4 - s * 4.0 + y * 0.5);
+    wingTh = max(${MIN_BACK.toFixed(3)}, th);
+    float lift = uLift * sin(ph + 0.6) * s * s + 0.14 * s * sin(uTime * 1.9 - s * 3.0 + y * 0.7);
+    return vec3(side * x * cos(wingTh), y + lift, -x * sin(wingTh));
   }
 `;
 const VERT = /* glsl */ `
-  uniform float uBack, uCurl, uSide, uTime, uLift;
+  uniform float uPhase, uMid, uAmp, uFlutter, uCurl, uSide, uTime, uLift;
   varying vec2 vUv;
   varying float vShade;
   ${BEND_GLSL}
   void main() {
     vUv = uv;
     vec3 p = bendWing(position.x, position.y, uSide);
-    float s = position.x / ${WING_W.toFixed(3)};
-    vShade = 0.84 + 0.16 * cos(uBack + uCurl * s * s - 0.7);
+    // The glass catches the light as it turns, a silky sheen sliding over it.
+    vShade = 0.82 + 0.18 * cos(wingTh - 0.7);
     gl_Position = projectionMatrix * modelViewMatrix * vec4(p, 1.0);
   }
 `;
@@ -324,7 +355,9 @@ export class Wings {
   private glitter: THREE.Points;
   /** Each grain: where on a wing it started (out, up, side), its age and how long it lives. */
   private grains: Array<{ x: number; y: number; side: number; age: number; life: number; vy: number; vo: number }> = [];
-  private back = MIN_BACK; private curl = 0; private lift = 0;
+  private beat: Beat = { phase: 0, mid: MIN_BACK, amp: 0, flutter: 0, curl: 0, lift: 0, time: 0 };
+  /** The beat's phase, advanced by its own rate (so a change of pace never jumps the wings). */
+  private phase = 0;
 
   constructor() {
     const map = wingTexture();
@@ -339,7 +372,7 @@ export class Wings {
           transparent: pass === 1, depthWrite: pass === 0,
           uniforms: {
             uMap: { value: map }, uHasMap: { value: map ? 1 : 0 }, uTime: { value: 0 }, uPass: { value: pass },
-            uBack: { value: MIN_BACK }, uCurl: { value: 0 }, uSide: { value: side }, uLift: { value: 0 },
+            uPhase: { value: 0 }, uMid: { value: MIN_BACK }, uAmp: { value: 0 }, uFlutter: { value: 0 }, uCurl: { value: 0 }, uSide: { value: side }, uLift: { value: 0 },
           },
         });
         const w = new THREE.Mesh(geo, m);
@@ -349,7 +382,7 @@ export class Wings {
           // The glass of the farther wing is drawn first, so the nearer wing's glass lies over it.
           w.onBeforeRender = (_r, _s, camera) => {
             const half = WING_W * 0.5;
-            _c.set(side * half * Math.cos(this.back), WING_H * (0.55 - ROOT_V), -half * Math.sin(this.back));
+            _c.set(...bendPoint(half, WING_H * (0.55 - ROOT_V), side, this.beat));
             this.group.localToWorld(_c);
             // Farther → smaller order → drawn first (takes effect from the next frame).
             w.renderOrder = 3 - Math.min(0.9, _c.distanceTo(camera.position) / 1000);
@@ -399,22 +432,27 @@ export class Wings {
     return { x: u * WING_W, y: (v - ROOT_V) * WING_H, side: r() < 0.5 ? 1 : -1, age, life: 2 + r() * 2.5, vy: -0.15 - r() * 0.3, vo: 0.05 + r() * 0.15 };
   }
 
-  /** Heavy, slow beats — spread wide, then swept back — the tips lagging; glitter shed as they go. Hidden when riding. */
+  /** Soft, fluttering beats — the stroke rippling out to the tips like silk; glitter shed as they go. Hidden when riding. */
   update(t: number, dt: number, airborne: boolean, riding: boolean): void {
     this.group.visible = !riding;
     if (riding) return;
-    const period = airborne ? 2.0 : 3.0, ph = (t / period) * Math.PI * 2;
-    // A heavy beat: the downstroke (spreading) is quicker than the recovery.
-    const beat = Math.sin(ph + 0.45 * Math.sin(ph));
+    // Quicker and lighter in the air; a slow, dreamy breathing on the ground.
+    const period = airborne ? 1.35 : 2.6;
+    this.phase += (Math.min(dt, 0.1) / period) * Math.PI * 2;
     const mid = (MIN_BACK + MAX_BACK) / 2, amp = (MAX_BACK - MIN_BACK) / 2;
-    this.back = Math.min(MAX_BACK, Math.max(MIN_BACK, mid - beat * amp));
-    this.curl = Math.max(0, Math.cos(ph) * 0.45 + 0.12);
-    this.lift = Math.sin(ph + 0.6) * 0.3;
+    const b = this.beat;
+    b.phase = this.phase; b.mid = mid; b.amp = amp * (airborne ? 0.95 : 0.7); b.time = t;
+    b.flutter = airborne ? 0.22 : 0.12;
+    b.curl = Math.max(0, Math.cos(this.phase) * 0.5 + 0.15);
+    b.lift = airborne ? 0.45 : 0.3;
     for (const m of this.mats) {
       m.uniforms.uTime.value = t;
-      m.uniforms.uBack.value = this.back;
-      m.uniforms.uCurl.value = this.curl;
-      m.uniforms.uLift.value = this.lift;
+      m.uniforms.uPhase.value = b.phase;
+      m.uniforms.uMid.value = b.mid;
+      m.uniforms.uAmp.value = b.amp;
+      m.uniforms.uFlutter.value = b.flutter;
+      m.uniforms.uCurl.value = b.curl;
+      m.uniforms.uLift.value = b.lift;
     }
     // Glitter rides the wing surface where it was shed, then drifts off, down and outward.
     const pos = this.glitter.geometry.getAttribute('position') as THREE.BufferAttribute;
@@ -422,9 +460,9 @@ export class Wings {
       let g = this.grains[i];
       g.age += dt;
       if (g.age > g.life) g = this.grains[i] = this.newGrain(this.rnd);
-      const s = g.x / WING_W, th = this.back + this.curl * s * s;
+      const [px, py, pz] = bendPoint(g.x, g.y, g.side, this.beat);
       const off = g.age * g.vo;
-      pos.setXYZ(i, g.side * g.x * Math.cos(th) + g.side * off, g.y + this.lift * s * s + g.age * g.vy, -g.x * Math.sin(th) - off * 0.5);
+      pos.setXYZ(i, px + g.side * off, py + g.age * g.vy, pz - off * 0.5);
     }
     pos.needsUpdate = true;
   }

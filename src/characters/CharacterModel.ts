@@ -320,7 +320,7 @@ export class CharacterModel {
   /** Fold the wings in to reach no further than `room` metres (safety whenever the two come close). */
   setBackRoom(room: number): void {
     if (!this.wings) return;
-    this.wings.group.scale.setScalar(THREE.MathUtils.clamp(room / (WING_REACH * this.scale), 0.08, 1));
+    this.wings.group.scale.setScalar(THREE.MathUtils.clamp(room / (WING_REACH * this.scale), 0.04, 1));
   }
 
   /**

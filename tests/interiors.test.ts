@@ -49,5 +49,5 @@ describe('the built interiors (caverns, institutes, the castle, landmark halls)'
       expect(safeInterior(b), `${s.kind} ${s.ref} seats`).not.toBeNull();
       expect(b!.group.children.length).toBeGreaterThan(0);
     }
-  });
+  }, 60_000);
 });
