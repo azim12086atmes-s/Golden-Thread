@@ -108,10 +108,13 @@ export const yawOf = (pos: readonly [number, number, number], look: readonly [nu
 export interface Folk { x: number; z: number; speed: number }
 export const FOLK_RING = 2.5;
 
-/** Where each of n companions stands round the pair (heading: her facing, 0 = +z). */
+/**
+ * Where each of n companions stands round the pair. `heading` is the direction to keep clear of
+ * (the camera's side, 0 = +z): they stand off to the two's sides and a little beyond them.
+ */
 export function folkSlots(girl: P2, boy: P2, heading: number, n: number): P2[] {
   const cx = (girl.x + boy.x) / 2, cz = (girl.z + boy.z) / 2;
-  // Off to the sides and a little behind, alternating left and right, the second ring wider.
+  // Off to the sides and a little beyond, alternating left and right, the second ring wider.
   const angles = [1.75, -1.75, 2.35, -2.35, 1.2, -1.2, 2.8, -2.8];
   return Array.from({ length: n }, (_, i) => {
     const a = heading + angles[i % angles.length], r = FOLK_RING + Math.floor(i / angles.length) * 1.4;

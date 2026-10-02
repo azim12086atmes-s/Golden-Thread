@@ -485,10 +485,11 @@ export class HouseInterior {
   /** The companions come in after them and take their places round the two. */
   private bringFolk(): void {
     for (const f of this.folk) this.scene.remove(f.model.root);
-    const slots = folkSlots(this.gp, this.bp, this.gHead, this.folkLooks.length);
+    const toCam = yawOf(this.camBase.toArray(), this.camLook.toArray()), area = this.folkArea();
+    const slots = folkSlots(this.gp, this.bp, toCam, this.folkLooks.length);
     const start = this.folkLooks.map((_, i) => ({ ...slots[i], speed: 0 }));
     // Settle them into the room, clear of everyone, before they are seen.
-    const at = folkStep(start.map((p) => ({ ...freeNear(p, this.area, this.blocks, this.people()), speed: 0 })), this.gp, this.bp, this.gHead, this.area, this.dims, 0, this.people(), this.blocks);
+    const at = folkStep(start.map((p) => ({ ...freeNear(p, area, this.blocks, this.people()), speed: 0 })), this.gp, this.bp, toCam, area, this.dims, 0, this.people(), this.blocks);
     this.folk = this.folkLooks.map((l, i) => {
       const model = new CharacterModel(l.outfit, l.skin, l.scale);
       model.hideBack();
@@ -496,6 +497,15 @@ export class HouseInterior {
       return { model, at: at[i], head: this.gHead };
     });
     this.placeFolk(0);
+  }
+
+  /**
+   * Where the companions may stand: the walk area kept a step further from the open front, so
+   * they gather at the two's sides and further in — never between the camera and the two.
+   */
+  private folkArea(): Area {
+    const a = this.area;
+    return a.round ? { ...a, r: a.r * 0.85, cz: a.cz - a.r * 0.1 } : { ...a, front: Math.max(a.back + 1, a.front - 0.9) };
   }
 
   private placeFolk(dt: number): void {
@@ -587,7 +597,7 @@ export class HouseInterior {
     } else { this.gSpeed = 0; this.bSpeed = 0; }
     this.placeWalkers(dt);
     const was = this.folk.map((f) => f.at);
-    const now = folkStep(was, this.gp, this.bp, this.gHead, this.area, this.dims, dt, people, this.blocks);
+    const now = folkStep(was, this.gp, this.bp, this.camYaw, this.folkArea(), this.dims, dt, people, this.blocks);
     this.folk.forEach((f, i) => {
       const dx = now[i].x - was[i].x, dz = now[i].z - was[i].z;
       if (Math.hypot(dx, dz) > 0.005) f.head = Math.atan2(dx, dz);
