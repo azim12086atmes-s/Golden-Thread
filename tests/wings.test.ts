@@ -10,12 +10,12 @@ import { HINGE_Z, MAX_BACK, MIN_BACK, WING_FLOOR, WING_H, WING_REACH, WING_W, be
 const parts = (c: CharacterModel) => { const out: string[] = []; c.root.traverse((m) => { if ((m as THREE.Mesh).isMesh || (m as THREE.Points).isPoints) out.push(m.userData.part); }); return out; };
 
 describe('her stained-glass wings and his jetpack', () => {
-  it('the wings are over six times her height and tall rather than stretched, spreading wide and sweeping back', () => {
-    expect(WING_H).toBeCloseTo(6.2 * 1.78, 1);
-    expect(WING_W).toBeGreaterThan(8);
-    expect(WING_W / WING_H).toBeLessThan(0.8);
+  it('the wings are seven and a half times her height and tall rather than stretched, spreading wide and sweeping back', () => {
+    expect(WING_H).toBeCloseTo(7.5 * 1.78, 1);
+    expect(WING_W).toBeGreaterThan(8.5);
+    expect(WING_W / WING_H).toBeLessThan(0.7);
     expect(MIN_BACK).toBeLessThan(0.5); // spread wide
-    expect(MAX_BACK).toBeGreaterThan(1.2);
+    expect(MAX_BACK).toBeGreaterThan(1.0);
     expect(WING_REACH).toBeCloseTo(WING_W + Math.abs(HINGE_Z));
   });
 
@@ -111,8 +111,9 @@ describe('the two wings never collide, and in flight he flies close below them',
     for (let i = 0; i < 500; i++) {
       const b: Beat = { phase: i * 0.09, mid: (MIN_BACK + MAX_BACK) / 2, amp: (MAX_BACK - MIN_BACK) / 2, flutter: 0.22, curl: Math.max(0, Math.cos(i * 0.09) * 0.5 + 0.15), lift: 0.45, time: i * 0.04 };
       for (let x = 0.2; x <= WING_W; x += WING_W / 8) for (const y of [-1.2, 0, 4, 9]) {
-        expect(bendPoint(x, y, 1, b)[0]).toBeGreaterThan(0);
-        expect(bendPoint(x, y, -1, b)[0]).toBeLessThan(0);
+        // Well apart even swept fully back: never merging into one another.
+        expect(bendPoint(x, y, 1, b)[0]).toBeGreaterThan(x * 0.4);
+        expect(bendPoint(x, y, -1, b)[0]).toBeLessThan(-x * 0.4);
       }
       // The tails' tips (at her feet) never dip further than WING_FLOOR.
       expect(bendPoint(WING_W, -1.26, 1, b)[1] - -1.26).toBeGreaterThan(-WING_FLOOR);
@@ -128,6 +129,8 @@ describe('the two wings never collide, and in flight he flies close below them',
       if (i > 300) {
         expect(clearBelow(b, g, floor, height)).toBe(true);
         expect(Math.hypot(b.x - g.x, b.z - g.z)).toBeLessThan(2.5); // near her, not far behind
+        // ...and a step ahead of her back, where the wings never reach.
+        expect(wingRoom(b, g, 0, JET_REACH * HERO_SCALE.boy + 0.2, HINGE_Z * HERO_SCALE.girl, MIN_BACK)).toBe(Infinity);
       }
     }
   });

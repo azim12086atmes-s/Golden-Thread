@@ -395,11 +395,11 @@ export class Travellers {
     // flies close by her, below the wings' lowest reach. Her wings fold whenever he is anywhere
     // else (walking round to his place as she turns, or kept up by the ground), so they never reach him.
     const wings = this.girl.hasWings && !this.mounted;
-    const under = belowWings(this.wingFloor(), this.boyHeight()), far = this.backGap() + 0.45;
-    // Too near the ground to fly under her: behind her, beyond the wings' reach, until she climbs.
+    const under = belowWings(this.wingFloor(), this.boyHeight());
+    // Too near the ground to fly under her: beside her at her height, still a step ahead of the wings, until she climbs.
     const room = this.gPos.y - surfaceAt(this.gPos.x, this.gPos.z, this.gPos.y + 2) > -(under.up ?? 0) + 0.5;
     const stance = !wings ? undefined : this.mode === 'fly'
-      ? (room ? under : { forward: -far * 0.8, side: far * 0.6, up: -0.5 })
+      ? (room ? under : { forward: 0.35, side: 2.1, up: 0 })
       : { forward: 0.35, side: 2.1 };
     const out = followStep({
       boy: this.bPos, girl: this.gPos, heading: this.heading, speed: this.currentSpeed, dt, airborne,
@@ -429,13 +429,14 @@ export class Travellers {
     const own = Math.max(this.boy.backReach(), BODY_RADIUS) + 0.2, plane = this.girl.wingPlane();
     // On the night dragon he sits wholly in front of her (he drives), so her wings open fully
     // behind her however they fly.
-    const level = (this.mode !== 'fly' && this.grounded) || this.mode === 'dragon';
+    // On the cape her wings stay upright as she leans into flight (CharacterModel), so the same
+    // rule holds in the air.
+    const level = (this.mode !== 'fly' && this.grounded) || this.mode === 'dragon' || this.mode === 'fly';
     // Measured from where she is: on the dragon her saddle, not its centre.
     const her = this.mode === 'dragon' && this.vehicle ? this.girl.root.position : this.gPos;
-    this.girl.setBackRoom(plane !== null && level
-      ? wingRoom(this.bPos, her, this.heading, own, plane, MIN_BACK)
-      // In the air: wholly below them, they open fully; anywhere else they fold to the distance.
-      : plane !== null && clearBelow(this.bPos, her, this.wingFloor(), this.boyHeight()) ? Infinity
+    // Wholly below them, or wholly in front of them, they open fully; anywhere else they fold to the distance.
+    this.girl.setBackRoom(plane !== null && clearBelow(this.bPos, her, this.wingFloor(), this.boyHeight()) ? Infinity
+      : plane !== null && level ? wingRoom(this.bPos, her, this.heading, own, plane, MIN_BACK)
       : Math.hypot(her.x - this.bPos.x, her.z - this.bPos.z) - own);
     const def = VEHICLES[this.mode];
     const riding = def.seats.length > 0 || def.kind === 'mount';

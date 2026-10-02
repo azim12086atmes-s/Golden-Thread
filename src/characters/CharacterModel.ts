@@ -1022,6 +1022,7 @@ export class CharacterModel {
       this.legL.rotation.x = this.legR.rotation.x = -1.35;
       this.armL.rotation.x = this.armR.rotation.x = -0.6;
       this.body.rotation.x = 0;
+      if (this.wings) this.wings.group.rotation.x = 0;
     } else if (s.airborne) {
       this.legL.rotation.x = 0.25 + Math.sin(s.t * 3) * 0.05;
       this.legR.rotation.x = 0.35 + Math.sin(s.t * 3 + 1) * 0.05;
@@ -1029,6 +1030,8 @@ export class CharacterModel {
       this.armL.rotation.z = -0.6;
       this.armR.rotation.z = 0.6;
       this.body.rotation.x = Math.min(0.6, s.speed * 0.03);
+      // She leans into her flight; her wings stay upright, so they never reach forward past her back.
+      if (this.wings) this.wings.group.rotation.x = -this.body.rotation.x;
     } else {
       this.legL.rotation.x = sw;
       this.legR.rotation.x = -sw;
@@ -1037,6 +1040,7 @@ export class CharacterModel {
       this.armL.rotation.z = -0.12;
       this.armR.rotation.z = 0.12;
       this.body.rotation.x = 0;
+      if (this.wings) this.wings.group.rotation.x = 0;
     }
     this.armL.rotation.y = this.armR.rotation.y = 0;
     this.shinL.rotation.x = this.shinR.rotation.x = 0;

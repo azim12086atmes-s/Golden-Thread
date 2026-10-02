@@ -82,7 +82,8 @@ export function wingRoom(boy: V3, girl: V3, heading: number, own: number, plane:
  * wings reaches (`floor` below her feet), whatever they do above him. `height` is his height.
  */
 export function belowWings(floor: number, height: number): Stance {
-  return { forward: -0.3, side: 1.2, up: -(floor + height + 0.35) };
+  // Beside her and a step ahead of her back (the wings never reach forward of it), and below them.
+  return { forward: 0.35, side: 2.1, up: -(floor + height + 0.35) };
 }
 
 /** Is he wholly below her wings (his head under the lowest they reach)? Then they open fully. */

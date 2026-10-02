@@ -18,19 +18,19 @@ import * as THREE from 'three';
 /** Her height on the unscaled body (floating head included). */
 const HER_HEIGHT = 1.78;
 /**
- * One wing: over six times her height tall and 0.78 as broad (owner: "make the wings taller as they
- * seem stretched … and even bigger") — the forewing tall and vast, the hindwing of middling height.
+ * One wing: seven and a half times her height tall and 0.68 as broad (owner: "make the wings taller as they
+ * seem stretched … and even bigger", "longer and taller") — the forewing tall and vast, the hindwing of middling height.
  */
-export const WING_H = 6.2 * HER_HEIGHT, WING_W = WING_H * 0.78;
+export const WING_H = 7.5 * HER_HEIGHT, WING_W = WING_H * 0.68;
 /** Across the pair, open flat. */
 export const WING_SPAN = 2 * WING_W;
 /** How far back the wings sweep from straight out sideways (radians): spread wide ... folded back. */
-export const MIN_BACK = 0.3, MAX_BACK = 1.35;
+export const MIN_BACK = 0.3, MAX_BACK = 1.05;
 /**
  * The furthest back any part of a wing ever sweeps: short of straight back (π/2), so the two wings
  * never cross behind her and never collide with each other (owner: "make the wings not collide").
  */
-export const MAX_SWEEP = Math.PI / 2 - 0.12;
+export const MAX_SWEEP = 1.15;
 /** The lowest any part of a wing reaches below her feet as it beats (model units, unscaled). */
 export const WING_FLOOR = 0.75;
 /** The root: one point set into her back (HINGE_Z, just inside its surface, under the clasp), at mid-back height (ROOT_Y). */
@@ -318,9 +318,12 @@ const FRAG = /* glsl */ `
     if (c.a < 0.9) {
       // Glass: pink at her back, flowing outward through the rainbow — one colour, no patches.
       float r = length((vUv - vec2(0.0, ${ROOT_V.toFixed(3)})) * vec2(1.0, ${(WING_H / WING_W).toFixed(3)}));
-      float t = smoothstep(0.08, 1.6, r);
-      float h = mod(330.0 + 310.0 * t, 360.0) / 360.0;
-      col = hsl(h, 1.0, mix(0.6, 0.5, t)) * c.r;
+      // A broad blush of pink round her back, only then the rainbow, and a pink sheen over all of it.
+      float t = smoothstep(0.32, 1.65, r);
+      float h = mod(330.0 + 300.0 * t, 360.0) / 360.0;
+      vec3 pink = hsl(0.915, 0.95, 0.72);
+      col = mix(pink, hsl(h, 1.0, mix(0.64, 0.52, t)), smoothstep(0.2, 0.75, t));
+      col = mix(col, pink, 0.16) * c.r;
       // Glitter twinkling in the glass.
       vec2 cell = floor(vUv * vec2(70.0, 160.0));
       float g = hash(cell), tw = pow(max(0.0, sin(uTime * 2.6 + g * 40.0)), 18.0) * step(0.9, g);
