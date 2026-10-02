@@ -859,11 +859,16 @@ export class Game {
   /** Once a day, a little while into playing, the diary asks how the day was. */
   private diaryNudge(dt: number): void {
     if (this.cutscene || this.ui.modal || (this.sessionSeconds += dt) < 40) return;
-    const today = dayKey(new Date());
-    if (this.st.diaryNudged === today || entryOn(this.st.diary, today)) return;
-    this.st.diaryNudged = today;
+    const now = new Date(), today = dayKey(now);
+    if (entryOn(this.st.diary, today)) return;
+    // Once early on, and once more in the evening if the page is still empty.
+    const evening = now.getHours() >= 19, mark = evening ? `${today}-eve` : today;
+    if (this.st.diaryNudged === mark || (!evening && this.st.diaryNudged === `${today}-eve`)) return;
+    this.st.diaryNudged = mark;
     const run = streak(this.st.diary, today);
-    this.bus.emit('diary:nudge', { text: run > 0 ? `📔 ${run} day${run > 1 ? 's' : ''} in a row in your diary — keep the lanterns lit! How was today?` : '📔 Your diary is here for you. How was your day? (Q)' });
+    this.bus.emit('diary:nudge', { text: evening
+      ? (run > 0 ? `🌙 The day is ending — write a few lines and keep your ${run}-day streak glowing.` : '🌙 Before the day ends: how was it? Even one line counts. (Q)')
+      : run > 0 ? `📔 ${run} day${run > 1 ? 's' : ''} in a row in your diary — keep the lanterns lit! How was today?` : '📔 Your diary is here for you. How was your day? (Q)' });
   }
 
   /**

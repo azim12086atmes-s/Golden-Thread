@@ -1,6 +1,7 @@
 import type { Game } from '../Game';
 import { SAVE_KEY, storage } from '../core/save';
-import { fromKeepsake, keepsake, readPlayers, saveKeyOf, signIn, signOut, signUp } from '../core/profiles';
+import { fromKeepsake, googleAccountOf, googleSignIn, keepsake, readPlayers, saveKeyOf, signIn, signOut, signUp } from '../core/profiles';
+import { GOOGLE_CLIENT_ID, googleButton } from '../core/google';
 import { serialize } from '../core/save';
 import { btn, h } from './dom';
 
@@ -24,6 +25,22 @@ export class AccountPanel {
       : 'Playing as a guest. Sign in to keep your journey under your own name — everything you have done so far comes with you.'));
     if (this.note) body.append(h('p', { class: 'diary-note' }, this.note));
 
+    // Sign in with Google: links this journey to the Google account (or opens the one linked to it).
+    const here = all.players.find((p) => p.id === all.current);
+    if (GOOGLE_CLIENT_ID && !here?.google) {
+      const slot = h('div', { class: 'google-slot' });
+      body.append(h('h3', {}, 'Sign in with Google'),
+        h('p', { class: 'dim' }, here ? `Links ${here.name}'s journey to your Google account — nothing changes in it.` : 'Your journey so far comes with you the first time; after that, Google opens your own journey on this device.'),
+        slot);
+      googleButton(slot, (credential) => {
+        const acc = googleAccountOf(credential);
+        if (!acc) return say('Google did not say who you are. Please try again.');
+        g.switchJourney(() => { const r = googleSignIn(store, acc, Date.now()); if (!r.ok) say(r.reason); return r.ok; });
+      }).then((shown) => { if (!shown) slot.replaceChildren(h('p', { class: 'dim' }, 'Google could not be reached just now (are you offline?). Signing in by name below works anywhere.')); });
+    } else if (here?.google) {
+      body.append(h('p', { class: 'dim' }, `🔗 Linked to Google${here.email ? ` (${here.email})` : ''}.`));
+    }
+
     // Who has signed in on this device.
     if (all.players.length) {
       body.append(h('h3', {}, 'Players on this device'));
@@ -32,7 +49,7 @@ export class AccountPanel {
         const here = p.id === all.current;
         const row = h('div', { class: `player${here ? ' on' : ''}` },
           h('span', { class: 'av' }, p.name[0]?.toUpperCase() ?? '?'),
-          h('div', {}, h('b', {}, p.name), h('small', {}, here ? 'Playing now' : `Last played ${new Date(p.lastPlayed).toLocaleDateString()}`)),
+          h('div', {}, h('b', {}, `${p.name}${p.google ? ' · Google' : ''}`), h('small', {}, here ? 'Playing now' : `Last played ${new Date(p.lastPlayed).toLocaleDateString()}`)),
           here ? null : btn(p.pin ? '🔒 Sign in' : 'Sign in', () => {
             if (p.pin) { this.pinFor = p.id; this.rerender(); return; }
             g.switchJourney(() => { const r = signIn(store, p.id, '', Date.now()); if (!r.ok) say(r.reason); return r.ok; });

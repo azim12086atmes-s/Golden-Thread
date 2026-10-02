@@ -58,6 +58,7 @@ import { FIELD_SITES } from '../world/plots';
 import type { Game } from '../Game';
 import { btn, h } from './dom';
 import { DiaryPanel } from './DiaryPanel';
+import { dayKey, entryOn, streak } from '../diary/diary';
 import { AccountPanel } from './AccountPanel';
 
 type Panel = 'guidebook' | 'finder' | 'work' | 'harbour' | 'bus' | 'tram' | 'air' | 'field' | 'institute' | 'care' | 'wardrobe' | 'bag' | 'journal' | 'map' | 'messages' | 'vehicles' | 'dialogue' | 'animal' | 'build' | 'van' | 'house' | 'farm' | 'market' | 'help' | 'homes' | 'houses' | 'property' | 'diary' | 'account' | null;
@@ -311,13 +312,28 @@ export class UI {
     return this.clockBtn;
   }
 
+  /** The diary's note under the land's name (kept, so a click is never lost to a redraw). */
+  private diaryChip = btn('📔', () => this.open('diary'), 'diary-chip');
+
   private renderHud(): void {
     const g = this.g, st = g.st;
+    // The diary calls softly until today's page is written (diary/diary.ts): a glowing note under
+    // the land's name and a pulsing book in the dock; once written, the streak shows instead.
+    const today = dayKey(new Date()), written = !!entryOn(st.diary, today), run = streak(st.diary, today);
+    const calling = g.started && !written && st.playSeconds > 20;
+    const chip = this.diaryChip;
+    chip.textContent = calling
+      ? `📔 ${new Date().getHours() >= 17 ? 'How was your day? Your page is waiting' : 'Today\'s page is waiting'}${run ? ` · 🔥 ${run}` : ''}`
+      : `📔 🔥 ${run} day${run > 1 ? 's' : ''}`;
+    chip.classList.toggle('calling', calling);
+    const diaryChip = calling || (written && run > 0) ? chip : null;
     this.tl.replaceChildren(
       h('div', { class: 'region' }, g.region.name),
       h('div', { class: 'sub' }, g.region.subtitle),
       h('div', { class: 'names' }, `${st.names.girl} ✦ ${st.names.boy}`),
+      ...(diaryChip ? [diaryChip] : []),
     );
+    this.dock.querySelector('[data-p="diary"]')?.classList.toggle('calling', calling);
     const mode = VEHICLES[g.trav.mode], season = seasonOf(dayOf(st.minutes) - 1);
     const showEnergy = g.trav.mode === 'fly' || g.trav.mounted || g.trav.energy < 0.99;
     this.tr.replaceChildren(...[

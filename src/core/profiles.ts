@@ -17,7 +17,7 @@ import type { GameState } from './state';
 
 export const PLAYERS_KEY = 'golden-thread/players/v1';
 
-export interface Player { id: string; name: string; created: number; lastPlayed: number; pin?: string }
+export interface Player { id: string; name: string; created: number; lastPlayed: number; pin?: string; /** The Google account it is linked to (its stable id), and its email. */ google?: string; email?: string }
 export interface Players {
   players: Player[];
   /** Who is signed in ('' = playing as a guest, on the device's own journey). */
@@ -89,6 +89,54 @@ export function signUp(store: Store | null, name: string, pin: string, now: numb
   }
   if (!writePlayers(store, { players: [...all.players, player], current: id, adopted: all.adopted || tookJourney })) return { ok: false, reason: 'Could not keep the sign-in on this device.' };
   return { ok: true, player, tookJourney };
+}
+
+/** What a Google sign-in tells us about the account (from its ID token). */
+export interface GoogleAccount { sub: string; name: string; email?: string }
+
+/** Read the account out of a Google ID token (its middle part). Null if it is not one. */
+export function googleAccountOf(credential: string): GoogleAccount | null {
+  try {
+    const part = credential.split('.')[1].replace(/-/g, '+').replace(/_/g, '/');
+    const bytes = Uint8Array.from(atob(part + '='.repeat((4 - (part.length % 4)) % 4)), (c) => c.charCodeAt(0));
+    const p = JSON.parse(new TextDecoder().decode(bytes)) as { sub?: string; name?: string; given_name?: string; email?: string; iss?: string };
+    if (!p.sub || !String(p.iss ?? '').includes('accounts.google.com')) return null;
+    return { sub: p.sub, name: p.given_name || p.name || (p.email ?? '').split('@')[0] || 'Traveller', email: p.email };
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * Sign in with Google (owner: "use google sign in"). The Google account is a player on this
+ * device: the one it is already linked to; else the player signed in now, linked to it (their
+ * journey goes on unchanged); else a new player, who takes the device's journey with them the
+ * first time, exactly as signing in by name does. Nothing is erased.
+ */
+export function googleSignIn(store: Store | null, acc: GoogleAccount, now: number): { ok: true; player: Player; linked: boolean; tookJourney: boolean } | { ok: false; reason: string } {
+  if (!store) return { ok: false, reason: 'This browser is not keeping anything (a private window?) — sign-in needs it to keep your journey.' };
+  const all = readPlayers(store);
+  const known = all.players.find((p) => p.google === acc.sub);
+  if (known) {
+    known.lastPlayed = now;
+    writePlayers(store, { ...all, current: known.id });
+    return { ok: true, player: known, linked: false, tookJourney: false };
+  }
+  const here = all.players.find((p) => p.id === all.current);
+  if (here && !here.google) {
+    here.google = acc.sub; here.email = acc.email; here.lastPlayed = now;
+    writePlayers(store, all);
+    return { ok: true, player: here, linked: true, tookJourney: false };
+  }
+  // A new player under the Google name (made unique on this device if the name is taken).
+  let name = cleanName(acc.name) || 'Traveller';
+  for (let k = 2; all.players.some((p) => p.name.toLowerCase() === name.toLowerCase()); k++) name = `${cleanName(acc.name)} ${k}`;
+  const r = signUp(store, name, '', now);
+  if (!r.ok) return r;
+  const after = readPlayers(store), me = after.players.find((p) => p.id === r.player.id)!;
+  me.google = acc.sub; me.email = acc.email;
+  writePlayers(store, after);
+  return { ok: true, player: me, linked: false, tookJourney: r.tookJourney };
 }
 
 export function signIn(store: Store | null, id: string, pin: string, now: number): { ok: true; player: Player } | { ok: false; reason: string } {

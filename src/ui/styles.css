@@ -447,3 +447,12 @@ body.cinematic #ui > .feed { opacity: 0; }
 .signin input, .players input, .p-diary input[type="search"] { padding: 9px 12px; border-radius: 10px; border: 1px solid var(--line); background: rgba(255, 255, 255, 0.08); color: var(--ink); font: 500 14px var(--sans); }
 .btn.file { position: relative; overflow: hidden; }
 .btn.file input { position: absolute; inset: 0; opacity: 0; cursor: pointer; }
+
+/* The diary calling: a glowing note under the land's name, and the book in the dock pulsing. */
+.diary-chip { margin-block-start: 8px; font-size: 12px; padding: 7px 12px; background: rgba(255, 143, 184, 0.14); border-color: rgba(255, 143, 184, 0.45); }
+.diary-chip.calling { background: linear-gradient(120deg, rgba(255, 143, 184, 0.28), rgba(245, 196, 81, 0.22)); border-color: rgba(255, 190, 210, 0.85); animation: diary-call 2.6s ease-in-out infinite; }
+.dock-btn.calling { animation: diary-call 2.6s ease-in-out infinite; border-color: rgba(255, 143, 184, 0.9); }
+.dock-btn.calling::after { content: ''; position: absolute; inset-block-start: 4px; inset-inline-end: 4px; inline-size: 9px; block-size: 9px; border-radius: 50%; background: var(--rose); box-shadow: 0 0 8px var(--rose); }
+@keyframes diary-call { 0%, 100% { box-shadow: 0 0 0 rgba(255, 143, 184, 0); } 50% { box-shadow: 0 0 18px rgba(255, 143, 184, 0.75); } }
+@media (prefers-reduced-motion: reduce) { .diary-chip.calling, .dock-btn.calling { animation: none; } }
+.google-slot { min-block-size: 44px; }

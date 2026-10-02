@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { SAVE_KEY, loadGame, saveGame, type Store } from '../src/core/save';
-import { currentPlayer, currentSaveKey, fromKeepsake, keepsake, readPlayers, saveKeyOf, signIn, signOut, signUp } from '../src/core/profiles';
+import { currentPlayer, currentSaveKey, fromKeepsake, googleAccountOf, googleSignIn, keepsake, readPlayers, saveKeyOf, signIn, signOut, signUp } from '../src/core/profiles';
 import { newGame } from '../src/core/state';
 
 const memory = (): Store & { data: Map<string, string> } => {
@@ -61,5 +61,31 @@ describe('signing in', () => {
     store.setItem('golden-thread/players/v1', '{oops');
     expect(currentSaveKey(store)).toBe(SAVE_KEY);
     expect(currentSaveKey(null)).toBe(SAVE_KEY);
+  });
+
+  it('with Google: an older journey comes along, a signed-in player is linked unchanged, and Google opens it again', () => {
+    const b64 = (o: object) => btoa(String.fromCharCode(...new TextEncoder().encode(JSON.stringify(o)))).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
+    const token = (sub: string, name: string) => `${b64({ alg: 'RS256' })}.${b64({ iss: 'https://accounts.google.com', sub, name, given_name: name, email: `${name.toLowerCase()}@example.com` })}.sig`;
+    expect(googleAccountOf(token('1', 'Fathima'))).toEqual({ sub: '1', name: 'Fathima', email: 'fathima@example.com' });
+    expect(googleAccountOf('nonsense')).toBeNull();
+    // An older player who never signed in: Google takes their journey with them.
+    const store = memory();
+    saveGame({ ...newGame(), coins: 777 }, store);
+    const a = googleSignIn(store, googleAccountOf(token('g-1', 'Fathima'))!, 1);
+    expect(a.ok && a.tookJourney).toBe(true);
+    expect(loadGame(store, currentSaveKey(store))?.coins).toBe(777);
+    // Signed in by name already: Google links to that player; the journey is unchanged.
+    const s2 = memory();
+    saveGame({ ...newGame(), coins: 55 }, s2);
+    const named = signUp(s2, 'Azim', '', 1);
+    expect(named.ok).toBe(true);
+    const linked = googleSignIn(s2, googleAccountOf(token('g-2', 'Azim'))!, 2);
+    expect(linked.ok && linked.linked).toBe(true);
+    expect(loadGame(s2, currentSaveKey(s2))?.coins).toBe(55);
+    // Signed out, Google opens the same journey again.
+    signOut(s2);
+    const again = googleSignIn(s2, googleAccountOf(token('g-2', 'Azim'))!, 3);
+    expect(again.ok && named.ok && again.player.id === named.player.id).toBe(true);
+    expect(readPlayers(s2).players).toHaveLength(1);
   });
 });
