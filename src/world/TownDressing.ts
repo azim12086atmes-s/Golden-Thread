@@ -35,7 +35,7 @@ export const STRING_AT = [110, 150, 190];
  * changing the number of lights in three.js recompiles every lit material (a stall each time a
  * land loaded or unloaded), so the count never changes.
  */
-export const TOWN_LIGHT_POOL = 6;
+export const TOWN_LIGHT_POOL = 3;
 
 export class TownDressing {
   private towns = new Map<string, { group: THREE.Group; lights: Array<{ pos: THREE.Vector3; color: string }> }>();

@@ -210,7 +210,6 @@ export class Game {
   /** A soft light around each traveller (hers blush, his warm gold), brighter at night. */
   /** The great dragon circling the temple of the Jade Terraces. */
   private dragons!: Dragons;
-  private auras = [new THREE.PointLight('#ffc4dd', 0, 7, 2), new THREE.PointLight('#ffdca0', 0, 7, 2)];
   private dress = { blend: 0, yaw: 0, savedYaw: 0, from: new THREE.Vector3(), goal: new THREE.Vector3(), look: new THREE.Vector3() };
 
   /** Where this journey is kept, and who is signed in ('' = playing as a guest). */
@@ -236,7 +235,8 @@ export class Game {
     this.renderer = new THREE.WebGLRenderer({ antialias: true, powerPreference: 'high-performance' });
     this.renderer.setPixelRatio(Math.min(devicePixelRatio, 1.75));
     this.renderer.shadowMap.enabled = true;
-    this.renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+    // (PCFSoftShadowMap is no longer offered by three.js and fell back to this anyway.)
+    this.renderer.shadowMap.type = THREE.PCFShadowMap;
     this.renderer.toneMapping = THREE.ACESFilmicToneMapping;
     this.renderer.toneMappingExposure = 1.0;
     host.appendChild(this.renderer.domElement);
@@ -251,7 +251,6 @@ export class Game {
       pm.dispose();
     }
     this.scene.fog = this.sky.fog;
-    this.scene.add(...this.auras);
     this.dragons = new Dragons(this.scene);
     this.scene.add(this.atmos.group);
     this.scene.add(this.world.group, this.sky.group, this.sky.sunLight, this.sky.sunLight.target, this.sky.hemi, this.ambience.points, this.regionFx.points, this.skyLanterns.mesh, this.skyFx.group, this.weather.group, this.traffic.group);
@@ -351,7 +350,7 @@ export class Game {
 
   setQuality(quality: 'low' | 'high'): void {
     this.quality = quality;
-    this.renderer.setPixelRatio(quality === 'low' ? 1 : Math.min(devicePixelRatio, 1.75));
+    this.renderer.setPixelRatio(this.basePixelRatio() * this.perf.scale);
     this.composer.setPixelRatio(this.renderer.getPixelRatio());
     this.renderer.shadowMap.enabled = quality === 'high';
     this.bloom.enabled = quality === 'high';
@@ -410,7 +409,40 @@ export class Game {
   /** Butterflies, dragonflies, fireflies, chimney smoke, dawn mist and sunbeams (Atmos.ts). */
   private readonly atmos = new Atmos();
 
+  /**
+   * Keeping it smooth on any device: when frames come too slowly the picture is drawn at a lower
+   * resolution, step by step (and raised again when there is room); if even the lowest is too slow
+   * for a while, the lighter graphics mode is chosen (once, with a note; it can be changed in Help).
+   */
+  private perf = { acc: 0, frames: 0, slowFor: 0, scale: 1, last: 0 };
+  private adapt(): void {
+    const now = performance.now(), p = this.perf, raw = (now - (p.last || now)) / 1000;
+    p.last = now;
+    if (!this.ready || !this.started || this.cutscene || raw > 0.5) return;
+    p.acc += raw; p.frames++;
+    if (p.acc < 1.5) return;
+    const avg = p.acc / p.frames;
+    p.acc = 0; p.frames = 0;
+    if (avg > 1 / 40 && p.scale > 0.5) p.scale = Math.max(0.5, p.scale - 0.12);
+    else if (avg < 1 / 57 && p.scale < 1) p.scale = Math.min(1, p.scale + 0.06);
+    if (avg > 1 / 30 && p.scale <= 0.5) p.slowFor += 1.5; else p.slowFor = 0;
+    if (p.slowFor > 6 && this.quality === 'high') {
+      p.slowFor = 0; p.scale = 1;
+      this.setQuality('low');
+      this.toast('Switched to smoother graphics so the journey runs well on this device — you can change it in Help (H).', 'info');
+      return;
+    }
+    const pr = this.basePixelRatio() * p.scale;
+    if (Math.abs(this.renderer.getPixelRatio() - pr) > 0.01) {
+      this.renderer.setPixelRatio(pr);
+      this.composer.setPixelRatio(pr);
+      this.resize();
+    }
+  }
+  private basePixelRatio(): number { return this.quality === 'low' ? 1 : Math.min(devicePixelRatio, 1.5); }
+
   private frame(): void {
+    this.adapt();
     const dt = Math.min(0.05, this.clock.getDelta());
     this.t += dt;
 
@@ -557,12 +589,6 @@ export class Game {
 
     this.trav.updateCamera(this.camera, dt);
     this.cutscene?.update(dt, this.camera);
-    // A faint light round each of them after dark (owner: the light from the body was too much).
-    const glow = 0.02 + this.sky.night * 0.18;
-    [this.trav.girl, this.trav.boy].forEach((m, i) => {
-      this.auras[i].position.copy(m.root.position).add(new THREE.Vector3(0, 1.3, 0));
-      this.auras[i].intensity = glow;
-    });
     this.dressCamera(dt);
     this.celebration.update(dt, this.t);
     this.caravan.update(dt, this.t);

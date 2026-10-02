@@ -53,6 +53,9 @@ function mesh(geo: THREE.BufferGeometry, color: string, part: Part, glow = false
   return m;
 }
 
+/** Parts that carry the travellers' identity: never merged (anatomy.test counts them). */
+const IDENTITY_PARTS = new Set(['glasses', 'beard', 'hair']);
+
 const SKIRTS: string[] = ['skirt', 'straight-skirt', 'hakama', 'wrap'];
 
 /** The golden thread of commitment round a wrist: three turns of glowing gold and a little bow. */
@@ -527,6 +530,96 @@ export class CharacterModel {
       if (c) mm.material = glowingFabric(`#${c.getHexString()}`, shine);
     });
     this.buildIdentity();
+    this.mergeStatic();
+  }
+
+  /**
+   * Fewer draw calls (a figure was 60–400 separate meshes; a crowd, thousands a frame): the
+   * pieces that never move on their own are merged, per limb or group they hang from, per
+   * material and per part tag (so anatomy checks still see every part). Whatever moves by itself
+   * stays as it is: wings, jetpack, cape, the swinging cloth and what is sewn on it, the feet, the
+   * balloon, the crown's group and the hand anchor.
+   */
+  private mergeStatic(): void {
+    // What is sewn on swinging cloth (trims, sequins, stars) is merged per cloth, and then sways
+    // as the cloth does, vertex by vertex, instead of hundreds of pieces moved one by one.
+    this.root.updateMatrixWorld(true);
+    const inv = new THREE.Matrix4();
+    for (const f of this.flow) {
+      // Each piece (a mesh, or a little group of meshes such as a star) baked into its cloth's frame.
+      const sets = new Map<string, { parent: THREE.Object3D; material: THREE.Material; part: string; shadow: boolean; geos: THREE.BufferGeometry[] }>();
+      const rest: typeof f.rigid = [];
+      for (const r of f.rigid) {
+        const o = r.o, parent = o.parent;
+        const leaves: THREE.Mesh[] = [];
+        let ok = !!parent;
+        o.traverse((x) => {
+          const m = x as THREE.Mesh;
+          if (m.isMesh) { if (m.children.length || Array.isArray(m.material) || m.geometry.morphAttributes.position) ok = false; else leaves.push(m); }
+          else if (x !== o && !(x as THREE.Group).isGroup) ok = false;
+        });
+        if (!ok || !leaves.length) { rest.push(r); continue; }
+        inv.copy(parent!.matrixWorld).invert();
+        for (const m of leaves) {
+          const mat = m.material as THREE.Material;
+          const key = `${parent!.uuid}|${mat.uuid}|${m.userData.part}|${m.castShadow}|${m.geometry.index ? 'i' : 'n'}|${Object.keys(m.geometry.attributes).sort().join(',')}`;
+          let set = sets.get(key);
+          if (!set) sets.set(key, set = { parent: parent!, material: mat, part: m.userData.part, shadow: m.castShadow, geos: [] });
+          set.geos.push(m.geometry.clone().applyMatrix4(new THREE.Matrix4().multiplyMatrices(inv, m.matrixWorld)));
+        }
+      }
+      for (const set of sets.values()) {
+        const merged = set.geos.length > 1 ? mergeGeometries(set.geos, false) : set.geos[0];
+        // (The key keeps attributes alike, so merging cannot fail; if it ever did, each piece is kept as its own mesh.)
+        for (const geo of merged ? [merged] : set.geos) {
+          const out = new THREE.Mesh(geo, set.material);
+          out.userData.part = set.part;
+          out.castShadow = set.shadow;
+          set.parent.add(out);
+          const pos = geo.getAttribute('position') as THREE.BufferAttribute;
+          f.verts.push({ pos, base: (pos.array as Float32Array).slice(), y0: 0 });
+        }
+        if (merged && set.geos.length > 1) for (const g of set.geos) g.dispose();
+      }
+      for (const r of f.rigid) if (!rest.includes(r)) r.o.parent?.remove(r.o);
+      f.rigid = rest;
+    }
+    const keep = new Set<THREE.Object3D>();
+    const keepTree = (o?: THREE.Object3D | null) => o?.traverse((x) => { keep.add(x); });
+    keepTree(this.wings?.group); keepTree(this.jetpack?.group); keepTree(this.cape); keepTree(this.balloon);
+    if (this.capeCloth) keep.add(this.capeCloth.mesh);
+    for (const f of this.feet) keepTree(f);
+    for (const f of this.flow) for (const r of f.rigid) keepTree(r.o);
+    keep.add(this.handAnchor);
+    const moving = new Set<THREE.BufferAttribute>(this.flow.flatMap((f) => f.verts.map((v) => v.pos)));
+    const parents: THREE.Object3D[] = [];
+    this.root.traverse((o) => { if (o.children.length > 1 && !keep.has(o)) parents.push(o); });
+    for (const parent of parents) {
+      const groups = new Map<string, THREE.Mesh[]>();
+      for (const c of parent.children) {
+        const m = c as THREE.Mesh;
+        if (!m.isMesh || keep.has(m) || m.children.length || Array.isArray(m.material) || !m.visible) continue;
+        // Identity (GT-CHAR-001: glasses, beard, hair) and named pieces stay exactly as built.
+        if (IDENTITY_PARTS.has(m.userData.part) || m.name) continue;
+        const pos = m.geometry.getAttribute('position') as THREE.BufferAttribute | undefined;
+        if (!pos || moving.has(pos) || m.geometry.morphAttributes.position) continue;
+        const attrs = Object.keys(m.geometry.attributes).sort().join(',');
+        const key = `${m.material.uuid}|${m.userData.part}|${m.castShadow}|${m.receiveShadow}|${m.renderOrder}|${m.geometry.index ? 'i' : 'n'}|${attrs}`;
+        (groups.get(key) ?? groups.set(key, []).get(key)!).push(m);
+      }
+      for (const list of groups.values()) {
+        if (list.length < 2) continue;
+        const geos = list.map((m) => { m.updateMatrix(); return m.geometry.clone().applyMatrix4(m.matrix); });
+        const merged = mergeGeometries(geos, false);
+        for (const g of geos) g.dispose();
+        if (!merged) continue;
+        const first = list[0], out = new THREE.Mesh(merged, first.material);
+        out.userData.part = first.userData.part;
+        out.castShadow = first.castShadow; out.receiveShadow = first.receiveShadow; out.renderOrder = first.renderOrder;
+        for (const m of list) parent.remove(m);
+        parent.add(out);
+      }
+    }
   }
 
   /** Let these hang and swing from `top` down to `bottom` (see `flow`). */

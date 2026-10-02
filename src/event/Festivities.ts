@@ -199,7 +199,8 @@ export class Festivities {
       this.group.add(this.glitter);
     }
     // Warm light over the courtyard and cake; coloured washes out in the flowers.
-    for (const [dx, dy, dz, col, dist] of [[0, 9, 0, '#ffd9a8', 42], [0, 5, -8, '#ffe8c8', 20], [-22, 4, 10, '#ff9ad0', 26], [22, 4, 10, '#a8c8ff', 26], [0, 4, 30, '#d9b3ff', 26]] as const) {
+    // Two lights only (every light is paid for on every lit pixel): the courtyard and a rose wash.
+    for (const [dx, dy, dz, col, dist] of [[0, 9, 0, '#ffd9a8', 46], [0, 4, 18, '#ffb0d8', 32]] as const) {
       const l = new THREE.PointLight(col, 0, dist, 1.6);
       l.position.set(this.centre.x + dx, groundY + dy, this.centre.z + dz);
       this.lights.push(l);
