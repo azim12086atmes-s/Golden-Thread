@@ -422,6 +422,8 @@ class Field {
 
 export class MeadowField {
   readonly group = new THREE.Group();
+  /** Lighter grass for a struggling device (Game.adapt): the far ring is left out. */
+  light = false;
   private grass: Field;
   private flowers: Field;
   private midGrass: Field;
@@ -564,7 +566,9 @@ export class MeadowField {
     this.grass.update(focus.x, focus.z);
     this.flowers.update(focus.x, focus.z);
     this.midGrass.update(focus.x, focus.z);
-    this.farGrass.update(focus.x, focus.z);
+    // On a struggling device the far ring (where tufts blend into the ground's colour) is left out.
+    this.farGrass.mesh.visible = !this.light;
+    if (!this.light) this.farGrass.update(focus.x, focus.z);
     this.midFlowers.update(focus.x, focus.z);
     this.crystals.update(focus.x, focus.z);
     this.pebbles.update(focus.x, focus.z);

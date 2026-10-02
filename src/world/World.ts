@@ -63,8 +63,8 @@ export class World {
   compile?: (o: THREE.Object3D) => Promise<unknown>;
 
   /** Add a newly built piece, shown once its shaders are ready (no stall on first sight). */
-  private reveal(o: THREE.Object3D): void {
-    this.group.add(o);
+  private reveal(o: THREE.Object3D, parent: THREE.Object3D = this.group): void {
+    if (o.parent !== parent) parent.add(o);
     if (!this.compile) return;
     o.visible = false;
     const show = () => { o.visible = true; };
@@ -86,6 +86,9 @@ export class World {
    * were most of the loading time). Their places are known from the start.
    */
   private builtLandmarks = new Set<string>();
+  private landmarkHolders = new Map<string, THREE.Group>();
+  /** How far the haze lets you see (set from the sky each frame): monuments beyond it are not drawn. */
+  viewFar = 1500;
   private buildLandmarks(): void {
     for (const r of REGIONS) { const c = regionCenter(r); this.landmarkPos.set(r.id, new THREE.Vector3(c.x, 0, c.z)); }
   }
@@ -116,7 +119,12 @@ export class World {
     if (gm) grp.add(gm);
     const wm = water.build(this.builtWater);
     if (wm) { wm.renderOrder = 1; grp.add(wm); }
-    this.reveal(grp);
+    // Held in its own group, so it can be left undrawn beyond the haze (update).
+    const holder = new THREE.Group();
+    holder.add(grp);
+    this.group.add(holder);
+    this.landmarkHolders.set(r.id, holder);
+    this.reveal(grp, holder);
     for (const col of out.colliders) this.landmarkColliders.push({ x: c.x + col.x, z: c.z + col.z, r: col.r, h: col.h, y0: col.y0 });
     for (const p of out.platforms) addPlatform({ x: c.x + p.x, z: c.z + p.z, r: p.r, y: p.y });
     this.landmarkDoors.push(landmarkDoor(r.id, c, out.colliders));
@@ -171,6 +179,11 @@ export class World {
 
     this.meadow.update(focus, terrainHeight(focus.x, focus.z));
 
+    // Monuments beyond the haze are not drawn (they could not be seen).
+    for (const [id, h] of this.landmarkHolders) {
+      const c = this.landmarkPos.get(id)!;
+      h.visible = Math.hypot(focus.x - c.x, focus.z - c.z) - REGION_SIZE / 2 < this.viewFar + 100;
+    }
     // Monuments: the land you are in at once, the next lands' one a frame as you near them.
     this.ensureLandmarksNear(focus.x, focus.z, 60);
     const next = REGIONS.filter((r) => !this.builtLandmarks.has(r.id) && dist(focus, r) < 1100).sort((a, b) => dist(focus, a) - dist(focus, b))[0];

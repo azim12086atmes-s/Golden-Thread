@@ -436,6 +436,8 @@ export class Game {
       this.toast('Switched to smoother graphics so the journey runs well on this device — you can change it in Help (H).', 'info');
       return;
     }
+    // Struggling (resolution already lowered): the far grass ring is left out too.
+    this.world.meadow.light = p.scale < 0.8 || this.quality === 'low';
     const pr = this.basePixelRatio() * p.scale;
     if (Math.abs(this.renderer.getPixelRatio() - pr) > 0.01) {
       this.renderer.setPixelRatio(pr);
@@ -507,6 +509,7 @@ export class Game {
     setVehicleNight(this.sky.night);
     DRAGON_NIGHT.value = this.sky.night;
     this.world.setWaterLook(this.t, this.sky.night, this.region.id, this.sky.sunDirection);
+    this.world.viewFar = this.sky.fog.far;
     this.world.update(this.trav.gPos, this.sky.night);
     // Lamplight: the nearest lamps light the ground and walls round them after dusk (a few times a second).
     if ((this.lampTick += dt) > 0.15) { this.lampTick = 0; setLamps(this.world.lamps(), this.trav.gPos, this.sky.night); }
