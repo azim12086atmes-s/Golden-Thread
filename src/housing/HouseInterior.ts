@@ -1,7 +1,7 @@
 import * as THREE from 'three';
 import { enforceGap, followStep } from '../characters/follow';
 import type { Input } from '../core/Input';
-import { INDOOR_GAP, atDoor, entryPoints, folkSlots, folkStep, indoorCamera, keepInside, nearSeats, stepGirl, walkArea, yawOf, type Area, type Folk, type P2, type Room } from './roomWalk';
+import { Blocks, INDOOR_GAP, INDOOR_PACE, atDoor, entryPoints, folkSlots, folkStep, freeNear, indoorCamera, keepInside, nearSeats, slide, stepGirl, walkArea, yawOf, type Area, type Folk, type P2, type Room } from './roomWalk';
 
 /** The indoor gap (INDOOR_GAP) between two points on the floor. */
 const enforceGapP = (p: P2, from: P2): P2 => { const q = enforceGap({ x: p.x, y: 0, z: p.z }, { x: from.x, y: 0, z: from.z }, INDOOR_GAP); return { x: q.x, z: q.z }; };
@@ -182,6 +182,8 @@ export class HouseInterior {
   /** Their brothers, sisters and the children travelling with them, who come in too (roomWalk.ts folkStep). */
   private folkLooks: Array<{ id: string; outfit: Outfit; skin: string; scale: number }> = [];
   private folk: Array<{ model: CharacterModel; at: Folk; head: number }> = [];
+  /** Where the room's furniture stands (nobody walks through it); null if the room has none to speak of. */
+  private blocks: Blocks | null = null;
 
   constructor(girl: Outfit, boy: Outfit) {
     this.scene.background = new THREE.Color('#1f1a33');
@@ -420,10 +422,12 @@ export class HouseInterior {
   private beginWalk(room: Room, round: boolean): void {
     this.dims = { ...room };
     this.area = walkArea(room, round);
+    this.blocks = this.furnitureOf(room);
     this.seatPose = [this.girl, this.boy].map((m) => ({ x: m.root.position.x, y: m.root.position.y, z: m.root.position.z, ry: m.root.rotation.y }));
     const e = entryPoints(this.area);
-    this.gp = keepInside(e.girl, this.area, this.people());
-    this.bp = keepInside(e.boy, this.area, this.people());
+    this.gp = freeNear(e.girl, this.area, this.blocks, this.people());
+    this.bp = freeNear(e.boy, this.area, this.blocks, this.people());
+    if (Math.hypot(this.gp.x - this.bp.x, this.gp.z - this.bp.z) < INDOOR_GAP) { this.gp = keepInside(e.girl, this.area, this.people()); this.bp = keepInside(e.boy, this.area, this.people()); }
     this.gHead = this.bHead = Math.PI;
     this.walking = true;
     this.bringFolk();
@@ -435,6 +439,29 @@ export class HouseInterior {
     this.camera.lookAt(this.lookNow);
   }
 
+  /** Map where the room's furniture stands, from its own geometry (roomWalk.ts Blocks). */
+  private furnitureOf(room: Room): Blocks | null {
+    const b = new Blocks(-room.halfW - 1, room.back - 1, room.halfW + 1, room.front + 1);
+    this.room.updateMatrixWorld(true);
+    const a = new THREE.Vector3(), c = new THREE.Vector3(), d = new THREE.Vector3();
+    this.room.traverse((o) => {
+      const mesh = o as THREE.Mesh;
+      if (!mesh.isMesh) return;
+      const pos = mesh.geometry.getAttribute('position'), idx = mesh.geometry.getIndex();
+      if (!pos) return;
+      const n = idx ? idx.count : pos.count;
+      for (let i = 0; i + 2 < n; i += 3) {
+        const [i0, i1, i2] = idx ? [idx.getX(i), idx.getX(i + 1), idx.getX(i + 2)] : [i, i + 1, i + 2];
+        a.fromBufferAttribute(pos, i0).applyMatrix4(mesh.matrixWorld);
+        c.fromBufferAttribute(pos, i1).applyMatrix4(mesh.matrixWorld);
+        d.fromBufferAttribute(pos, i2).applyMatrix4(mesh.matrixWorld);
+        b.markTriangle(a.x, a.y, a.z, c.x, c.y, c.z, d.x, d.y, d.z);
+      }
+    });
+    // A room crowded wall to wall is walked as it is, rather than leaving nowhere to stand.
+    return b.freeShare(this.area) >= 0.35 ? b : null;
+  }
+
   /** Where the two stand now (to keep their places when the room is redrawn, e.g. after decorating). */
   standing(): { gp: P2; bp: P2; head: number } | null {
     return this.walking ? { gp: { ...this.gp }, bp: { ...this.bp }, head: this.gHead } : null;
@@ -443,7 +470,7 @@ export class HouseInterior {
   /** Put the two back where they stood (still inside, still a full gap apart). */
   standAt(at: { gp: P2; bp: P2; head: number } | null): void {
     if (!at || !this.walking) return;
-    const gp = keepInside(at.gp, this.area, this.people()), bp = keepInside(at.bp, this.area, this.people());
+    const gp = freeNear(at.gp, this.area, this.blocks, this.people()), bp = freeNear(at.bp, this.area, this.blocks, this.people());
     if (Math.hypot(gp.x - bp.x, gp.z - bp.z) < INDOOR_GAP) return;
     this.gp = gp; this.bp = bp; this.gHead = this.bHead = at.head;
     this.bringFolk();
@@ -461,7 +488,7 @@ export class HouseInterior {
     const slots = folkSlots(this.gp, this.bp, this.gHead, this.folkLooks.length);
     const start = this.folkLooks.map((_, i) => ({ ...slots[i], speed: 0 }));
     // Settle them into the room, clear of everyone, before they are seen.
-    const at = folkStep(start, this.gp, this.bp, this.gHead, this.area, this.dims, 0, this.people());
+    const at = folkStep(start.map((p) => ({ ...freeNear(p, this.area, this.blocks, this.people()), speed: 0 })), this.gp, this.bp, this.gHead, this.area, this.dims, 0, this.people(), this.blocks);
     this.folk = this.folkLooks.map((l, i) => {
       const model = new CharacterModel(l.outfit, l.skin, l.scale);
       model.hideBack();
@@ -507,12 +534,14 @@ export class HouseInterior {
       // Up from their seats: each stands where they sat.
       this.walking = true;
       const [sg, sb] = this.seatPose;
-      this.gp = keepInside({ x: sg.x, z: sg.z }, this.area, this.people());
-      this.bp = keepInside({ x: sb.x, z: sb.z }, this.area, this.people());
+      this.gp = freeNear({ x: sg.x, z: sg.z }, this.area, this.blocks, this.people());
+      this.bp = freeNear({ x: sb.x, z: sb.z }, this.area, this.blocks, this.people());
+      if (Math.hypot(this.gp.x - this.bp.x, this.gp.z - this.bp.z) < INDOOR_GAP) this.bp = freeNear(enforceGapP(this.bp, this.gp), this.area, this.blocks);
       if (Math.hypot(this.gp.x - this.bp.x, this.gp.z - this.bp.z) < INDOOR_GAP) this.bp = keepInside(enforceGapP(this.bp, this.gp), this.area);
       return 'stand';
     }
-    // By their seats E sits them down (Esc always steps out); elsewhere by the door, E steps out.
+    // In the doorway E steps out (Esc does anywhere); by their seats it sits them down.
+    if (atDoor(this.gp, this.dims)) return 'exit';
     if (this.seatPose.length === 2 && nearSeats(this.gp, this.seatPose)) {
       this.walking = false;
       const [sg, sb] = this.seatPose;
@@ -520,7 +549,6 @@ export class HouseInterior {
       this.boy.root.position.set(sb.x, sb.y, sb.z); this.boy.root.rotation.y = sb.ry;
       return 'sit';
     }
-    if (atDoor(this.gp, this.dims)) return 'exit';
     return null;
   }
 
@@ -528,14 +556,28 @@ export class HouseInterior {
   private walk(dt: number, input: Input): void {
     const step = stepGirl(this.gp, input.axis(), this.camYaw, dt);
     const people = this.people();
-    const g = keepInside(step.pos, this.area, people);
+    const g = slide(this.gp, keepInside(step.pos, this.area, people), this.blocks);
     if (step.heading !== null) this.gHead = step.heading;
     const f = followStep({ boy: { x: this.bp.x, y: 0, z: this.bp.z }, girl: { x: g.x, y: 0, z: g.z }, heading: this.gHead, speed: step.speed, dt, airborne: false, gap: INDOOR_GAP });
     const apart = (q: P2) => Math.hypot(q.x - g.x, q.z - g.z) >= INDOOR_GAP;
-    let b = keepInside({ x: f.pos.x, z: f.pos.z }, this.area, people);
-    if (!apart(b)) b = keepInside(enforceGapP(b, g), this.area, people);
-    // Where the walls leave him no room to step, he waits where he is (if that is still a full
-    // gap from her); the rule above all: if neither will do, nobody moves.
+    let b = slide(this.bp, keepInside({ x: f.pos.x, z: f.pos.z }, this.area, people), this.blocks);
+    if (!apart(b)) b = slide(this.bp, keepInside(enforceGapP(b, g), this.area, people), this.blocks);
+    // Where furniture or the walls are in his way, he steps aside: any short step clear of the
+    // furniture that keeps the full gap, nearest to where he meant to go.
+    if (!apart(b)) {
+      const want = { x: f.pos.x, z: f.pos.z }, reach = Math.max(0.05, INDOOR_PACE * 1.3 * dt);
+      let best: P2 | null = null, bestD = Infinity;
+      for (let k = 0; k < 16; k++) for (const r of [reach, reach * 0.5]) {
+        const t = (k / 16) * Math.PI * 2;
+        const q = keepInside({ x: this.bp.x + Math.cos(t) * r, z: this.bp.z + Math.sin(t) * r }, this.area, people);
+        if (!apart(q) || this.blocks?.blocked(q)) continue;
+        const d = Math.hypot(q.x - want.x, q.z - want.z);
+        if (d < bestD) { best = q; bestD = d; }
+      }
+      if (best) b = best;
+    }
+    // Else he waits where he is (if that is still a full gap from her); the rule above all: if
+    // neither will do, nobody moves.
     if (!apart(b)) b = this.bp;
     if (apart(b)) {
       const bdx = b.x - this.bp.x, bdz = b.z - this.bp.z;
@@ -545,7 +587,7 @@ export class HouseInterior {
     } else { this.gSpeed = 0; this.bSpeed = 0; }
     this.placeWalkers(dt);
     const was = this.folk.map((f) => f.at);
-    const now = folkStep(was, this.gp, this.bp, this.gHead, this.area, this.dims, dt, people);
+    const now = folkStep(was, this.gp, this.bp, this.gHead, this.area, this.dims, dt, people, this.blocks);
     this.folk.forEach((f, i) => {
       const dx = now[i].x - was[i].x, dz = now[i].z - was[i].z;
       if (Math.hypot(dx, dz) > 0.005) f.head = Math.atan2(dx, dz);

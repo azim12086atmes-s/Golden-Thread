@@ -20,7 +20,9 @@ import { StoryScene } from './story/StoryScene';
 import { STORY_FLAG } from './story/storyline';
 import { Celebration } from './event/Celebration';
 import { Input } from './core/Input';
-import { loadGame, saveGame, clearSave } from './core/save';
+import { loadGame, saveGame, clearSave, storage } from './core/save';
+import { currentPlayer, currentSaveKey } from './core/profiles';
+import { MILESTONES, dayKey, entryOn, replyFor, streak, writeEntry, type MoodId } from './diary/diary';
 import { SKY_PAUSED, TIME_LABEL, jumpTo, type TimeOfDay } from './core/time';
 import { DAY_MINUTES, hourOf, newGame, type GameState, type VanSlot } from './core/state';
 import { addItem, craft, removeItems, teach, type CraftResult } from './economy/economy';
@@ -211,8 +213,15 @@ export class Game {
   private auras = [new THREE.PointLight('#ffc4dd', 0, 7, 2), new THREE.PointLight('#ffdca0', 0, 7, 2)];
   private dress = { blend: 0, yaw: 0, savedYaw: 0, from: new THREE.Vector3(), goal: new THREE.Vector3(), look: new THREE.Vector3() };
 
+  /** Where this journey is kept, and who is signed in ('' = playing as a guest). */
+  readonly saveKey: string;
+  readonly player: string;
+
   constructor(host: HTMLElement) {
-    this.st = loadGame() ?? newGame();
+    // The signed-in player's journey, or the device's own (core/profiles.ts).
+    this.saveKey = currentSaveKey(storage());
+    this.player = currentPlayer(storage())?.name ?? '';
+    this.st = loadGame(storage(), this.saveKey) ?? newGame();
     // One-time: journeys still in the old default clothes move to the new everyday default.
     if (!this.st.flags.includes('kurti-default')) {
       if (this.st.outfits.girl === 'g-meadow') this.st.outfits.girl = 'g-kurti-jeans';
@@ -420,6 +429,7 @@ export class Game {
     if (this.started) {
       if (!this.st.flags.includes(SKY_PAUSED)) this.st.minutes += dt * MINUTES_PER_SECOND;
       this.st.playSeconds += dt;
+      this.diaryNudge(dt);
       if (!this.cutscene) this.ui.handleKeys();
       this.input.blocked = (this.ui.modal && !this.build) || !!this.cutscene;
       // On the coach, the ferry or the air taxi: it carries them; E or Esc skips ahead to the arrival.
@@ -825,6 +835,41 @@ export class Game {
     if (r === 'ok') this.toast(home ? `🏡 Your home in ${place} is ready. Press B here to decorate and build more.` : `🏡 This land in ${place} is yours. Press B here to build.`, 'reward');
     else if (r === 'coins') this.toast(`You need ${home ? this.housing.homePrice(site.id) : site.price} coins. Make and trade goods to earn more.`);
     this.housingDirty = true;
+  }
+
+  // ───── the diary (diary/diary.ts) ─────
+
+  private sessionSeconds = 0;
+  /** Once a day, a little while into playing, the diary asks how the day was. */
+  private diaryNudge(dt: number): void {
+    if (this.cutscene || this.ui.modal || (this.sessionSeconds += dt) < 40) return;
+    const today = dayKey(new Date());
+    if (this.st.diaryNudged === today || entryOn(this.st.diary, today)) return;
+    this.st.diaryNudged = today;
+    const run = streak(this.st.diary, today);
+    this.bus.emit('diary:nudge', { text: run > 0 ? `📔 ${run} day${run > 1 ? 's' : ''} in a row in your diary — keep the lanterns lit! How was today?` : '📔 Your diary is here for you. How was your day? (Q)' });
+  }
+
+  /**
+   * Write today's page. The first page of the day lights its lantern; days in a row bring a gift
+   * from Grandmother Syeda Sarvatara at each milestone.
+   */
+  writeDiary(text: string, mood: MoodId | ''): { reply: string; gift: string; kept: boolean } {
+    const today = dayKey(new Date());
+    const r = writeEntry(this.st.diary, today, text, mood, Date.now());
+    let gift = '';
+    if (r.first) {
+      const run = streak(this.st.diary, today), m = MILESTONES.filter((x) => x <= run && !this.st.diaryGifts.includes(x)).pop();
+      if (m) {
+        this.st.diaryGifts.push(m);
+        const coins = Math.min(500, m * 10);
+        this.st.coins += coins;
+        this.bus.emit('coins:changed', { coins: this.st.coins });
+        gift = `🏮 ${m} days in a row! Grandmother Syeda Sarvatara slips you ${coins} coins: “A page a day keeps the heart light, Shumaela.”`;
+      }
+    }
+    this.save();
+    return { reply: r.entry ? replyFor(mood, Date.now() / 997) : '', gift, kept: !!r.entry };
   }
 
   toast(text: string, kind: 'info' | 'reward' | 'story' = 'info'): void {
@@ -1377,15 +1422,32 @@ export class Game {
     };
   }
 
+  /** Set while the page reloads into another journey: nothing more is saved over it. */
+  private leaving = false;
+
   save(): void {
+    if (this.leaving) return;
     this.saveTimer = 0;
     this.trav.save();
-    saveGame(this.st);
+    saveGame(this.st, storage(), this.saveKey);
   }
 
   newJourney(): void {
-    clearSave();
+    this.leaving = true;
+    clearSave(storage(), this.saveKey);
     location.reload();
+  }
+
+  /**
+   * Sign in, sign out, or bring a journey from a file: keep this journey safe first, make the
+   * change, then reload into the journey that is now current (core/profiles.ts).
+   */
+  switchJourney(change: () => boolean): boolean {
+    this.save();
+    if (!change()) return false;
+    this.leaving = true;
+    location.reload();
+    return true;
   }
 }
 

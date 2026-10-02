@@ -15,6 +15,7 @@ export interface GameEvents {
   'vehicle:changed': { vehicleId: string | null };
   'message:received': { npcId: string; text: string };
   'toast': { text: string; kind?: 'info' | 'reward' | 'story' };
+  'diary:nudge': { text: string };
   'coins:changed': { coins: number };
   'outfit:changed': { who: 'girl' | 'boy' };
 }

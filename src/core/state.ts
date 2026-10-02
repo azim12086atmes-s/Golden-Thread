@@ -137,6 +137,11 @@ export interface GameState {
   certificates: Record<string, import('../institutions/certificates').Certificate>;
   /** Children brought home to their destinations: child id → where and on which day. */
   homecomings: Record<string, { land: string; day: number }>;
+  /** The player's own diary: a page for each real day they write (diary/diary.ts). */
+  diary: import('../diary/diary').DiaryEntry[];
+  /** The diary's gifts already given (streak milestones), and the last day it was mentioned on starting. */
+  diaryGifts: number[];
+  diaryNudged: string;
   /** Real seconds played, for the journal. */
   playSeconds: number;
   /** Today's conversations in town: who asked for a hand and whom you helped. */
@@ -200,6 +205,9 @@ export function newGame(): GameState {
     tour: { off: false, later: [] },
     parents: {},
     homecomings: {},
+    diary: [],
+    diaryGifts: [],
+    diaryNudged: '',
     certificates: {},
     playSeconds: 0,
     folk: { day: 0, asked: [], helped: [] },

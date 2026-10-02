@@ -34,11 +34,15 @@ describe('walking about inside', () => {
 
   it('in every land\'s rooms they walk all round and never come nearer than the indoor gap, and stay inside', () => {
     const room = new HouseInterior(OUTFITS['g-kurti-jeans'], OUTFITS['b-kurta-jeans']);
-    const s = room as unknown as { gp: { x: number; z: number }; bp: { x: number; z: number } };
+    const s = room as unknown as { gp: { x: number; z: number }; bp: { x: number; z: number }; blocks: { blocked(p: { x: number; z: number }): boolean } | null };
+    let mapped = 0;
     for (const r of REGIONS) {
       room.enter({ id: `home:${r.id}-w`, land: r.id, x: 0, z: 0, y: 0, facing: 0, kind: 'home', r: 5 }, 0.3, false,
         { rug: 'plain', curtains: 'plain', quilt: 'plain', lights: 'none', plant: 'none', art: 'none', lamp: 'none', cushions: 'plain' }, PEOPLE_IN_NEED.slice(0, 4));
       expect(room.walking).toBe(true);
+      if (s.blocks) mapped++;
+      // They come in clear of the furniture.
+      for (const p of [s.gp, s.bp]) expect(s.blocks?.blocked(p) ?? false, r.id).toBe(false);
       // Round and round the room: forward, then turning, then back.
       const moves: Array<[number, number]> = [[0, 1], [1, 1], [1, 0], [0, -1], [-1, -1], [-1, 0], [0, 1]];
       for (const [x, y] of moves) for (let i = 0; i < 40; i++) {
@@ -48,9 +52,13 @@ describe('walking about inside', () => {
           expect(Math.abs(p.x), r.id).toBeLessThanOrEqual(ROOM.halfW);
           expect(p.z, r.id).toBeGreaterThanOrEqual(ROOM.back);
           expect(p.z, r.id).toBeLessThanOrEqual(ROOM.front);
+          // Never through a sofa, a table or a chest.
+          expect(s.blocks?.blocked(p) ?? false, `${r.id} in furniture`).toBe(false);
         }
       }
     }
+    // Every land's rooms have their furniture mapped.
+    expect(mapped).toBe(REGIONS.length);
   }, 120_000);
 
   it('by their seats they sit down together, stand again, and leave by the door', () => {
@@ -69,9 +77,18 @@ describe('walking about inside', () => {
     expect(room.walking).toBe(false);
     expect(room.interact()).toBe('stand');
     expect(room.walking).toBe(true);
-    // Away from the seats, nothing; at the door, E steps out.
-    walkTo({ x: 0, z: -3 }, 0.3);
+    // Away from the seats (somewhere clear of the furniture), nothing; at the door, E steps out.
+    const t = s as unknown as { blocks: { blocked(p: { x: number; z: number }): boolean } | null; gp: { x: number; z: number } };
+    let away: { x: number; z: number } | null = null;
+    for (let z = ROOM.back + 1; z < 0 && !away; z += 0.25) for (let x = -3.5; x <= 3.5 && !away; x += 0.25) {
+      const p = { x, z };
+      if (!t.blocks?.blocked(p) && s.seatPose.every((q) => Math.hypot(q.x - x, q.z - z) > 2)) away = p;
+    }
+    expect(away).not.toBeNull();
+    const keep = t.gp;
+    t.gp = away!;
     expect(room.interact()).toBe(null);
+    t.gp = keep;
     walkTo({ x: 0, z: ROOM.front }, 0.1);
     expect(atDoor(s.gp, ROOM)).toBe(true);
     expect(room.interact()).toBe('exit');

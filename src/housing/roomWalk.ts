@@ -24,7 +24,7 @@ export const WALL_KEEP = 0.9;
 /** Room left round each person standing in the room. */
 export const PERSON_KEEP = 0.75;
 /** How near a seat to sit down, and how near the door to step out. */
-export const SEAT_REACH = 1.5, DOOR_REACH = 1.3;
+export const SEAT_REACH = 1.5, DOOR_REACH = 0.9;
 /** Walking pace indoors (m/s). */
 export const INDOOR_PACE = 2.2;
 /** How far back from the open front they keep: the camera stands there, and nothing may crowd it. */
@@ -69,8 +69,8 @@ export const doorOf = (room: Room): P2 => ({ x: 0, z: room.front });
 /** Is she near enough to their seats to sit down? (Either seat will do.) */
 export const nearSeats = (p: P2, seats: readonly P2[]): boolean => seats.some((s) => Math.hypot(p.x - s.x, p.z - s.z) < SEAT_REACH);
 
-/** Is she at the door? */
-export const atDoor = (p: P2, room: Room): boolean => Math.abs(p.x) < DOOR_REACH && p.z > room.front - FRONT_KEEP - 0.6;
+/** Is she at the door? (Its middle, at the front of the room: clear of the seats either side.) */
+export const atDoor = (p: P2, room: Room): boolean => Math.abs(p.x) < DOOR_REACH && p.z > room.front - FRONT_KEEP - 0.3;
 
 /** One step of hers: from the stick (x right, y forward) turned by the camera's yaw. */
 export function stepGirl(p: P2, axis: { x: number; y: number }, camYaw: number, dt: number): { pos: P2; heading: number | null; speed: number } {
@@ -120,7 +120,7 @@ export function folkSlots(girl: P2, boy: P2, heading: number, n: number): P2[] {
 }
 
 /** One step of the companions indoors: toward their places, clear of each other and of the two, inside the room. */
-export function folkStep(folk: readonly Folk[], girl: P2, boy: P2, heading: number, area: Area, room: Room, dt: number, people: readonly P2[] = []): Folk[] {
+export function folkStep(folk: readonly Folk[], girl: P2, boy: P2, heading: number, area: Area, room: Room, dt: number, people: readonly P2[] = [], blocks: Blocks | null = null): Folk[] {
   const slots = folkSlots(girl, boy, heading, folk.length);
   const next = folk.map((f, i) => {
     const s = keepInside(slots[i], area, people), dx = s.x - f.x, dz = s.z - f.z, d = Math.hypot(dx, dz);
@@ -133,13 +133,91 @@ export function folkStep(folk: readonly Folk[], girl: P2, boy: P2, heading: numb
     const push = (MEMBER_CLEARANCE - d) / 2, ux = d > 1e-6 ? dx / d : 1, uz = d > 1e-6 ? dz / d : 0;
     a.x -= ux * push; a.z -= uz * push; b.x += ux * push; b.z += uz * push;
   }
-  for (const m of next) {
-    const k = keepInside(m, area, people);
+  next.forEach((m, i) => {
+    let k = keepInside(m, area, people);
+    // Round the furniture, not through it.
+    if (blocks?.blocked(k)) k = blocks.blocked(folk[i]) ? freeNear(k, area, blocks, people) : slide(folk[i], k, blocks);
     m.x = k.x; m.z = k.z;
     clearOfTravellers(m, girl, boy);
     // Never through a wall, even when stepping clear of the two.
     m.x = Math.max(-room.halfW + 0.3, Math.min(room.halfW - 0.3, m.x));
     m.z = Math.max(room.back + 0.3, Math.min(room.front - 0.3, m.z));
-  }
+  });
   return next;
+}
+
+/**
+ * What stands on the floor: a grid over the room marking where furniture (anything from knee to
+ * head height) stands, so nobody walks through a sofa or a table. Built from the room's own
+ * geometry, so every room — standard, round or built — is covered without listing its furniture.
+ */
+export class Blocks {
+  static readonly CELL = 0.2;
+  /** How far a body keeps from furniture (its own half-width). */
+  static readonly BODY = 0.22;
+  private cells: Uint8Array;
+  readonly nx: number;
+  readonly nz: number;
+  constructor(readonly x0: number, readonly z0: number, x1: number, z1: number) {
+    this.nx = Math.ceil((x1 - x0) / Blocks.CELL);
+    this.nz = Math.ceil((z1 - z0) / Blocks.CELL);
+    this.cells = new Uint8Array(this.nx * this.nz);
+  }
+  mark(x: number, z: number): void {
+    const i = Math.floor((x - this.x0) / Blocks.CELL), j = Math.floor((z - this.z0) / Blocks.CELL);
+    if (i >= 0 && j >= 0 && i < this.nx && j < this.nz) this.cells[j * this.nx + i] = 1;
+  }
+  /** Mark where a triangle's surface passes through body height (0.15–1.5 m). */
+  markTriangle(ax: number, ay: number, az: number, bx: number, by: number, bz: number, cx: number, cy: number, cz: number): void {
+    if (Math.max(ay, by, cy) < 0.15 || Math.min(ay, by, cy) > 1.5) return;
+    const size = Math.max(Math.hypot(bx - ax, bz - az, by - ay), Math.hypot(cx - ax, cz - az, cy - ay), Math.hypot(cx - bx, cz - bz, cy - by));
+    const n = Math.min(60, Math.max(1, Math.ceil(size / (Blocks.CELL * 0.7))));
+    for (let i = 0; i <= n; i++) for (let j = 0; j <= n - i; j++) {
+      const u = i / n, v = j / n, w = 1 - u - v, y = ay * w + by * u + cy * v;
+      if (y < 0.15 || y > 1.5) continue;
+      this.mark(ax * w + bx * u + cx * v, az * w + bz * u + cz * v);
+    }
+  }
+  /** Is there furniture within a body's reach of this point? */
+  blocked(p: P2): boolean {
+    const r = Blocks.BODY, c = Blocks.CELL;
+    const i0 = Math.floor((p.x - r - this.x0) / c), i1 = Math.floor((p.x + r - this.x0) / c);
+    const j0 = Math.floor((p.z - r - this.z0) / c), j1 = Math.floor((p.z + r - this.z0) / c);
+    for (let j = j0; j <= j1; j++) for (let i = i0; i <= i1; i++) {
+      if (i < 0 || j < 0 || i >= this.nx || j >= this.nz) continue;
+      if (this.cells[j * this.nx + i]) return true;
+    }
+    return false;
+  }
+  /** The share of the walk area free of furniture (a room with almost none free is not walled in by it). */
+  freeShare(a: Area): number {
+    let free = 0, all = 0;
+    for (let z = a.back; z <= a.front; z += 0.3) for (let x = -a.halfW; x <= a.halfW; x += 0.3) {
+      const p = { x, z };
+      if (a.round && Math.hypot(x - a.cx, z - a.cz) > a.r) continue;
+      all++;
+      if (!this.blocked(p)) free++;
+    }
+    return all ? free / all : 1;
+  }
+}
+
+/** Step from `from` toward `to` without walking into furniture: straight, else sliding along it, else stay. */
+export function slide(from: P2, to: P2, blocks: Blocks | null): P2 {
+  if (!blocks || !blocks.blocked(to)) return to;
+  const ax = { x: to.x, z: from.z }, az = { x: from.x, z: to.z };
+  if (!blocks.blocked(ax)) return ax;
+  if (!blocks.blocked(az)) return az;
+  return from;
+}
+
+/** The nearest free spot to `p` inside the area (searching outward), or `p` if there is none near. */
+export function freeNear(p: P2, a: Area, blocks: Blocks | null, people: readonly P2[] = []): P2 {
+  const q0 = keepInside(p, a, people);
+  if (!blocks || !blocks.blocked(q0)) return q0;
+  for (let r = 0.2; r <= 4; r += 0.2) for (let k = 0; k < 24; k++) {
+    const t = (k / 24) * Math.PI * 2, q = keepInside({ x: p.x + Math.cos(t) * r, z: p.z + Math.sin(t) * r }, a, people);
+    if (!blocks.blocked(q)) return q;
+  }
+  return q0;
 }

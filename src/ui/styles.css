@@ -384,3 +384,66 @@ body.cinematic #ui > .feed { opacity: 0; }
 @media (max-width: 700px) { .tour { inset-block-end: auto; inset-block-start: 96px; } }
 @media (prefers-reduced-motion: reduce) { .tour { animation: none; } }
 .tour[hidden] { display: none !important; }
+
+/* The dock can hold everything on a narrow screen: it scrolls sideways instead of overflowing. */
+.dock { max-inline-size: calc(100vw - 20px); overflow-x: auto; scrollbar-width: none; }
+.dock::-webkit-scrollbar { display: none; }
+
+/* ───── The diary ───── */
+.panel.p-diary { inline-size: min(560px, calc(100vw - 28px)); }
+.diary-lanterns { display: grid; grid-template-columns: repeat(7, 1fr); gap: 6px; padding: 10px 6px 4px; }
+.diary-lanterns .lantern { display: grid; justify-items: center; gap: 4px; }
+.diary-lanterns .flame {
+  display: grid; place-items: center; inline-size: 38px; block-size: 46px; font-size: 18px;
+  border-radius: 46% 46% 40% 40% / 55% 55% 40% 40%; border: 1px dashed rgba(255, 220, 150, 0.3); background: rgba(255, 255, 255, 0.03);
+}
+.diary-lanterns .lit .flame {
+  border: 1px solid var(--mood, var(--gold)); background: radial-gradient(circle at 50% 60%, color-mix(in srgb, var(--mood, var(--gold)) 55%, transparent), rgba(255, 180, 80, 0.08) 70%);
+  box-shadow: 0 0 18px color-mix(in srgb, var(--mood, var(--gold)) 45%, transparent); animation: lantern-glow 3.2s ease-in-out infinite;
+}
+.diary-lanterns .today .flame { outline: 2px solid rgba(255, 143, 184, 0.55); outline-offset: 2px; }
+.diary-lanterns small { color: var(--ink-dim); font-size: 11px; }
+@keyframes lantern-glow { 50% { box-shadow: 0 0 26px color-mix(in srgb, var(--mood, var(--gold)) 65%, transparent); } }
+.diary-streak { text-align: center; color: #ffe7b0; font: 600 14px var(--display); }
+.diary-today { display: grid; gap: 8px; padding: 14px; border-radius: 18px; background: linear-gradient(160deg, rgba(255, 236, 200, 0.1), rgba(255, 143, 184, 0.06)); border: 1px solid var(--line); }
+.diary-date { display: grid; gap: 2px; }
+.diary-date b { font: 700 19px var(--display); color: var(--gold); }
+.diary-date small { color: var(--ink-dim); }
+.diary-prompt { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 10px; }
+.diary-prompt span { font: italic 500 15px/1.4 var(--display); color: #ffe9f1; }
+.diary-moods { display: flex; flex-wrap: wrap; gap: 6px; }
+.diary-moods .mood { border-color: color-mix(in srgb, var(--mood) 45%, transparent); }
+.diary-moods .mood.on { background: color-mix(in srgb, var(--mood) 35%, transparent); border-color: var(--mood); color: #fff; box-shadow: 0 0 12px color-mix(in srgb, var(--mood) 40%, transparent); }
+.diary-paper {
+  inline-size: 100%; min-block-size: 190px; resize: vertical; padding: 10px 14px; border-radius: 12px; border: 1px solid rgba(160, 120, 70, 0.4);
+  font: 500 16px/28px var(--display); color: #3a2a1e; caret-color: #c2185b;
+  background: repeating-linear-gradient(to bottom, #fbf3e2 0 27px, rgba(150, 120, 80, 0.25) 27px 28px), #fbf3e2;
+  background-attachment: local; box-shadow: inset 0 2px 8px rgba(120, 80, 30, 0.15);
+}
+.diary-paper::placeholder { color: rgba(90, 64, 40, 0.55); font-style: italic; }
+.diary-paper:focus { outline: 2px solid rgba(255, 143, 184, 0.7); outline-offset: 2px; }
+.diary-memory { display: grid; gap: 6px; }
+.diary-memory small { color: var(--ink-dim); }
+.diary-month { display: grid; grid-template-columns: repeat(15, 1fr); gap: 5px; }
+.diary-month i { aspect-ratio: 1; border-radius: 50%; background: rgba(255, 255, 255, 0.07); }
+.diary-month i.w:not([style]) { background: var(--gold); }
+.diary-pages { display: grid; gap: 6px; }
+.diary-page { border-radius: 12px; border: 1px solid var(--line); border-inline-start: 4px solid var(--mood, var(--line)); background: rgba(255, 255, 255, 0.04); padding: 8px 12px; }
+.diary-page summary { display: flex; gap: 8px; align-items: baseline; cursor: pointer; list-style: none; }
+.diary-page summary small { color: var(--ink-dim); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.diary-text { white-space: pre-wrap; font: 500 15px/1.5 var(--display); margin-block: 8px !important; }
+.diary-note { padding: 8px 12px; border-radius: 10px; background: rgba(245, 196, 81, 0.12); }
+.toast.diary-nudge { border-color: rgba(255, 143, 184, 0.6); display: grid; gap: 8px; }
+.toast.diary-nudge .acts { display: flex; gap: 6px; }
+
+/* ───── Signing in ───── */
+.players { display: grid; gap: 6px; }
+.player { display: flex; align-items: center; gap: 10px; padding: 8px 10px; border-radius: 12px; border: 1px solid var(--line); background: rgba(255, 255, 255, 0.04); }
+.player > div { display: grid; flex: 1; }
+.player small { color: var(--ink-dim); }
+.player.on { border-color: var(--gold); }
+.player .av { display: grid; place-items: center; inline-size: 34px; block-size: 34px; border-radius: 50%; background: linear-gradient(135deg, var(--rose), var(--gold)); color: #2a1a10; font-weight: 800; }
+.signin { display: grid; gap: 8px; }
+.signin input, .players input, .p-diary input[type="search"] { padding: 9px 12px; border-radius: 10px; border: 1px solid var(--line); background: rgba(255, 255, 255, 0.08); color: var(--ink); font: 500 14px var(--sans); }
+.btn.file { position: relative; overflow: hidden; }
+.btn.file input { position: absolute; inset: 0; opacity: 0; cursor: pointer; }

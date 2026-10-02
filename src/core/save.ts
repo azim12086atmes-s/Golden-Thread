@@ -11,7 +11,7 @@ export interface Store {
   removeItem(k: string): void;
 }
 
-function storage(): Store | null {
+export function storage(): Store | null {
   try {
     return typeof localStorage === 'undefined' ? null : localStorage;
   } catch {
@@ -58,29 +58,29 @@ export function deserialize(json: string): GameState | null {
   return base as unknown as GameState;
 }
 
-export function saveGame(st: GameState, store: Store | null = storage()): boolean {
+export function saveGame(st: GameState, store: Store | null = storage(), key = SAVE_KEY): boolean {
   if (!store) return false;
   try {
-    store.setItem(SAVE_KEY, serialize(st));
+    store.setItem(key, serialize(st));
     return true;
   } catch {
     return false;
   }
 }
 
-export function loadGame(store: Store | null = storage()): GameState | null {
+export function loadGame(store: Store | null = storage(), key = SAVE_KEY): GameState | null {
   if (!store) return null;
   try {
-    const s = store.getItem(SAVE_KEY);
+    const s = store.getItem(key);
     return s ? deserialize(s) : null;
   } catch {
     return null;
   }
 }
 
-export function clearSave(store: Store | null = storage()): void {
+export function clearSave(store: Store | null = storage(), key = SAVE_KEY): void {
   try {
-    store?.removeItem(SAVE_KEY);
+    store?.removeItem(key);
   } catch {
     /* nothing to clear */
   }

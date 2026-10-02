@@ -56,24 +56,12 @@ import { CAVES, CAVE_NAME, caveMouth } from '../world/caves';
 import { CIVIC_LABEL, civicDoor, civicOf } from '../world/neighbourhood';
 import { FIELD_SITES } from '../world/plots';
 import type { Game } from '../Game';
+import { btn, h } from './dom';
+import { DiaryPanel } from './DiaryPanel';
+import { AccountPanel } from './AccountPanel';
 
-type Panel = 'guidebook' | 'finder' | 'work' | 'harbour' | 'bus' | 'tram' | 'air' | 'field' | 'institute' | 'care' | 'wardrobe' | 'bag' | 'journal' | 'map' | 'messages' | 'vehicles' | 'dialogue' | 'animal' | 'build' | 'van' | 'house' | 'farm' | 'market' | 'help' | 'homes' | 'houses' | 'property' | null;
+type Panel = 'guidebook' | 'finder' | 'work' | 'harbour' | 'bus' | 'tram' | 'air' | 'field' | 'institute' | 'care' | 'wardrobe' | 'bag' | 'journal' | 'map' | 'messages' | 'vehicles' | 'dialogue' | 'animal' | 'build' | 'van' | 'house' | 'farm' | 'market' | 'help' | 'homes' | 'houses' | 'property' | 'diary' | 'account' | null;
 
-const h = (tag: string, attrs: Record<string, string> = {}, ...kids: Array<Node | string | null | false>) => {
-  const el = document.createElement(tag);
-  for (const [k, v] of Object.entries(attrs)) {
-    if (k === 'class') el.className = v;
-    else el.setAttribute(k, v);
-  }
-  for (const k of kids) if (k !== null && k !== false) el.append(k);
-  return el;
-};
-const btn = (label: string, on: () => void, cls = '', disabled = false) => {
-  const b = h('button', { class: `btn ${cls}`, type: 'button' }, label) as HTMLButtonElement;
-  b.disabled = disabled;
-  b.addEventListener('click', (e) => { e.stopPropagation(); on(); });
-  return b;
-};
 /** What a street sounds like, drawn as bubbles. */
 const CHATTER = ['💬', '😄', 'Good morning!', 'Did you hear…?', '🎶', 'Fresh bread today!', 'How is your family?', '☕', 'Ha ha!', 'See you at the market!', '🌸', 'Lovely weather!'];
 const hearts = (n: number) => '💛'.repeat(Math.floor(n)) + '🤍'.repeat(Math.max(0, 5 - Math.floor(n)));
@@ -125,6 +113,8 @@ export class UI {
   private bubbleEls: HTMLElement[] = [];
 
   constructor(private g: Game) {
+    this.diary = new DiaryPanel(g, () => this.render());
+    this.account = new AccountPanel(g, () => this.render());
     document.body.append(this.root);
     this.root.append(this.labels, this.tl, this.tr, this.tracker, this.feed, this.prompt, this.dock, this.panelEl, this.card, this.flash, this.title);
     this.root.append(this.touchActions, this.tourEl);
@@ -132,6 +122,12 @@ export class UI {
     this.buildDock();
     this.buildTitle();
     g.bus.on('toast', ({ text, kind }) => this.toast(text, kind ?? 'info'));
+    g.bus.on('diary:nudge', ({ text }) => {
+      const el = h('div', { class: 'toast diary-nudge' }, h('p', {}, text), h('div', { class: 'acts' }, btn('📔 Write', () => { el.remove(); this.open('diary'); }, 'small primary'), btn('Later', () => el.remove(), 'small ghost')));
+      this.feed.prepend(el);
+      setTimeout(() => el.classList.add('out'), 14000);
+      setTimeout(() => el.remove(), 14600);
+    });
     g.bus.on('message:received', ({ npcId, text }) => this.notify(npcId, text));
     g.bus.on('region:entered', ({ regionId, first }) => this.titleCard(REGION_BY_ID[regionId as RegionId], first));
     for (const e of ['quest:started', 'quest:progress', 'quest:completed', 'item:gained', 'item:crafted'] as const) g.bus.on(e, () => this.refreshTracker());
@@ -160,7 +156,7 @@ export class UI {
     if (i.hit('p') && !this.modal) this.g.takePhoto();
     if (i.hit('t') && !this.modal) this.g.setTimeOfDay(nextTime(this.g.st.minutes));
     if (i.hit('o') && !this.modal) this.setTrackerHidden(!this.trackerHidden);
-    const keys: Array<[string, Panel]> = [['c', 'wardrobe'], ['i', 'bag'], ['j', 'journal'], ['m', 'map'], ['n', 'messages'], ['v', 'vehicles'], ['h', 'help'], ['l', 'homes'], ['k', 'care'], ['u', 'work'], ['y', 'finder']];
+    const keys: Array<[string, Panel]> = [['c', 'wardrobe'], ['i', 'bag'], ['j', 'journal'], ['m', 'map'], ['n', 'messages'], ['v', 'vehicles'], ['h', 'help'], ['l', 'homes'], ['k', 'care'], ['u', 'work'], ['y', 'finder'], ['q', 'diary']];
     for (const [k, p] of keys) if (i.hit(k)) return this.toggle(p);
     if (i.hit('b')) {
       if (this.panel === 'build') return this.closePanel();
@@ -603,7 +599,7 @@ export class UI {
   }
 
   private buildDock(): void {
-    const items: Array<[Panel, string, string]> = [['wardrobe', '👗', 'Dressing room (C)'], ['bag', '🎒', 'Bag & crafts (I)'], ['journal', '📖', 'Journal (J)'], ['map', '🗺️', 'Map (M)'], ['messages', '💌', 'Messages (N)'], ['vehicles', '🚐', 'Travel (V)'], ['homes', '🏡', 'Homes & land (L)'], ['care', '🤲', 'Care & sponsorship (K)'], ['finder', '🔎', 'People finder (Y)'], ['work', '💼', 'Work & services (U)'], ['guidebook', '📜', 'Guidebook'], ['help', '❔', 'Help (H)']];
+    const items: Array<[Panel, string, string]> = [['wardrobe', '👗', 'Dressing room (C)'], ['bag', '🎒', 'Bag & crafts (I)'], ['journal', '📖', 'Journal (J)'], ['map', '🗺️', 'Map (M)'], ['messages', '💌', 'Messages (N)'], ['vehicles', '🚐', 'Travel (V)'], ['homes', '🏡', 'Homes & land (L)'], ['care', '🤲', 'Care & sponsorship (K)'], ['finder', '🔎', 'People finder (Y)'], ['work', '💼', 'Work & services (U)'], ['guidebook', '📜', 'Guidebook'], ['diary', '📔', 'My diary (Q)'], ['account', '👤', 'Sign in · players'], ['help', '❔', 'Help (H)']];
     for (const [p, icon, label] of items) {
       const b = btn(icon, () => this.toggle(p), 'dock-btn');
       b.dataset.p = p ?? '';
@@ -709,6 +705,8 @@ export class UI {
     if (this.farmNote) body.append(h('p', { class: 'story' }, this.farmNote));
   }
 
+  private diary!: DiaryPanel;
+  private account!: AccountPanel;
   private houseNote = '';
   openHouse(_d: unknown): void {
     this.houseNote = '';
@@ -754,7 +752,7 @@ export class UI {
 
   render(): void {
     const body = h('div', { class: 'body' });
-    const titles: Record<string, string> = { guidebook: 'Guidebook', wardrobe: 'Dressing room', bag: 'Bag & Crafts', journal: 'Journal', map: 'The World', messages: 'Messages', vehicles: 'Ways to Travel', dialogue: '', animal: '', build: 'Build', van: 'Inside Safar', house: this.g.houseTitle(), farm: 'Farm bed', market: 'Market stall', help: 'How to play', care: 'Care & sponsorship', institute: this.instituteTitle(), field: this.fieldTitle(), work: `Work in ${this.g.region.name}`, finder: 'People finder', harbour: `The harbour of ${REGION_BY_ID[this.harbourLand]?.name ?? ''}`, bus: `Bus stop · ${this.busStop ? REGION_BY_ID[this.busStop.land].name : ''}`, tram: `Tram stop · ${this.tramStop ? `${this.tramStop.name}, ${REGION_BY_ID[this.tramStop.land].name}` : ''}`, air: 'Air taxi · the Sky Isles', homes: 'Homes & Land', houses: 'Build a house', property: 'Land for sale' };
+    const titles: Record<string, string> = { guidebook: 'Guidebook', wardrobe: 'Dressing room', bag: 'Bag & Crafts', journal: 'Journal', map: 'The World', messages: 'Messages', vehicles: 'Ways to Travel', dialogue: '', animal: '', build: 'Build', van: 'Inside Safar', house: this.g.houseTitle(), farm: 'Farm bed', market: 'Market stall', help: 'How to play', care: 'Care & sponsorship', institute: this.instituteTitle(), field: this.fieldTitle(), work: `Work in ${this.g.region.name}`, finder: 'People finder', harbour: `The harbour of ${REGION_BY_ID[this.harbourLand]?.name ?? ''}`, bus: `Bus stop · ${this.busStop ? REGION_BY_ID[this.busStop.land].name : ''}`, tram: `Tram stop · ${this.tramStop ? `${this.tramStop.name}, ${REGION_BY_ID[this.tramStop.land].name}` : ''}`, air: 'Air taxi · the Sky Isles', homes: 'Homes & Land', houses: 'Build a house', property: 'Land for sale', diary: 'My Diary', account: this.g.player ? `👤 ${this.g.player}` : 'Sign in' };
     const head = this.panel === 'van'
       ? h('header', {}, h('h2', {}, titles.van),
         h('span', { class: 'head-acts' },
@@ -794,6 +792,8 @@ export class UI {
       case 'work': this.workPanel(body); break;
       case 'finder': this.finderPanel(body); break;
       case 'property': this.property(body); break;
+      case 'diary': this.diary.render(body); break;
+      case 'account': this.account.render(body); break;
       default: return this.closePanel();
     }
     this.panelEl.replaceChildren(head, body);
@@ -1922,7 +1922,7 @@ export class UI {
     const rows: Array<[string, string]> = [
       ['WASD / arrows', 'Walk · steer'], ['Drag · wheel', 'Look around · zoom'], ['Space', 'Jump · rise (flying, unicorn, plane climb)'], ['Shift', 'Run · descend · boost'],
       ['F', 'Cape of light — fly together'], ['T', 'Dawn · day · dusk · night'], ['O', 'Hide or show the objective panel'], ['E', 'Talk · gather · befriend · light lanterns'], ['V', 'Choose how to travel'], ['C', 'Dressing room for both'], ['I', 'Bag, skills and crafting'],
-      ['J', 'Journal'], ['G', 'Follow another journey'], ['L', 'Homes & land for sale'], ['M', 'Map and travel to known lands'], ['N', 'Messages from friends'], ['B', 'Build on your land'], ['Esc', 'Close'],
+      ['J', 'Journal'], ['G', 'Follow another journey'], ['L', 'Homes & land for sale'], ['M', 'Map and travel to known lands'], ['N', 'Messages from friends'], ['B', 'Build on your land'], ['Q', 'Your diary'], ['Esc', 'Close'],
     ];
     body.append(h('table', { class: 'keys' }, ...rows.map(([k, v]) => h('tr', {}, h('td', {}, h('kbd', {}, k)), h('td', {}, v)))));
     body.append(
