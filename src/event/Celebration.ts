@@ -29,7 +29,7 @@ export class Celebration {
     g.scene.add(this.castle.group);
     g.world.addColliders(this.castle.colliders);
     this.festivities = new Festivities(this.castle.y);
-    g.scene.add(this.festivities.group, this.chariot.root);
+    g.scene.add(this.festivities.group, this.festivities.lightGroup, this.chariot.root);
     this.chariot.root.visible = false;
     if (stageOf(g.st) === 'done') {
       this.festivities.showCrowd();

@@ -56,6 +56,21 @@ export class World {
   private lampCache: Lamp[] | null = null;
   private smokeCache: THREE.Vector3[] | null = null;
   onRegionUnloaded?: (r: RegionInstance) => void;
+  /**
+   * Compile a new piece's shaders off the main thread before it is shown (renderer.compileAsync).
+   * Set by the game; without it, pieces show at once.
+   */
+  compile?: (o: THREE.Object3D) => Promise<unknown>;
+
+  /** Add a newly built piece, shown once its shaders are ready (no stall on first sight). */
+  private reveal(o: THREE.Object3D): void {
+    this.group.add(o);
+    if (!this.compile) return;
+    o.visible = false;
+    const show = () => { o.visible = true; };
+    this.compile(o).then(show, show);
+    setTimeout(show, 4000);
+  }
 
   constructor() {
     patternGround(this.terrainMat);
@@ -101,7 +116,7 @@ export class World {
     if (gm) grp.add(gm);
     const wm = water.build(this.builtWater);
     if (wm) { wm.renderOrder = 1; grp.add(wm); }
-    this.group.add(grp);
+    this.reveal(grp);
     for (const col of out.colliders) this.landmarkColliders.push({ x: c.x + col.x, z: c.z + col.z, r: col.r, h: col.h, y0: col.y0 });
     for (const p of out.platforms) addPlatform({ x: c.x + p.x, z: c.z + p.z, r: p.r, y: p.y });
     this.landmarkDoors.push(landmarkDoor(r.id, c, out.colliders));
@@ -186,7 +201,7 @@ export class World {
         const inst = buildRegion(next, this.solid, this.glow, this.builtWater);
         this.regions.set(next.id, inst);
         this.lampCache = this.smokeCache = null;
-        this.group.add(inst.group);
+        this.reveal(inst.group);
         // Foam round the land's lakes, ponds and river.
         const fg = shoreGeometry(next.id, WATER_Y);
         if (fg) { const fm = new THREE.Mesh(fg, this.foamMat); fm.renderOrder = 1; this.foams.set(next.id, fm); this.group.add(fm); }

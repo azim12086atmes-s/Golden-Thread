@@ -16,6 +16,7 @@ export interface GameEvents {
   'message:received': { npcId: string; text: string };
   'toast': { text: string; kind?: 'info' | 'reward' | 'story' };
   'diary:nudge': { text: string };
+  'world:ready': Record<string, never>;
   'coins:changed': { coins: number };
   'outfit:changed': { who: 'girl' | 'boy' };
 }

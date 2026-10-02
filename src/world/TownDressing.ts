@@ -10,7 +10,7 @@ import { surfaceAt } from './terrain';
 /**
  * Dresses every town in its own glamour: the land's artifacts round the plaza and along the
  * avenues, lantern strings across the streets in the land's own colours, and warm light that
- * rises at dusk. Built once per town when it streams in (two merged meshes and four lights).
+ * rises at dusk. Built once per town when it streams in (two merged meshes; four lamp lights, lit from a fixed pool).
  */
 
 /** Where artifacts stand: just outside the plaza, in the four quarters between the avenues. */
@@ -30,10 +30,24 @@ export function artifactSpots(n: number): Array<{ x: number; z: number; face: nu
 /** Lantern strings across the avenues (local z along the avenue, beyond the market street). */
 export const STRING_AT = [110, 150, 190];
 
-export class TownDressing {
-  private towns = new Map<string, { group: THREE.Group; lights: THREE.PointLight[] }>();
+/**
+ * How many town lights are ever in the scene. A fixed pool, moved to the nearest towns' lamps:
+ * changing the number of lights in three.js recompiles every lit material (a stall each time a
+ * land loaded or unloaded), so the count never changes.
+ */
+export const TOWN_LIGHT_POOL = 6;
 
-  constructor(private scene: THREE.Scene, private solid: THREE.Material, private glowMat: THREE.Material, private waterMat?: THREE.Material) {}
+export class TownDressing {
+  private towns = new Map<string, { group: THREE.Group; lights: Array<{ pos: THREE.Vector3; color: string }> }>();
+  private pool: THREE.PointLight[] = [];
+
+  constructor(private scene: THREE.Scene, private solid: THREE.Material, private glowMat: THREE.Material, private waterMat?: THREE.Material) {
+    for (let i = 0; i < TOWN_LIGHT_POOL; i++) {
+      const l = new THREE.PointLight('#ffd9a0', 0, 60, 1.6);
+      this.pool.push(l);
+      scene.add(l);
+    }
+  }
 
   onRegionLoaded(inst: RegionInstance): void {
     const id = inst.spec.id;
@@ -73,13 +87,8 @@ export class TownDressing {
     const wm = water && this.waterMat ? water.build(this.waterMat) : null;
     if (wm) { wm.renderOrder = 1; group.add(wm); }
     // Warm light over the plaza and the market that rises at dusk.
-    const lights: THREE.PointLight[] = [];
-    for (const [x, z, i] of [[0, 30, 0], [0, -30, 1], [30, 0, 2], [0, 80, 0]] as const) {
-      const l = new THREE.PointLight(light(i), 0, 60, 1.6);
-      l.position.set(c.x + x, H(x, z) + 9, c.z + z);
-      lights.push(l);
-      group.add(l);
-    }
+    const lights: Array<{ pos: THREE.Vector3; color: string }> = [];
+    for (const [x, z, i] of [[0, 30, 0], [0, -30, 1], [30, 0, 2], [0, 80, 0]] as const) lights.push({ pos: new THREE.Vector3(c.x + x, H(x, z) + 9, c.z + z), color: light(i) });
     this.scene.add(group);
     this.towns.set(id, { group, lights });
   }
@@ -92,8 +101,17 @@ export class TownDressing {
     this.towns.delete(inst.spec.id);
   }
 
-  update(night: number): void {
-    for (const t of this.towns.values()) for (const l of t.lights) l.intensity = night * 55;
+  /** The pool's lights go to the town lamps nearest `focus`, lit by the night. */
+  update(night: number, focus?: THREE.Vector3): void {
+    const all = [...this.towns.values()].flatMap((t) => t.lights);
+    if (focus) all.sort((a, b) => a.pos.distanceToSquared(focus) - b.pos.distanceToSquared(focus));
+    this.pool.forEach((l, i) => {
+      const spec = all[i];
+      if (!spec) { l.intensity = 0; return; }
+      l.position.copy(spec.pos);
+      l.color.set(spec.color);
+      l.intensity = night * 55;
+    });
   }
 
   loaded(id: RegionId): boolean {

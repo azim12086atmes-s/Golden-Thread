@@ -565,6 +565,10 @@ export class UI {
       this.g.start(fresh ? { girl: girl.value.trim() || 'Syeda Fathima', boy: boy.value.trim() || 'Mohammed Abdul Azim' } : undefined);
       this.refreshTracker();
     };
+    // Until the world's shaders are ready (Game.warmUp) the way in waits, so it opens smoothly.
+    const label = fresh ? 'Begin the journey' : 'Continue the journey';
+    const begin = btn('✨ Preparing the world…', go, 'primary', true);
+    this.g.bus.on('world:ready', () => { begin.disabled = false; begin.textContent = label; });
     this.title.append(
       h('div', { class: 'inner' },
         h('div', { class: 'eyebrow' }, 'A journey for two'),
@@ -572,7 +576,7 @@ export class UI {
         h('p', {}, 'Travel the world together. Help whoever you meet. Light the lanterns of twenty lands.'),
         fresh ? h('div', { class: 'names-in' }, h('label', {}, 'Her', girl), h('span', { class: 'gold' }, '✦'), h('label', {}, 'His', boy)) : h('p', { class: 'dim' }, `${st.names.girl} and ${st.names.boy} · Day ${dayOf(st.minutes)} · ${st.lanterns.length} lanterns lit`),
         h('div', { class: 'acts' },
-          btn(fresh ? 'Begin the journey' : 'Continue the journey', go, 'primary'),
+          begin,
           fresh ? null : btn('Start anew', () => { if (confirm('Start a new journey? This journey will be forgotten.')) this.g.newJourney(); }, 'ghost'),
         ),
         h('small', { class: 'dim' }, 'WASD move · drag to look · E interact · F fly · V travel · C wardrobe · H help'),

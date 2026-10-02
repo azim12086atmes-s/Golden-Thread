@@ -81,6 +81,11 @@ const PARTY_HAIR = ['#2a1f1a', '#4a3226', '#6b4a2a', '#1f1a1a', '#8a6a4a', '#3a2
 
 export class Festivities {
   readonly group = new THREE.Group();
+  /**
+   * Its lights live outside `group`, always in the scene (dark when it is over): hiding lights
+   * changes the scene's light count, which recompiles every lit material — a stall.
+   */
+  readonly lightGroup = new THREE.Group();
   level = 0;
   private y: number;
   readonly centre: THREE.Vector3;
@@ -198,7 +203,7 @@ export class Festivities {
       const l = new THREE.PointLight(col, 0, dist, 1.6);
       l.position.set(this.centre.x + dx, groundY + dy, this.centre.z + dz);
       this.lights.push(l);
-      this.group.add(l);
+      this.lightGroup.add(l);
     }
     // Unicorns wandering the flower meadow.
     for (let i = 0; i < 4; i++) {
@@ -299,7 +304,7 @@ export class Festivities {
 
   update(dt: number, t: number, night: number, focus: THREE.Vector3): void {
     this.group.visible = this.level > 0.01;
-    if (!this.group.visible) return;
+    if (!this.group.visible) { for (const l of this.lights) l.intensity = 0; return; }
     const L = this.level;
     for (const m of [this.petals, this.flies, this.dust]) m.points.material.opacity = L;
     this.air.level = L;

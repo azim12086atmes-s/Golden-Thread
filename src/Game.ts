@@ -320,6 +320,22 @@ export class Game {
     addEventListener('beforeunload', () => this.save());
     try { this.setQuality(localStorage.getItem('golden-thread/quality') === 'low' ? 'low' : 'high'); } catch { this.resize(); }
     this.renderer.setAnimationLoop(() => this.frame());
+    this.warmUp();
+  }
+
+  /**
+   * Shaders are compiled before the world is first drawn, in parallel and off the main thread
+   * where the browser allows (renderer.compileAsync), instead of freezing the first frames; new
+   * lands and monuments are compiled the same way before they are shown.
+   */
+  private ready = false;
+  private async warmUp(): Promise<void> {
+    const wait = (ms: number) => new Promise((r) => setTimeout(r, ms));
+    for (let i = 0; i < 30 && !this.world.loadedRegions().length; i++) await wait(100);
+    try { await Promise.race([this.renderer.compileAsync(this.scene, this.camera), wait(15000)]); } catch { /* draw anyway */ }
+    this.ready = true;
+    this.world.compile = (o) => this.renderer.compileAsync(o, this.camera, this.scene);
+    this.bus.emit('world:ready', {});
   }
 
   resize(): void {
@@ -517,7 +533,7 @@ export class Game {
     this.dragons.update(this.t, this.camera, (land) => this.world.isLoaded(land));
     this.plotsView.update(dt, this.t, this.sky.night, this.housing.plotAt(this.trav.gPos.x, this.trav.gPos.z)?.id ?? null, this.camera.position);
     this.townsfolk.update(dt, this.t, this.trav.gPos, this.st.errands);
-    this.dressing.update(this.sky.night);
+    this.dressing.update(this.sky.night, this.trav.gPos);
     this.animals.update(dt, this.t, this.trav.gPos, hourOf(this.st.minutes));
     this.animateNodes();
     if (this.housingDirty) {
@@ -554,7 +570,7 @@ export class Game {
     this.guide.update(dt, this.t);
     const view = this.cutscene?.view;
     if (view) this.renderer.render(view.scene, view.camera);
-    else this.composer.render();
+    else if (this.ready) this.composer.render();
     this.ui.update(dt);
     this.input.endFrame();
   }
