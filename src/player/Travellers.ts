@@ -199,6 +199,8 @@ export class Travellers {
     this.grounded = true;
     if (this.mode !== 'walk' && !this.mounted) this.setMode('walk');
     this.dropParkedDragon();
+    // The land's monument stands before they arrive (its terraces are walked on).
+    this.world.ensureLandmarksNear(x, z);
     this.gPos.set(x, surfaceAt(x, z, 1e9), z);
     this.world.resolve(this.gPos, 0.5);
     this.bPos.set(x + 1.95, surfaceAt(x + 1.95, z, 1e9), z);

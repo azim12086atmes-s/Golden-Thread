@@ -66,29 +66,45 @@ export class World {
     this.buildLandmarks();
   }
 
+  /**
+   * Each land's monument is built when you come near that land, not all twenty at the start (they
+   * were most of the loading time). Their places are known from the start.
+   */
+  private builtLandmarks = new Set<string>();
   private buildLandmarks(): void {
+    for (const r of REGIONS) { const c = regionCenter(r); this.landmarkPos.set(r.id, new THREE.Vector3(c.x, 0, c.z)); }
+  }
+
+  /** Build the monuments of the lands within `radius` of a point now (on arrival, before anything stands on them). */
+  ensureLandmarksNear(x: number, z: number, radius = 300): void {
     for (const r of REGIONS) {
       const c = regionCenter(r);
-      const g = new GeoBuilder(), glow = new GeoBuilder(), water = new GeoBuilder();
-      g.cards = [];
-      g.surfaces = surfacesByColour(r);
-      const out = buildLandmark({ g, glow, water, rng: new Rng(`landmark:${r.id}`), s: r });
-      const grp = new THREE.Group();
-      grp.position.set(c.x, 0, c.z);
-      const leaves = g.buildLeaves(blobMaterial()), cards = leafCardMesh(g.cards);
-      if (leaves) grp.add(leaves);
-      if (cards) grp.add(cards);
-      const m = g.build(this.solid), gm = glow.build(this.glow);
-      if (m) { m.castShadow = true; m.receiveShadow = true; grp.add(m); }
-      if (gm) grp.add(gm);
-      const wm = water.build(this.builtWater);
-      if (wm) { wm.renderOrder = 1; grp.add(wm); }
-      this.group.add(grp);
-      for (const col of out.colliders) this.landmarkColliders.push({ x: c.x + col.x, z: c.z + col.z, r: col.r, h: col.h, y0: col.y0 });
-      for (const p of out.platforms) addPlatform({ x: c.x + p.x, z: c.z + p.z, r: p.r, y: p.y });
-      this.landmarkPos.set(r.id, new THREE.Vector3(c.x, 0, c.z));
-      this.landmarkDoors.push(landmarkDoor(r.id, c, out.colliders));
+      if (Math.max(Math.abs(x - c.x), Math.abs(z - c.z)) - REGION_SIZE / 2 < radius) this.buildLandmark(r);
     }
+  }
+
+  private buildLandmark(r: RegionSpec): void {
+    if (this.builtLandmarks.has(r.id)) return;
+    this.builtLandmarks.add(r.id);
+    const c = regionCenter(r);
+    const g = new GeoBuilder(), glow = new GeoBuilder(), water = new GeoBuilder();
+    g.cards = [];
+    g.surfaces = surfacesByColour(r);
+    const out = buildLandmark({ g, glow, water, rng: new Rng(`landmark:${r.id}`), s: r });
+    const grp = new THREE.Group();
+    grp.position.set(c.x, 0, c.z);
+    const leaves = g.buildLeaves(blobMaterial()), cards = leafCardMesh(g.cards);
+    if (leaves) grp.add(leaves);
+    if (cards) grp.add(cards);
+    const m = g.build(this.solid), gm = glow.build(this.glow);
+    if (m) { m.castShadow = true; m.receiveShadow = true; grp.add(m); }
+    if (gm) grp.add(gm);
+    const wm = water.build(this.builtWater);
+    if (wm) { wm.renderOrder = 1; grp.add(wm); }
+    this.group.add(grp);
+    for (const col of out.colliders) this.landmarkColliders.push({ x: c.x + col.x, z: c.z + col.z, r: col.r, h: col.h, y0: col.y0 });
+    for (const p of out.platforms) addPlatform({ x: c.x + p.x, z: c.z + p.z, r: p.r, y: p.y });
+    this.landmarkDoors.push(landmarkDoor(r.id, c, out.colliders));
   }
 
   /** Stream around a point. Call every frame; work is spread across frames. */
@@ -139,6 +155,11 @@ export class World {
     }
 
     this.meadow.update(focus, terrainHeight(focus.x, focus.z));
+
+    // Monuments: the land you are in at once, the next lands' one a frame as you near them.
+    this.ensureLandmarksNear(focus.x, focus.z, 60);
+    const next = REGIONS.filter((r) => !this.builtLandmarks.has(r.id) && dist(focus, r) < 1100).sort((a, b) => dist(focus, a) - dist(focus, b))[0];
+    if (next) this.buildLandmark(next);
 
     // Regions: load when near, unload with hysteresis. One build per frame.
     for (const r of REGIONS) {

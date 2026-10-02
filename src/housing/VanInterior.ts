@@ -1,4 +1,5 @@
 import * as THREE from 'three';
+import { Thread } from '../characters/Thread';
 import { CharacterModel, DIMS, HERO_SCALE } from '../characters/CharacterModel';
 import type { Outfit } from '../characters/modesty';
 import type { GameState, VanSlot } from '../core/state';
@@ -80,6 +81,11 @@ export const VAN_BUNKS = BUNKS;
 export const VAN_PET_BEDS = PET_BEDS;
 
 export class VanInterior {
+  /** The golden thread between her hand and his (owner: "even indoors let the thread be connected to them"). */
+  readonly thread = new Thread();
+  private threadLight = 0;
+  private threadA = new THREE.Vector3();
+  private threadB = new THREE.Vector3();
   readonly scene = new THREE.Scene();
   readonly camera = new THREE.PerspectiveCamera(58, 1, 0.05, 60);
   private room = new THREE.Group();
@@ -110,6 +116,8 @@ export class VanInterior {
     this.boy.root.position.set(BENCH_SEATS[1][0], 0.5 - DIMS.hip * HERO_SCALE.boy, BENCH_SEATS[1][2]);
     this.boy.root.rotation.y = -Math.PI / 2;
     this.scene.add(this.girl.root, this.boy.root);
+    // The golden thread joins them indoors too, wherever they are.
+    this.scene.add(this.thread.group);
     this.camera.position.set(0, CAM_Y, CAM_Z);
     this.camera.lookAt(0, VIEW_Y, -1);
     this.rebuild();
@@ -337,10 +345,25 @@ export class VanInterior {
     this.camera.updateProjectionMatrix();
   }
 
+  /** Tie the thread (and the bands round their wrists) as it is outside; its glow is their shared light. */
+  setThread(tied: boolean, light: number): void {
+    this.girl.setBand(tied); this.boy.setBand(tied);
+    this.threadLight = light;
+  }
+
+  /** Draw the thread from her hand to his (call after the figures are posed). */
+  private drawThread(dt: number): void {
+    this.girl.root.updateMatrixWorld(true); this.boy.root.updateMatrixWorld(true);
+    this.girl.handAnchor.getWorldPosition(this.threadA);
+    this.boy.handAnchor.getWorldPosition(this.threadB);
+    this.thread.update(this.threadA, this.threadB, 0, this.threadLight, this.t, dt);
+  }
+
   update(dt: number): void {
     this.t += dt;
     this.girl.update(dt, { speed: 0, airborne: false, riding: true, t: this.t });
     this.boy.update(dt, { speed: 0, airborne: false, riding: true, t: this.t + 1 });
+    this.drawThread(dt);
     for (const k of this.kids) k.m.update(dt, { speed: 0, airborne: false, riding: true, t: this.t + k.ph });
     for (const p of this.pets) p.m.update(dt, 0, this.t + p.ph);
     // Stars and lanterns twinkle.

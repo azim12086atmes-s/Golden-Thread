@@ -1,4 +1,5 @@
 import * as THREE from 'three';
+import { Thread } from '../characters/Thread';
 import { enforceGap, followStep } from '../characters/follow';
 import type { Input } from '../core/Input';
 import { Blocks, INDOOR_GAP, INDOOR_PACE, atDoor, entryPoints, folkSlots, folkStep, freeNear, indoorCamera, keepInside, nearSeats, slide, stepGirl, walkArea, yawOf, type Area, type Folk, type P2, type Room } from './roomWalk';
@@ -151,6 +152,11 @@ export function doorLabel(door: Door): string {
 }
 
 export class HouseInterior {
+  /** The golden thread between her hand and his (owner: "even indoors let the thread be connected to them"). */
+  readonly thread = new Thread();
+  private threadLight = 0;
+  private threadA = new THREE.Vector3();
+  private threadB = new THREE.Vector3();
   readonly scene = new THREE.Scene();
   readonly camera = new THREE.PerspectiveCamera(55, 1, 0.05, 80);
   private room = new THREE.Group();
@@ -193,6 +199,8 @@ export class HouseInterior {
     // Wings and a jetpack are left at the door: rooms are too small for them.
     this.girl.hideBack(); this.boy.hideBack();
     this.scene.add(this.girl.root, this.boy.root);
+    // The golden thread joins them indoors too, wherever they are.
+    this.scene.add(this.thread.group);
     this.mote = new THREE.Mesh(new THREE.OctahedronGeometry(0.14), new THREE.MeshBasicMaterial({ color: new THREE.Color('#fff2a8').multiplyScalar(1.6), toneMapped: false }));
     this.scene.add(this.mote);
   }
@@ -618,6 +626,20 @@ export class HouseInterior {
     this.mote.visible = !v;
   }
 
+  /** Tie the thread (and the bands round their wrists) as it is outside; its glow is their shared light. */
+  setThread(tied: boolean, light: number): void {
+    this.girl.setBand(tied); this.boy.setBand(tied);
+    this.threadLight = light;
+  }
+
+  /** Draw the thread from her hand to his (call after the figures are posed). */
+  private drawThread(dt: number): void {
+    this.girl.root.updateMatrixWorld(true); this.boy.root.updateMatrixWorld(true);
+    this.girl.handAnchor.getWorldPosition(this.threadA);
+    this.boy.handAnchor.getWorldPosition(this.threadB);
+    this.thread.update(this.threadA, this.threadB, 0, this.threadLight, this.t, dt);
+  }
+
   update(dt: number, input?: Input): void {
     this.t += dt;
     if (this.walking && input) this.walk(dt, input);
@@ -633,6 +655,7 @@ export class HouseInterior {
       this.host.offerLift = Math.sin(this.t * 3) * 0.25;
       this.host.update(dt, { speed: 0, airborne: false, riding: false, t: this.t + 2 });
     }
+    this.drawThread(dt);
     this.mote.rotation.y += dt * 1.5;
     this.mote.position.y = 1.2 + Math.sin(this.t * 2) * 0.1;
     if (this.walking && input) return;

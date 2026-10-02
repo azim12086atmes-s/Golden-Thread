@@ -1209,6 +1209,7 @@ export class Game {
     // Her parents or his first, if they live here, then the people in your care.
     const residents = plot ? [...parentsAsResidents(this.st, plot), ...residentsOf(this.st, plot).map((r) => PERSON_BY_ID[r.id]).filter((p) => !!p)] : [];
     this.house.setCompanions(this.caravan.indoorFolk());
+    this.house.setThread(this.st.flags.includes(THREAD_FLAG), this.st.light);
     this.house.enter(d, this.sky.night, gathered, key ? this.homeDecor(key) : undefined, residents);
   }
 
@@ -1336,6 +1337,7 @@ export class Game {
     this.inVan = true;
     this.target = null;
     this.van.rebuild();
+    this.van.setThread(this.st.flags.includes(THREAD_FLAG), this.st.light);
     this.ui.openVan();
   }
 
