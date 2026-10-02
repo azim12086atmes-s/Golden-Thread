@@ -1,8 +1,8 @@
 import * as THREE from 'three';
 import { describe, expect, it } from 'vitest';
 import { isAllowedPart } from '../src/characters/anatomy';
-import { CharacterModel, HERO_SCALE } from '../src/characters/CharacterModel';
-import { BODY_RADIUS, MIN_GAP, aheadOf, belowWings, clearBelow, followStep, wingRoom } from '../src/characters/follow';
+import { CharacterModel, DIMS, EYE_LINE, HERO_SCALE, SHOULDER_TOP } from '../src/characters/CharacterModel';
+import { BODY_RADIUS, MIN_GAP, aheadOf, besideWings, followStep, wingRoom } from '../src/characters/follow';
 import { JET_REACH } from '../src/characters/jetpack';
 import { OUTFITS } from '../src/characters/outfits';
 import { HINGE_Z, MAX_BACK, MIN_BACK, WING_FLOOR, WING_H, WING_REACH, WING_W, bendPoint, wingAngle, type Beat } from '../src/characters/wings';
@@ -119,17 +119,23 @@ describe('the two wings never collide, and in flight he flies close below them',
       expect(bendPoint(WING_W, -1.26, 1, b)[1] - -1.26).toBeGreaterThan(-WING_FLOOR);
     }
   });
-  it('in flight he settles close beside her, wholly below the wings, never nearer than MIN_GAP', () => {
-    const floor = WING_FLOOR * HERO_SCALE.girl, height = 2.0 * HERO_SCALE.boy, st = belowWings(floor, height);
+  it('in flight he settles close beside her, his head just below her shoulder, a step ahead of the wings, never nearer than MIN_GAP', () => {
+    const shoulder = SHOULDER_TOP * HERO_SCALE.girl, head = (EYE_LINE + DIMS.headR) * HERO_SCALE.boy;
+    const st = besideWings(shoulder - head - 0.05);
     let b = { x: 6, y: 30, z: -4 };
     for (let i = 0; i < 600; i++) {
       const g = { x: 0, y: 30 + Math.sin(i * 0.02), z: i * 0.1 };
       b = followStep({ boy: b, girl: g, heading: 0, speed: 3, dt: 1 / 30, airborne: true, gap: MIN_GAP, stance: st }).pos;
+      // As the game does (Travellers.updateBoy): never rising above his place as she dips.
+      b = { ...b, y: Math.min(b.y, g.y + (st.up ?? 0)) };
       expect(Math.hypot(b.x - g.x, b.y - g.y, b.z - g.z)).toBeGreaterThanOrEqual(MIN_GAP - 1e-6);
       if (i > 300) {
-        expect(clearBelow(b, g, floor, height)).toBe(true);
-        expect(Math.hypot(b.x - g.x, b.z - g.z)).toBeLessThan(2.5); // near her, not far behind
-        // ...and a step ahead of her back, where the wings never reach.
+        // His head just under her shoulder: below it, and within a hand's breadth or so.
+        const top = b.y + head, sh = g.y + shoulder;
+        expect(top).toBeLessThanOrEqual(sh + 1e-6);
+        expect(top).toBeGreaterThan(sh - 0.35);
+        expect(Math.hypot(b.x - g.x, b.z - g.z)).toBeLessThan(2.0);
+        // ...ahead of her back, where her (upright) wings never reach, so they open fully.
         expect(wingRoom(b, g, 0, JET_REACH * HERO_SCALE.boy + 0.2, HINGE_Z * HERO_SCALE.girl, MIN_BACK)).toBe(Infinity);
       }
     }

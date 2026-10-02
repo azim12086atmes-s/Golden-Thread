@@ -318,12 +318,14 @@ const FRAG = /* glsl */ `
     if (c.a < 0.9) {
       // Glass: pink at her back, flowing outward through the rainbow — one colour, no patches.
       float r = length((vUv - vec2(0.0, ${ROOT_V.toFixed(3)})) * vec2(1.0, ${(WING_H / WING_W).toFixed(3)}));
-      // A broad blush of pink round her back, only then the rainbow, and a pink sheen over all of it.
-      float t = smoothstep(0.32, 1.65, r);
-      float h = mod(330.0 + 300.0 * t, 360.0) / 360.0;
+      // A broad blush of pink round her back (as wide as it was), then the rainbow in its order
+      // out to the edges — red, orange, yellow, green, blue, indigo, violet — with a faint pink sheen.
       vec3 pink = hsl(0.915, 0.95, 0.72);
-      col = mix(pink, hsl(h, 1.0, mix(0.64, 0.52, t)), smoothstep(0.2, 0.75, t));
-      col = mix(col, pink, 0.16) * c.r;
+      float k = clamp((r - 0.82) / 0.72, 0.0, 1.0);
+      float h = mix(0.0, 0.8, k);
+      vec3 bow = hsl(h, 1.0, mix(0.6, 0.55, k));
+      col = mix(pink, bow, smoothstep(0.62, 0.86, r));
+      col = mix(col, pink, 0.07) * c.r;
       // Glitter twinkling in the glass.
       vec2 cell = floor(vUv * vec2(70.0, 160.0));
       float g = hash(cell), tw = pow(max(0.0, sin(uTime * 2.6 + g * 40.0)), 18.0) * step(0.9, g);

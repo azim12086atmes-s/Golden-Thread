@@ -356,6 +356,10 @@ export class VanInterior {
     this.girl.root.updateMatrixWorld(true); this.boy.root.updateMatrixWorld(true);
     this.girl.handAnchor.getWorldPosition(this.threadA);
     this.boy.handAnchor.getWorldPosition(this.threadB);
+    // Seen from further and without bloom indoors, it is drawn thicker the further the camera is
+    // (a cave or a great hall), so it always shows joining them.
+    const far = this.camera.position.distanceTo(this.threadA.clone().add(this.threadB).multiplyScalar(0.5));
+    this.thread.width = Math.min(5, Math.max(2.2, far / 2.5));
     this.thread.update(this.threadA, this.threadB, 0, this.threadLight, this.t, dt);
   }
 

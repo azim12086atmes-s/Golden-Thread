@@ -1,9 +1,10 @@
 import { THREAD_FLAG } from '../story/ThreadScene';
 import * as THREE from 'three';
 import { CharacterModel, HERO_SCALE } from '../characters/CharacterModel';
-import { BODY_RADIUS, MIN_GAP, belowWings, clearBelow, enforceGap, followStep, wingRoom } from '../characters/follow';
+import { BODY_RADIUS, MIN_GAP, besideWings, clearBelow, enforceGap, followStep, wingRoom } from '../characters/follow';
 import type { Outfit } from '../characters/modesty';
 import { Thread } from '../characters/Thread';
+import { DIMS, EYE_LINE, SHOULDER_TOP } from '../characters/CharacterModel';
 import { MIN_BACK, WING_FLOOR } from '../characters/wings';
 import type { Input } from '../core/Input';
 import { clamp, damp } from '../core/rng';
@@ -382,6 +383,8 @@ export class Travellers {
   /** How far below her feet her wings reach, and his height (m). */
   private wingFloor(): number { return WING_FLOOR * this.girl.figureScale; }
   private boyHeight(): number { return 2.0 * this.boy.figureScale; }
+  /** How far below her feet his are in flight: the top of his head just under her shoulder. */
+  private flightDrop(): number { return SHOULDER_TOP * this.girl.figureScale - (EYE_LINE + DIMS.headR) * this.boy.figureScale - 0.05; }
 
   private updateBoy(dt: number): void {
     const def = VEHICLES[this.mode];
@@ -397,12 +400,9 @@ export class Travellers {
     // flies close by her, below the wings' lowest reach. Her wings fold whenever he is anywhere
     // else (walking round to his place as she turns, or kept up by the ground), so they never reach him.
     const wings = this.girl.hasWings && !this.mounted;
-    const under = belowWings(this.wingFloor(), this.boyHeight());
-    // Too near the ground to fly under her: beside her at her height, still a step ahead of the wings, until she climbs.
-    const room = this.gPos.y - surfaceAt(this.gPos.x, this.gPos.z, this.gPos.y + 2) > -(under.up ?? 0) + 0.5;
-    const stance = !wings ? undefined : this.mode === 'fly'
-      ? (room ? under : { forward: 0.35, side: 2.1, up: 0 })
-      : { forward: 0.35, side: 2.1 };
+    // In flight his head just below her shoulder, beside her and a step ahead of the wings.
+    const under = besideWings(this.flightDrop());
+    const stance = !wings ? undefined : this.mode === 'fly' ? under : { forward: 0.35, side: 2.1 };
     const out = followStep({
       boy: this.bPos, girl: this.gPos, heading: this.heading, speed: this.currentSpeed, dt, airborne,
       groundAt: (x, z) => this.mounted ? Math.max(surfaceAt(x, z, this.gPos.y + 2), WATER_Y) : surfaceAt(x, z, this.gPos.y + 2),
@@ -412,7 +412,7 @@ export class Travellers {
     this.bPos.set(out.pos.x, out.pos.y, out.pos.z);
     // Under her wings he keeps under them even as she dives (never lagging up into them), and
     // flying low below her, he never goes under the ground.
-    if (wings && this.mode === 'fly' && room) this.bPos.y = Math.min(this.bPos.y, this.gPos.y + (under.up ?? 0));
+    if (wings && this.mode === 'fly') this.bPos.y = Math.min(this.bPos.y, this.gPos.y + (under.up ?? 0));
     if (airborne) this.bPos.y = Math.max(this.bPos.y, surfaceAt(this.bPos.x, this.bPos.z, this.bPos.y + 2));
     this.world.resolve(this.bPos, this.mounted ? 0.9 : 0.35);
     // Collision can push him — the gap always wins.

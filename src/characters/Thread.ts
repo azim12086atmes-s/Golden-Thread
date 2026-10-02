@@ -8,6 +8,8 @@ import { IDEAL_GAP } from './follow';
  */
 export class Thread {
   readonly group = new THREE.Group();
+  /** How thick it is drawn (1 outside, where bloom makes it glow; thicker indoors, where the view is wider and there is no bloom). */
+  width = 1;
   private core: THREE.Mesh<THREE.TubeGeometry, THREE.MeshBasicMaterial>;
   private halo: THREE.Mesh<THREE.TubeGeometry, THREE.MeshBasicMaterial>;
   private motes: THREE.Points<THREE.BufferGeometry, THREE.PointsMaterial>;
@@ -49,8 +51,8 @@ export class Thread {
     this.core.geometry.dispose();
     this.halo.geometry.dispose();
     // A fine thread: a bright gold core inside a narrow warm glow.
-    this.core.geometry = new THREE.TubeGeometry(this.curve, segs, 0.011 + Math.min(0.006, light * 0.0006), 5);
-    this.halo.geometry = new THREE.TubeGeometry(this.curve, segs, 0.032 + Math.min(0.02, light * 0.002), 6);
+    this.core.geometry = new THREE.TubeGeometry(this.curve, segs, (0.011 + Math.min(0.006, light * 0.0006)) * this.width, 5);
+    this.halo.geometry = new THREE.TubeGeometry(this.curve, segs, (0.032 + Math.min(0.02, light * 0.002)) * this.width, 6);
 
     // Brighter with shared light, pulsing softly like a heartbeat.
     const pulse = 0.85 + 0.15 * Math.sin(t * 2.6) + 0.1 * Math.max(0, Math.sin(t * 5.2));

@@ -77,13 +77,13 @@ export function wingRoom(boy: V3, girl: V3, heading: number, own: number, plane:
 }
 
 /**
- * In flight with her wings on, he flies close beside her and below them (owner: "make the guy be
- * down near her so the wings do not touch him"): his head kept under the lowest any part of the
- * wings reaches (`floor` below her feet), whatever they do above him. `height` is his height.
+ * In flight with her wings on, he flies close beside her, his head just below her shoulder
+ * (owner: "make him fly even closer … bring him just below her shoulder"), a step ahead of her back:
+ * her wings stay upright in flight and never reach forward of it, so they never touch him.
+ * `up` is how far his feet are below hers.
  */
-export function belowWings(floor: number, height: number): Stance {
-  // Beside her and a step ahead of her back (the wings never reach forward of it), and below them.
-  return { forward: 0.35, side: 2.1, up: -(floor + height + 0.35) };
+export function besideWings(up: number): Stance {
+  return { forward: 0.6, side: 1.5, up };
 }
 
 /** Is he wholly below her wings (his head under the lowest they reach)? Then they open fully. */
