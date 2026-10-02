@@ -1,10 +1,10 @@
 import { THREAD_FLAG } from '../story/ThreadScene';
 import * as THREE from 'three';
 import { CharacterModel, HERO_SCALE } from '../characters/CharacterModel';
-import { BODY_RADIUS, MIN_GAP, enforceGap, followStep, wingRoom } from '../characters/follow';
+import { BODY_RADIUS, MIN_GAP, belowWings, clearBelow, enforceGap, followStep, wingRoom } from '../characters/follow';
 import type { Outfit } from '../characters/modesty';
 import { Thread } from '../characters/Thread';
-import { MIN_BACK } from '../characters/wings';
+import { MIN_BACK, WING_FLOOR } from '../characters/wings';
 import type { Input } from '../core/Input';
 import { clamp, damp } from '../core/rng';
 import type { GameState } from '../core/state';
@@ -377,6 +377,10 @@ export class Travellers {
     return g || b ? g + Math.max(b, BODY_RADIUS) + 0.2 : 0;
   }
 
+  /** How far below her feet her wings reach, and his height (m). */
+  private wingFloor(): number { return WING_FLOOR * this.girl.figureScale; }
+  private boyHeight(): number { return 2.0 * this.boy.figureScale; }
+
   private updateBoy(dt: number): void {
     const def = VEHICLES[this.mode];
     if (def.seats.length) {
@@ -387,13 +391,15 @@ export class Travellers {
     }
     const airborne = this.mode === 'fly' || !this.grounded;
     const px = this.bPos.x, pz = this.bPos.z;
-    // With her wings on he stands beside her, just clear of where they sweep back; in flight he keeps behind
-    // her, beyond their reach, a little to the side and below. Her wings fold whenever he is
-    // anywhere else (walking round to his place as she turns), so they never reach him.
+    // With her wings on he stands beside her, just clear of where they sweep back; in flight he
+    // flies close by her, below the wings' lowest reach. Her wings fold whenever he is anywhere
+    // else (walking round to his place as she turns, or kept up by the ground), so they never reach him.
     const wings = this.girl.hasWings && !this.mounted;
-    const far = this.backGap() + 0.45;
+    const under = belowWings(this.wingFloor(), this.boyHeight()), far = this.backGap() + 0.45;
+    // Too near the ground to fly under her: behind her, beyond the wings' reach, until she climbs.
+    const room = this.gPos.y - surfaceAt(this.gPos.x, this.gPos.z, this.gPos.y + 2) > -(under.up ?? 0) + 0.5;
     const stance = !wings ? undefined : this.mode === 'fly'
-      ? { forward: -far * 0.8, side: far * 0.6, up: -0.5 }
+      ? (room ? under : { forward: -far * 0.8, side: far * 0.6, up: -0.5 })
       : { forward: 0.35, side: 2.1 };
     const out = followStep({
       boy: this.bPos, girl: this.gPos, heading: this.heading, speed: this.currentSpeed, dt, airborne,
@@ -402,6 +408,10 @@ export class Travellers {
       stance,
     });
     this.bPos.set(out.pos.x, out.pos.y, out.pos.z);
+    // Under her wings he keeps under them even as she dives (never lagging up into them), and
+    // flying low below her, he never goes under the ground.
+    if (wings && this.mode === 'fly' && room) this.bPos.y = Math.min(this.bPos.y, this.gPos.y + (under.up ?? 0));
+    if (airborne) this.bPos.y = Math.max(this.bPos.y, surfaceAt(this.bPos.x, this.bPos.z, this.bPos.y + 2));
     this.world.resolve(this.bPos, this.mounted ? 0.9 : 0.35);
     // Collision can push him — the gap always wins.
     const gap = Math.max(this.mounted ? MOUNT_GAP : MIN_GAP, wings ? 0 : this.backGap());
@@ -424,6 +434,8 @@ export class Travellers {
     const her = this.mode === 'dragon' && this.vehicle ? this.girl.root.position : this.gPos;
     this.girl.setBackRoom(plane !== null && level
       ? wingRoom(this.bPos, her, this.heading, own, plane, MIN_BACK)
+      // In the air: wholly below them, they open fully; anywhere else they fold to the distance.
+      : plane !== null && clearBelow(this.bPos, her, this.wingFloor(), this.boyHeight()) ? Infinity
       : Math.hypot(her.x - this.bPos.x, her.z - this.bPos.z) - own);
     const def = VEHICLES[this.mode];
     const riding = def.seats.length > 0 || def.kind === 'mount';
@@ -514,7 +526,7 @@ export class Travellers {
     const target = this.gPos.clone().add(new THREE.Vector3(0, VEHICLES[this.mode].kind === 'ground' ? 2.2 : 1.5, 0));
     const cp = Math.cos(this.camPitch), sp = Math.sin(this.camPitch);
     // With her wings on, the camera stays back past their swept tips, so the glass never fills the view.
-    const dist = Math.max(this.camDist, this.girl.hasWings && !this.mounted ? this.girl.backReach() + 3 : 0);
+    const dist = Math.max(this.camDist, this.girl.hasWings && !this.mounted ? this.girl.backReach() + 4 : 0);
     const want = target.clone().add(new THREE.Vector3(-Math.sin(this.camYaw) * cp * dist, sp * dist, -Math.cos(this.camYaw) * cp * dist));
     const floor = surfaceAt(want.x, want.z, want.y) + 0.8;
     // Below the travellers the camera stops at the ground and tilts up instead, so turning the

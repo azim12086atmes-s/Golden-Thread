@@ -3,8 +3,8 @@ import * as THREE from 'three';
 /**
  * Her stained-glass butterfly wings (owner's brief, OWNER_REQUESTS_SPEC §6.2 and §12): a giant
  * swallowtail — great pointed forewings sweeping up above her, smaller scalloped hindwings below,
- * each ending in a long tail with a jewelled eyespot beside it — vast and expansive, five times her
- * height and nearly as broad, reaching up far above her and down to her feet. The glass is one flowing colour, not patches: pink in the middle at her back, turning
+ * each ending in a long tail with a jewelled eyespot beside it — vast and expansive, over six times her
+ * height and broad, reaching up far above her and down to her feet. The glass is one flowing colour, not patches: pink in the middle at her back, turning
  * outward through the rainbow to the edges. It is fragmented by thick black leading with gold in it,
  * and by curved veins sweeping out from the root. It shines, a light moves over it, glitter twinkles
  * in it, and glitter drifts off it as they beat. They spread wide and flutter softly, the stroke
@@ -18,14 +18,21 @@ import * as THREE from 'three';
 /** Her height on the unscaled body (floating head included). */
 const HER_HEIGHT = 1.78;
 /**
- * One wing: five times her height tall and nearly as broad (owner: "increase the wing size even
- * more and make it broader") — the forewing tall and vast, the hindwing vast and of middling height.
+ * One wing: over six times her height tall and 0.78 as broad (owner: "make the wings taller as they
+ * seem stretched … and even bigger") — the forewing tall and vast, the hindwing of middling height.
  */
-export const WING_H = 5 * HER_HEIGHT, WING_W = WING_H * 0.95;
+export const WING_H = 6.2 * HER_HEIGHT, WING_W = WING_H * 0.78;
 /** Across the pair, open flat. */
 export const WING_SPAN = 2 * WING_W;
 /** How far back the wings sweep from straight out sideways (radians): spread wide ... folded back. */
 export const MIN_BACK = 0.3, MAX_BACK = 1.35;
+/**
+ * The furthest back any part of a wing ever sweeps: short of straight back (π/2), so the two wings
+ * never cross behind her and never collide with each other (owner: "make the wings not collide").
+ */
+export const MAX_SWEEP = Math.PI / 2 - 0.12;
+/** The lowest any part of a wing reaches below her feet as it beats (model units, unscaled). */
+export const WING_FLOOR = 0.75;
 /** The root: one point set into her back (HINGE_Z, just inside its surface, under the clasp), at mid-back height (ROOT_Y). */
 export const HINGE_Z = -0.12, ROOT_Y = 1.2;
 /** Where the root is up the wing (0 = the tails' tips, 1 = the forewing's apex): the tails then just reach the ground. */
@@ -257,7 +264,7 @@ export function wingAngle(s: number, y: number, b: Beat): { th: number; ph: numb
   const ph = b.phase - LAG * s;
   const beat = Math.sin(ph + 0.35 * Math.sin(ph)) + b.flutter * Math.sin(3 * ph + 0.6);
   const th = b.mid - beat * b.amp + b.curl * s * s + 0.08 * s * Math.sin(b.time * 2.4 - s * 4 + y * 0.5);
-  return { th: Math.max(MIN_BACK, th), ph };
+  return { th: Math.min(MAX_SWEEP, Math.max(MIN_BACK, th)), ph };
 }
 
 export function bendPoint(x: number, y: number, side: number, b: Beat): [number, number, number] {
@@ -273,7 +280,7 @@ const BEND_GLSL = /* glsl */ `
     float ph = uPhase - ${LAG.toFixed(3)} * s;
     float beat = sin(ph + 0.35 * sin(ph)) + uFlutter * sin(3.0 * ph + 0.6);
     float th = uMid - beat * uAmp + uCurl * s * s + 0.08 * s * sin(uTime * 2.4 - s * 4.0 + y * 0.5);
-    wingTh = max(${MIN_BACK.toFixed(3)}, th);
+    wingTh = clamp(th, ${MIN_BACK.toFixed(3)}, ${MAX_SWEEP.toFixed(3)});
     float lift = uLift * sin(ph + 0.6) * s * s + 0.14 * s * sin(uTime * 1.9 - s * 3.0 + y * 0.7);
     return vec3(side * x * cos(wingTh), y + lift, -x * sin(wingTh));
   }

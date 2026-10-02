@@ -2,18 +2,18 @@ import * as THREE from 'three';
 import { describe, expect, it } from 'vitest';
 import { isAllowedPart } from '../src/characters/anatomy';
 import { CharacterModel, HERO_SCALE } from '../src/characters/CharacterModel';
-import { BODY_RADIUS, MIN_GAP, aheadOf, followStep, wingRoom } from '../src/characters/follow';
+import { BODY_RADIUS, MIN_GAP, aheadOf, belowWings, clearBelow, followStep, wingRoom } from '../src/characters/follow';
 import { JET_REACH } from '../src/characters/jetpack';
 import { OUTFITS } from '../src/characters/outfits';
-import { HINGE_Z, MAX_BACK, MIN_BACK, WING_H, WING_REACH, WING_W, bendPoint, wingAngle, type Beat } from '../src/characters/wings';
+import { HINGE_Z, MAX_BACK, MIN_BACK, WING_FLOOR, WING_H, WING_REACH, WING_W, bendPoint, wingAngle, type Beat } from '../src/characters/wings';
 
 const parts = (c: CharacterModel) => { const out: string[] = []; c.root.traverse((m) => { if ((m as THREE.Mesh).isMesh || (m as THREE.Points).isPoints) out.push(m.userData.part); }); return out; };
 
 describe('her stained-glass wings and his jetpack', () => {
-  it('the wings are five times her height and nearly as broad, spreading wide and sweeping back', () => {
-    expect(WING_H).toBeCloseTo(5 * 1.78, 1);
+  it('the wings are over six times her height and tall rather than stretched, spreading wide and sweeping back', () => {
+    expect(WING_H).toBeCloseTo(6.2 * 1.78, 1);
     expect(WING_W).toBeGreaterThan(8);
-    expect(WING_W / WING_H).toBeGreaterThan(0.9);
+    expect(WING_W / WING_H).toBeLessThan(0.8);
     expect(MIN_BACK).toBeLessThan(0.5); // spread wide
     expect(MAX_BACK).toBeGreaterThan(1.2);
     expect(WING_REACH).toBeCloseTo(WING_W + Math.abs(HINGE_Z));
@@ -103,5 +103,32 @@ describe('the wings flutter softly, like silk', () => {
       }
     }
     expect(lagged).toBeGreaterThan(100);
+  });
+});
+
+describe('the two wings never collide, and in flight he flies close below them', () => {
+  it('however they beat, each wing stays on its own side of her, and none reaches below the wing floor', () => {
+    for (let i = 0; i < 500; i++) {
+      const b: Beat = { phase: i * 0.09, mid: (MIN_BACK + MAX_BACK) / 2, amp: (MAX_BACK - MIN_BACK) / 2, flutter: 0.22, curl: Math.max(0, Math.cos(i * 0.09) * 0.5 + 0.15), lift: 0.45, time: i * 0.04 };
+      for (let x = 0.2; x <= WING_W; x += WING_W / 8) for (const y of [-1.2, 0, 4, 9]) {
+        expect(bendPoint(x, y, 1, b)[0]).toBeGreaterThan(0);
+        expect(bendPoint(x, y, -1, b)[0]).toBeLessThan(0);
+      }
+      // The tails' tips (at her feet) never dip further than WING_FLOOR.
+      expect(bendPoint(WING_W, -1.26, 1, b)[1] - -1.26).toBeGreaterThan(-WING_FLOOR);
+    }
+  });
+  it('in flight he settles close beside her, wholly below the wings, never nearer than MIN_GAP', () => {
+    const floor = WING_FLOOR * HERO_SCALE.girl, height = 2.0 * HERO_SCALE.boy, st = belowWings(floor, height);
+    let b = { x: 6, y: 30, z: -4 };
+    for (let i = 0; i < 600; i++) {
+      const g = { x: 0, y: 30 + Math.sin(i * 0.02), z: i * 0.1 };
+      b = followStep({ boy: b, girl: g, heading: 0, speed: 3, dt: 1 / 30, airborne: true, gap: MIN_GAP, stance: st }).pos;
+      expect(Math.hypot(b.x - g.x, b.y - g.y, b.z - g.z)).toBeGreaterThanOrEqual(MIN_GAP - 1e-6);
+      if (i > 300) {
+        expect(clearBelow(b, g, floor, height)).toBe(true);
+        expect(Math.hypot(b.x - g.x, b.z - g.z)).toBeLessThan(2.5); // near her, not far behind
+      }
+    }
   });
 });

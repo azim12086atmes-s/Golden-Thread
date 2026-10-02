@@ -76,6 +76,18 @@ export function wingRoom(boy: V3, girl: V3, heading: number, own: number, plane:
   return Math.hypot(boy.x - girl.x, boy.z - girl.z) - own;
 }
 
+/**
+ * In flight with her wings on, he flies close beside her and below them (owner: "make the guy be
+ * down near her so the wings do not touch him"): his head kept under the lowest any part of the
+ * wings reaches (`floor` below her feet), whatever they do above him. `height` is his height.
+ */
+export function belowWings(floor: number, height: number): Stance {
+  return { forward: -0.3, side: 1.2, up: -(floor + height + 0.35) };
+}
+
+/** Is he wholly below her wings (his head under the lowest they reach)? Then they open fully. */
+export const clearBelow = (boy: V3, girl: V3, floor: number, height: number): boolean => boy.y + height <= girl.y - floor + 1e-6;
+
 /** Push `p` directly away from `from` until it is at least `gap` away. */
 export function enforceGap(p: V3, from: V3, gap = MIN_GAP): V3 {
   const dx = p.x - from.x, dy = p.y - from.y, dz = p.z - from.z;
