@@ -82,7 +82,7 @@ export interface GameState {
 export function newGame(): GameState {
   return {
     version: 1,
-    names: { girl: 'Syeda Fathima', boy: 'Mohammed Abdul Azim' },
+    names: { girl: 'Traveller', boy: 'Companion' },
     minutes: 8 * 60, // morning of day one
     coins: 40,
     light: 1,
@@ -114,3 +114,4 @@ export function newGame(): GameState {
 export const DAY_MINUTES = 1440;
 export const dayOf = (m: number) => Math.floor(m / DAY_MINUTES) + 1;
 export const hourOf = (m: number) => (m % DAY_MINUTES) / 60;
+

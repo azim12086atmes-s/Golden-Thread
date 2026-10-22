@@ -30,7 +30,7 @@ for (const file of files.filter(file => /\.js$/.test(file) && !file.includes('/v
       else if (target.startsWith('three/addons/')) check(relativeFiles.includes('vendor/addons/' + target.slice('three/addons/'.length)), `Import map target for "${target}" is missing.`);
       continue;
     }
-    const resolved = path.resolve(path.dirname(file), target);
+    const resolved = path.resolve(path.dirname(file), target.split('?')[0]);
     check(resolved.startsWith(DIST + path.sep), `Import escapes dist: ${path.relative(DIST, file)} -> ${target}`);
     check(fs.existsSync(resolved), `Missing import target: ${path.relative(DIST, file)} -> ${target}`);
   }

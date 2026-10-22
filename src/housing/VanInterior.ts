@@ -73,7 +73,7 @@ export class VanInterior {
   private boy: CharacterModel;
   private t = 0;
 
-  constructor(private st: GameState, girl: Outfit, boy: Outfit) {
+  constructor(private st: GameState, girl: Outfit, boy: Outfit, showTravellers = true) {
     this.scene.background = new THREE.Color('#2a2238');
     this.scene.add(new THREE.HemisphereLight('#fff4e0', '#5a4a6a', 1.3));
     const key = new THREE.PointLight('#ffd8a0', 18, 12);
@@ -87,7 +87,7 @@ export class VanInterior {
     this.girl.root.rotation.y = Math.PI / 2;
     this.boy.root.position.set(BENCH_X, 0.05, 0.4);
     this.boy.root.rotation.y = -Math.PI / 2;
-    this.scene.add(this.girl.root, this.boy.root);
+    if (showTravellers) this.scene.add(this.girl.root, this.boy.root);
     this.camera.position.set(0, 1.85, 3.4);
     this.camera.lookAt(0, VIEW_Y, -0.6);
     this.rebuild();
@@ -195,3 +195,4 @@ export class VanInterior {
     this.camera.lookAt(0, VIEW_Y, -0.6);
   }
 }
+

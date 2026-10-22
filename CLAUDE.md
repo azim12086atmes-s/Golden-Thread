@@ -38,3 +38,4 @@ test to make a feature fit; change the feature.
   Lit things go in `glow` (brightens at night); keep glowing area small or bloom washes out.
 - `npm test` and `npm run typecheck` must pass. Verify visual changes in the browser with the
   `window.dev` harness (see README).
+

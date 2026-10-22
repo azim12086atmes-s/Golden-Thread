@@ -53,20 +53,22 @@ export class Travellers {
   private camPos = new THREE.Vector3();
   private camInit = false;
 
-  constructor(private scene: THREE.Scene, private world: World, private st: GameState, girlOutfit: Outfit, boyOutfit: Outfit) {
+  constructor(private scene: THREE.Scene, private world: World, private st: GameState, girlOutfit: Outfit, boyOutfit: Outfit,
+    private terrain: { surfaceAt: typeof surfaceAt; groundAt: typeof groundAt; terrainHeight: typeof terrainHeight } = { surfaceAt, groundAt, terrainHeight },
+  ) {
     this.girl = new CharacterModel(girlOutfit, '#e3b58f', HERO_SCALE.girl, 1, 'girl');
     this.boy = new CharacterModel(boyOutfit, '#c99a74', HERO_SCALE.boy, -1, 'boy');
     scene.add(this.girl.root, this.boy.root, this.thread.group);
     this.gPos.set(st.player.x, st.player.y, st.player.z);
     this.heading = st.player.heading;
     this.camYaw = this.heading;
-    this.gPos.y = surfaceAt(this.gPos.x, this.gPos.z, this.gPos.y + 2);
+    this.gPos.y = this.terrain.surfaceAt(this.gPos.x, this.gPos.z, this.gPos.y + 2);
     this.bPos.copy(this.gPos).add(new THREE.Vector3(1.8, 0, -0.75));
-    this.bPos.y = surfaceAt(this.bPos.x, this.bPos.z);
+    this.bPos.y = this.terrain.surfaceAt(this.bPos.x, this.bPos.z);
     // Safar waits nearby wherever the journey resumes.
     if (st.vehicles.includes('van')) {
       const at = this.gPos.clone().add(new THREE.Vector3(-7, 0, 3));
-      at.y = surfaceAt(at.x, at.z, at.y + 2);
+      at.y = this.terrain.surfaceAt(at.x, at.z, at.y + 2);
       const model = buildVehicle('van', st.van)!;
       scene.add(model.root);
       this.parkedVan = { model, pos: at, heading: this.heading + 0.6 };
@@ -100,8 +102,8 @@ export class Travellers {
       this.vehicle = null;
       this.gPos.copy(at).addScaledVector(right, -2.4);
       this.bPos.copy(at).addScaledVector(right, 2.4);
-      this.gPos.y = surfaceAt(this.gPos.x, this.gPos.z, at.y + 1);
-      this.bPos.y = surfaceAt(this.bPos.x, this.bPos.z, at.y + 1);
+      this.gPos.y = this.terrain.surfaceAt(this.gPos.x, this.gPos.z, at.y + 1);
+      this.bPos.y = this.terrain.surfaceAt(this.bPos.x, this.bPos.z, at.y + 1);
       this.world.resolve(this.gPos, 0.35);
       this.world.resolve(this.bPos, 0.35);
     }
@@ -158,13 +160,13 @@ export class Travellers {
     // Travelling on lands you: the "land the plane first" rule is for the player, not the road.
     this.grounded = true;
     if (this.mode !== 'walk' && !this.mounted) this.setMode('walk');
-    this.gPos.set(x, surfaceAt(x, z, 1e9), z);
+    this.gPos.set(x, this.terrain.surfaceAt(x, z, 1e9), z);
     this.world.resolve(this.gPos, 0.5);
-    this.bPos.set(x + 1.95, surfaceAt(x + 1.95, z, 1e9), z);
+    this.bPos.set(x + 1.95, this.terrain.surfaceAt(x + 1.95, z, 1e9), z);
     // Safar comes along — it is how they travel.
     if (this.parkedVan) {
       this.parkedVan.pos.set(x - 7, 0, z + 3);
-      this.parkedVan.pos.y = surfaceAt(this.parkedVan.pos.x, this.parkedVan.pos.z, 1e9);
+      this.parkedVan.pos.y = this.terrain.surfaceAt(this.parkedVan.pos.x, this.parkedVan.pos.z, 1e9);
     }
     this.camInit = false;
   }
@@ -204,7 +206,7 @@ export class Travellers {
     const sprint = input.held('shift') && this.grounded;
     const max = mount ? (sprint ? 24 : 15) : sprint ? 11 : 6.5;
     const want = fwd.clone().multiplyScalar(a.y).addScaledVector(right, a.x).multiplyScalar(max);
-    const swimming = !mount && terrainHeight(this.gPos.x, this.gPos.z) < WATER_Y - 0.9;
+    const swimming = !mount && this.terrain.terrainHeight(this.gPos.x, this.gPos.z) < WATER_Y - 0.9;
     if (swimming) want.multiplyScalar(0.5);
     this.vel.x = damp(this.vel.x, want.x, this.grounded ? 10 : 3, dt);
     this.vel.z = damp(this.vel.z, want.z, this.grounded ? 10 : 3, dt);
@@ -226,7 +228,7 @@ export class Travellers {
     this.world.resolve(this.gPos, mount ? 0.9 : 0.35);
 
     // Unicorns walk on water; people swim in it.
-    let ground = groundAt(this.gPos.x, this.gPos.z, this.gPos.y);
+    let ground = this.terrain.groundAt(this.gPos.x, this.gPos.z, this.gPos.y);
     if (mount) ground = Math.max(ground, WATER_Y);
     else if (swimming) ground = WATER_Y - 1.1;
     else ground = Math.max(ground, WATER_Y - 1.1);
@@ -253,13 +255,13 @@ export class Travellers {
     let vyWant = input.held(' ') ? 9 : input.held('shift') ? -10 : -0.6;
     if (this.energy <= 0.001) vyWant = Math.min(vyWant, -4); // out of light: glide down
     this.vy = damp(this.vy, vyWant, 3, dt);
-    const ground = surfaceAt(this.gPos.x, this.gPos.z, this.gPos.y);
+    const ground = this.terrain.surfaceAt(this.gPos.x, this.gPos.z, this.gPos.y);
     const ceiling = ground + 40 + this.st.light * 24;
     this.gPos.x += this.vel.x * dt;
     this.gPos.z += this.vel.z * dt;
     this.gPos.y = Math.min(ceiling, this.gPos.y + this.vy * dt);
     this.world.resolve(this.gPos, 0.35);
-    const g2 = surfaceAt(this.gPos.x, this.gPos.z, this.gPos.y);
+    const g2 = this.terrain.surfaceAt(this.gPos.x, this.gPos.z, this.gPos.y);
     if (this.gPos.y <= g2) {
       this.gPos.y = g2;
       if (this.vy < 0) {
@@ -281,7 +283,7 @@ export class Travellers {
 
     const dir = new THREE.Vector3(Math.sin(this.heading), 0, Math.cos(this.heading));
     const next = this.gPos.clone().addScaledVector(dir, this.speed * dt);
-    if (terrainHeight(next.x, next.z) < WATER_Y + 0.1) {
+    if (this.terrain.terrainHeight(next.x, next.z) < WATER_Y + 0.1) {
       this.speed *= -0.2; // bumped the shore
       return;
     }
@@ -289,11 +291,11 @@ export class Travellers {
     this.world.resolve(next, this.mode === 'truck' ? 2.6 : this.mode === 'van' ? 2.2 : 1.8);
     if (before.distanceToSquared(next) > 1e-4) this.speed *= 0.6;
     this.gPos.copy(next);
-    this.gPos.y = groundAt(this.gPos.x, this.gPos.z, this.gPos.y + 1.5);
+    this.gPos.y = this.terrain.groundAt(this.gPos.x, this.gPos.z, this.gPos.y + 1.5);
     // Tilt to the terrain.
     const f = 1.8;
-    const hF = terrainHeight(this.gPos.x + dir.x * f, this.gPos.z + dir.z * f), hB = terrainHeight(this.gPos.x - dir.x * f, this.gPos.z - dir.z * f);
-    const hR = terrainHeight(this.gPos.x + dir.z * f, this.gPos.z - dir.x * f), hL = terrainHeight(this.gPos.x - dir.z * f, this.gPos.z + dir.x * f);
+    const hF = this.terrain.terrainHeight(this.gPos.x + dir.x * f, this.gPos.z + dir.z * f), hB = this.terrain.terrainHeight(this.gPos.x - dir.x * f, this.gPos.z - dir.z * f);
+    const hR = this.terrain.terrainHeight(this.gPos.x + dir.z * f, this.gPos.z - dir.x * f), hL = this.terrain.terrainHeight(this.gPos.x - dir.z * f, this.gPos.z + dir.x * f);
     this.pitch = damp(this.pitch, Math.atan2(hB - hF, 2 * f), 8, dt);
     this.roll = damp(this.roll, Math.atan2(hR - hL, 2 * f), 8, dt);
     this.grounded = true;
@@ -316,7 +318,7 @@ export class Travellers {
     const dir = new THREE.Vector3(Math.sin(this.heading), 0, Math.cos(this.heading));
     this.gPos.addScaledVector(dir, this.speed * dt);
     this.gPos.y += climb * (dragon ? Math.max(8, this.speed * 0.4) : this.speed * 0.4) * dt;
-    const ground = surfaceAt(this.gPos.x, this.gPos.z, this.gPos.y);
+    const ground = this.terrain.surfaceAt(this.gPos.x, this.gPos.z, this.gPos.y);
     this.gPos.y = Math.min(this.gPos.y, 900);
     if (this.gPos.y <= ground) {
       this.gPos.y = ground;
@@ -340,7 +342,7 @@ export class Travellers {
     const px = this.bPos.x, pz = this.bPos.z;
     const out = followStep({
       boy: this.bPos, girl: this.gPos, heading: this.heading, speed: this.currentSpeed, dt, airborne,
-      groundAt: (x, z) => this.mounted ? Math.max(surfaceAt(x, z, this.gPos.y + 2), WATER_Y) : surfaceAt(x, z, this.gPos.y + 2),
+      groundAt: (x, z) => this.mounted ? Math.max(this.terrain.surfaceAt(x, z, this.gPos.y + 2), WATER_Y) : this.terrain.surfaceAt(x, z, this.gPos.y + 2),
     });
     this.bPos.set(out.pos.x, out.pos.y, out.pos.z);
     this.world.resolve(this.bPos, this.mounted ? 0.9 : 0.35);
@@ -395,7 +397,7 @@ export class Travellers {
 
     const flying = this.mode === 'fly' || (!this.grounded && !riding);
     this.girl.update(dt, { speed: this.currentSpeed, airborne: flying, riding, t });
-    const boyAir = this.mode === 'fly' || (!riding && this.bPos.y > surfaceAt(this.bPos.x, this.bPos.z, this.bPos.y) + 0.4);
+    const boyAir = this.mode === 'fly' || (!riding && this.bPos.y > this.terrain.surfaceAt(this.bPos.x, this.bPos.z, this.bPos.y) + 0.4);
     this.boy.update(dt, { speed: this.bSpeed, airborne: boyAir, riding, t });
 
     const ga = new THREE.Vector3(), ba = new THREE.Vector3();
@@ -408,7 +410,7 @@ export class Travellers {
     const target = this.gPos.clone().add(new THREE.Vector3(0, VEHICLES[this.mode].kind === 'ground' ? 2.2 : 1.5, 0));
     const cp = Math.cos(this.camPitch), sp = Math.sin(this.camPitch);
     const want = target.clone().add(new THREE.Vector3(-Math.sin(this.camYaw) * cp * this.camDist, sp * this.camDist, -Math.cos(this.camYaw) * cp * this.camDist));
-    const floor = surfaceAt(want.x, want.z, want.y) + 0.8;
+    const floor = this.terrain.surfaceAt(want.x, want.z, want.y) + 0.8;
     if (want.y < floor) want.y = floor;
     if (!this.camInit) {
       this.camPos.copy(want);
@@ -446,3 +448,4 @@ function turnToward(a: number, b: number, k: number): number {
   while (d < -Math.PI) d += Math.PI * 2;
   return a + d * Math.min(1, k);
 }
+

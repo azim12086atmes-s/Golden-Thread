@@ -7,12 +7,13 @@ import { randomBytes, randomUUID, createHash } from 'node:crypto';
 import { CHASE_GAME_IDS, ARENA, COVER, createChaseGame, actionChase, tickChase, chaseView, canMoveChase, canSeeChase, updateChasePlayers } from './chase-games.mjs';
 import { newJourney, journeyView, advanceJourney, journeyCatalog, JOURNEY_TITLE, JOURNEY_PREMISE, JOURNEY_ACTS } from '../shared/story.js';
 import { followStep, enforceGap } from '../shared/follow.js';
+import { BRIDGE_START, BRIDGE_CHECKPOINTS as PALACE_BRIDGE_CHECKPOINTS, SKY_RINGS as PALACE_SKY_RINGS, INGREDIENTS as PALACE_INGREDIENTS, CAKE_SPOT as PALACE_CAKE_SPOT } from '../shared/party-layout.js';
 
 const HERE = path.dirname(fileURLToPath(import.meta.url));
 const ROOT = path.resolve(HERE, '..');
 const MAX_BODY = 32 * 1024;
 const SESSION_MS = 30 * 60 * 1000;
-const WORLD = { x: [-1800, 1800], y: [-30, 800], z: [-1100, 1800] };
+const WORLD = { x: [-1800, 1800], y: [-30, 900], z: [-3500, 1800] };
 const CHASE_GAMES = new Set(CHASE_GAME_IDS);
 const GAMES = new Set(['lantern-hunt', 'bridge-dash', 'starlight-memory', 'sky-rings', 'cake-courier', 'starlight-statues', ...CHASE_GAME_IDS]);
 export const PARTY_ARENA = ARENA;
@@ -25,12 +26,10 @@ export const LANTERN_PICKUPS = Object.freeze([
   [-70, 0, 20], [-35, 0, 20], [0, 0, 20], [35, 0, 20], [70, 0, 20],
   [-45, 0, -35], [45, 0, -35],
 ].map(([x, y, z], i) => Object.freeze({ id: `lantern-${i + 1}`, x, y, z })));
-export const BRIDGE_CHECKPOINTS = Object.freeze([
-  [-210], [-270], [-340], [-405], [-448],
-].map(([z]) => Object.freeze({ x: 0, y: 0, z })));
-export const SKY_RINGS = Object.freeze([[-80, 18, 40], [-40, 28, -40], [40, 38, -110], [65, 48, -240], [0, 54, -430]].map(([x, y, z]) => Object.freeze({ x, y, z })));
-export const INGREDIENTS = Object.freeze([[-65, 0, 25], [65, 0, 25], [0, 0, -100]].map(([x, y, z]) => Object.freeze({ x, y, z })));
-export const CAKE_SPOT = Object.freeze({ x: 0, y: 46.72, z: -448 });
+export const BRIDGE_CHECKPOINTS = PALACE_BRIDGE_CHECKPOINTS;
+export const SKY_RINGS = PALACE_SKY_RINGS;
+export const INGREDIENTS = PALACE_INGREDIENTS;
+export const CAKE_SPOT = PALACE_CAKE_SPOT;
 
 const token = () => randomBytes(32).toString('base64url');
 const cleanLabel = (s, max = 36) => typeof s === 'string' ? s.trim().replace(/[<>\u0000-\u001f]/g, '').slice(0, max) : '';
@@ -332,6 +331,9 @@ export function createPartyServer({ config, distDir = path.join(ROOT, 'dist'), n
         if (url.pathname === '/api/move') {
           const t = now(); if (t - (moveTimes.get(slot.id) || -Infinity) < 100) return fail(res, 429, 'Movement is limited to 10 updates per second.');
           const { x, y, z, yaw = 0 } = body; if (![x, y, z, yaw].every(Number.isFinite) || x < WORLD.x[0] || x > WORLD.x[1] || y < WORLD.y[0] || y > WORLD.y[1] || z < WORLD.z[0] || z > WORLD.z[1] || Math.abs(yaw) > Math.PI * 20) return fail(res, 400, 'Invalid position.');
+          const vehicle = body.vehicle;
+          if (vehicle !== undefined && !['walk','fly','car','van','truck','plane','unicorn','dragon'].includes(vehicle)) return fail(res, 400, 'Invalid ride.');
+          if ((active?.chase || party.game === 'bridge-dash') && vehicle !== undefined && vehicle !== 'walk') return fail(res, 400, 'Stay on foot during this round.');
           if (active?.chase) {
             const match = slot.role === 'companion' ? practiceFor(slot).round : active.chase;
             const previous = positions.get(slot.id) || coord();
@@ -352,7 +354,7 @@ export function createPartyServer({ config, distDir = path.join(ROOT, 'dist'), n
             if (elapsed < 6000) stats.greenDistance += dist; else stats.redDistance += dist;
             stats.status = elapsed < 6000 ? 'green' : 'red'; active.statues.set(slot.id, stats);
           }
-          positions.set(slot.id, { x, y, z, yaw }); moveTimes.set(slot.id, t); broadcast(); return writeJSON(res, 200, { ok: true });
+          positions.set(slot.id, { x, y, z, yaw, ...(vehicle !== undefined ? { vehicle } : {}) }); moveTimes.set(slot.id, t); broadcast(); return writeJSON(res, 200, { ok: true });
         }
         if (url.pathname === '/api/signal') {
           const peer = sessionsBySlot.get(String(body.to || '')); if (!peer || !mayVoice(slot, peer.slot) || !mayVoice(peer.slot, slot)) return fail(res, 403, 'Peer is not available on this voice channel.');
@@ -407,7 +409,7 @@ export function createPartyServer({ config, distDir = path.join(ROOT, 'dist'), n
             [...sessionsBySlot.values()].forEach(s => {
               if (s.slot.role === 'observer') return;
               const i = seat++;
-              const place = body.game === 'bridge-dash' ? { x: i % 2 ? 1.1 : -1.1, y: 0, z: -178 + Math.floor(i / 2) * 2.5, yaw: 0 } : { x: (i % 7) * 2 - 6, y: 0, z: 70 - Math.floor(i / 7) * 3, yaw: 0 };
+              const place = body.game === 'bridge-dash' ? { x: BRIDGE_START.x + (i % 2 ? 1.1 : -1.1), y: BRIDGE_START.y, z: BRIDGE_START.z + Math.floor(i / 2) * 2.5, yaw: Math.PI } : body.game === 'cake-courier' ? { x: CAKE_SPOT.x + (i % 5 - 2) * 3, y: CAKE_SPOT.y, z: CAKE_SPOT.z + 10 + Math.floor(i / 5) * 3, yaw: Math.PI } : { x: (i % 7) * 2 - 6, y: 0, z: 70 - Math.floor(i / 7) * 3, yaw: 0 };
               if (chase) { const a = i * 2.399963; Object.assign(place, { x: Math.cos(a) * 38, z: Math.sin(a) * 38 }); }
               positions.set(s.slot.id, place); moveTimes.set(s.slot.id, now() - 100);
               if (chase && s.slot.role === 'companion') practiceFor(s.slot);
@@ -416,7 +418,7 @@ export function createPartyServer({ config, distDir = path.join(ROOT, 'dist'), n
             party = { phase: active.phase, game: body.game, endsAt: active.endsAt, celebrationAt: null }; broadcast(); return writeJSON(res, 200, { ok: true });
           }
           if (type === 'outfit') {
-            if (typeof body.avatar !== 'string' || !/^[gb]-[a-z0-9-]{1,42}$/.test(body.avatar)) return fail(res, 400, 'Invalid outfit id.');
+            if (typeof body.avatar !== 'string' || !/^(?:[gb]-[a-z0-9-]{1,42}|fx-[gb]-[0-9]{1,3})$/.test(body.avatar)) return fail(res, 400, 'Invalid outfit id.');
             slot.avatar = body.avatar; broadcast(); return writeJSON(res, 200, { ok: true });
           }
           if (type === 'celebrate') {
@@ -493,7 +495,7 @@ export function createPartyServer({ config, distDir = path.join(ROOT, 'dist'), n
       journeyTravel = null; teleportVersion++; party = { phase: 'lobby', game: null, endsAt: null, celebrationAt: null };
     }
     if (rallyAt && rallyAt <= t) {
-      [...sessionsBySlot.values()].filter(s => s.slot.role !== 'observer').forEach((s, i) => { positions.set(s.slot.id, { x: (i % 5) * 4 - 8, y: 46.72, z: -448 + Math.floor(i / 5) * 4, yaw: 0 }); moveTimes.set(s.slot.id, t); });
+      [...sessionsBySlot.values()].filter(s => s.slot.role !== 'observer').forEach((s, i) => { positions.set(s.slot.id, { x: CAKE_SPOT.x + (i % 5) * 4 - 8, y: CAKE_SPOT.y, z: CAKE_SPOT.z + 10 + Math.floor(i / 5) * 4, yaw: Math.PI }); moveTimes.set(s.slot.id, t); });
       rallyAt = null; teleportVersion++; party = { phase: 'celebration', game: null, endsAt: null, celebrationAt: t }; active = null;
     }
     if (scheduledCelebration && scheduledCelebration <= t && !rallyAt) { scheduledCelebration = null; active = null; journeyTravel = null; party = { phase: 'rally', game: null, endsAt: null, celebrationAt: null }; rallyAt = t + 5000; }

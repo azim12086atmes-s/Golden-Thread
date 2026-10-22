@@ -31,16 +31,18 @@
       <button id="help-button" class="glass-button" aria-label="Help and controls">?</button>
     </header>
     <aside class="objective glass-panel"><div class="eyebrow" id="objective-label">THE EVENING IS YOURS</div><h2 id="objective-title">Follow your curiosity.</h2><p id="objective-description">Explore the meadow, cross the grand bridge, and find the palace.</p><div class="objective-bottom"><span id="objective-progress">✦ Explore at your own pace</span><time id="round-clock"></time></div></aside>
+    <div id="ui" aria-live="off"></div>
     <div id="aim-reticle" class="aim-reticle" hidden><span>+</span><small>LIGHT WAND · E / R / TAP</small></div>
     <div id="seeker-screen" class="seeker-screen" hidden><div class="eyebrow">THE MEADOW IS FINDING ITS HIDING PLACES</div><h2>The seeker is counting.</h2><strong id="seeker-count">20</strong><p>Your search begins when the light returns.</p></div>
     <div id="celebration-banner" class="celebration-banner" hidden><div class="eyebrow">THE STARS ARE ALL FOR YOU</div><h1 id="birthday-title">Happy Birthday!</h1><p>Make a wish. Keep a little magic.</p></div>
     <div id="toast" role="status" aria-live="polite" class="toast" hidden></div>
     <div class="location-label"><span>✧</span><span id="location-name">Wanderers’ Meadow</span><small id="movement-mode">ON FOOT</small></div>
     <nav class="dock glass-panel" aria-label="Party tools">
-      <button data-panel="games"><span>✧</span>Play</button><button data-panel="journey"><span>✥</span>Story</button><button data-panel="map"><span>⌘</span>Explore</button><button data-panel="wardrobe"><span>♧</span>Outfits</button><button id="photo-button"><span>▣</span>Polaroid</button><button data-panel="album"><span>▧</span>Album</button><button data-panel="voice"><span>♫</span>Audio</button><button id="wish-button"><span>♢</span>Wish</button>
+      <button data-panel="games"><span>✧</span>Play</button><button data-panel="journey"><span>✥</span>Story</button><button data-panel="map"><span>⌘</span>Explore</button><button data-panel="life"><span>⌂</span>Living</button><button data-panel="wardrobe"><span>♧</span>Outfits</button><button id="photo-button"><span>▣</span>Polaroid</button><button data-panel="album"><span>▧</span>Album</button><button data-panel="voice"><span>♫</span>Audio</button><button id="wish-button"><span>♢</span>Wish</button>
     </nav>
     <div class="touch-actions"><button id="interact-button">E · Collect</button><button id="fly-button">Fly</button><button id="rise-button">↑</button><button id="lower-button">↓</button><button id="run-button">Run</button></div>
     <div class="desktop-hint">WASD move · Drag to look · Shift run · F fly · Space rise · E collect · P photo</div>
+    <div id="nearby-prompt" class="nearby-prompt" hidden></div>
   </div>
   <dialog id="panel" class="panel glass-panel"><button id="panel-close" class="close-button" aria-label="Close panel">×</button><div id="panel-content"></div></dialog>
   <script type="module" src="/party/main.js"></script>

@@ -4,7 +4,8 @@ import fs from 'node:fs/promises';
 import os from 'node:os';
 import path from 'node:path';
 import { EventEmitter } from 'node:events';
-import { createPartyServer, makeDefaultConfig, SKY_RINGS, BRIDGE_CHECKPOINTS } from './party.mjs';
+import { createPartyServer, makeDefaultConfig, SKY_RINGS, BRIDGE_CHECKPOINTS, CAKE_SPOT } from './party.mjs';
+import { BRIDGE_START } from '../shared/party-layout.js';
 
 async function fixture({ observer = false, maxConnections, autoTick = true } = {}) {
   const config = makeDefaultConfig();
@@ -195,7 +196,9 @@ test('minigame state and server checks cover bridge, sky rings, courier, memory,
 
   await start('bridge-dash');
   assert.deepEqual((await get()).party.round.checkpoints, BRIDGE_CHECKPOINTS);
-  assert.equal((await move(100, 0, -100)).status, 400);
+  const bridgeStart=f.server.partyInternals.positions.get(host.self.id);
+  assert.ok(Math.hypot(bridgeStart.x-BRIDGE_START.x,bridgeStart.y-BRIDGE_START.y,bridgeStart.z-BRIDGE_START.z)<3);
+  f.advance(101);assert.equal((await move(100, 0, -100)).status, 400);
 
   await start('sky-rings');
   assert.deepEqual((await get()).party.round.checkpoints, SKY_RINGS);
@@ -209,8 +212,14 @@ test('minigame state and server checks cover bridge, sky rings, courier, memory,
   f.advance(101); await move(round.cake.x, round.cake.y, round.cake.z);
   assert.equal((await post(f, '/api/action', host.ticket, { type: 'deliver-ingredient' })).status, 200);
   assert.deepEqual((await get()).party.selfProgress.delivered, [0]);
-  f.advance(101); await move(round.ingredients[0].x, 0, round.ingredients[0].z);
-  assert.equal((await post(f, '/api/action', host.ticket, { type: 'pick-ingredient', index: 0 })).status, 400);
+  for(const index of [1,2]){
+    f.advance(101);await move(round.ingredients[index].x,round.ingredients[index].y,round.ingredients[index].z);
+    assert.equal((await post(f,'/api/action',host.ticket,{type:'pick-ingredient',index})).status,200);
+    f.advance(101);await move(round.cake.x,round.cake.y,round.cake.z);
+    assert.equal((await post(f,'/api/action',host.ticket,{type:'deliver-ingredient'})).status,200);
+  }
+  assert.deepEqual((await get()).party.selfProgress.delivered,[0,1,2]);
+  assert.equal((await post(f,'/api/action',host.ticket,{type:'pick-ingredient',index:0})).status,400);
 
   await start('starlight-memory');
   const sequence = (await get()).party.round.sequence; f.advance(4000);
@@ -362,5 +371,66 @@ test('twenty-land story is cooperative, rejects stale actions, and isolates comp
   }
   const complete=(await state(f,host.ticket)).json().party.journey;assert.equal(complete.complete,true);assert.equal(complete.stars,20);assert.equal(new Set(complete.completed).size,20);
   assert.equal((await post(f,'/api/action',host.ticket,{type:'journey-finale'})).status,200);f.advance(5001);f.server.partyInternals.tickRoom();
-  assert.equal((await state(f,guest.ticket)).json().party.phase,'celebration');assert.equal(positions.get(host.self.id).y,46.72);
+  assert.equal((await state(f,guest.ticket)).json().party.phase,'celebration');
+  for(const player of [host,companion,guest]){
+    const cakeArrival=positions.get(player.self.id);
+    assert.equal(cakeArrival.y,CAKE_SPOT.y);assert.ok(Math.hypot(cakeArrival.x-CAKE_SPOT.x,cakeArrival.z-CAKE_SPOT.z)<20);
+  }
+});
+
+test('fusion and registered outfits persist while public rides stay private to each recipient projection', async t => {
+  const f=await fixture({autoTick:false});t.after(f.close);
+  const host=(await join(f,f.config.slots[0])).json(),companion=(await join(f,f.config.slots[1])).json(),guest=(await join(f,f.config.slots[4])).json();
+  assert.equal((await post(f,'/api/action',host.ticket,{type:'outfit',avatar:'g-star'})).status,200);
+  assert.equal((await post(f,'/api/action',host.ticket,{type:'outfit',avatar:'fx-g-0'})).status,200);
+  for(const avatar of ['fx-x-0','fx-g-1000','fx-g-','fx--0'])assert.equal((await post(f,'/api/action',host.ticket,{type:'outfit',avatar})).status,400,avatar);
+  assert.equal((await state(f,host.ticket)).json().self.avatar,'fx-g-0');
+
+  const positions=f.server.partyInternals.positions;
+  let p=positions.get(host.self.id);assert.equal((await post(f,'/api/move',host.ticket,{...p,vehicle:'van'})).status,200);
+  f.advance(101);p=positions.get(companion.self.id);assert.equal((await post(f,'/api/move',companion.ticket,{...p,vehicle:'dragon'})).status,200);
+  const publicState=(await state(f,guest.ticket)).json();
+  assert.equal(publicState.party.presenceCount,2);
+  const visibleHost=publicState.players.find(player=>player.id===host.self.id);
+  assert.equal(visibleHost.avatar,'fx-g-0');assert.equal(visibleHost.vehicle,'van');
+  assert.ok(!JSON.stringify(publicState).includes(companion.self.id));
+  const privateState=(await state(f,companion.ticket)).json();
+  assert.equal(privateState.players.find(player=>player.id===companion.self.id).vehicle,'dragon');
+});
+
+test('invalid rides are rejected; bridge and chase rounds require walking; snapshot keeps ride and fusion look', async t => {
+  const f=await fixture({autoTick:false});t.after(f.close);
+  const host=(await join(f,f.config.slots[0])).json(),guest=(await join(f,f.config.slots[4])).json();
+  const positions=f.server.partyInternals.positions;
+  let p=positions.get(host.self.id);
+  assert.equal((await post(f,'/api/move',host.ticket,{...p,vehicle:'hoverboard'})).status,400);
+  assert.equal((await post(f,'/api/action',host.ticket,{type:'outfit',avatar:'fx-b-1'})).status,200);
+  assert.equal((await post(f,'/api/move',host.ticket,{...p,vehicle:'plane'})).status,200);
+  assert.equal((await post(f,'/api/action',host.ticket,{type:'start-game',game:'bridge-dash'})).status,200);
+  p=positions.get(host.self.id);
+  assert.equal((await post(f,'/api/move',host.ticket,{...p,vehicle:'car'})).status,400);
+  assert.equal((await post(f,'/api/move',host.ticket,{...p,vehicle:'walk'})).status,200);
+  const snapshot=f.server.partyInternals.exportSnapshot();
+  const restored=createPartyServer({config:f.config,now:f.current,autoTick:false,serverFactory:()=>({on(){}}),snapshot});
+  t.after(()=>restored.emit?.('close'));
+  const restoredHost=(await state({server:restored},host.ticket)).json();
+  assert.equal(restoredHost.self.avatar,'fx-b-1');
+  assert.equal(restoredHost.players.find(player=>player.id===host.self.id).vehicle,'walk');
+  const restoredGuest=(await state({server:restored},guest.ticket)).json();
+  assert.equal(restoredGuest.players.find(player=>player.id===host.self.id).avatar,'fx-b-1');
+
+  assert.equal((await post(f,'/api/action',host.ticket,{type:'start-game',game:'tag'})).status,200);
+  p=positions.get(host.self.id);f.advance(101);
+  assert.equal((await post(f,'/api/move',host.ticket,{...p,vehicle:'unicorn'})).status,400);
+});
+
+test('observers cannot change appearance or ride position, and observer vehicles are rejected by projection', async t => {
+  const f=await fixture({observer:true,autoTick:false});t.after(f.close);
+  const host=(await join(f,f.config.slots[0])).json(),guest=(await join(f,f.config.slots[4])).json(),observer=(await join(f,f.config.slots.at(-1))).json();
+  const position=f.server.partyInternals.positions.get(observer.self.id);
+  assert.equal((await post(f,'/api/action',observer.ticket,{type:'outfit',avatar:'fx-g-0'})).status,403);
+  assert.equal((await post(f,'/api/move',observer.ticket,{...position,vehicle:'van'})).status,403);
+  assert.equal((await state(f,guest.ticket)).json().party.presenceCount,2);
+  const publicState=(await state(f,guest.ticket)).json();assert.ok(!JSON.stringify(publicState).includes(observer.self.id));
+  assert.equal((await state(f,host.ticket)).json().players.some(player=>player.id===observer.self.id),true);
 });

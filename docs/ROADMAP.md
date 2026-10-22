@@ -61,3 +61,4 @@ Validation: 222 tests pass; full TypeScript check and production bundle pass. Br
 Read REQUIREMENTS_EXPANSION.md and research/living-world/LIVING_SYSTEMS.md for requirements and staged build gates. Research atlas, Pinterest evidence log and Blender/web contract are in research/living-world/. Pinterest image selection remains blocked on sign-in; Blender MCP was not callable. No Blender-authored assets, persistent-vehicle replacement or new living-economy systems are claimed complete.
 
 Implemented original procedural hero identity: glasses for both, angular beard and visible curled side quiff for the boy when not under headwear; character review at /?characters. Geometry tests cover the full wardrobe and idle head bobbing.
+

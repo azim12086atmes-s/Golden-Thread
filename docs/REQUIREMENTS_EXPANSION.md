@@ -70,3 +70,4 @@ GT-PROD-001 (MUST, Production, In Progress): Use actual Blender for new 3D asset
 C-07: Mysuru supersedes Wanderers' Meadow as the visible starting-region identity. Preserve the internal `meadow` ID and quest/save keys for compatibility. The fantasy meadow becomes outskirts/visual accents. Author an interpreted compressed map, not a navigable real-world replica.
 
 - 2026-09-26: Recorded Mysuru/Maps/corpus/Claude steering; started delegated Pinterest research, primary-source map research and original Blender starting-region work.
+
