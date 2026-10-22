@@ -31,8 +31,8 @@ export class PartyAudio {
     this.mic?.getAudioTracks().forEach(t => { t.enabled = this.talking; });
   }
   canSendTo(player) {
-    if (this.self?.role === 'companion') return player.isBirthday;
-    if (this.self?.role === 'birthday') return this.channel === 'private' ? player.role === 'companion' : player.role !== 'companion';
+    if (['companion','observer'].includes(this.self?.role)) return player.isBirthday;
+    if (this.self?.role === 'birthday') return this.channel === 'private' ? ['companion','observer'].includes(player.role) : !['companion','observer'].includes(player.role);
     return true;
   }
   async applyTracks() {
@@ -42,7 +42,7 @@ export class PartyAudio {
   async refresh(players, self) {
     this.self = self; this.players = players;
     if (typeof RTCPeerConnection !== 'function') return;
-    const allowed = players.filter(p => p.id !== self.id && (self.role !== 'companion' || p.isBirthday));
+    const allowed = players.filter(p => p.id !== self.id && (!['companion','observer'].includes(self.role) || p.isBirthday));
     const ids = new Set(allowed.map(p => p.id));
     for (const [id, p] of this.peers) if (!ids.has(id)) { p.pc.close(); p.audio.remove(); this.peers.delete(id); }
     for (const player of allowed) {

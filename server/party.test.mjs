@@ -6,8 +6,10 @@ import path from 'node:path';
 import { EventEmitter } from 'node:events';
 import { createPartyServer, makeDefaultConfig, SKY_RINGS, BRIDGE_CHECKPOINTS } from './party.mjs';
 
-async function fixture() {
+async function fixture({ observer = false, maxConnections } = {}) {
   const config = makeDefaultConfig();
+  if (observer) config.slots.push({ id: 'private-observer', role: 'observer', name: 'Observer', avatar: 'b-moon', token: 'observer-token-' + 'x'.repeat(32) });
+  if (maxConnections) config.maxConnections = maxConnections;
   const tmp = await fs.mkdtemp(path.join(os.tmpdir(), 'golden-party-'));
   const distDir = path.join(tmp, 'dist'); await fs.mkdir(distDir);
   await fs.writeFile(path.join(distDir, 'index.html'), '<!doctype html><h1>party</h1>');
@@ -29,6 +31,7 @@ async function request(f, method, url, { body, ticket } = {}) {
   return { status: res.status, headers: res.headers, body: res.body, text: () => Buffer.isBuffer(res.body) ? res.body.toString('utf8') : (res.body || ''), json: () => JSON.parse(Buffer.isBuffer(res.body) ? res.body.toString('utf8') : (res.body || '{}')) };
 }
 async function join(f, slot) { return request(f, 'POST', '/api/join', { body: { token: slot.token } }); }
+async function joinNumber(f, guestNumber, name, role) { return request(f, 'POST', '/api/join', { body: { guestNumber, ...(name ? { name } : {}), ...(role ? { role } : {}) } }); }
 async function post(f, route, ticket, body) { return request(f, 'POST', route, { ticket, body }); }
 async function state(f, ticket) { return request(f, 'GET', `/api/state?ticket=${ticket}`); }
 
@@ -56,7 +59,66 @@ test('invalid invite is rejected and reconnect replaces the prior session', asyn
   const slot = f.config.slots[4]; const first = (await join(f, slot)).json(); const second = (await join(f, slot)).json();
   assert.equal((await state(f, first.ticket)).status, 401);
   assert.equal((await state(f, second.ticket)).status, 200);
-  assert.throws(() => createPartyServer({ config: { slots: [...f.config.slots, { ...slot, id: 'extra', token: 'x'.repeat(32) }] } }), /1 to 14/);
+  const tooMany = [...f.config.slots]; while (tooMany.length < 65) tooMany.push({ ...slot, id: `extra-${tooMany.length}`, token: `${tooMany.length}`.padEnd(32, 'x') });
+  assert.throws(() => createPartyServer({ config: { slots: tooMany } }), /1 to 64/);
+});
+
+test('numbered guest links create, replace, and cap guest sessions without role escalation', async t => {
+  const f = await fixture({ maxConnections: 14 }); t.after(f.close);
+  const first = (await joinNumber(f, '00123', 'Moss Guest')).json();
+  assert.equal(first.self.id, 'numbered-123'); assert.equal(first.self.role, 'guest'); assert.equal(first.self.name, 'Moss Guest');
+  const escalated = (await joinNumber(f, '123', 'Moss Guest', 'observer')).json(); assert.equal(escalated.self.role, 'guest');
+  const second = (await joinNumber(f, '123', 'Moss Guest')).json();
+  assert.equal((await state(f, first.ticket)).status, 401); assert.equal((await state(f, second.ticket)).status, 200);
+  for (let i = 0; i < 13; i++) assert.equal((await joinNumber(f, String(1000 + i))).status, 200);
+  assert.equal((await joinNumber(f, '999')).status, 429);
+  assert.equal((await joinNumber(f, '123')).status, 200, 'reconnect succeeds at capacity');
+});
+
+test('numbered guest links reject empty and malformed identifiers', async t => {
+  const f = await fixture(); t.after(f.close);
+  for (const guestNumber of ['', ' 2', '12345678901', 123]) assert.equal((await joinNumber(f, guestNumber)).status, 401);
+});
+
+test('observer is view-only, follows birthday, and stays private from public guests', async t => {
+  const f = await fixture({ observer: true }); t.after(f.close);
+  const [birthday, companion, guest, guest2] = [f.config.slots[0], f.config.slots[1], f.config.slots[4], f.config.slots[5]];
+  const b = (await join(f, birthday)).json(), c = (await join(f, companion)).json(), g = (await join(f, guest)).json(), g2 = (await join(f, guest2)).json(), o = (await join(f, f.config.slots.at(-1))).json();
+  let observer = (await state(f, o.ticket)).json();
+  assert.equal(observer.self.observer, true); assert.equal(observer.self.followingId, b.self.id); assert.equal(observer.party.observer, true); assert.equal(observer.party.chase, null);
+  assert.deepEqual(observer.players.map(p => p.id).sort(), [b.self.id, g.self.id, g2.self.id, o.self.id].sort());
+  assert.deepEqual(observer.voicePeers.map(p => p.id), [b.self.id]);
+  const guestView = (await state(f, g.ticket)).json(); const companionView = (await state(f, c.ticket)).json();
+  for (const view of [guestView, companionView]) {
+    assert.ok(!JSON.stringify(view).includes(o.self.id));
+    assert.ok(!view.party.observer); assert.ok(!view.self.observer);
+  }
+  const birthdayView = (await state(f, b.ticket)).json();
+  assert.ok(birthdayView.players.some(p => p.id === o.self.id && p.role === 'observer'));
+  assert.equal(birthdayView.party.observerFollow.id, o.self.id);
+  for (const route of ['/api/move', '/api/action', '/api/photo']) assert.equal((await post(f, route, o.ticket, {})).status, 403);
+  assert.equal((await post(f, '/api/action', o.ticket, { type: 'start-game', game: 'tag' })).json().error, 'This invitation is view-only.');
+  const signal = { kind: 'description', payload: { type: 'offer', sdp: 'opaque' } };
+  assert.equal((await post(f, '/api/signal', g.ticket, { ...signal, to: o.self.id })).status, 403);
+  assert.equal((await post(f, '/api/signal', c.ticket, { ...signal, to: o.self.id })).status, 403);
+  assert.equal((await post(f, '/api/signal', o.ticket, { ...signal, to: g.self.id })).status, 403);
+  assert.equal((await post(f, '/api/signal', b.ticket, { ...signal, to: o.self.id })).status, 200);
+  assert.equal((await post(f, '/api/signal', o.ticket, { ...signal, to: b.self.id })).status, 200);
+  f.server.partyInternals.positions.set(b.self.id, { x: 0, y: 4, z: 0, yaw: 0 });
+  f.server.partyInternals.positions.set(o.self.id, { x: 100, y: 0, z: 100, yaw: 0 });
+  f.server.partyInternals.tickRoom();
+  let p = f.server.partyInternals.positions.get(o.self.id); assert.ok(Math.abs(Math.hypot(p.x, p.z) - 1.95) < .01); assert.equal(p.y, 4);
+  f.advance(100); f.server.partyInternals.positions.set(b.self.id, { x: 1, y: 6, z: 0, yaw: Math.PI / 2 }); f.server.partyInternals.tickRoom();
+  p = f.server.partyInternals.positions.get(o.self.id); assert.ok(Math.hypot(p.x - 1, p.y - 6, p.z) >= 1.5); assert.ok(p.y > 4 && p.y <= 6);
+  for (const game of ['tag', 'hide-and-seek', 'laser-tag']) {
+    assert.equal((await post(f, '/api/action', b.ticket, { type: 'start-game', game })).status, 200);
+    const bView = (await state(f, b.ticket)).json(), oView = (await state(f, o.ticket)).json(), gView = (await state(f, g.ticket)).json();
+    assert.ok(bView.players.some(p => p.id === o.self.id), 'private following remains visible during arena rounds');
+    assert.equal(oView.party.chase, null); assert.ok(!bView.party.chase.publicStatus[o.self.id]);
+    assert.ok(!JSON.stringify(gView).includes(o.self.id));
+    assert.ok(!bView.party.scores[o.self.id]);
+  }
+  assert.ok((await state(f, o.ticket)).json().signals.some(s => s.from === b.self.id));
 });
 
 test('all fourteen configured slots can join without exposing companions to guests', async t => {
@@ -192,4 +254,73 @@ test('fourteen event streams carry movement while guest frames omit private play
       for (const id of hidden) assert.ok(!JSON.stringify(last).includes(id), 'A guest stream must contain no hidden identity.');
     }
   }
+});
+
+test('tag keeps companion practice targets, activity, and scores out of the public match', async t => {
+  const f = await fixture(); t.after(() => { f.server.emit('close'); return f.close(); });
+  const joined = [];
+  for (const slot of f.config.slots) joined.push((await join(f, slot)).json());
+  const host=joined[0], companion=joined[1], guest=joined[4], other=joined[5];
+  assert.equal((await post(f,'/api/action',host.ticket,{type:'start-game',game:'tag'})).status,200);
+  const active=f.server.partyInternals.getActive();active.chase.itId=guest.self.id;f.advance(1600);
+  const positions=f.server.partyInternals.positions;positions.set(guest.self.id,{x:0,y:0,z:-30});positions.set(other.self.id,{x:2,y:0,z:-30});positions.set(companion.self.id,{x:1,y:0,z:-30});
+  assert.equal((await post(f,'/api/action',guest.ticket,{type:'tag',targetId:companion.self.id})).status,400);
+  assert.equal((await post(f,'/api/action',guest.ticket,{type:'tag',targetId:other.self.id})).status,200);
+  const practice=active.practices.get(companion.self.id),wisp=practice.bots[0];practice.positions.set(wisp.id,{x:2.8,y:0,z:-30});
+  assert.equal((await post(f,'/api/action',companion.ticket,{type:'tag',targetId:wisp.id})).status,200);
+  assert.equal(active.chase.itId,other.self.id);
+  const publicState=(await state(f,guest.ticket)).json();
+  for(const privateSlot of joined.slice(1,4))assert.ok(!JSON.stringify(publicState).includes(privateSlot.self.id));
+  assert.ok(!JSON.stringify(publicState).includes(wisp.id));assert.equal(publicState.party.scores[guest.self.id],1);
+  assert.equal((await state(f,companion.ticket)).json().party.scores[companion.self.id],1);
+  const birthdayState=(await state(f,host.ticket)).json();assert.ok(birthdayState.party.privatePractices.some(p=>p.ownerId===companion.self.id));
+});
+
+test('hide-and-seek conceals hider positions, keeps voice peers, and enforces the countdown', async t => {
+  const f=await fixture();t.after(()=>{f.server.emit('close');return f.close();});
+  const host=(await join(f,f.config.slots[0])).json(),guest=(await join(f,f.config.slots[4])).json();
+  await post(f,'/api/action',host.ticket,{type:'start-game',game:'hide-and-seek'});
+  const positions=f.server.partyInternals.positions;positions.set(host.self.id,{x:0,y:0,z:-30});positions.set(guest.self.id,{x:40,y:0,z:0});
+  let view=(await state(f,host.ticket)).json();assert.ok(!view.players.some(p=>p.id===guest.self.id));
+  const peer=view.voicePeers.find(p=>p.id===guest.self.id);assert.ok(peer);assert.equal('x'in peer,false);assert.equal('z'in peer,false);
+  f.advance(101);assert.equal((await post(f,'/api/move',host.ticket,{x:1,y:0,z:-30})).status,400);
+  assert.equal((await post(f,'/api/action',host.ticket,{type:'seek',targetId:guest.self.id})).status,400);
+  f.advance(20000);positions.set(guest.self.id,{x:2,y:0,z:-30});view=(await state(f,host.ticket)).json();assert.ok(view.players.some(p=>p.id===guest.self.id));
+  assert.equal((await post(f,'/api/action',host.ticket,{type:'seek',targetId:guest.self.id})).status,200);
+  f.server.partyInternals.tickRoom();assert.equal((await state(f,host.ticket)).json().party.phase,'lobby');
+});
+
+test('laser hits ignore invisible companions and resting players cannot fire or move', async t => {
+  const f=await fixture();t.after(()=>{f.server.emit('close');return f.close();});
+  const host=(await join(f,f.config.slots[0])).json(),companion=(await join(f,f.config.slots[1])).json(),guest=(await join(f,f.config.slots[4])).json();
+  await post(f,'/api/action',host.ticket,{type:'start-game',game:'laser-tag'});
+  const positions=f.server.partyInternals.positions;positions.set(host.self.id,{x:0,y:0,z:-30});positions.set(companion.self.id,{x:0,y:0,z:-25});positions.set(guest.self.id,{x:0,y:0,z:-20});
+  const result=await post(f,'/api/action',host.ticket,{type:'laser',direction:{x:0,y:0,z:1}});assert.equal(result.status,200);assert.equal(result.json().events[0].to,guest.self.id);
+  const active=f.server.partyInternals.getActive();assert.equal(active.chase.status.get(guest.self.id).health,2);assert.equal(active.chase.status.has(companion.self.id),false);
+  const rest=active.chase.status.get(host.self.id);rest.health=0;rest.restUntil=Date.now()+60000;
+  f.advance(701);assert.equal((await post(f,'/api/action',host.ticket,{type:'laser',direction:{x:0,y:0,z:1}})).status,400);
+  assert.equal((await post(f,'/api/move',host.ticket,{x:1,y:0,z:-30})).status,400);
+  const image=`data:image/jpeg;base64,${Buffer.from([0xff,0xd8,1,0xff,0xd9]).toString('base64')}`;
+  assert.equal((await post(f,'/api/photo',companion.ticket,{publicImage:image})).status,403);
+});
+
+test('twenty-land story is cooperative, rejects stale actions, and isolates companion progress', async t => {
+  const f=await fixture();t.after(()=>{f.server.emit('close');return f.close();});
+  const host=(await join(f,f.config.slots[0])).json(),companion=(await join(f,f.config.slots[1])).json(),guest=(await join(f,f.config.slots[4])).json();
+  assert.equal((await post(f,'/api/action',guest.ticket,{type:'start-journey'})).status,403);
+  assert.equal((await post(f,'/api/action',host.ticket,{type:'start-journey'})).status,200);
+  const positions=f.server.partyInternals.positions;
+  async function light(client,chapter){positions.set(client.self.id,chapter.beacon);for(let answer=0;answer<3;answer++){const r=await post(f,'/api/action',client.ticket,{type:'journey-light',chapterId:chapter.id,answer});if(r.status===200)return;assert.equal(r.status,400);}assert.fail('A chapter must have one correct choice.');}
+  let chapter=(await state(f,host.ticket)).json().party.journey.current;
+  positions.set(companion.self.id,chapter.collect);await post(f,'/api/action',companion.ticket,{type:'journey-collect',chapterId:chapter.id});await light(companion,chapter);
+  assert.equal((await state(f,companion.ticket)).json().party.journey.waiting,true);assert.equal((await state(f,guest.ticket)).json().party.journey.stars,0);
+  for(let i=0;i<20;i++){
+    const trail=(await state(f,host.ticket)).json().party.journey;chapter=trail.current;assert.equal(trail.chapter,i);assert.equal('answer'in chapter.puzzle,false);
+    assert.equal((await post(f,'/api/action',host.ticket,{type:'journey-collect',chapterId:'stale-id'})).status,409);
+    positions.set(host.self.id,chapter.collect);assert.equal((await post(f,'/api/action',host.ticket,{type:'journey-collect',chapterId:chapter.id})).status,200);
+    assert.equal((await state(f,guest.ticket)).json().party.journey.stage,'beacon');await light(guest,chapter);
+  }
+  const complete=(await state(f,host.ticket)).json().party.journey;assert.equal(complete.complete,true);assert.equal(complete.stars,20);assert.equal(new Set(complete.completed).size,20);
+  assert.equal((await post(f,'/api/action',host.ticket,{type:'journey-finale'})).status,200);f.advance(5001);f.server.partyInternals.tickRoom();
+  assert.equal((await state(f,guest.ticket)).json().party.phase,'celebration');assert.equal(positions.get(host.self.id).y,46.72);
 });

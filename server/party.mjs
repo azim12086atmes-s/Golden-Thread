@@ -3,13 +3,21 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { randomBytes, randomUUID, createHash } from 'node:crypto';
+import { CHASE_GAME_IDS, ARENA, COVER, createChaseGame, actionChase, tickChase, chaseView, canMoveChase, canSeeChase, updateChasePlayers } from './chase-games.mjs';
+import { newJourney, journeyView, advanceJourney, journeyCatalog, JOURNEY_TITLE, JOURNEY_PREMISE, JOURNEY_ACTS } from '../shared/story.js';
+import { followStep, enforceGap } from '../shared/follow.js';
 
 const HERE = path.dirname(fileURLToPath(import.meta.url));
 const ROOT = path.resolve(HERE, '..');
 const MAX_BODY = 32 * 1024;
 const SESSION_MS = 30 * 60 * 1000;
 const WORLD = { x: [-1800, 1800], y: [-30, 800], z: [-1100, 1800] };
-const GAMES = new Set(['lantern-hunt', 'bridge-dash', 'starlight-memory', 'sky-rings', 'cake-courier', 'starlight-statues']);
+const CHASE_GAMES = new Set(CHASE_GAME_IDS);
+const GAMES = new Set(['lantern-hunt', 'bridge-dash', 'starlight-memory', 'sky-rings', 'cake-courier', 'starlight-statues', ...CHASE_GAME_IDS]);
+export const PARTY_ARENA = ARENA;
+export const ARENA_COVER = COVER;
+export const JOURNEY_CATALOG = journeyCatalog();
+export const JOURNEY_INFO = Object.freeze({ title: JOURNEY_TITLE, premise: JOURNEY_PREMISE, acts: JOURNEY_ACTS });
 export const SPAWN = Object.freeze({ x: 0, y: 0, z: 70 });
 export const LANTERN_PICKUPS = Object.freeze([
   [-70, 0, 75], [-35, 0, 75], [0, 0, 75], [35, 0, 75], [70, 0, 75],
@@ -30,24 +38,28 @@ export function makeDefaultConfig() {
   const slots = [{ id: randomUUID(), role: 'birthday', name: 'Birthday', avatar: 'g-birthday', token: token() }];
   for (let i = 1; i <= 3; i++) slots.push({ id: randomUUID(), role: 'companion', name: `Companion ${i}`, avatar: 'g-traveler', token: token() });
   for (let i = 1; i <= 10; i++) slots.push({ id: randomUUID(), role: 'guest', name: `Guest ${i}`, avatar: 'g-traveler', token: token() });
-  return { slots };
+  return { slots, maxConnections: 32 };
 }
 
 function validateConfig(config) {
-  if (!config || !Array.isArray(config.slots) || config.slots.length < 1 || config.slots.length > 14) throw new Error('Config must contain 1 to 14 invitation slots.');
-  const ids = new Set(); const tokens = new Set(); let birthdayCount = 0;
+  if (!config || !Array.isArray(config.slots) || config.slots.length < 1 || config.slots.length > 64) throw new Error('Config must contain 1 to 64 private invitation slots.');
+  const ids = new Set(); const tokens = new Set(); let birthdayCount = 0; let observerCount = 0;
   const slots = config.slots.map((s, i) => {
-    if (!s || !['birthday', 'companion', 'guest'].includes(s.role)) throw new Error(`Invalid role in slot ${i + 1}.`);
+    if (!s || !['birthday', 'companion', 'guest', 'observer'].includes(s.role)) throw new Error(`Invalid role in slot ${i + 1}.`);
     if (s.role === 'birthday') birthdayCount++;
+    if (s.role === 'observer') observerCount++;
     if (typeof s.token !== 'string' || s.token.length < 32 || tokens.has(s.token)) throw new Error(`Invalid or duplicate invite token in slot ${i + 1}.`);
     tokens.add(s.token);
     const id = typeof s.id === 'string' && s.id.length <= 48 ? s.id : randomUUID();
-    if (ids.has(id)) throw new Error('Duplicate slot id.'); ids.add(id);
+    if (ids.has(id) || /^numbered-\d+$/.test(id)) throw new Error('Duplicate or reserved slot id.'); ids.add(id);
     const name = cleanLabel(s.name); const avatar = cleanLabel(s.avatar, 48);
     if (!name || !avatar) throw new Error(`Slot ${i + 1} needs a public name and avatar id.`);
     return { id, role: s.role, name, avatar, token: s.token };
   });
   if (birthdayCount !== 1) throw new Error('Config must have exactly one birthday slot.');
+  if (observerCount > 1) throw new Error('Config may have at most one observer slot.');
+  const maxConnections = config.maxConnections === undefined ? 32 : config.maxConnections;
+  if (!Number.isInteger(maxConnections) || maxConnections < 14 || maxConnections > 128) throw new Error('maxConnections must be an integer from 14 to 128.');
   let celebrationStart = null;
   if (config.celebrationStart !== undefined && config.celebrationStart !== null) {
     if (typeof config.celebrationStart !== 'string' || !config.celebrationStart.endsWith('Z') || !Number.isFinite(Date.parse(config.celebrationStart))) throw new Error('celebrationStart must be an ISO UTC timestamp ending in Z.');
@@ -64,7 +76,7 @@ function validateConfig(config) {
     if (credential !== undefined && (typeof credential !== 'string' || credential.length > 512)) throw new Error('Invalid ICE server credential.');
     return { urls: Array.isArray(urls) ? urls.slice() : urls, ...(server.username ? { username: server.username } : {}), ...(credential ? { credential } : {}) };
   });
-  return { slots, celebrationStart, iceServers };
+  return { slots, celebrationStart, iceServers, maxConnections };
 }
 
 const gameSpec = (name, now) => {
@@ -78,14 +90,79 @@ const gameSpec = (name, now) => {
 };
 
 export function createPartyServer({ config, distDir = path.join(ROOT, 'dist'), now = Date.now, sessionMs = SESSION_MS } = {}) {
-  const validated = validateConfig(config); const slots = validated.slots;
+  const validated = validateConfig(config); const slots = validated.slots; const maxConnections = validated.maxConnections;
+  const birthdayId = slots.find(s => s.role === 'birthday').id;
   const inviteByToken = new Map(slots.map(s => [s.token, s]));
   const sessionsBySlot = new Map(); const sessionsByTicket = new Map(); const streams = new Map();
   const positions = new Map(); const moveTimes = new Map(); const scores = { birthday: {}, guest: {}, companion: {} };
   const signalQueues = new Map(); const signalTimes = new Map(); const photos = [];
   let party = { phase: 'lobby', game: null, endsAt: null, celebrationAt: null };
   let active = null; let wishes = []; let rallyAt = null; let dirty = false; let scheduledCelebration = validated.celebrationStart;
+  let journey = newJourney(), journeyStarted = false, journeyTravel = null, teleportVersion = 0;
+  const privateJourneys = new Map();
+  const observerUpdated = new Map();
+  let birthdaySample = null, birthdaySpeed = 0;
   const coord = () => ({ ...SPAWN, yaw: 0 });
+  const publicRoster = () => [...sessionsBySlot.values()].filter(s => !['companion', 'observer'].includes(s.slot.role) && s.expiresAt > now()).map(s => s.slot);
+  const award = (result, privateOwner = null) => {
+    for (const { id, points } of result.awards || []) {
+      const slot = sessionsBySlot.get(id)?.slot;
+      if (!slot || slot.role === 'observer' || (privateOwner ? id !== privateOwner : slot.role === 'companion')) continue;
+      scores[slot.role][id] = (scores[slot.role][id] || 0) + points;
+    }
+  };
+  const ownJourney = slot => {
+    if (slot.role !== 'companion') return journey;
+    let progress = privateJourneys.get(slot.id);
+    if (!progress || progress.chapter < journey.chapter) { progress = { ...journey, completed: [...journey.completed] }; privateJourneys.set(slot.id, progress); }
+    return progress;
+  };
+  const practiceFor = slot => {
+    if (!active?.chase) return null;
+    let practice = active.practices.get(slot.id);
+    if (!practice) {
+      const bots = Array.from({ length: 3 }, (_, i) => ({ id: `wisp-${randomUUID()}`, name: `Lantern wisp ${i + 1}` }));
+      const round = createChaseGame(active.game, [slot, ...bots], active.chase.startedAt);
+      if (active.game === 'tag') round.itId = slot.id;
+      const points = new Map(bots.map((bot, i) => [bot.id, [{ x: -14, y: .2, z: -27 }, { x: 14, y: .2, z: 27 }, { x: 30, y: .2, z: -12 }][i]]));
+      practice = { round, bots, positions: points, lastTick: now(), lastShot: 0 };
+      active.practices.set(slot.id, practice);
+    }
+    practice.positions.set(slot.id, positions.get(slot.id) || coord());
+    return practice;
+  };
+  const practiceView = slot => {
+    const p = practiceFor(slot); if (!p) return null;
+    const view = chaseView(p.round, slot.id, p.positions, now());
+    return { ...view, practice: true, wisps: p.bots.filter(b => canSeeChase(p.round, slot.id, b.id, p.positions, now())).map(b => ({ ...b, ...p.positions.get(b.id) })) };
+  };
+  const tickMatches = t => {
+    if (!active?.chase) return;
+    const roster = publicRoster();
+    updateChasePlayers(active.chase, roster.map(s => s.id), t);
+    award(tickChase(active.chase, t));
+    for (const session of sessionsBySlot.values()) if (session.slot.role === 'companion') {
+      const owner = session.slot.id, practice = practiceFor(session.slot), dt = Math.min(.2, Math.max(0, (t - practice.lastTick) / 1000));
+      practice.lastTick = t;
+      const actor = practice.positions.get(owner);
+      if (active.game !== 'hide-and-seek') for (const [i, bot] of practice.bots.entries()) {
+        const p = practice.positions.get(bot.id);
+        const a = (t - practice.round.startedAt) / 1000 * (.22 + i * .04) + i * 2.1;
+        const target = active.game === 'tag' && practice.round.itId === bot.id ? actor : { x: Math.cos(a) * 31, y: .2, z: Math.sin(a) * 31 };
+        const d = Math.hypot(target.x - p.x, target.z - p.z), amount = Math.min(1, (active.game === 'tag' ? 5 : 3) * dt / Math.max(.01, d));
+        const candidate = { x: p.x + (target.x - p.x) * amount, y: .2, z: p.z + (target.z - p.z) * amount };
+        const blocked = COVER.some(c => candidate.x > c.min.x - .5 && candidate.x < c.max.x + .5 && candidate.z > c.min.z - .5 && candidate.z < c.max.z + .5);
+        if (!blocked) practice.positions.set(bot.id, candidate);
+        if (active.game === 'tag' && practice.round.itId === bot.id) actionChase(practice.round, bot.id, { type: 'tag', targetId: owner }, practice.positions, t);
+        if (active.game === 'laser-tag' && t - practice.lastShot > 2500 + i * 300) {
+          actionChase(practice.round, bot.id, { type: 'laser', direction: { x: actor.x - p.x, y: actor.y - p.y, z: actor.z - p.z } }, practice.positions, t);
+          if (i === practice.bots.length - 1) practice.lastShot = t;
+        }
+      }
+      award(tickChase(practice.round, t), owner);
+    }
+    if (active.chase.finished) active.endsAt = Math.min(active.endsAt, t);
+  };
   const initialPosition = slot => {
     if (slot.role === 'birthday') return { ...SPAWN, yaw: 0 };
     if (slot.role === 'companion') {
@@ -94,6 +171,30 @@ export function createPartyServer({ config, distDir = path.join(ROOT, 'dist'), n
     }
     const n = [...sessionsBySlot.values()].filter(s => s.slot.role === 'guest').length;
     return { x: (n % 5) * 3 - 6, y: 0, z: 64 - Math.floor(n / 5) * 3, yaw: 0 };
+  };
+  const updateObservers = t => {
+    const birthday = sessionsBySlot.get(birthdayId);
+    if (!birthday || birthday.expiresAt <= t) return false;
+    const bp = positions.get(birthdayId) || coord(); let changed = false;
+    const yaw = Number.isFinite(bp.yaw) ? bp.yaw : 0;
+    if (birthdaySample && t > birthdaySample.t) {
+      const dt = Math.min(1, (t - birthdaySample.t) / 1000);
+      birthdaySpeed = Math.hypot(bp.x - birthdaySample.x, bp.y - birthdaySample.y, bp.z - birthdaySample.z) / dt;
+    }
+    const teleported = birthdaySample && birthdaySample.teleportVersion !== teleportVersion;
+    birthdaySample = { x: bp.x, y: bp.y, z: bp.z, t, teleportVersion };
+    for (const s of sessionsBySlot.values()) if (s.slot.role === 'observer' && s.expiresAt > t) {
+      const old = positions.get(s.slot.id) || coord();
+      const last = observerUpdated.get(s.slot.id) ?? (t - 100);
+      const dt = Math.min(.5, Math.max(0, (t - last) / 1000)); observerUpdated.set(s.slot.id, t);
+      const previous = teleported || !positions.has(s.slot.id) ? { x: bp.x + 100, y: bp.y, z: bp.z, yaw: old.yaw || 0 } : old;
+      const step = followStep({ boy: previous, girl: bp, dt, heading: yaw, speed: birthdaySpeed, airborne: true });
+      const safe = enforceGap(step.pos, bp);
+      const p = { ...safe, yaw: Math.atan2(bp.x - safe.x, bp.z - safe.z) };
+      if (!positions.has(s.slot.id) || Math.hypot(p.x - old.x, p.y - old.y, p.z - old.z) > .005) changed = true;
+      positions.set(s.slot.id, p);
+    }
+    return changed;
   };
   const validSession = req => {
     const m = /^Bearer\s+(.+)$/i.exec(req.headers.authorization || '');
@@ -106,7 +207,8 @@ export function createPartyServer({ config, distDir = path.join(ROOT, 'dist'), n
     if (!s || s.expiresAt <= now() || sessionsBySlot.get(s.slot.id) !== s) return null;
     s.lastSeen = now(); s.expiresAt = now() + sessionMs; return s;
   };
-  const maySee = (viewer, target) => viewer.id === target.id || viewer.role === 'birthday' || (viewer.role === 'companion' && (target.role === 'birthday' || target.role === 'guest') || viewer.role === 'guest' && (target.role === 'guest' || target.role === 'birthday'));
+  const maySee = (viewer, target) => viewer.id === target.id || viewer.role === 'birthday' || (viewer.role === 'observer' && (target.role === 'birthday' || target.role === 'guest')) || (viewer.role === 'companion' && (target.role === 'birthday' || target.role === 'guest') || viewer.role === 'guest' && (target.role === 'guest' || target.role === 'birthday'));
+  const mayVoice = (viewer, target) => viewer.role === 'observer' || target.role === 'observer' ? ((viewer.role === 'birthday' && target.role === 'observer') || (viewer.role === 'observer' && target.role === 'birthday')) : maySee(viewer, target);
   const publicScores = viewer => {
     const visible = viewer.role === 'birthday' ? ['birthday', 'guest', 'companion'] : ['guest'];
     const out = {};
@@ -116,7 +218,9 @@ export function createPartyServer({ config, distDir = path.join(ROOT, 'dist'), n
   };
   const stateFor = session => {
     const viewer = session.slot;
-    const players = [...sessionsBySlot.values()].filter(s => maySee(viewer, s.slot)).map(s => ({ id: s.slot.id, name: s.slot.name, isBirthday: s.slot.role === 'birthday', role: viewer.role === 'birthday' ? s.slot.role : undefined, avatar: s.slot.avatar, ...(positions.get(s.slot.id) || coord()) }));
+    const admitted = [...sessionsBySlot.values()].filter(s => s.expiresAt > now() && maySee(viewer, s.slot));
+    const voicePeers = admitted.filter(s => mayVoice(viewer, s.slot)).map(s => ({ id: s.slot.id, name: s.slot.name, isBirthday: s.slot.role === 'birthday', ...(viewer.role === 'birthday' ? { role: s.slot.role } : {}) }));
+    const players = admitted.filter(s => !active?.chase || viewer.role === 'companion' || viewer.role === 'observer' || ['companion', 'observer'].includes(s.slot.role) || canSeeChase(active.chase, viewer.id, s.slot.id, positions, now())).map(s => ({ id: s.slot.id, name: s.slot.name, isBirthday: s.slot.role === 'birthday', role: viewer.role === 'birthday' ? s.slot.role : undefined, avatar: s.slot.avatar, ...(positions.get(s.slot.id) || coord()) }));
     const signals = (signalQueues.get(viewer.id) || []).slice(-256);
     const visibleWishes = wishes.filter(x => viewer.role === 'birthday' || x.from === viewer.id).map(x => viewer.role === 'birthday' ? ({ fromRole: x.role, text: x.text }) : ({ text: x.text }));
     let round = null;
@@ -130,7 +234,11 @@ export function createPartyServer({ config, distDir = path.join(ROOT, 'dist'), n
     const stat = active?.statues?.get(viewer.id) || {};
     const statueStatus = active?.game === 'starlight-statues' ? ((now() - active.startedAt) % 10_000 < 6000 ? 'green' : 'red') : (stat.status || 'green');
     const selfProgress = { checkpoint: active?.progress?.get(viewer.id) || 0, carrying: active?.carrying?.get(viewer.id) ?? null, delivered: active?.delivered?.get(viewer.id) || [], sequenceDone: !!active?.completed?.has(viewer.id), statueRound: stat.round || 0, statueStatus };
-    return { type: 'state', self: { id: viewer.id, name: viewer.name, role: viewer.role, avatar: viewer.avatar }, players, party: { ...party, rallyAt, round, scores: publicScores(viewer), selfProgress }, signals, wishes: visibleWishes };
+    const chase = active?.chase ? (viewer.role === 'companion' ? practiceView(viewer) : viewer.role === 'observer' ? null : chaseView(active.chase, viewer.id, positions, now())) : null;
+    const trail = journeyStarted ? { ...journeyView(ownJourney(viewer)), active: true, waiting: viewer.role === 'companion' && ownJourney(viewer).chapter > journey.chapter } : null;
+    const privatePractices = active?.chase && viewer.role === 'birthday' ? [...sessionsBySlot.values()].filter(s => s.slot.role === 'companion').map(s => ({ ownerId: s.slot.id, ...practiceView(s.slot) })) : undefined;
+    const observer = [...sessionsBySlot.values()].find(s => s.slot.role === 'observer' && s.expiresAt > now());
+    return { type: 'state', self: { id: viewer.id, name: viewer.name, role: viewer.role, avatar: viewer.avatar, ...(viewer.role === 'observer' ? { observer: true, followingId: birthdayId } : {}) }, players, voicePeers, party: { ...party, rallyAt, round, scores: publicScores(viewer), selfProgress, presenceCount: admitted.length, chase, privatePractices, journey: trail, ...(viewer.role === 'companion' ? { partyJourney: journeyStarted ? journeyView(journey) : null } : {}), ...(viewer.role === 'observer' ? { observer: true } : {}), ...(viewer.role === 'birthday' && observer ? { observerFollow: { id: observer.slot.id } } : {}), travelAt: journeyTravel?.at ?? null, teleportVersion }, signals, wishes: visibleWishes };
   };
   const writeJSON = (res, status, obj) => { res.writeHead(status, { 'content-type': 'application/json; charset=utf-8', 'cache-control': 'no-store' }); res.end(JSON.stringify(obj)); };
   const broadcast = () => { dirty = true; };
@@ -154,12 +262,30 @@ export function createPartyServer({ config, distDir = path.join(ROOT, 'dist'), n
     try {
       if (req.method === 'GET' && url.pathname === '/healthz') return writeJSON(res, 200, { ok: true });
       if (req.method === 'POST' && url.pathname === '/api/join') {
-        const body = await readJSON(req); const slot = inviteByToken.get(String(body.token || ''));
+        const body = await readJSON(req);
+        let slot;
+        if (Object.hasOwn(body, 'guestNumber')) {
+          if (typeof body.guestNumber !== 'string' || !/^\d{1,10}$/.test(body.guestNumber)) return fail(res, 401, 'Enter a valid numbered guest link.');
+          const guestNumber = body.guestNumber.replace(/^0+(?=\d)/, '');
+          const name = body.name === undefined ? `Guest ${guestNumber}` : cleanLabel(body.name, 36);
+          if (!name) return fail(res, 401, 'Enter a valid numbered guest link.');
+          slot = { id: `numbered-${guestNumber}`, role: 'guest', name, avatar: 'g-petal', token: null };
+        } else slot = inviteByToken.get(String(body.token || ''));
         if (!slot) return fail(res, 401, 'Invalid invitation.');
         const existing = sessionsBySlot.get(slot.id);
+        const activeCount = [...sessionsBySlot.values()].filter(s => s.expiresAt > now()).length;
+        if (!existing && activeCount >= maxConnections) return fail(res, 429, 'The party is at its current connection limit.');
         if (existing) { const old = streams.get(existing.ticket); if (old) { old.end(); streams.delete(existing.ticket); } sessionsByTicket.delete(existing.ticket); }
         const ticket = token(); const session = { slot, ticket, expiresAt: now() + sessionMs, lastSeen: now() };
         sessionsBySlot.set(slot.id, session); sessionsByTicket.set(ticket, session); if (!positions.has(slot.id)) positions.set(slot.id, initialPosition(slot));
+        if (active?.chase && slot.role !== 'observer') {
+          updateChasePlayers(active.chase, publicRoster().map(s => s.id), now());
+          if (slot.role === 'companion') practiceFor(slot);
+          const n = publicRoster().findIndex(p => p.id === slot.id), a = Math.max(0, n) * 2.399963;
+          positions.set(slot.id, { x: Math.cos(a) * 38, y: 0, z: Math.sin(a) * 38, yaw: 0 });
+          if (slot.role === 'birthday') teleportVersion++;
+        }
+        updateObservers(now());
         broadcast(); return writeJSON(res, 200, { ticket, expiresAt: session.expiresAt, self: { id: slot.id, name: slot.name, role: slot.role, avatar: slot.avatar } });
       }
       if (req.method === 'GET' && url.pathname === '/api/state') {
@@ -188,7 +314,9 @@ export function createPartyServer({ config, distDir = path.join(ROOT, 'dist'), n
       }
       if (['/api/move', '/api/action', '/api/signal', '/api/photo'].includes(url.pathname) && req.method === 'POST') {
         const session = validSession(req); if (!session) return fail(res, 401, 'Session expired.'); const body = await readJSON(req, url.pathname === '/api/photo' ? 1024 * 1024 : MAX_BODY); const slot = session.slot;
+        if (slot.role === 'observer' && url.pathname !== '/api/signal') return fail(res, 403, 'This invitation is view-only.');
         if (url.pathname === '/api/photo') {
+          if (slot.role === 'companion') return fail(res, 403, 'This invitation can save private photos locally.');
           const decodeJPEG = value => {
             if (typeof value !== 'string' || !value.startsWith('data:image/jpeg;base64,') || value.length > 700_000) return null;
             const encoded = value.slice('data:image/jpeg;base64,'.length); if (!/^(?:[A-Za-z0-9+/]{4})*(?:[A-Za-z0-9+/]{2}==|[A-Za-z0-9+/]{3}=)?$/.test(encoded)) return null;
@@ -203,6 +331,15 @@ export function createPartyServer({ config, distDir = path.join(ROOT, 'dist'), n
         if (url.pathname === '/api/move') {
           const t = now(); if (t - (moveTimes.get(slot.id) || -Infinity) < 100) return fail(res, 429, 'Movement is limited to 10 updates per second.');
           const { x, y, z, yaw = 0 } = body; if (![x, y, z, yaw].every(Number.isFinite) || x < WORLD.x[0] || x > WORLD.x[1] || y < WORLD.y[0] || y > WORLD.y[1] || z < WORLD.z[0] || z > WORLD.z[1] || Math.abs(yaw) > Math.PI * 20) return fail(res, 400, 'Invalid position.');
+          if (active?.chase) {
+            const match = slot.role === 'companion' ? practiceFor(slot).round : active.chase;
+            const previous = positions.get(slot.id) || coord();
+            const moved = Math.hypot(x - previous.x, z - previous.z);
+            if (!canMoveChase(match, slot.id, t) && moved > .05) return fail(res, 400, 'Hold your place until the countdown or recharge finishes.');
+            const dt = Math.max(.1, Math.min(2, (t - (moveTimes.get(slot.id) ?? t - 100)) / 1000));
+            if (moved > 12 * dt + 1 || Math.hypot(x, z) > ARENA.radius || y < -2 || y > 5) return fail(res, 400, 'Stay on foot inside the starlight arena.');
+            if (COVER.some(c => x > c.min.x - .35 && x < c.max.x + .35 && z > c.min.z - .35 && z < c.max.z + .35 && y + .8 >= c.min.y && y + .8 <= c.max.y)) return fail(res, 400, 'That path is blocked by cover.');
+          }
           if (party.game === 'bridge-dash') {
             const previous = positions.get(slot.id) || coord(); const dt = Math.max(0.1, Math.min(1, (t - (moveTimes.get(slot.id) || t - 1000)) / 1000));
             if (Math.hypot(x - previous.x, z - previous.z) > 16 * dt + 4) return fail(res, 400, 'Movement exceeds the race speed limit.');
@@ -217,7 +354,7 @@ export function createPartyServer({ config, distDir = path.join(ROOT, 'dist'), n
           positions.set(slot.id, { x, y, z, yaw }); moveTimes.set(slot.id, t); broadcast(); return writeJSON(res, 200, { ok: true });
         }
         if (url.pathname === '/api/signal') {
-          const peer = sessionsBySlot.get(String(body.to || '')); if (!peer || !maySee(slot, peer.slot) || !maySee(peer.slot, slot)) return fail(res, 403, 'Peer is not visible to both participants.');
+          const peer = sessionsBySlot.get(String(body.to || '')); if (!peer || !mayVoice(slot, peer.slot) || !mayVoice(peer.slot, slot)) return fail(res, 403, 'Peer is not available on this voice channel.');
           const kind = body.kind === 'candidate' ? 'candidate' : body.kind === 'description' ? 'description' : '';
           const payload = body.payload;
           const valid = kind === 'description' ? payload && ['offer', 'answer'].includes(payload.type) && typeof payload.sdp === 'string' && payload.sdp.length <= 12_000 : payload && typeof payload.candidate === 'string' && payload.candidate.length <= 2_000 && (payload.sdpMid === null || typeof payload.sdpMid === 'string' || payload.sdpMid === undefined);
@@ -227,13 +364,54 @@ export function createPartyServer({ config, distDir = path.join(ROOT, 'dist'), n
         }
         if (url.pathname === '/api/action') {
           const type = body.type; const canHost = slot.role === 'birthday' || slot.role === 'companion';
+          if (['start-journey', 'journey-travel', 'journey-finale'].includes(type)) {
+            if (!canHost || party.phase === 'playing') return fail(res, 403, 'Finish the current round before guiding the journey.');
+            if (type === 'journey-finale') {
+              if (!journeyView(journey).complete) return fail(res, 400, 'The twenty lights are still being gathered.');
+              active = null; journeyTravel = null; party = { phase: 'rally', game: null, endsAt: null, celebrationAt: null }; rallyAt = now() + 5000;
+            } else {
+              journeyStarted = true;
+              if (type === 'journey-travel') {
+                const chapter = journeyView(journey).current;
+                if (!chapter) return fail(res, 400, 'The crown is complete. Return to the palace for the finale.');
+                journeyTravel = { at: now() + 5000, destination: chapter.collect };
+                active = null; rallyAt = null; party = { phase: 'journey-travel', game: null, endsAt: null, celebrationAt: null };
+              }
+            }
+            broadcast(); return writeJSON(res, 200, { ok: true });
+          }
+          if (type === 'journey-collect' || type === 'journey-light') {
+            if (!journeyStarted || party.phase === 'playing' || journeyTravel) return fail(res, 400, 'The trail is paused during a round or a skyboat journey.');
+            const current = ownJourney(slot);
+            if (slot.role === 'companion' && current.chapter > journey.chapter) return fail(res, 400, 'Your light is ready. Wait for the party’s next beacon.');
+            if (body.chapterId !== journeyView(current).current?.id) return fail(res, 409, 'The party has reached a new chapter.');
+            const next = advanceJourney(current, body, positions.get(slot.id) || coord());
+            if (slot.role === 'companion') privateJourneys.set(slot.id, next); else journey = next;
+            if (type === 'journey-light') scores[slot.role][slot.id] = (scores[slot.role][slot.id] || 0) + 2;
+            broadcast(); return writeJSON(res, 200, { ok: true });
+          }
+          if (['tag', 'seek', 'laser'].includes(type)) {
+            if (!active?.chase || party.phase !== 'playing') return fail(res, 400, 'That game is not running.');
+            const practice = slot.role === 'companion' ? practiceFor(slot) : null;
+            const match = practice?.round ?? active.chase, map = practice?.positions ?? positions;
+            const result = actionChase(match, slot.id, body, map, now());
+            if (!result.events.length) return fail(res, 400, 'No valid target yet. Check your range, cover, and cooldown.');
+            award(result, practice ? slot.id : null); broadcast(); return writeJSON(res, 200, { ok: true, hit: result.events.some(e => e.hit), events: result.events });
+          }
           if (type === 'start-game') {
             if (!canHost || !GAMES.has(body.game)) return fail(res, 403, 'Game cannot be started by this player.');
-            active = gameSpec(body.game, now()); active.progress = new Map(); active.completed = new Set(); active.privateFound = new Map(); active.carrying = new Map(); active.delivered = new Map(); active.collected = new Map(); active.statues = new Map(); rallyAt = null;
-            [...sessionsBySlot.values()].forEach((s, i) => {
+            const chase = CHASE_GAMES.has(body.game) ? createChaseGame(body.game, publicRoster(), now()) : null;
+            active = chase ? { phase: 'playing', game: body.game, endsAt: chase.endsAt, chase, practices: new Map() } : gameSpec(body.game, now()); active.progress = new Map(); active.completed = new Set(); active.privateFound = new Map(); active.carrying = new Map(); active.delivered = new Map(); active.collected = new Map(); active.statues = new Map(); rallyAt = null; journeyTravel = null;
+            let seat = 0;
+            [...sessionsBySlot.values()].forEach(s => {
+              if (s.slot.role === 'observer') return;
+              const i = seat++;
               const place = body.game === 'bridge-dash' ? { x: i % 2 ? 1.1 : -1.1, y: 0, z: -178 + Math.floor(i / 2) * 2.5, yaw: 0 } : { x: (i % 7) * 2 - 6, y: 0, z: 70 - Math.floor(i / 7) * 3, yaw: 0 };
+              if (chase) { const a = i * 2.399963; Object.assign(place, { x: Math.cos(a) * 38, z: Math.sin(a) * 38 }); }
               positions.set(s.slot.id, place); moveTimes.set(s.slot.id, now() - 100);
+              if (chase && s.slot.role === 'companion') practiceFor(s.slot);
             });
+            teleportVersion++;
             party = { phase: active.phase, game: body.game, endsAt: active.endsAt, celebrationAt: null }; broadcast(); return writeJSON(res, 200, { ok: true });
           }
           if (type === 'outfit') {
@@ -242,11 +420,11 @@ export function createPartyServer({ config, distDir = path.join(ROOT, 'dist'), n
           }
           if (type === 'celebrate') {
             if (!canHost) return fail(res, 403, 'Only a host can start the celebration.');
-            active = null; party = { phase: 'celebration', game: null, endsAt: null, celebrationAt: now() }; broadcast(); return writeJSON(res, 200, { ok: true });
+            active = null; journeyTravel = null; party = { phase: 'celebration', game: null, endsAt: null, celebrationAt: now() }; broadcast(); return writeJSON(res, 200, { ok: true });
           }
           if (type === 'rally') {
             if (!canHost) return fail(res, 403, 'Only a host can call the rally.');
-            active = null; party = { phase: 'rally', game: null, endsAt: null, celebrationAt: null }; rallyAt = now() + 5000; broadcast(); return writeJSON(res, 200, { ok: true, rallyAt });
+            active = null; journeyTravel = null; party = { phase: 'rally', game: null, endsAt: null, celebrationAt: null }; rallyAt = now() + 5000; broadcast(); return writeJSON(res, 200, { ok: true, rallyAt });
           }
           if (type === 'wish') {
             const text = cleanLabel(body.text, 140); if (!text) return fail(res, 400, 'Wish text is required.');
@@ -304,20 +482,27 @@ export function createPartyServer({ config, distDir = path.join(ROOT, 'dist'), n
     } catch (e) { if (!res.headersSent) fail(res, e.status || 500, e.status ? e.message : 'Server error.'); else res.destroy(); }
   };
   const server = http.createServer(handler);
-  const timer = setInterval(() => {
+  const tickRoom = () => {
     const t = now();
     for (const [id, s] of sessionsBySlot) if (s.expiresAt <= t) { sessionsBySlot.delete(id); sessionsByTicket.delete(s.ticket); const stream = streams.get(s.ticket); if (stream) stream.end(); streams.delete(s.ticket); }
-    if (party.endsAt && party.endsAt <= t) { party = { phase: 'lobby', game: null, endsAt: null, celebrationAt: null }; active = null; }
-    if (rallyAt && rallyAt <= t) {
-      [...sessionsBySlot.values()].forEach((s, i) => { positions.set(s.slot.id, { x: (i % 5) * 4 - 8, y: 46.72, z: -448 + Math.floor(i / 5) * 4, yaw: 0 }); moveTimes.set(s.slot.id, t); });
-      rallyAt = null; party = { phase: 'celebration', game: null, endsAt: null, celebrationAt: t }; active = null;
+    tickMatches(t);
+    if (active && active.endsAt <= t) { party = { phase: 'lobby', game: null, endsAt: null, celebrationAt: null }; active = null; }
+    if (journeyTravel && journeyTravel.at <= t) {
+      [...sessionsBySlot.values()].filter(s => s.slot.role !== 'observer').forEach((s, i) => { positions.set(s.slot.id, { x: journeyTravel.destination.x + (i % 5 - 2) * 2.2, y: journeyTravel.destination.y, z: journeyTravel.destination.z + Math.floor(i / 5) * 2.2, yaw: 0 }); moveTimes.set(s.slot.id, t - 100); });
+      journeyTravel = null; teleportVersion++; party = { phase: 'lobby', game: null, endsAt: null, celebrationAt: null };
     }
-    if (scheduledCelebration && scheduledCelebration <= t && !rallyAt) { scheduledCelebration = null; active = null; party = { phase: 'rally', game: null, endsAt: null, celebrationAt: null }; rallyAt = t + 5000; }
+    if (rallyAt && rallyAt <= t) {
+      [...sessionsBySlot.values()].filter(s => s.slot.role !== 'observer').forEach((s, i) => { positions.set(s.slot.id, { x: (i % 5) * 4 - 8, y: 46.72, z: -448 + Math.floor(i / 5) * 4, yaw: 0 }); moveTimes.set(s.slot.id, t); });
+      rallyAt = null; teleportVersion++; party = { phase: 'celebration', game: null, endsAt: null, celebrationAt: t }; active = null;
+    }
+    if (scheduledCelebration && scheduledCelebration <= t && !rallyAt) { scheduledCelebration = null; active = null; journeyTravel = null; party = { phase: 'rally', game: null, endsAt: null, celebrationAt: null }; rallyAt = t + 5000; }
+    if (updateObservers(t)) broadcast();
     broadcast();
-  }, 1000); timer.unref();
-  const pushTimer = setInterval(flushBroadcast, 100); pushTimer.unref();
+  };
+  const timer = setInterval(tickRoom, 1000); timer.unref();
+  const pushTimer = setInterval(() => { const t = now(); tickMatches(t); if (updateObservers(t)) broadcast(); flushBroadcast(); }, 100); pushTimer.unref();
   server.on('close', () => { clearInterval(timer); clearInterval(pushTimer); });
-  server.partyInternals = { handler, stateFor, sessionsBySlot, scores, getActive: () => active, positions };
+  server.partyInternals = { handler, stateFor, sessionsBySlot, scores, getActive: () => active, positions, tickRoom, getJourney: () => journey };
   return server;
 }
 

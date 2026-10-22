@@ -7,6 +7,7 @@ COPY castle ./castle
 COPY vendor ./vendor
 COPY scripts ./scripts
 COPY server ./server
+COPY shared ./shared
 RUN node scripts/build-party.mjs && node scripts/check-party-build.mjs
 
 FROM node:24-alpine
@@ -14,6 +15,7 @@ ENV NODE_ENV=production PORT=3000 HOST=0.0.0.0
 WORKDIR /app
 COPY --from=build --chown=node:node /app/dist ./dist
 COPY --from=build --chown=node:node /app/server ./server
+COPY --from=build --chown=node:node /app/shared ./shared
 COPY package.json ./
 USER node
 EXPOSE 3000

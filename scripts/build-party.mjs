@@ -67,7 +67,7 @@ fs.copyFileSync(path.join(ROOT, 'vendor', 'three.module.min.js'), path.join(DIST
 fs.copyFileSync(path.join(ROOT, 'vendor', 'addons', 'utils', 'BufferGeometryUtils.js'), path.join(DIST, 'vendor', 'addons', 'utils', 'BufferGeometryUtils.js'));
 
 const world = await import('../server/party.mjs');
-const worldNames = ['SPAWN', 'LANTERN_PICKUPS', 'BRIDGE_CHECKPOINTS', 'SKY_RINGS', 'INGREDIENTS', 'CAKE_SPOT'];
+const worldNames = ['SPAWN', 'LANTERN_PICKUPS', 'BRIDGE_CHECKPOINTS', 'SKY_RINGS', 'INGREDIENTS', 'CAKE_SPOT', 'PARTY_ARENA', 'ARENA_COVER', 'JOURNEY_CATALOG', 'JOURNEY_INFO'];
 const worldData = Object.fromEntries(worldNames.filter(name => name in world).map(name => [name, world[name]]));
 fs.writeFileSync(path.join(DIST, 'party', 'world.json'), JSON.stringify(worldData, null, 2) + '\n');
 fs.copyFileSync(path.join(ROOT, 'vendor', 'LICENSE.three'), path.join(DIST, 'vendor', 'LICENSE.three'));
