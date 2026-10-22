@@ -6,3 +6,11 @@ dist/
 .claude/
 *.jsonl
 dist-*/
+
+# Never publish invitation credentials or session exports.
+.env*
+*private*/
+party.json
+links.md
+invitations.html
+

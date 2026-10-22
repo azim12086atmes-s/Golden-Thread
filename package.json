@@ -9,7 +9,10 @@
     "build": "tsc --noEmit && vite build",
     "preview": "vite preview",
     "test": "vitest run",
-    "typecheck": "tsc --noEmit"
+    "typecheck": "tsc --noEmit",
+    "party:build": "node scripts/build-party.mjs && node scripts/check-party-build.mjs",
+    "party:start": "node server/party.mjs",
+    "party:test": "node server/party.test.mjs"
   },
   "dependencies": {
     "three": "^0.186.1"
@@ -21,3 +24,4 @@
     "vitest": "^5.0.2"
   }
 }
+

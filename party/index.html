@@ -1,0 +1,45 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+  <meta name="referrer" content="no-referrer"><meta name="theme-color" content="#171329">
+  <meta name="description" content="An invitation to a birthday among the stars.">
+  <title>A Night of Starlight</title>
+  <link rel="stylesheet" href="/party/styles.css">
+  <script type="importmap">{"imports":{"three":"/vendor/three.module.min.js","three/addons/":"/vendor/addons/"}}</script>
+</head>
+<body>
+  <div id="world" aria-label="Birthday world"></div>
+  <main id="invitation" class="invitation">
+    <div class="orb orb-one"></div><div class="orb orb-two"></div>
+    <div class="invite-card">
+      <div class="eyebrow">ONE EVENING · A THOUSAND LITTLE WONDERS</div>
+      <div class="star-mark" aria-hidden="true">✦</div>
+      <h1>A night of<br><em>starlight.</em></h1>
+      <p>A palace above the clouds. A world to wander.<br>And a birthday to remember, together.</p>
+      <div class="invite-rule"><span></span> YOUR INVITATION <span></span></div>
+      <button id="join" class="gold-button">Enter the celebration <span>↗</span></button>
+      <p id="join-status" role="status" class="fine">Open your personal invitation link to begin.</p>
+      <p class="fine">Headphones recommended · Laptop or phone · Microphone optional</p>
+    </div>
+  </main>
+  <div id="hud" hidden>
+    <header class="topbar">
+      <div class="brand"><span>✦</span><div>STARLIGHT<small>A BIRTHDAY ADVENTURE</small></div></div>
+      <div class="connection"><i id="connection-dot"></i><span id="connection">Connecting</span><span class="separator">/</span><span id="presence">Just arriving</span></div>
+      <button id="help-button" class="glass-button" aria-label="Help and controls">?</button>
+    </header>
+    <aside class="objective glass-panel"><div class="eyebrow" id="objective-label">THE EVENING IS YOURS</div><h2 id="objective-title">Follow your curiosity.</h2><p id="objective-description">Explore the meadow, cross the grand bridge, and find the palace.</p><div class="objective-bottom"><span id="objective-progress">✦ Explore at your own pace</span><time id="round-clock"></time></div></aside>
+    <div id="celebration-banner" class="celebration-banner" hidden><div class="eyebrow">THE STARS ARE ALL FOR YOU</div><h1 id="birthday-title">Happy Birthday!</h1><p>Make a wish. Keep a little magic.</p></div>
+    <div id="toast" role="status" aria-live="polite" class="toast" hidden></div>
+    <div class="location-label"><span>✧</span><span id="location-name">Wanderers’ Meadow</span><small id="movement-mode">ON FOOT</small></div>
+    <nav class="dock glass-panel" aria-label="Party tools">
+      <button data-panel="games"><span>✧</span>Play</button><button data-panel="map"><span>⌘</span>Explore</button><button data-panel="wardrobe"><span>♧</span>Outfits</button><button id="photo-button"><span>▣</span>Polaroid</button><button data-panel="album"><span>▧</span>Album</button><button data-panel="voice"><span>♫</span>Audio</button><button id="wish-button"><span>♢</span>Wish</button>
+    </nav>
+    <div class="touch-actions"><button id="interact-button">E · Collect</button><button id="fly-button">Fly</button><button id="rise-button">↑</button><button id="lower-button">↓</button><button id="run-button">Run</button></div>
+    <div class="desktop-hint">WASD move · Drag to look · Shift run · F fly · Space rise · E collect · P photo</div>
+  </div>
+  <dialog id="panel" class="panel glass-panel"><button id="panel-close" class="close-button" aria-label="Close panel">×</button><div id="panel-content"></div></dialog>
+  <script type="module" src="/party/main.js"></script>
+</body>
+</html>
