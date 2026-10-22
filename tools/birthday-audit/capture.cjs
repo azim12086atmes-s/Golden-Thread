@@ -66,12 +66,13 @@ const delay = ms => new Promise(r=>setTimeout(r,ms));
     flags:['story-5','thread-tied','cake'],quests:{'main-meadow':{status:'done',step:0,count:0}},
     tour:{off:true,later:[]},playSeconds:10};
   const golden='https://azim12086atmes-s.github.io/Golden-Thread/versions/a6c20a4/';
-  await capture({file:'golden-current-meadow.png',url:golden,seed});
-  await capture({file:'golden-current-grass.png',url:golden,seed:{...seed,player:{x:110,y:0,z:275,heading:Math.PI}}});
+  if (process.env.CAPTURE_SET !== 'palace-day') await capture({file:'golden-current-meadow.png',url:golden,seed});
+  if (process.env.CAPTURE_SET !== 'palace-day') await capture({file:'golden-current-grass.png',url:golden,seed:{...seed,player:{x:110,y:0,z:275,heading:Math.PI}}});
   const castle='http://127.0.0.1:8012/';
-  await capture({file:'castle-large-exterior.png',url:castle+'?quality=high&phase=day&cam=3000,2500,4200,0,1050,0,60'});
-  await capture({file:'castle-large-courtyard.png',url:castle+'?quality=high&phase=day&cam=-110,1505,-180,-192.5,1391.5,-412.5,55'});
-  await capture({file:'castle-authored-meadow.png',url:castle+'?quality=high&phase=day&cam=7640,1158,11950,7590,1156,11880,60'});
+  await capture({file:'castle-large-exterior-day.png',url:castle+'?quality=high&dusk=1&cam=3000,2500,4200,0,1050,0,60'});
+  await capture({file:'castle-large-courtyard-day.png',url:castle+'?quality=high&dusk=1&cam=-110,1505,-180,-192.5,1391.5,-412.5,55'});
+  await capture({file:'castle-authored-meadow-day.png',url:castle+'?quality=high&dusk=1&cam=7614,1158,11912,7584,1156,11865,60'});
+  await capture({file:'castle-approach-day.png',url:castle+'?quality=high&dusk=1&cam=0,22,6100,0,1050,0,58'});
   await browser.close();
   fs.writeFileSync(path.join(out,'report.json'),JSON.stringify(report,null,2));
   if(report.errors.length) process.exitCode=1;
