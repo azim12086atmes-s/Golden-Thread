@@ -23,6 +23,13 @@ jobs:
           ref: 3fcc2b4728c51eca871c889fa545c9605d7ad8df
           path: castle
           persist-credentials: false
+          filter: blob:none
+          sparse-checkout: |
+            index.html
+            css
+            js
+            vendor
+            data
       - uses: actions/setup-node@v4
         with:
           node-version: '22'
