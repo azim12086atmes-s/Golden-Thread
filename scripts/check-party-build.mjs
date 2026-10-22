@@ -20,7 +20,7 @@ check(!relativeFiles.some(file => /(?:^|\/)(?:invites?|private|party-config)(?:[
 check(!relativeFiles.some(file => /(?:^|\/)(?:Game\.ts|main\.ts|story)(?:\/|$)/i.test(file)), 'Build output contains an original game entry or story source.');
 check(!relativeFiles.some(file => /^src\/(?:Game\.js|main\.js|story\/)/i.test(file)), 'Build output exposes the original single-player application.');
 
-for (const file of files.filter(file => /\.js$/.test(file) && !file.includes('/vendor/'))) {
+for (const file of files.filter(file => /\.m?js$/.test(file) && !file.includes('/vendor/'))) {
   const code = fs.readFileSync(file, 'utf8');
   check(!/\.ts(?:['"]|\b)/.test(code), `Unresolved TypeScript import/reference in ${path.relative(DIST, file)}.`);
   for (const match of code.matchAll(IMPORT_RE)) {

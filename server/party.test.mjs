@@ -434,3 +434,96 @@ test('observers cannot change appearance or ride position, and observer vehicles
   const publicState=(await state(f,guest.ticket)).json();assert.ok(!JSON.stringify(publicState).includes(observer.self.id));
   assert.equal((await state(f,host.ticket)).json().players.some(player=>player.id===observer.self.id),true);
 });
+
+test('birthday can dress connected private guests while public players cannot target them', async t => {
+  const f = await fixture({ observer: true, autoTick: false }); t.after(f.close);
+  const birthdaySlot = f.config.slots[0], companionSlot = f.config.slots[1], publicGuestSlot = f.config.slots[4], observerSlot = f.config.slots.at(-1);
+  const birthday = (await join(f, birthdaySlot)).json();
+  const companion = (await join(f, companionSlot)).json();
+  const publicGuest = (await join(f, publicGuestSlot)).json();
+  const observer = (await join(f, observerSlot)).json();
+
+  assert.equal((await post(f, '/api/action', birthday.ticket, { type: 'outfit', avatar: 'g-star', targetId: companion.self.id })).status, 200);
+  assert.equal((await post(f, '/api/action', birthday.ticket, { type: 'outfit', avatar: 'fx-b-1', targetId: observer.self.id })).status, 200);
+  assert.equal((await state(f, birthday.ticket)).json().players.find(p => p.id === companion.self.id).avatar, 'g-star');
+  assert.equal((await state(f, birthday.ticket)).json().players.find(p => p.id === observer.self.id).avatar, 'fx-b-1');
+  assert.equal((await state(f, companion.ticket)).json().self.avatar, 'g-star');
+  assert.equal((await state(f, observer.ticket)).json().self.avatar, 'fx-b-1');
+
+  assert.equal((await post(f, '/api/action', publicGuest.ticket, { type: 'outfit', avatar: 'g-star', targetId: companion.self.id })).status, 403);
+  assert.equal((await post(f, '/api/action', companion.ticket, { type: 'outfit', avatar: 'b-moon', targetId: observer.self.id })).status, 403);
+  assert.equal((await post(f, '/api/action', birthday.ticket, { type: 'outfit', avatar: 'g-star', targetId: publicGuest.self.id })).status, 403);
+  assert.equal((await post(f, '/api/action', birthday.ticket, { type: 'outfit', avatar: 'g-star', targetId: 'not-connected' })).status, 403);
+  assert.equal((await post(f, '/api/action', birthday.ticket, { type: 'outfit', avatar: 'g-star', targetId: 7 })).status, 400);
+  assert.equal((await post(f, '/api/action', observer.ticket, { type: 'outfit', avatar: 'b-moon' })).status, 403);
+
+  const publicState = (await state(f, publicGuest.ticket)).json();
+  assert.ok(!JSON.stringify(publicState).includes(companion.self.id));
+  assert.ok(!JSON.stringify(publicState).includes(observer.self.id));
+  assert.ok(publicState.players.every(p => p.role === undefined));
+});
+
+test('festival enforces birthday proximity and role permissions through lanterns, cake, fireworks, and afterparty', async t => {
+  const f = await fixture({ observer: true, autoTick: false }); t.after(f.close);
+  const birthday = (await join(f, f.config.slots[0])).json();
+  const companion = (await join(f, f.config.slots[1])).json();
+  const guest = (await join(f, f.config.slots[4])).json();
+  const observer = (await join(f, f.config.slots.at(-1))).json();
+
+  assert.equal((await post(f, '/api/action', birthday.ticket, { type: 'celebrate' })).status, 200);
+  let view = async client => (await state(f, client.ticket)).json();
+  assert.equal((await view(guest)).party.festival.stage, 'lanterns');
+  for (const privatePlayer of [companion, observer]) {
+    assert.equal((await post(f, '/api/action', privatePlayer.ticket, { type: 'festival', event: 'release-lantern' })).status, 403);
+  }
+  f.server.partyInternals.positions.set(guest.self.id, { ...CAKE_SPOT, yaw: 0 });
+  assert.equal((await post(f, '/api/action', guest.ticket, { type: 'festival', event: 'blow-candles' })).status, 403);
+  assert.equal((await post(f, '/api/action', birthday.ticket, { type: 'festival', event: 'blow-candles' })).status, 400, 'birthday must stand by the cake');
+  assert.equal((await post(f, '/api/action', guest.ticket, { type: 'festival', event: 'release-lantern' })).status, 200);
+  assert.equal((await view(birthday)).party.festival.lanternsReleased, 1);
+
+  assert.equal((await post(f, '/api/action', companion.ticket, { type: 'wish', text: 'A quiet private wish.' })).status, 200);
+  const birthdayAfterWish = await view(birthday), publicAfterWish = await view(guest);
+  assert.equal(birthdayAfterWish.party.festival.lanternsReleased, 1, 'companion wishes do not count as public lantern releases');
+  assert.ok(birthdayAfterWish.wishes.some(w => w.text === 'A quiet private wish.' && w.fromRole === 'companion'));
+  assert.ok(!publicAfterWish.wishes.some(w => w.text === 'A quiet private wish.'));
+  assert.ok(!JSON.stringify(publicAfterWish).includes(companion.self.id));
+  assert.ok(!JSON.stringify(birthdayAfterWish.wishes).includes(companion.self.id), 'wish projections omit private actor ids');
+
+  f.server.partyInternals.positions.set(birthday.self.id, { x: CAKE_SPOT.x + 30, y: CAKE_SPOT.y, z: CAKE_SPOT.z, yaw: 0 });
+  assert.equal((await post(f, '/api/action', birthday.ticket, { type: 'festival', event: 'blow-candles' })).status, 400);
+  f.server.partyInternals.positions.set(birthday.self.id, { ...CAKE_SPOT, yaw: 0 });
+  assert.equal((await post(f, '/api/action', birthday.ticket, { type: 'festival', event: 'blow-candles' })).status, 200);
+  assert.equal((await view(guest)).party.festival.stage, 'cake');
+  assert.equal((await post(f, '/api/action', guest.ticket, { type: 'festival', event: 'cut-cake' })).status, 403);
+  assert.equal((await post(f, '/api/action', birthday.ticket, { type: 'festival', event: 'cut-cake' })).status, 200);
+  assert.equal((await view(birthday)).party.festival.stage, 'fireworks');
+  assert.equal((await post(f, '/api/action', observer.ticket, { type: 'festival', event: 'finish-finale' })).status, 403);
+  assert.equal((await post(f, '/api/action', birthday.ticket, { type: 'festival', event: 'finish-finale' })).status, 200);
+  const finished = await view(guest);
+  assert.equal(finished.party.festival.stage, 'afterparty'); assert.equal(finished.party.festival.afterparty, true);
+});
+
+test('festival stage and public lantern count survive engine snapshot restoration', async t => {
+  const f = await fixture({ observer: true, autoTick: false }); t.after(f.close);
+  const birthday = (await join(f, f.config.slots[0])).json();
+  const guest = (await join(f, f.config.slots[4])).json();
+  const companion = (await join(f, f.config.slots[1])).json();
+  assert.equal((await post(f, '/api/action', birthday.ticket, { type: 'celebrate' })).status, 200);
+  assert.equal((await post(f, '/api/action', guest.ticket, { type: 'festival', event: 'release-lantern' })).status, 200);
+  assert.equal((await post(f, '/api/action', companion.ticket, { type: 'wish', text: 'Private birthday wish.' })).status, 200);
+  f.server.partyInternals.positions.set(birthday.self.id, { ...CAKE_SPOT, yaw: 0 });
+  assert.equal((await post(f, '/api/action', birthday.ticket, { type: 'festival', event: 'blow-candles' })).status, 200);
+  const snapshot = f.server.partyInternals.exportSnapshot();
+  const restored = createPartyServer({ config: f.config, now: f.current, autoTick: false, serverFactory: () => ({ on() {} }), snapshot });
+  t.after(() => restored.emit?.('close'));
+  const hostView = (await state({ server: restored }, birthday.ticket)).json();
+  assert.equal(hostView.party.festival.stage, 'cake'); assert.equal(hostView.party.festival.lanternsReleased, 1);
+  assert.ok(hostView.wishes.some(w => w.text === 'Private birthday wish.' && w.fromRole === 'companion'));
+  assert.ok(!JSON.stringify(hostView.party.festival).includes(guest.self.id));
+  assert.ok(!JSON.stringify(hostView.party.festival).includes(companion.self.id));
+  const publicView = (await state({ server: restored }, guest.ticket)).json();
+  assert.equal(publicView.party.festival.stage, 'cake'); assert.equal(publicView.party.festival.lanternsReleased, 1);
+  assert.ok(!JSON.stringify(publicView).includes(companion.self.id));
+  assert.ok(!publicView.wishes.some(w => w.text === 'Private birthday wish.'));
+});

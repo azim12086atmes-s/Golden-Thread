@@ -17,6 +17,8 @@ import { renderWardrobe as renderFullWardrobe, closeWardrobePreview } from './wa
 import { buildVehicle, VEHICLES } from '../src/vehicles/vehicles';
 import { appendAtlas } from './atlas-map.js';
 import { Travellers } from '../src/player/Travellers';
+import { Chariot, SEATS as CHARIOT_SEATS } from '../src/event/Chariot';
+import { PartyCelebration } from './celebration.js';
 
 const $ = id => document.getElementById(id);
 const text = (id, value) => { if ($(id).textContent !== String(value)) $(id).textContent = value; };
@@ -151,6 +153,8 @@ async function receive(next) {
   if (activePanel === 'games' && JSON.stringify(previous?.party.scores) !== JSON.stringify(next.party.scores)) renderGames();
   if (previous?.party.journey && next.party.journey?.stars > previous.party.journey.stars) toast(`Another beacon is shining. ${next.party.journey.stars} / 20 lights for the birthday crown.`);
   if (activePanel === 'journey' && (previous?.party.journey?.version !== next.party.journey?.version || previous?.party.phase !== next.party.phase)) renderJourney();
+  if (activePanel === 'festival' && JSON.stringify(previous?.party.festival)!==JSON.stringify(next.party.festival)) renderFestival();
+  if (previous?.party.festival?.stage!==next.party.festival?.stage&&next.party.festival?.stage==='afterparty'&&next.self.role!=='observer') toast('A birthday wish, kept forever. The night dragon is now part of your Golden Thread journey.');
 }
 if(['localhost','127.0.0.1'].includes(location.hostname))window.partyTest={get game(){return game;},get state(){return state;},openPanel,closePanel,action};
 function isHost() { return state && ['birthday', 'companion'].includes(state.self.role); }
@@ -175,8 +179,10 @@ function openPanel(name) {
   if (name === 'memory') return renderMemory();
   if (name === 'wishes') return renderWishes();
   if (name === 'journey') return renderJourney();
+  if (name === 'chronicle') return renderChronicle();
+  if (name === 'festival') return renderFestival();
   if (name === 'life') return renderLife();
-  if (['journal','bag','craft','trade','friends','home','rides','van'].includes(name)) return game.life.open(name);
+  if (['journal','bag','craft','trade','friends','home','rides','van','company'].includes(name)) return game.life.open(name);
   if (name === 'welcome') {
     beginPanel(name, 'A LITTLE MAGIC, JUST FOR YOU', `Welcome, ${state.self.name}.`, 'This evening is yours to explore. Your private companions are visible and audible only to you. Other guests do not receive their presence, and the shared album gives guests a view without them.');
     const names = state.players.filter(p => isPrivate(p.role)).map(p => p.name);
@@ -250,8 +256,49 @@ function renderLife() {
   beginPanel('life','THE GOLDEN THREAD WORLD','A little life along the way.','Meet each land’s Keeper, learn a craft, help the townspeople, and make a home. Your party adventures are always waiting in Play and Story.');
   if(state.self.role==='observer'){content.append(el('p','You follow the birthday guest and can speak to her through Audio.'));return;}
   const grid=el('div',undefined,'card-grid');
-  for(const[id,title,description]of[['journal','Journeys & wonders','Twenty original chapters, side quests and hidden places.'],['bag','Bag & supplies','Your gathered materials, coins and keepsakes.'],['craft','Eight crafts','Learn from Keepers and turn materials into useful gifts.'],['trade','Local markets','Buy local materials and trade your creations.'],['friends','Friends & letters','Meet residents, exchange gifts, and answer their requests.'],['home','Homes & gardens','Buy land, decorate, grow crops and care for animals.'],['rides','The travelling garage','Car, van, truck, biplane, unicorn and dragon.'],['van','Safar’s cabin','A home on wheels, decorated in your favourite colours.']]) {const b=button('',()=>game.life.open(id),'destination');b.append(el('strong',title),el('small',description));grid.append(b);}content.append(grid);
+  for(const[id,title,description]of[['journal','Journeys & wonders','Twenty original chapters, side quests and hidden places.'],['bag','Bag & supplies','Your gathered materials, coins and keepsakes.'],['craft','Eight crafts','Learn from Keepers and turn materials into useful gifts.'],['trade','Local markets','Buy local materials and trade your creations.'],['friends','Friends & letters','Meet residents, exchange gifts, and answer their requests.'],['company','Travelling company','Invite the original fictional travellers and pets under their chapter and friendship rules.'],['home','Homes & gardens','Buy land, decorate, grow crops and care for animals.'],['rides','The travelling garage','Car, van, truck, biplane, unicorn and dragon.'],['van','Safar’s cabin','A home on wheels, decorated in your favourite colours.']]) {const b=button('',()=>game.life.open(id),'destination');b.append(el('strong',title),el('small',description));grid.append(b);}content.append(grid);
   content.append(el('p','Walk close to a resident, animal or glowing resource and press E. Your personal finds and home are saved in this browser; the party, games, outfits and rides are shared live.'));
+}
+function renderChronicle(){
+  beginPanel('chronicle','THE GOLDEN THREAD','One world. An evening of stories.','The lands’ lanterns are fading. Meet their Keepers, learn their crafts and bring a little light back to each place. Tonight, those same roads lead to a birthday at the Great Palace.');
+  if(state.self.role==='observer'){content.append(el('p','You follow the birthday guest through her journey. Your private voice remains available in Audio.'));return;}
+  const personal=game.life.st,festival=state.party.festival;
+  content.append(el('div',`${personal.lanterns.length} / 20 original lanterns · ${state.party.journey?.stars||0} / 20 party beacons · ${festival?.keepsakes.length||0} party rounds remembered`,'chronicle-progress'));
+  const grid=el('div',undefined,'card-grid');
+  for(const[eyebrow,title,copy,target]of[
+    ['I · THE ORIGINAL JOURNEY','Keep the world’s light','Follow every original chapter and side quest. Gather, craft, trade, make friends, care for animals and find a home.','journal'],
+    ['II · A BIRTHDAY TRAIL','The Twenty Lights','Take the party through the existing twenty lands. Find keepsakes and solve each beacon together.','journey'],
+    ['III · PLAY ALONG THE WAY','Nine shared adventures','Race the causeway, fly through sky rings, remember constellations, deliver the cake and play tag, hide-and-seek or laser tag.','games'],
+    ['IV · THE PALACE EVENING','A wish under the stars','Travel by unicorn chariot, choose from the entire wardrobe, release lanterns, blow out the candles and cut the birthday cake.','festival']
+  ]){const card=el('section',undefined,'game-card');card.append(el('div',eyebrow,'eyebrow'),el('h3',title),el('p',copy),button('Continue this story',()=>openPanel(target),'gold-button'));grid.append(card);}content.append(grid);
+  content.append(el('p','Your original journey keeps its earned skills, coins, vehicle requirements and saved progress. The birthday gathering can begin whenever the host is ready.'));
+}
+function renderFestival(){
+  const f=state.party.festival;
+  beginPanel('festival','THE GREAT PALACE EVENING','A birthday woven into the journey.','Every lantern lit along the road has brought a little more wonder to this world. Now the crown garden is ready for a birthday wish, a first slice of cake, and a sky full of light.');
+  const observing=state.self.role==='observer',privateGuest=isPrivate(state.self.role),stage=f?.stage||'waiting';
+  const steps=el('div',undefined,'festival-steps');
+  for(const[id,label]of[['lanterns','Lanterns & a wish'],['cake','The first slice'],['fireworks','A sky full of light'],['afterparty','The journey continues']])steps.append(el('span',label,id===stage?'current':''));content.append(steps);
+  if(stage==='waiting'){
+    content.append(el('p','Meet people, follow a story or enjoy a minigame until the host calls everyone to the palace.'));
+    if(isHost())content.append(button('Gather everyone at the Great Palace',async()=>{await action({type:'rally'});closePanel();},'gold-button'));
+  }else{
+    content.append(el('p',`${f.lanternsReleased} wish lantern${f.lanternsReleased===1?'':'s'} released · ${f.optionalStory.beaconsLit} / 20 party beacons · ${f.keepsakes.length} completed rounds`));
+    const row=el('div',undefined,'button-row');
+    if(!observing){
+      row.append(button('Ride to the crown garden',()=>{game.travel({...layout.CAKE_SPOT,z:layout.CAKE_SPOT.z+14,name:'Crown Garden'});closePanel();}));
+      if(stage==='lanterns')row.append(button(privateGuest?'Send a private birthday wish':'Release my birthday wish',()=>renderWishes(),'gold-button'));
+      if(state.self.role==='birthday'&&stage==='lanterns')row.append(button('Make my wish · blow out the candles',async()=>{await game.send();await action({type:'festival',event:'blow-candles'});renderFestival();},'gold-button'));
+      if(state.self.role==='birthday'&&stage==='cake')row.append(button('Cut the birthday cake',async()=>{await game.send();await action({type:'festival',event:'cut-cake'});audio.tone(784,.7);renderFestival();},'gold-button'));
+      if(isHost()&&stage==='fireworks')row.append(button('Keep this memory · begin the afterparty',async()=>{await action({type:'festival',event:'finish-finale'});closePanel();},'gold-button'));
+    }
+    content.append(row);
+    if(stage==='lanterns')content.append(el('p','The birthday guest can make her wish and blow out the candles when she is ready. Come close to the cake for the birthday activities.'));
+    if(stage==='cake')content.append(el('p','The candles are out. Gather around for the birthday guest’s first slice.'));
+    if(stage==='fireworks')content.append(el('p','The original Golden Thread celebration fills the courtyard: rose petals, rainbow dust, lanterns, unicorns, a circling dragon and guests from every land.'));
+    if(stage==='afterparty')content.append(el('p','The celebration becomes part of your saved journey. Your night dragon awaits under Living → Rides; every unfinished quest, home and friendship is still yours.'));
+  }
+  if(!observing){const row=el('div',undefined,'button-row');row.append(button('The complete dressing room',()=>openPanel('wardrobe')),button('Save a birthday polaroid',()=>game.photo()),button('Play another shared game',()=>openPanel('games')));if(state.self.role==='birthday')row.append(button('Wear the original Starlight Gown',async()=>{await action({type:'outfit',avatar:'g-starlight-gown'});toast('The Starlight Gown is ready for your evening.');}));content.append(row);}
 }
 function renderAudio() {
   beginPanel('voice', 'SOUNDTRACK TO THE EVENING', 'A little closer, by voice.', 'Voice is optional. Enable your microphone, then hold Q or the talk button to speak. Music and effects are made in your browser.');
@@ -318,6 +365,7 @@ class PartyGame {
     this.controller=new Travellers(new THREE.Scene(),collisionWorld,this.life.st,OUTFITS['g-kurti-jeans'],OUTFITS['b-kurta-jeans'],{surfaceAt:ground,groundAt:ground,terrainHeight:(x,z)=>ground(x,z,this.pos.y+2)});
     this.controller.gPos.copy(this.pos);this.controller.bPos.copy(this.pos).add(new THREE.Vector3(1.95,0,0));
     this.atmosphere=new PartyAtmosphere(this);
+    this.celebration=new PartyCelebration(this);
     try{const saved=localStorage.getItem('starlight/quality');if(['auto','low','high'].includes(saved))this.atmosphere.setQuality(saved);}catch{}
     this.pickups=new Map();this.rings=[];this.ingredients=[];
     const glow=new THREE.MeshBasicMaterial({color:'#f2cd87'});
@@ -329,7 +377,7 @@ class PartyGame {
     this.renderer.setAnimationLoop(()=>this.frame());
     let pointer=null;this.renderer.domElement.addEventListener('pointerdown',e=>{pointer={x:e.clientX,y:e.clientY};});this.renderer.domElement.addEventListener('pointerup',e=>{if(pointer&&Math.hypot(e.clientX-pointer.x,e.clientY-pointer.y)<7&&state?.party.game==='laser-tag'&&!this.input.blocked)this.interact();pointer=null;});
   }
-  stop(){this.renderer.setAnimationLoop(null);clearInterval(this.clockTimer);removeEventListener('resize',this.resize);closeWardrobePreview();this.life?.destroy();this.atmosphere?.destroy();this.renderer.dispose();audio.close();}
+  stop(){this.renderer.setAnimationLoop(null);clearInterval(this.clockTimer);removeEventListener('resize',this.resize);closeWardrobePreview();this.life?.destroy();this.celebration?.destroy();this.atmosphere?.destroy();this.renderer.dispose();audio.close();}
   setQuality(quality){this.atmosphere.setQuality(quality);this.resize();try{localStorage.setItem('starlight/quality',quality);}catch{}toast(`${quality==='auto'?'Automatic':quality==='high'?'High':'Low'} graphics selected.`);}
   setVehicle(id){if(this.self.role==='observer')return 'You follow automatically.';if(!VEHICLES[id])return 'That ride is unavailable.';if(!this.life.st.vehicles.includes(id))return 'You do not own this ride yet.';if(state?.party.phase==='playing')return 'Finish this round before changing rides.';this.controller.gPos.copy(this.pos);const err=this.controller.setMode(id);if(err)return err;this.pos.copy(this.controller.gPos);this.vehicle=id;this.fly=['fly','plane','dragon'].includes(id);this.vy=0;this.distance=Math.max(this.distance,id==='dragon'?18:id==='plane'?16:10);this.send();return null;}
   sync(next,previous){
@@ -362,7 +410,11 @@ class PartyGame {
       if(party.game==='laser-tag')detail=party.chase?.self.health===0?'Your shields are recharging…':`${'◈'.repeat(party.chase?.self.health||0)} shields · E / R / tap to fire`;
       if(party.chase?.practice)detail=`Private wisps · ${detail}`;
       text('objective-progress',detail);
-    }else if(party.phase==='celebration'){text('objective-label','MAKE A WISH');text('objective-title','A birthday among the stars.');text('objective-description','Gather at the cake, release a wish lantern, and keep a photo of this little evening.');text('objective-progress','✦ The palace is glowing for you');}
+    }else if(party.phase==='celebration'){
+      const f=party.festival,stage=f?.stage||'lanterns',birthday=this.self.role==='birthday';
+      const beat={lanterns:['A sky full of wishes.','Release a wish lantern, then gather around the birthday cake.',birthday?'E at the cake · Make your wish and blow out the candles':`${f?.lanternsReleased||0} wish lanterns released · Story → Celebration`],cake:['Time for the first slice.','The candles are out. The palace is waiting for the birthday guest to cut the cake.',birthday?'E at the cake · Cut the birthday cake':'Gather at the cake for the first slice'],fireworks:['The stars are celebrating.','Enjoy the original lanterns, petals, rainbows and palace fireworks together.','Story → Celebration · Keep a polaroid of this moment'],afterparty:['The evening is yours.','Take a dragon ride, return to the twenty lands, or play another round together.','Story → Celebration · Play · Wardrobe']}[stage]||['A birthday among the stars.','Gather at the palace cake for the birthday celebration.','Story → Celebration'];
+      text('objective-label','A BIRTHDAY AMONG THE STARS');text('objective-title',beat[0]);text('objective-description',beat[1]);text('objective-progress',beat[2]);
+    }
     else if(party.journey?.active){const trail=party.journey,quest=trail.current;const point=quest&&(trail.stage==='collect'?quest.collect:quest.beacon);text('objective-label',`THE TWENTY LIGHTS · ${trail.stars} / 20`);text('objective-title',trail.complete?'The birthday crown is ready.':quest.title);text('objective-description',trail.complete?'Return to the palace and open Story for the crown finale.':trail.waiting?'Your light is ready. Enjoy the view while the party lights this beacon.':trail.stage==='collect'?`${quest.name}: ${quest.collectText}`:`Solve the clue at ${quest.name}’s violet beacon.`);text('objective-progress',point?`✧ ${Math.round(Math.hypot(this.pos.x-point.x,this.pos.z-point.z))} m · E at the marker · Story for skyboats`:'✦ All twenty beacons are shining');}
     else{const original=this.life.guide?.objective;text('objective-label','THE GOLDEN THREAD JOURNEY');text('objective-title',original?.title||'Follow your curiosity.');text('objective-description',original?.next?.text||'Meet the meadow Keeper, help the townspeople, or take a skyboat to the Great Palace.');text('objective-progress',original?.next?.hint||'Living → Journal · Play for party games');}
     $('aim-reticle').hidden=party.game!=='laser-tag'||this.self.role==='observer';
@@ -393,6 +445,13 @@ class PartyGame {
     if(party.game==='lantern-hunt'){const target=(party.round?.items||[]).filter(i=>!i.found).sort((a,b)=>Math.hypot(a.x-this.pos.x,a.z-this.pos.z)-Math.hypot(b.x-this.pos.x,b.z-this.pos.z))[0];if(!target||Math.hypot(target.x-this.pos.x,target.z-this.pos.z)>8){toast('Follow a golden lantern and come a little closer.');return;}await action({type:'collect',itemId:target.id});audio.tone(990,.3);return;}
     if(party.game==='cake-courier'){const progress=party.selfProgress||{};if(progress.carrying!==null&&progress.carrying!==undefined){await action({type:'deliver-ingredient'});audio.tone(880,.4);toast('One ingredient delivered. The cake is coming together!');}else{const index=this.ingredients.findIndex((p,i)=>Math.hypot(p.position.x-this.pos.x,p.position.z-this.pos.z)<8&&!(progress.delivered||[]).includes(i));if(index<0){toast('Find one of the three pastel ingredient parcels in the meadow.');return;}await action({type:'pick-ingredient',index});toast('Ingredient collected. Fly it to the cake at the palace!');}return;}
     if(party.game==='starlight-statues'){this.twirlUntil=this.t+1;return;}
+    if(party.phase==='celebration'&&this.pos.distanceTo(new THREE.Vector3(layout.CAKE_SPOT.x,layout.CAKE_SPOT.y,layout.CAKE_SPOT.z))<12){
+      const stage=party.festival?.stage;
+      if(this.self.role==='birthday'&&['lanterns','cake'].includes(stage)){
+        await this.send();await action({type:'festival',event:stage==='lanterns'?'blow-candles':'cut-cake'});audio.tone(stage==='lanterns'?880:1320,.5);
+      }else openPanel('festival');
+      return;
+    }
     const lift=this.scenery.lifts?.find(l=>this.pos.distanceTo(new THREE.Vector3(l.x,l.y,l.z))<8);
     if(lift){this.travel(lift.to);return;}
     if(party.journey?.active&&party.phase!=='playing'){const trail=party.journey;if(!trail.complete&&!trail.waiting){const point=trail.stage==='collect'?trail.current.collect:trail.current.beacon;if(Math.hypot(this.pos.x-point.x,this.pos.z-point.z)<=8){if(trail.stage==='collect'){await this.send();await action({type:'journey-collect',chapterId:trail.current.id});toast('Kept safe. Bring its light to the violet beacon.');}else openPanel('journey');return;}}}
@@ -400,18 +459,18 @@ class PartyGame {
     if(this.life.interact())return;
     openPanel('life');
     }catch{}finally{this.pending=false;}}
-  async send(){if(this.sending||!ticket||this.self.role==='observer')return;this.sending=true;try{await api('/api/move',{x:this.pos.x,y:this.pos.y,z:this.pos.z,yaw:this.bodyYaw||0,vehicle:this.vehicle},true);}catch(error){if(error.status===400&&(state?.party.game==='bridge-dash'||state?.party.chase)){const p=state.players.find(p=>p.id===this.self.id);if(p)this.pos.set(p.x,p.y,p.z);}}finally{this.sending=false;}}
+  async send(){if(this.sending||!ticket||this.self.role==='observer')return;this.sending=true;try{await api('/api/move',{x:this.pos.x,y:this.pos.y,z:this.pos.z,yaw:this.bodyYaw||0,vehicle:this.trip?'chariot':this.vehicle},true);}catch(error){if(error.status===400&&(state?.party.game==='bridge-dash'||state?.party.chase)){const p=state.players.find(p=>p.id===this.self.id);if(p)this.pos.set(p.x,p.y,p.z);}}finally{this.sending=false;}}
   updateRide(p,mode,dt,speed){
     const vanStyle=JSON.stringify(this.life.st.van);
     if(p.rideMode!==mode||mode==='van'&&p.vanStyle!==vanStyle){
       if(p.ride){this.scene.remove(p.ride.root);p.ride.root.traverse(o=>o.geometry?.dispose());}
-      p.rideMode=mode;p.vanStyle=vanStyle;p.ride=buildVehicle(mode,this.life.st.van);
+      p.rideMode=mode;p.vanStyle=vanStyle;p.ride=mode==='chariot'?new Chariot():buildVehicle(mode,this.life.st.van);
       if(p.ride){p.ride.root.name=`ride-${p.data.id}`;this.scene.add(p.ride.root);}
     }
     if(!p.ride)return;
     const root=p.model.root,heading=root.rotation.y;
-    p.ride.root.position.copy(p.groundPos);p.ride.root.rotation.y=heading;p.ride.update(dt,speed,this.t);
-    const seat=VEHICLES[mode].seats[0];
+    p.ride.root.position.copy(p.groundPos);p.ride.root.rotation.y=heading;p.ride.update(dt,speed,this.t,mode==='chariot');
+    const seat=mode==='chariot'?CHARIOT_SEATS.girl:VEHICLES[mode]?.seats[0];
     if(seat){root.position.x+=seat.x*Math.cos(heading)+seat.z*Math.sin(heading);root.position.z+=-seat.x*Math.sin(heading)+seat.z*Math.cos(heading);root.position.y+=seat.y;}
     else if(mode==='unicorn')root.position.y+=1.1;
   }
@@ -443,7 +502,7 @@ class PartyGame {
       if(id===this.self.id)p.groundPos.copy(this.pos);else p.groundPos.lerp(p.target,1-Math.exp(-dt*14));
       const moving=p.groundPos.distanceTo(p.last)/Math.max(dt,.001);p.last.copy(p.groundPos);root.position.copy(p.groundPos);
       root.rotation.y=id===this.self.id?(this.t<this.twirlUntil?this.t*5:this.bodyYaw||0):p.yaw;
-      const mode=id===this.self.id?this.vehicle:(p.data.vehicle||'walk');
+      const mode=id===this.self.id?(this.trip?'chariot':this.vehicle):(p.data.vehicle||'walk');
       this.updateRide(p,mode,dt,moving);
       root.visible=id===this.self.id||p.groundPos.distanceTo(this.pos)<320;
       if(p.ride)p.ride.root.visible=root.visible;
@@ -456,7 +515,7 @@ class PartyGame {
     this.ingredients.forEach((m,i)=>{m.visible=state?.party.game==='cake-courier'&&!(state.party.selfProgress?.delivered||[]).includes(i);m.rotation.y=this.t*.7;});
     const region=regionAt(this.pos.x,this.pos.z),night=this.atmosphere.update(dt,this.t,region,state?.party);
     if(this.t-(this.worldAt||-1)>.06){this.worldAt=this.t;this.world.update(this.pos,night);}
-    this.life.update(dt,this.t,region,night);this.scenery.update(this.t,dt,state?.party.phase==='celebration',this.camera,night);this.adventures.update(state,this.t,dt);
+    this.life.update(dt,this.t,region,night);this.scenery.update(this.t,dt,state?.party.phase==='celebration',this.camera,night);this.celebration.update(dt,this.t,night,state?.party);this.adventures.update(state,this.t,dt);
     if(!observing){const parked=this.controller.parkedVan,style=JSON.stringify(this.life.st.van);if(!this.parkedView||this.parkedStyle!==style){if(this.parkedView){this.scene.remove(this.parkedView.root);this.parkedView.root.traverse(o=>o.geometry?.dispose());}this.parkedView=buildVehicle('van',this.life.st.van);this.parkedStyle=style;this.scene.add(this.parkedView.root);}this.parkedView.root.visible=Boolean(parked);if(parked){this.parkedView.root.position.copy(parked.pos);this.parkedView.root.rotation.y=parked.heading;}}
     const target=(observing&&birthdayModel?birthdayModel.model.root.position:this.pos).clone().add(new THREE.Vector3(0,1.3,0)),desired=target.clone().add(new THREE.Vector3(Math.sin(this.yaw)*this.distance,Math.sin(this.pitch)*this.distance+2.8,Math.cos(this.yaw)*this.distance));this.camera.position.lerp(desired,1-Math.exp(-dt*9));this.camera.lookAt(target);
     if(!this.photoBusy&&(!panel.open||this.t-(this.renderAt||-1)>.12)){this.atmosphere.render();this.renderAt=this.t;}
@@ -464,7 +523,7 @@ class PartyGame {
     if(this.statueRed!==statueRed&&state?.party.game==='starlight-statues')audio.tone(statueRed?220:880,.35);
     this.statueRed=statueRed;audio.frozen=statueRed;
     audio.update(this.t);if(this.t-this.lastSend>.14){this.lastSend=this.t;this.send();this.checkpoints();}
-    if(Math.floor(this.t*2)!==this.locationTick){this.locationTick=Math.floor(this.t*2);text('location-name',this.pos.z< -1850?'The Great Palace':this.pos.y>70&&this.pos.z<180?'The Golden Causeway':region.name);if(state?.party.game!=='starlight-statues')text('movement-mode',this.trip?'BY SKYBOAT':`${VEHICLES[this.vehicle].name.toUpperCase()}${this.vehicle==='fly'?' · '+Math.round(this.controller.energy*100)+'% LIGHT':''}`);const lift=this.scenery.lifts?.find(l=>this.pos.distanceTo(new THREE.Vector3(l.x,l.y,l.z))<8),van=this.controller.parkedVan;const hint=!observing&&state?.party.phase!=='playing'?(lift?`Sky lift to ${lift.to.name}`:van&&this.pos.distanceTo(van.pos)<4.5?'Step inside Safar':this.life.hint()):'';text('nearby-prompt',hint?`E · ${hint}`:'');$('nearby-prompt').hidden=!hint;}
+    if(Math.floor(this.t*2)!==this.locationTick){this.locationTick=Math.floor(this.t*2);text('location-name',this.pos.z< -1850?'The Great Palace':this.pos.y>70&&this.pos.z<180?'The Golden Causeway':region.name);if(state?.party.game!=='starlight-statues')text('movement-mode',this.trip?'BY SKYBOAT':`${VEHICLES[this.vehicle].name.toUpperCase()}${this.vehicle==='fly'?' · '+Math.round(this.controller.energy*100)+'% LIGHT':''}`);const lift=this.scenery.lifts?.find(l=>this.pos.distanceTo(new THREE.Vector3(l.x,l.y,l.z))<8),van=this.controller.parkedVan,atCake=state?.party.phase==='celebration'&&this.pos.distanceTo(new THREE.Vector3(layout.CAKE_SPOT.x,layout.CAKE_SPOT.y,layout.CAKE_SPOT.z))<12;const hint=!observing&&state?.party.phase!=='playing'?(atCake?(this.self.role==='birthday'&&state.party.festival?.stage==='lanterns'?'Blow out the birthday candles':this.self.role==='birthday'&&state.party.festival?.stage==='cake'?'Cut the birthday cake':'Join the celebration'):lift?`Sky lift to ${lift.to.name}`:van&&this.pos.distanceTo(van.pos)<4.5?'Step inside Safar':this.life.hint()):'';text('nearby-prompt',hint?`E · ${hint}`:'');$('nearby-prompt').hidden=!hint;}
     this.input.endFrame();
   }
   snapshot(guestView=false){const hidden=[];for(const p of this.players.values())if(guestView&&(isPrivate(p.data.role)||isPrivate(this.self.role)&&p.data.id===this.self.id)){hidden.push([p.model.root,p.model.root.visible]);p.model.root.visible=false;if(p.ride){hidden.push([p.ride.root,p.ride.root.visible]);p.ride.root.visible=false;}}const threadVisible=this.thread.group.visible;if(guestView)this.thread.group.visible=false;

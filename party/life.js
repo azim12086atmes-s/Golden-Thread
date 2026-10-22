@@ -1,11 +1,11 @@
 import { EventBus } from '../src/core/events';
 import { newGame } from '../src/core/state';
 import { serialize, deserialize } from '../src/core/save';
-import { addItem, craft, sell, sellPrice, teach } from '../src/economy/economy';
+import { addItem, canCraft, craft, level, removeItems, sell, sellPrice, teach } from '../src/economy/economy';
 import { ITEMS, RECIPES, SKILLS } from '../src/economy/items';
 import { QuestSystem } from '../src/quests/QuestSystem';
 import { QUESTS } from '../src/quests/quests';
-import { Messages } from '../src/social/Messages';
+import { Messages, REPLY_OPTIONS } from '../src/social/Messages';
 import { Housing, PLOTS } from '../src/housing/housing';
 import { HousingView } from '../src/housing/HousingView';
 import { VanInterior, VAN_OPTIONS, SLOT_NAMES } from '../src/housing/VanInterior';
@@ -22,6 +22,8 @@ import { PEOPLE_BY_ID } from '../src/npc/people';
 import { WONDERS, wonderHint, foundWonder } from '../src/world/wonders';
 import { WonderSites } from '../src/world/WonderSites';
 import { Guide } from '../src/guide/Guide';
+import { CHILDREN, COMPANIONS, COMPANION_BY_ID, MAX_CHILDREN, MAX_PETS, canJoin } from '../src/caravan/caravan';
+import { PartyCaravan } from './caravan.js';
 
 const REGROW_MINUTES = 180;
 const TABS = {
@@ -33,6 +35,7 @@ const TABS = {
   home: ['A PLACE TO RETURN TO', 'Land, home, and garden', 'Buy a plot, decorate it, plant a garden, and care for animals who live there.'],
   rides: ['WAYS TO TRAVEL', 'Choose your next ride', 'Explore, complete journeys, and save coins to unlock new ways across the world.'],
   van: ['INSIDE SAFAR', 'A small home on wheels', 'Customize the cabin with things you have made.'],
+  company: ['THE TRAVELLING COMPANY', 'Friends along the road', 'Fictional neighbours and befriended animals from the original Golden Thread world.'],
 };
 
 const node = (tag, text, cls) => { const e = document.createElement(tag); if (text !== undefined) e.textContent = String(text); if (cls) e.className = cls; return e; };
@@ -57,6 +60,7 @@ export class PartyLife {
     this.npcs = new Npcs(game.scene);
     this.townsfolk = new Townsfolk(game.scene);
     this.animals = new Animals(game.scene, this.st);
+    this.caravan = new PartyCaravan(game.scene, game.world, game.scenery, this.st);
     this.dressing = new TownDressing(game.scene, game.world.solid, game.world.glow);
     this.housingView = new HousingView(game.scene, this.st, game.world);
     this.van = this.makeVanInterior();
@@ -103,6 +107,7 @@ export class PartyLife {
       toast: this.toast,
     };
     this.guide = new Guide(guideGame);
+    this.bus.on('quest:completed', ({ questId }) => this.onCaravanChapter(questId));
   }
 
   load() {
@@ -162,6 +167,7 @@ export class PartyLife {
     this.dressing.update(night);
     this.wonders.update(dt, t);
     this.guide.update(dt, t);
+    this.caravan.update(dt, t, this.game);
     this.messageTimer += dt;
     if (this.messageTimer >= 1) { this.messageTimer = 0; this.messages.tick(); }
     if (this.housingDirty) {
@@ -258,8 +264,8 @@ export class PartyLife {
     else {
       actions.append(actionButton(`Feed ${fmt(s.diet)}`, () => { if (this.housing.feed(animal.id)) { this.toast(`${saved.name} is happy.`, 'reward'); this.save(); this.openAnimal(animal); } else this.toast(`You need ${ITEMS[s.diet].name}.`); }));
       actions.append(actionButton('Collect a gift', () => { const item = this.housing.collect(animal.id); if (item) { this.toast(`${saved.name} shared ${fmt(item, 2)}.`, 'reward'); this.save(); } else this.toast('A cared-for animal may share something each day.'); }));
-      const plots = PLOTS.filter(p => p.region === animal.region && this.housing.owns(p.id));
-      if (!saved.plotId && plots.length) actions.append(actionButton('Move to your nearby plot', () => { this.housing.adopt(animal.id, plots[0].id); this.animals.relocate(animal.id, plots[0].id); this.save(); this.toast(`${saved.name} has a home in your garden.`); }, 'subtle-button'));
+      const plots = PLOTS.filter(p => this.housing.owns(p.id));
+      if (!saved.plotId && plots.length) for (const plot of plots) actions.append(actionButton(`Move to your land in ${REGION_BY_ID[plot.region].name}`, () => { this.housing.adopt(animal.id, plot.id); this.animals.relocate(animal.id, plot.id); this.save(); this.toast(`${saved.name} has a home in your garden.`); }, 'subtle-button'));
     }
     actions.append(actionButton('Done', () => {})); body.append(actions);
   }
@@ -343,6 +349,7 @@ export class PartyLife {
     else if (tab === 'home') this.renderHome(body);
     else if (tab === 'rides') this.renderRides(body);
     else if (tab === 'van') this.renderVan(body);
+    else if (tab === 'company') this.renderCompany(body);
   }
 
   renderJournal(body) {
@@ -362,20 +369,80 @@ export class PartyLife {
     body.append(node('h3', `Hidden wonders · ${WONDERS.filter(w => foundWonder(this.st, w.id)).length}/${WONDERS.length}`));
     for (const w of WONDERS) body.append(node('p', `${foundWonder(this.st, w.id) ? '✦' : '◇'} ${w.name} · ${foundWonder(this.st, w.id) ? 'Found' : wonderHint(w)}`));
     const completed = this.quests.done(); if (completed.length) body.append(node('p', `Completed: ${completed.map(q => q.title).join(' · ')}`));
+    body.append(actionButton(`Open travelling company · ${this.st.caravan.length}`, () => this.open('company'), 'gold-button'));
+  }
+  completedLands() {
+    return Object.keys(this.st.quests).filter(id => id.startsWith('main-') && this.st.quests[id]?.status === 'done').map(id => id.slice(5));
+  }
+  companionDefs() { return this.st.caravan.map(id => COMPANION_BY_ID[id]).filter(Boolean); }
+  befriendedCaravanPets() {
+    const ids = new Set();
+    for (const animal of this.animals.list) {
+      if (!this.st.animals[animal.id]?.befriended) continue;
+      for (const pet of COMPANIONS) if (pet.kind === 'pet' && pet.origin === animal.region && pet.species === animal.species) ids.add(pet.id);
+    }
+    return [...ids];
+  }
+  onCaravanChapter(questId) {
+    if (!questId?.startsWith('main-') || this.observer) return;
+    for (const def of CHILDREN) {
+      if (def.joinsAfter !== questId.slice(5) || this.st.caravan.includes(def.id)) continue;
+      const result = canJoin(def, this.companionDefs(), this.completedLands(), []);
+      if (!result.ok) {
+        if (this.companionDefs().filter(c => c.kind === 'child').length >= MAX_CHILDREN) this.toast(`${def.name} would love to travel when there is room on the back bench.`, 'story');
+        continue;
+      }
+      this.st.caravan.push(def.id);
+      this.caravan.sync();
+      this.toast(`${def.name} joins the caravan with their family’s blessing.`, 'story');
+    }
+    this.save();
+  }
+  renderCompany(body) {
+    const current = new Set(this.st.caravan), done = this.completedLands(), befriended = this.befriendedCaravanPets();
+    body.append(node('p', `${this.st.caravan.length} travelling companions · up to ${MAX_CHILDREN} children and ${MAX_PETS} pets. Children join after their original land chapter; a pet must first be befriended in its home land.`));
+    for (const def of COMPANIONS) {
+      const card = node('article', undefined, 'game-card');
+      card.append(node('h3', `${def.kind === 'pet' ? '🐾' : '🧒'} ${def.name}`), node('p', def.blurb));
+      card.append(node('small', def.kind === 'child' ? `${def.tradition} · travelling to ${REGION_BY_ID[def.destination]?.name || def.destination}` : `From ${REGION_BY_ID[def.origin]?.name || def.origin} · likes ${ITEMS[def.likes]?.name || def.likes}`));
+      if (current.has(def.id)) {
+        const actions = row();
+        actions.append(actionButton('Chat', () => this.toast(this.caravan.chat(def.id), 'story')));
+        if (def.kind === 'pet') actions.append(actionButton(`Feed ${fmt(def.likes)}`, () => {
+          if (!removeItems(this.st, { [def.likes]: 1 })) return this.toast(`Find ${ITEMS[def.likes]?.name || def.likes} before feeding ${def.name}.`);
+          this.save(); this.toast(`${def.name} is happy to travel along.`, 'reward'); this.open('company');
+        }));
+        actions.append(actionButton('Send home', () => {
+          this.st.caravan = this.st.caravan.filter(id => id !== def.id);
+          this.caravan.sync(); this.save(); this.open('company');
+        }));
+        card.append(actions);
+      } else {
+        const join = canJoin(def, this.companionDefs(), done, def.kind === 'pet' ? befriended : []);
+        card.append(actionButton(join.ok ? 'Invite to travel' : join.reason, () => {
+          const result = canJoin(def, this.companionDefs(), this.completedLands(), def.kind === 'pet' ? this.befriendedCaravanPets() : []);
+          if (!result.ok) return this.toast(result.reason);
+          this.st.caravan.push(def.id); this.caravan.sync(); this.save(); this.open('company');
+        }, join.ok ? 'gold-button' : 'subtle-button'));
+      }
+      body.append(card);
+    }
   }
   renderBag(body) {
     const entries = Object.entries(this.st.inventory).filter(([, n]) => n > 0);
     body.append(node('p', 'Your finds, friendships, and home are saved on this device. Gather resources, trade carefully, and learn crafts from each land’s Keeper.'));
     body.append(node('p', entries.map(([id, n]) => `${fmt(id)} × ${n}`).join('  ·  ') || 'Your bag is empty. Find a resource node and press E.'));
+    body.append(node('h3', 'Craft skills'));
+    for (const [id, skill] of Object.entries(SKILLS)) body.append(node('p', `${skill.icon} ${skill.name} · level ${level(this.st, id)}`));
     const actions = row(); actions.append(actionButton('Open crafting', () => this.open('craft'), 'gold-button'), actionButton('Trade goods', () => this.open('trade'))); body.append(actions);
   }
   renderCraft(body) {
     const skill = REGION_BY_ID[this.region.id].skill;
-    body.append(node('p', `${SKILLS[skill].icon} ${SKILLS[skill].name} · level ${this.st.skills[skill]}`));
+    body.append(node('p', `${SKILLS[skill].icon} ${SKILLS[skill].name} · level ${level(this.st, skill)} · ${this.st.skills[skill]} craft XP`));
     for (const recipe of RECIPES) {
       const need = Object.entries(recipe.needs).map(([id, n]) => `${fmt(id)} ${amount(this.st, id)}/${n}`).join(' · ');
       const b = actionButton(`${fmt(recipe.out, recipe.qty)} · ${need} · ${SKILLS[recipe.skill].name}`, () => { const result = craft(this.st, recipe.id); if (result.ok) { this.bus.emit('item:crafted', { id: result.recipe.out, qty: result.recipe.qty }); this.toast(`Made ${fmt(result.recipe.out, result.recipe.qty)}.`, result.levelUp ? 'reward' : 'info'); this.save(); this.open('craft'); } else this.toast(result.reason === 'skill' ? 'Talk with a Keeper to learn this craft.' : 'Gather the materials first.'); });
-      b.disabled = this.st.skills[recipe.skill] < recipe.level || !Object.entries(recipe.needs).every(([id, n]) => amount(this.st, id) >= n);
+      b.disabled = !canCraft(this.st, recipe).ok;
       body.append(b);
     }
   }
@@ -396,9 +463,11 @@ export class PartyLife {
       const person = PEOPLE_BY_ID[id]; if (!person) continue;
       const f = this.st.friends[id], box = node('article', undefined, 'game-card');
       box.append(node('h3', `${person.name} · ${'♥'.repeat(f.hearts)}${'♡'.repeat(5 - f.hearts)}`));
-      const latest = this.messages.thread(id).slice(-2); for (const m of latest) box.append(node('p', `${m.from === 'us' ? 'You' : person.name}: ${m.text}`));
-      const actions = row(); actions.append(actionButton('Ask how they are', () => { this.messages.reply(id, 'ask'); this.save(); this.open('friends'); }));
-      actions.append(actionButton('Send a gift', () => { const item = Object.keys(this.st.inventory).find(key => amount(this.st, key) > 0); if (item && this.messages.gift(id, item)) { this.toast(`Sent ${fmt(item)} to ${person.name}.`, 'reward'); this.save(); this.open('friends'); } else this.toast('Gather something to share first.'); }));
+      this.messages.markRead(id);
+      const latest = this.messages.thread(id).slice(-30); for (const m of latest) box.append(node('p', `${m.from === 'us' ? 'You' : person.name}: ${m.text}`));
+      const actions = row();
+      for (const reply of REPLY_OPTIONS) actions.append(actionButton(reply.label, () => { this.messages.reply(id, reply.key); this.save(); this.open('friends'); }));
+      for (const item of Object.keys(this.st.inventory).filter(key => amount(this.st, key) > 0 && ITEMS[key]?.kind !== 'material').slice(0, 8)) actions.append(actionButton(`Gift ${fmt(item)}`, () => { if (this.messages.gift(id, item)) { this.toast(`Sent ${fmt(item)} to ${person.name}.`, 'reward'); this.save(); this.open('friends'); } }));
       const thread = this.messages.thread(id); const request = [...thread].reverse().find(m => m.request && !m.request.done);
       if (request) actions.append(actionButton(`Send favour · ${request.request.qty} ${ITEMS[request.request.item].name}`, () => { if (this.messages.fulfil(request.id)) { this.toast('Your favour reached its destination.', 'reward'); this.save(); this.open('friends'); } else this.toast('Gather the requested goods first.'); }));
       box.append(actions); body.append(box);
@@ -442,8 +511,11 @@ export class PartyLife {
   }
   openNpc(npc) {
     const def = npc.def, skill = def.keeper ? REGION_BY_ID[def.region].skill : null;
-    const body = this.panel('dialogue', def.keeper ? `${SKILLS[skill].icon} KEEPER OF ${REGION_BY_ID[def.region].name.toUpperCase()}` : REGION_BY_ID[def.region].name.toUpperCase(), def.name, def.lines?.[0] || 'A neighbour waves you over.');
+    const line = def.lines?.length ? def.lines[Math.floor(this.st.minutes / 7) % def.lines.length] : 'A neighbour waves you over.';
+    const body = this.panel('dialogue', def.keeper ? `${SKILLS[skill].icon} KEEPER OF ${REGION_BY_ID[def.region].name.toUpperCase()}` : REGION_BY_ID[def.region].name.toUpperCase(), def.name, line);
     if (!body) return;
+    for (const q of this.quests.offeredBy(def.id)) body.append(node('p', `${q.title} · ${q.intro}`));
+    for (const q of this.quests.active().filter(x => x.giver === def.id && !this.quests.deliverable(def.id).includes(x))) body.append(node('p', `${q.title} · ${this.quests.stepText(q.id)}`));
     const actions = row();
     for (const q of this.quests.offeredBy(def.id)) actions.append(actionButton(`Take journey: ${q.title}`, () => { this.quests.start(q.id); this.save(); this.toast(`Journey started: ${q.title}.`, 'story'); this.open('journal'); }, 'gold-button'));
     for (const q of this.quests.deliverable(def.id)) actions.append(actionButton(`Deliver ${q.steps[this.st.quests[q.id].step].qty} goods`, () => { if (this.quests.deliver(q.id)) { this.toast('Your delivery made someone’s day.', 'reward'); this.save(); this.openNpc(npc); } }));
@@ -471,6 +543,7 @@ export class PartyLife {
   }
   destroy() {
     this.save();
+    this.caravan?.destroy();
     const guide = this.guide;
     if (guide) {
       guide.waypoint?.remove(); guide.compass?.remove();

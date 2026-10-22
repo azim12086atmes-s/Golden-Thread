@@ -3,7 +3,7 @@ import { AnimalModel } from '../animals/AnimalModel';
 import { CharacterModel } from '../characters/CharacterModel';
 import { OUTFITS } from '../characters/outfits';
 import { auroraMaterial, rainbowMaterial } from '../world/Sky';
-import { CASTLE, guestSpot, guests } from './site';
+import { CASTLE, guestSpot, guests } from './layout';
 import { Dragon } from './Dragon';
 import { wardrobeFor } from '../npc/Townsfolk';
 import { REGIONS } from '../world/regions';
@@ -336,3 +336,4 @@ export class Festivities {
     void focus;
   }
 }
+

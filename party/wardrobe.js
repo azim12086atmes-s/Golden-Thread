@@ -39,7 +39,7 @@ function releasePreview() {
   preview = null;
 }
 
-function ensurePreview(canvas, outfit, who, content, root) {
+function ensurePreview(canvas, outfit, identity, content, root) {
   if (canvas.dataset.previewUnavailable === 'true') return;
   if (!preview) {
     let renderer;
@@ -65,20 +65,22 @@ function ensurePreview(canvas, outfit, who, content, root) {
     const camera = new THREE.PerspectiveCamera(31, 1, 0.1, 30);
     camera.position.set(0, 1.52, 5.3);
     camera.lookAt(0, 1.3, 0);
-    const model = new CharacterModel(outfit, SKINS[who], who === 'girl' ? HERO_SCALE.girl : HERO_SCALE.boy, 1, who);
+    const scale = identity ? HERO_SCALE[identity] : 1;
+    const model = new CharacterModel(outfit, SKINS[identity || outfit.who], scale, identity === 'boy' ? -1 : 1, identity);
     scene.add(model.root);
-    preview = { renderer, scene, camera, model, frame: 0, last: 0, canvas, who };
+    preview = { renderer, scene, camera, model, frame: 0, last: 0, canvas, identity };
   } else if (preview.canvas !== canvas) {
     canvas.replaceWith(preview.canvas);
   }
-  if (preview.who !== who) {
-    const next = new CharacterModel(outfit, SKINS[who], who === 'girl' ? HERO_SCALE.girl : HERO_SCALE.boy, 1, who);
+  if (preview.identity !== identity) {
+    const scale = identity ? HERO_SCALE[identity] : 1;
+    const next = new CharacterModel(outfit, SKINS[identity || outfit.who], scale, identity === 'boy' ? -1 : 1, identity);
     preview.scene.remove(preview.model.root);
     preview.model.root.traverse(object => { if (object.geometry) object.geometry.dispose(); });
     preview.model.root.clear();
     preview.model = next;
     preview.scene.add(next.root);
-    preview.who = who;
+    preview.identity = identity;
   } else if (preview.model.outfit.id !== outfit.id) preview.model.setOutfit(outfit);
 
   const resize = () => {
@@ -129,11 +131,29 @@ export function renderWardrobe({ state, action, toast, beginPanel, content }) {
   const root = node('section');
   root.id = 'party-wardrobe-root';
   root.setAttribute('aria-label', 'Wardrobe collection');
-  const current = OUTFITS[state.self.avatar];
-  const initialWho = current?.who || (String(state.self.avatar).startsWith('b-') ? 'boy' : 'girl');
+  const targets = [{ id: state.self.id, role: state.self.role, name: 'Your character', avatar: state.self.avatar }];
+  // Only the birthday recipient's state includes roles and the private roster. Never manufacture
+  // target options from IDs in other recipients' public player projections.
+  if (state.self.role === 'birthday') {
+    for (const player of state.players || []) {
+      if (['observer', 'companion'].includes(player.role) && player.id !== state.self.id) {
+        targets.push({ id: player.id, role: player.role, name: player.name, avatar: player.avatar });
+      }
+    }
+  }
+  let target = targets[0];
   let group = 'all', gender = 'all', query = '', page = 0;
   const controls = node('div');
   controls.style.cssText = 'display:grid;grid-template-columns:1fr 1fr;gap:10px;margin:14px 0';
+  const targetRow = node('label', 'Choose who to dress', 'field');
+  const targetSelect = node('select');
+  targetSelect.setAttribute('aria-label', 'Choose whose outfit to change');
+  for (const item of targets) {
+    const label = item.id === state.self.id ? 'Your character' : `${item.name} · ${item.role === 'observer' ? 'Observer' : 'Companion'}`;
+    const option = node('option', label); option.value = item.id; targetSelect.append(option);
+  }
+  targetRow.append(targetSelect);
+  if (state.self.role === 'birthday' && targets.length > 1) controls.append(targetRow);
   const groupLabel = node('label', 'Culture shelf', 'field');
   const groupSelect = node('select');
   for (const [id, label] of DRESS_GROUPS) {
@@ -161,13 +181,20 @@ export function renderWardrobe({ state, action, toast, beginPanel, content }) {
   const previewName = node('h3'); previewName.style.marginBottom = '7px';
   const previewCulture = node('p'); previewCulture.style.marginBottom = '7px';
   const previewPalette = node('p', undefined, 'fine');
-  let wearing = state.self.avatar;
+  const previewNotes = node('p', undefined, 'fine');
+  let wearing = target.avatar;
   const wearButton = button('Wear this outfit', async () => {
     if (!previewCard.dataset.outfit) return;
     const outfit = OUTFITS[previewCard.dataset.outfit];
     try {
-      await action({ type: 'outfit', avatar: outfit.id });
+      await action({ type: 'outfit', avatar: outfit.id, ...(target.id === state.self.id ? {} : { targetId: target.id }) });
       wearing = outfit.id;
+      target.avatar = outfit.id;
+      if (target.id === state.self.id) state.self.avatar = outfit.id;
+      else {
+        const targetPlayer = (state.players || []).find(player => player.id === target.id);
+        if (targetPlayer) targetPlayer.avatar = outfit.id;
+      }
       wearButton.disabled = true;
       grid.querySelectorAll('[data-outfit-current]').forEach(item => item.remove());
       const selected = [...grid.querySelectorAll('button')].find(item => item.getAttribute('aria-label') === `${outfit.name}, ${outfit.culture}`);
@@ -179,7 +206,7 @@ export function renderWardrobe({ state, action, toast, beginPanel, content }) {
       toast(error.message || 'That outfit could not be selected.');
     }
   }, 'gold-button');
-  details.append(previewName, previewCulture, previewPalette, wearButton);
+  details.append(previewName, previewCulture, previewPalette, previewNotes, wearButton);
   previewCard.append(canvas, details);
   root.append(previewCard);
 
@@ -216,7 +243,7 @@ export function renderWardrobe({ state, action, toast, beginPanel, content }) {
       grid.append(b);
     }
     const selected = visible.find(o => o.id === previewCard.dataset.outfit)
-      || filtered.find(o => o.id === state.self.avatar) || filtered[0] || eligible[0];
+      || filtered.find(o => o.id === wearing) || filtered[0] || eligible[0];
     if (selected) select(selected, false);
   }
   function select(outfit, updatePage = false) {
@@ -225,13 +252,22 @@ export function renderWardrobe({ state, action, toast, beginPanel, content }) {
     previewName.textContent = outfit.name;
     previewCulture.textContent = `${outfit.culture} · ${outfit.who === 'girl' ? 'Girl' : 'Boy'} design`;
     previewPalette.textContent = `Palette: ${outfit.topColor} · ${outfit.trim} · ${outfit.lowerColor}`;
+    previewNotes.textContent = [outfit.note, outfit.merged?.length ? `Coverage layers: ${outfit.merged.join(', ')}.` : 'Fully covered design.'].filter(Boolean).join(' ');
     wearButton.disabled = wearing === outfit.id;
     if (updatePage) {
       const i = eligible.indexOf(outfit);
       if (i >= 0) page = Math.floor(i / PAGE_SIZE);
     }
-    ensurePreview(canvas, outfit, outfit.who, content, root);
+    const identity = target.role === 'observer' ? 'boy' : target.role === 'birthday' ? 'girl' : null;
+    ensurePreview(canvas, outfit, identity, content, root);
   }
+  targetSelect.addEventListener('change', () => {
+    target = targets.find(item => item.id === targetSelect.value) || targets[0];
+    wearing = target.avatar;
+    previewCard.dataset.outfit = target.avatar || '';
+    page = 0;
+    draw();
+  });
   groupSelect.addEventListener('change', () => { group = groupSelect.value; page = 0; draw(); });
   genderSelect.addEventListener('change', () => { gender = genderSelect.value; page = 0; draw(); });
   searchInput.addEventListener('input', () => { query = searchInput.value.trim().toLocaleLowerCase(); page = 0; draw(); });

@@ -8,6 +8,7 @@ import { CHASE_GAME_IDS, ARENA, COVER, createChaseGame, actionChase, tickChase, 
 import { newJourney, journeyView, advanceJourney, journeyCatalog, JOURNEY_TITLE, JOURNEY_PREMISE, JOURNEY_ACTS } from '../shared/story.js';
 import { followStep, enforceGap } from '../shared/follow.js';
 import { BRIDGE_START, BRIDGE_CHECKPOINTS as PALACE_BRIDGE_CHECKPOINTS, SKY_RINGS as PALACE_SKY_RINGS, INGREDIENTS as PALACE_INGREDIENTS, CAKE_SPOT as PALACE_CAKE_SPOT } from '../shared/party-layout.js';
+import { createFestival, advanceFestival, festivalView } from '../shared/festival.mjs';
 
 const HERE = path.dirname(fileURLToPath(import.meta.url));
 const ROOT = path.resolve(HERE, '..');
@@ -99,6 +100,16 @@ export function createPartyServer({ config, distDir = path.join(ROOT, 'dist'), n
   let party = { phase: 'lobby', game: null, endsAt: null, celebrationAt: null };
   let active = null; let wishes = []; let rallyAt = null; let dirty = false; let scheduledCelebration = validated.celebrationStart;
   let journey = newJourney(), journeyStarted = false, journeyTravel = null, teleportVersion = 0;
+  let festival = createFestival(now());
+  const recordFestival = (event, actor = { id: birthdayId, role: 'birthday' }) => {
+    const result = advanceFestival(festival, event, actor, now());
+    if (result) festival = result.state;
+    return result;
+  };
+  const enterFestival = () => {
+    if (festival.stage === 'afterparty') festival = { ...createFestival(now()), storyBeacons: festival.storyBeacons, keepsakes: festival.keepsakes };
+    recordFestival({ type: 'enter-celebration' });
+  };
   const privateJourneys = new Map();
   const observerUpdated = new Map();
   let birthdaySample = null, birthdaySpeed = 0;
@@ -238,7 +249,7 @@ export function createPartyServer({ config, distDir = path.join(ROOT, 'dist'), n
     const trail = journeyStarted ? { ...journeyView(ownJourney(viewer)), active: true, waiting: viewer.role === 'companion' && ownJourney(viewer).chapter > journey.chapter } : null;
     const privatePractices = active?.chase && viewer.role === 'birthday' ? [...sessionsBySlot.values()].filter(s => s.slot.role === 'companion').map(s => ({ ownerId: s.slot.id, ...practiceView(s.slot) })) : undefined;
     const observer = [...sessionsBySlot.values()].find(s => s.slot.role === 'observer' && s.expiresAt > now());
-    return { type: 'state', self: { id: viewer.id, name: viewer.name, role: viewer.role, avatar: viewer.avatar, ...(viewer.role === 'observer' ? { observer: true, followingId: birthdayId } : {}) }, players, voicePeers, party: { ...party, rallyAt, round, scores: publicScores(viewer), selfProgress, presenceCount: admitted.length, chase, privatePractices, journey: trail, ...(viewer.role === 'companion' ? { partyJourney: journeyStarted ? journeyView(journey) : null } : {}), ...(viewer.role === 'observer' ? { observer: true } : {}), ...(viewer.role === 'birthday' && observer ? { observerFollow: { id: observer.slot.id } } : {}), travelAt: journeyTravel?.at ?? null, teleportVersion }, signals, wishes: visibleWishes };
+    return { type: 'state', self: { id: viewer.id, name: viewer.name, role: viewer.role, avatar: viewer.avatar, ...(viewer.role === 'observer' ? { observer: true, followingId: birthdayId } : {}) }, players, voicePeers, party: { ...party, festival: festivalView(festival), rallyAt, round, scores: publicScores(viewer), selfProgress, presenceCount: admitted.length, chase, privatePractices, journey: trail, ...(viewer.role === 'companion' ? { partyJourney: journeyStarted ? journeyView(journey) : null } : {}), ...(viewer.role === 'observer' ? { observer: true } : {}), ...(viewer.role === 'birthday' && observer ? { observerFollow: { id: observer.slot.id } } : {}), travelAt: journeyTravel?.at ?? null, teleportVersion }, signals, wishes: visibleWishes };
   };
   const writeJSON = (res, status, obj) => { res.writeHead(status, { 'content-type': 'application/json; charset=utf-8', 'cache-control': 'no-store' }); res.end(JSON.stringify(obj)); };
   const broadcast = () => { dirty = true; };
@@ -332,7 +343,7 @@ export function createPartyServer({ config, distDir = path.join(ROOT, 'dist'), n
           const t = now(); if (t - (moveTimes.get(slot.id) || -Infinity) < 100) return fail(res, 429, 'Movement is limited to 10 updates per second.');
           const { x, y, z, yaw = 0 } = body; if (![x, y, z, yaw].every(Number.isFinite) || x < WORLD.x[0] || x > WORLD.x[1] || y < WORLD.y[0] || y > WORLD.y[1] || z < WORLD.z[0] || z > WORLD.z[1] || Math.abs(yaw) > Math.PI * 20) return fail(res, 400, 'Invalid position.');
           const vehicle = body.vehicle;
-          if (vehicle !== undefined && !['walk','fly','car','van','truck','plane','unicorn','dragon'].includes(vehicle)) return fail(res, 400, 'Invalid ride.');
+          if (vehicle !== undefined && !['walk','fly','car','van','truck','plane','unicorn','dragon','chariot'].includes(vehicle)) return fail(res, 400, 'Invalid ride.');
           if ((active?.chase || party.game === 'bridge-dash') && vehicle !== undefined && vehicle !== 'walk') return fail(res, 400, 'Stay on foot during this round.');
           if (active?.chase) {
             const match = slot.role === 'companion' ? practiceFor(slot).round : active.chase;
@@ -367,6 +378,16 @@ export function createPartyServer({ config, distDir = path.join(ROOT, 'dist'), n
         }
         if (url.pathname === '/api/action') {
           const type = body.type; const canHost = slot.role === 'birthday' || slot.role === 'companion';
+          if (type === 'festival') {
+            if (party.phase !== 'celebration' || !['release-lantern','blow-candles','cut-cake','finish-finale'].includes(body.event)) return fail(res, 400, 'The birthday activity is not ready.');
+            if (['blow-candles','cut-cake'].includes(body.event)) {
+              const p = positions.get(slot.id) || coord();
+              if (Math.hypot(p.x-CAKE_SPOT.x,p.y-CAKE_SPOT.y,p.z-CAKE_SPOT.z)>12) return fail(res, 400, 'Come closer to the birthday cake.');
+            }
+            const result = recordFestival({ type: body.event }, slot);
+            if (!result) return fail(res, 403, 'That birthday activity is not available to this player yet.');
+            broadcast(); return writeJSON(res, 200, { ok: true, ...result.result });
+          }
           if (['start-journey', 'journey-travel', 'journey-finale'].includes(type)) {
             if (!canHost || party.phase === 'playing') return fail(res, 403, 'Finish the current round before guiding the journey.');
             if (type === 'journey-finale') {
@@ -390,7 +411,7 @@ export function createPartyServer({ config, distDir = path.join(ROOT, 'dist'), n
             if (body.chapterId !== journeyView(current).current?.id) return fail(res, 409, 'The party has reached a new chapter.');
             const next = advanceJourney(current, body, positions.get(slot.id) || coord());
             if (slot.role === 'companion') privateJourneys.set(slot.id, next); else journey = next;
-            if (type === 'journey-light') scores[slot.role][slot.id] = (scores[slot.role][slot.id] || 0) + 2;
+            if (type === 'journey-light') { scores[slot.role][slot.id] = (scores[slot.role][slot.id] || 0) + 2; recordFestival({ type: 'beacon-lit', region: body.chapterId }, slot); }
             broadcast(); return writeJSON(res, 200, { ok: true });
           }
           if (['tag', 'seek', 'laser'].includes(type)) {
@@ -404,7 +425,7 @@ export function createPartyServer({ config, distDir = path.join(ROOT, 'dist'), n
           if (type === 'start-game') {
             if (!canHost || !GAMES.has(body.game)) return fail(res, 403, 'Game cannot be started by this player.');
             const chase = CHASE_GAMES.has(body.game) ? createChaseGame(body.game, publicRoster(), now()) : null;
-            active = chase ? { phase: 'playing', game: body.game, endsAt: chase.endsAt, chase, practices: new Map() } : gameSpec(body.game, now()); active.progress = new Map(); active.completed = new Set(); active.privateFound = new Map(); active.carrying = new Map(); active.delivered = new Map(); active.collected = new Map(); active.statues = new Map(); rallyAt = null; journeyTravel = null;
+            active = chase ? { phase: 'playing', game: body.game, endsAt: chase.endsAt, chase, practices: new Map() } : gameSpec(body.game, now()); active.roundId = randomUUID(); active.progress = new Map(); active.completed = new Set(); active.privateFound = new Map(); active.carrying = new Map(); active.delivered = new Map(); active.collected = new Map(); active.statues = new Map(); rallyAt = null; journeyTravel = null;
             let seat = 0;
             [...sessionsBySlot.values()].forEach(s => {
               if (s.slot.role === 'observer') return;
@@ -419,11 +440,18 @@ export function createPartyServer({ config, distDir = path.join(ROOT, 'dist'), n
           }
           if (type === 'outfit') {
             if (typeof body.avatar !== 'string' || !/^(?:[gb]-[a-z0-9-]{1,42}|fx-[gb]-[0-9]{1,3})$/.test(body.avatar)) return fail(res, 400, 'Invalid outfit id.');
-            slot.avatar = body.avatar; broadcast(); return writeJSON(res, 200, { ok: true });
+            if (body.targetId !== undefined && typeof body.targetId !== 'string') return fail(res, 400, 'Invalid outfit target.');
+            let target = slot;
+            if (body.targetId && body.targetId !== slot.id) {
+              const session = sessionsBySlot.get(body.targetId);
+              if (slot.role !== 'birthday' || !session || session.expiresAt <= now() || !['observer', 'companion'].includes(session.slot.role)) return fail(res, 403, 'That wardrobe is not available.');
+              target = session.slot;
+            }
+            target.avatar = body.avatar; broadcast(); return writeJSON(res, 200, { ok: true });
           }
           if (type === 'celebrate') {
             if (!canHost) return fail(res, 403, 'Only a host can start the celebration.');
-            active = null; journeyTravel = null; party = { phase: 'celebration', game: null, endsAt: null, celebrationAt: now() }; broadcast(); return writeJSON(res, 200, { ok: true });
+            active = null; journeyTravel = null; party = { phase: 'celebration', game: null, endsAt: null, celebrationAt: now() }; enterFestival(); broadcast(); return writeJSON(res, 200, { ok: true });
           }
           if (type === 'rally') {
             if (!canHost) return fail(res, 403, 'Only a host can call the rally.');
@@ -431,6 +459,7 @@ export function createPartyServer({ config, distDir = path.join(ROOT, 'dist'), n
           }
           if (type === 'wish') {
             const text = cleanLabel(body.text, 140); if (!text) return fail(res, 400, 'Wish text is required.');
+            if (party.phase === 'celebration') recordFestival({ type: 'release-lantern' }, slot);
             wishes.push({ from: slot.id, role: slot.role, text }); wishes = wishes.slice(-40); broadcast(); return writeJSON(res, 200, { ok: true });
           }
           if (type === 'collect' && party.game === 'lantern-hunt' && active) {
@@ -473,7 +502,7 @@ export function createPartyServer({ config, distDir = path.join(ROOT, 'dist'), n
       if (resolvedFile !== resolvedRoot && !resolvedFile.startsWith(resolvedRoot + path.sep)) return fail(res, 404, 'Not found.');
       if (/\.(?:map|ts|tsx|jsx)$/i.test(resolvedFile)) return fail(res, 404, 'Not found.');
       if (!stat.isFile()) return fail(res, 404, 'Not found.');
-      const types = { '.html': 'text/html; charset=utf-8', '.js': 'text/javascript; charset=utf-8', '.css': 'text/css; charset=utf-8', '.json': 'application/json; charset=utf-8', '.png': 'image/png', '.svg': 'image/svg+xml', '.webp': 'image/webp', '.jpg': 'image/jpeg', '.wasm': 'application/wasm', '.glb': 'model/gltf-binary', '.gltf': 'model/gltf+json', '.mp3': 'audio/mpeg', '.ogg': 'audio/ogg', '.woff2': 'font/woff2' };
+      const types = { '.html': 'text/html; charset=utf-8', '.js': 'text/javascript; charset=utf-8', '.mjs': 'text/javascript; charset=utf-8', '.css': 'text/css; charset=utf-8', '.json': 'application/json; charset=utf-8', '.png': 'image/png', '.svg': 'image/svg+xml', '.webp': 'image/webp', '.jpg': 'image/jpeg', '.wasm': 'application/wasm', '.glb': 'model/gltf-binary', '.gltf': 'model/gltf+json', '.mp3': 'audio/mpeg', '.ogg': 'audio/ogg', '.woff2': 'font/woff2' };
       if (path.basename(resolvedFile) === 'index.html') {
         const html = await fs.promises.readFile(resolvedFile); const match = /<script\s+type=["']importmap["']\s*>([\s\S]*?)<\/script>/i.exec(html.toString('utf8'));
         const hash = match ? `'sha256-${createHash('sha256').update(match[1]).digest('base64')}'` : '';
@@ -489,16 +518,17 @@ export function createPartyServer({ config, distDir = path.join(ROOT, 'dist'), n
     const t = now();
     for (const [id, s] of sessionsBySlot) if (s.expiresAt <= t) { sessionsBySlot.delete(id); sessionsByTicket.delete(s.ticket); const stream = streams.get(s.ticket); if (stream) stream.end(); streams.delete(s.ticket); }
     tickMatches(t);
-    if (active && active.endsAt <= t) { party = { phase: 'lobby', game: null, endsAt: null, celebrationAt: null }; active = null; }
+    if (active && active.endsAt <= t) { recordFestival({ type: 'round-completed', game: active.game, roundId: active.roundId || `${active.game}-${active.endsAt}` }); party = { phase: 'lobby', game: null, endsAt: null, celebrationAt: null }; active = null; }
     if (journeyTravel && journeyTravel.at <= t) {
       [...sessionsBySlot.values()].filter(s => s.slot.role !== 'observer').forEach((s, i) => { positions.set(s.slot.id, { x: journeyTravel.destination.x + (i % 5 - 2) * 2.2, y: journeyTravel.destination.y, z: journeyTravel.destination.z + Math.floor(i / 5) * 2.2, yaw: 0 }); moveTimes.set(s.slot.id, t - 100); });
       journeyTravel = null; teleportVersion++; party = { phase: 'lobby', game: null, endsAt: null, celebrationAt: null };
     }
     if (rallyAt && rallyAt <= t) {
       [...sessionsBySlot.values()].filter(s => s.slot.role !== 'observer').forEach((s, i) => { positions.set(s.slot.id, { x: CAKE_SPOT.x + (i % 5) * 4 - 8, y: CAKE_SPOT.y, z: CAKE_SPOT.z + 10 + Math.floor(i / 5) * 4, yaw: Math.PI }); moveTimes.set(s.slot.id, t); });
-      rallyAt = null; teleportVersion++; party = { phase: 'celebration', game: null, endsAt: null, celebrationAt: t }; active = null;
+      rallyAt = null; teleportVersion++; party = { phase: 'celebration', game: null, endsAt: null, celebrationAt: t }; active = null; enterFestival();
     }
     if (scheduledCelebration && scheduledCelebration <= t && !rallyAt) { scheduledCelebration = null; active = null; journeyTravel = null; party = { phase: 'rally', game: null, endsAt: null, celebrationAt: null }; rallyAt = t + 5000; }
+    if (party.phase === 'celebration' && festival.phase === 'lobby') enterFestival();
     if (updateObservers(t)) broadcast();
     broadcast();
   };
@@ -511,7 +541,7 @@ export function createPartyServer({ config, distDir = path.join(ROOT, 'dist'), n
   const exportSnapshot = () => encodeSnapshot({
     slotStates: slots.map(s => ({ id: s.id, name: s.name, avatar: s.avatar })),
     sessions: [...sessionsBySlot.values()].filter(s => s.expiresAt > now()).map(s => ({ slot: { id: s.slot.id, role: s.slot.role, name: s.slot.name, avatar: s.slot.avatar }, ticket: s.ticket, expiresAt: s.expiresAt, lastSeen: s.lastSeen })),
-    positions, moveTimes, scores, signalQueues, signalTimes, party, active, wishes, rallyAt, dirty,
+    positions, moveTimes, scores, signalQueues, signalTimes, party, active, wishes, rallyAt, dirty, festival,
     scheduledCelebration, journey, journeyStarted, journeyTravel, teleportVersion, privateJourneys,
     observerUpdated, birthdaySample, birthdaySpeed,
   });
@@ -532,6 +562,7 @@ export function createPartyServer({ config, distDir = path.join(ROOT, 'dist'), n
     const assignMap = (dest, source) => { if (source instanceof Map) for (const [k, v] of source) dest.set(k, v); };
     assignMap(positions, data.positions); assignMap(moveTimes, data.moveTimes); assignMap(signalQueues, data.signalQueues); assignMap(signalTimes, data.signalTimes); assignMap(privateJourneys, data.privateJourneys); assignMap(observerUpdated, data.observerUpdated);
     if (data.scores && typeof data.scores === 'object') for (const role of ['birthday', 'guest', 'companion']) scores[role] = data.scores[role] || {};
+    if (data.festival && festivalView(data.festival)) festival = data.festival;
     if (data.party) party = data.party; active = data.active ?? null; wishes = Array.isArray(data.wishes) ? data.wishes : [];
     rallyAt = data.rallyAt ?? null; dirty = !!data.dirty; scheduledCelebration = data.scheduledCelebration ?? null;
     if (data.journey) journey = data.journey; journeyStarted = !!data.journeyStarted; journeyTravel = data.journeyTravel ?? null;

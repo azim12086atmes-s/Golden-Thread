@@ -12,7 +12,7 @@
     "typecheck": "tsc --noEmit",
     "party:build": "node scripts/build-party.mjs && node scripts/check-party-build.mjs",
     "party:start": "node server/party.mjs",
-    "party:test": "node server/party.test.mjs && node server/chase-games.test.mjs && node shared/story.test.mjs && node party/audio.test.mjs"
+    "party:test": "node server/party.test.mjs && node server/chase-games.test.mjs && node shared/story.test.mjs && node shared/festival.test.mjs && node party/audio.test.mjs"
   },
   "dependencies": {
     "three": "^0.186.1"

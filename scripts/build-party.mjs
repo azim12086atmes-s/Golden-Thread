@@ -7,7 +7,7 @@ import { createHash } from 'node:crypto';
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const DIST = path.join(ROOT, 'dist');
 const ENTRY = path.join(ROOT, 'party', 'main.js');
-const sources = dirs => dirs.flatMap(dir => fs.readdirSync(dir, { withFileTypes:true }).sort((a,b)=>a.name.localeCompare(b.name)).flatMap(e => e.isDirectory() ? sources([path.join(dir,e.name)]) : /\.(js|ts|html|css)$/.test(e.name) ? [path.join(dir,e.name)] : []));
+const sources = dirs => dirs.flatMap(dir => fs.readdirSync(dir, { withFileTypes:true }).sort((a,b)=>a.name.localeCompare(b.name)).flatMap(e => e.isDirectory() ? sources([path.join(dir,e.name)]) : /\.(m?js|ts|html|css)$/.test(e.name) ? [path.join(dir,e.name)] : []));
 const revision = createHash('sha256');
 for(const file of sources(['party','src','shared','great-palace','vendor'].map(d=>path.join(ROOT,d))))revision.update(fs.readFileSync(file));
 const BUILD_ID = revision.digest('hex').slice(0,12);

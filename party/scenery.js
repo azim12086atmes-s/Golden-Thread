@@ -5,6 +5,7 @@ import { groundAt as palaceGroundAt, COLLIDERS as PALACE_COLLIDERS, PALACE_TIERS
 import { MOOD } from '../great-palace/js/world/sky.js';
 import { surfaceAt } from '../src/world/terrain';
 import { AnimalModel } from '../src/animals/AnimalModel';
+import { buildCake, CHOCOLATE } from '../src/event/CakeModel';
 import { PALACE_TRANSFORM, BRIDGE_START, CAKE_SPOT, PALACE_DESTINATIONS } from '../shared/party-layout.js';
 
 const SCALE = PALACE_TRANSFORM.scale;
@@ -15,21 +16,20 @@ const point = (p) => new THREE.Vector3(p.x, p.y, p.z);
 
 function makeCake(group, { x, y, z }) {
   const cake = new THREE.Group(); cake.position.set(x, y, z);
-  const icing = new THREE.MeshStandardMaterial({ color: '#fff1e8', roughness: 0.72 });
-  const pink = new THREE.MeshStandardMaterial({ color: '#eaa0bd', roughness: 0.58 });
+  const { cake: tiers, slice } = buildCake(CHOCOLATE);
+  tiers.scale.setScalar(12); tiers.position.y = 0.35;
   const gold = new THREE.MeshStandardMaterial({ color: '#f7d77d', emissive: '#9b6a20', emissiveIntensity: 0.25 });
-  const base = new THREE.Mesh(new THREE.CylinderGeometry(4.7, 5, 1.3, 24), pink); base.position.y = 0.7;
-  const top = new THREE.Mesh(new THREE.CylinderGeometry(3.45, 3.7, 1.05, 24), icing); top.position.y = 1.8;
+  const plate = new THREE.Mesh(new THREE.CylinderGeometry(5.1, 5.25, 0.3, 48), gold); plate.position.y = 0.15;
   const candles = [], flameMaterial = new THREE.MeshBasicMaterial({ color: '#ffd16b', toneMapped: false });
-  cake.add(base, top);
+  cake.add(plate, tiers);
   for (let i = 0; i < 7; i++) {
     const a = i * Math.PI * 2 / 7;
     const candle = new THREE.Mesh(new THREE.CylinderGeometry(0.11, 0.12, 1.15, 5), gold);
-    candle.position.set(Math.cos(a) * 1.95, 2.85, Math.sin(a) * 1.95);
+    candle.position.set(Math.cos(a) * 1.65, 4.64, Math.sin(a) * 1.65);
     const flame = new THREE.Mesh(new THREE.SphereGeometry(0.2, 7, 5), flameMaterial);
-    flame.position.set(candle.position.x, 3.55, candle.position.z); candles.push(flame); cake.add(candle, flame);
+    flame.position.set(candle.position.x, 5.34, candle.position.z); candles.push(flame); cake.add(candle, flame);
   }
-  group.add(cake); return { cake, candles };
+  group.add(cake); return { cake, candles, slice };
 }
 
 function makeBanner(group, { x, y, z }) {
@@ -95,7 +95,7 @@ export class PartyScenery {
 
     this.decor = new THREE.Group(); this.decor.name = 'palace-party-decor'; scene.add(this.decor);
     this.makeConnectedVenues(); this.makeArrivalLift(); this.makeMountains();
-    const cake = makeCake(this.decor, CAKE_SPOT); this.cake = cake.cake; this.candles = cake.candles;
+    const cake = makeCake(this.decor, CAKE_SPOT); this.cake = cake.cake; this.candles = cake.candles; this.cakeSlice = cake.slice; this.cakeCut = 0;
     this.banner = makeBanner(this.decor, { x: CAKE_SPOT.x - 12, y: CAKE_SPOT.y, z: CAKE_SPOT.z - 14 });
     this.fireworks = this.makeFireworks(); this.fireworkColor = new THREE.Color();
     this.lanterns = []; this.time = 0; this.party = 0;
@@ -290,6 +290,16 @@ export class PartyScenery {
     const next = String(name || '').slice(0, 36);
     if (next === this.bannerName) return;
     this.bannerName = next; this.banner.paint(next);
+  }
+
+  updateFestival(festival, dt, t) {
+    this.candles.forEach(flame => { flame.visible = !festival?.candlesBlown; });
+    this.cakeCut += ((festival?.cakeCut ? 1 : 0) - this.cakeCut) * Math.min(1, dt * 2.2);
+    const k = this.cakeCut;
+    this.cakeSlice.position.set(Math.sin(Math.PI / 8) * 0.12 * k, 0.085 + Math.sin(k * Math.PI) * 0.075, Math.cos(Math.PI / 8) * 0.12 * k);
+    const star = this.cake.getObjectByName('star');
+    if (star) { star.rotation.y = t * 0.7; star.position.y = star.userData.y + Math.sin(t * 1.8) * 0.012; }
+    this.fireworks.points.visible = Boolean(festival?.fireworksReady);
   }
 
   releaseLantern(x = CAKE_SPOT.x, z = CAKE_SPOT.z, text = '') {

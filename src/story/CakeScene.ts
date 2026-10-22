@@ -1,6 +1,9 @@
 import * as THREE from 'three';
 import type { Game } from '../Game';
 import { surfaceAt } from '../world/terrain';
+import { buildCake, type CakePalette, VANILLA } from '../event/CakeModel';
+export { CHOCOLATE, VANILLA } from '../event/CakeModel';
+export type { CakePalette } from '../event/CakeModel';
 
 /**
  * The opening: under the Great Oak, a small celebration before the road. A blade of the golden
@@ -11,11 +14,6 @@ import { surfaceAt } from '../world/terrain';
  */
 
 const GOLD = '#f5c451', CLOTH = '#fbf4e6';
-
-/** The cake's colours: sponge inside, the icing outside, the top tier, and the piped roses. */
-export interface CakePalette { sponge: string; cream: string; icing: string; top: string; rose: string; bead: string }
-export const VANILLA: CakePalette = { sponge: '#f3d49a', cream: '#fff8ef', icing: '#fff8ef', top: '#f7b8cc', rose: '#f7b8cc', bead: '#fff8ef' };
-export const CHOCOLATE: CakePalette = { sponge: '#5a3322', cream: '#f3e2cf', icing: '#4a2718', top: '#3b1f14', rose: '#e0344f', bead: '#f5c451' };
 
 export interface CakeOptions {
   palette?: CakePalette;
@@ -39,26 +37,6 @@ const mesh = (geo: THREE.BufferGeometry, color: string, glow = false) => {
   x.castShadow = !glow;
   return x;
 };
-
-/** A cylinder sector with its two cut faces closed — sponge inside, a cream stripe through it. */
-function sector(r: number, h: number, start: number, len: number, outside: string, pal: CakePalette): THREE.Group {
-  const g = new THREE.Group();
-  g.add(mesh(new THREE.CylinderGeometry(r, r, h, 40, 1, false, start, len), outside));
-  for (const a of [start, start + len]) {
-    const face = new THREE.Group();
-    const sponge = mesh(new THREE.PlaneGeometry(r, h), pal.sponge);
-    sponge.position.x = r / 2;
-    const stripe = mesh(new THREE.PlaneGeometry(r * 0.98, h * 0.14), pal.cream);
-    stripe.position.set(r / 2, 0, 0.001);
-    const stripe2 = stripe.clone();
-    stripe2.position.z = -0.001;
-    face.add(sponge, stripe, stripe2);
-    // CylinderGeometry measures theta from +z towards +x; the face plane lies along local +x.
-    face.rotation.y = a - Math.PI / 2;
-    g.add(face);
-  }
-  return g;
-}
 
 function buildTable(): { table: THREE.Group; cakeTop: number } {
   const t = new THREE.Group();
@@ -123,41 +101,11 @@ export class CakeScene {
     const { table, cakeTop } = buildTable();
     this.group.add(table);
 
-    // The cake: a two-tier cream cake with rose piping and a gold ribbon, one wedge to be cut.
-    const cake = new THREE.Group();
+    // The cake model stays at unit scale with its base at y=0; the story places it on the table.
+    const { cake, slice } = buildCake(pal);
     cake.position.y = cakeTop;
     cake.scale.setScalar(1.5);
-    const r1 = 0.27, h1 = 0.17, r2 = 0.18, h2 = 0.14;
-    const rest = sector(r1, h1, WEDGE, Math.PI * 2 - WEDGE, pal.icing, pal);
-    rest.position.y = h1 / 2;
-    cake.add(rest);
-    this.slice = sector(r1, h1, 0, WEDGE, pal.icing, pal);
-    // A rose on the slice, so the piece that floats is recognisably the special one.
-    const sliceRose = mesh(new THREE.SphereGeometry(0.03, 8, 6), pal.rose);
-    sliceRose.position.set(Math.sin(WEDGE / 2) * r1 * 0.7, h1 / 2 + 0.02, Math.cos(WEDGE / 2) * r1 * 0.7);
-    this.slice.add(sliceRose);
-    this.slice.position.y = h1 / 2;
-    cake.add(this.slice);
-    const upper = mesh(new THREE.CylinderGeometry(r2, r2, h2, 36), pal.top);
-    upper.position.y = h1 + h2 / 2;
-    cake.add(upper);
-    cake.add(mesh(new THREE.TorusGeometry(r2 + 0.004, 0.012, 6, 40).rotateX(Math.PI / 2).translate(0, h1 + 0.03, 0), GOLD, true));
-    for (let i = 0; i < 14; i++) {
-      const a = (i / 14) * Math.PI * 2;
-      const bead = mesh(new THREE.SphereGeometry(0.018, 6, 5), pal.bead);
-      bead.position.set(Math.sin(a) * r2, h1 + h2, Math.cos(a) * r2);
-      cake.add(bead);
-      if (i % 2) continue;
-      const rose = mesh(new THREE.SphereGeometry(0.026, 7, 5), i % 4 ? pal.rose : '#ffffff');
-      rose.position.set(Math.sin(a + 0.2) * (r1 - 0.02), h1 + 0.01, Math.cos(a + 0.2) * (r1 - 0.02));
-      if (a > WEDGE) cake.add(rose);
-    }
-    // A tiny lantern-star on top: the thread's light, waiting.
-    const star = mesh(new THREE.OctahedronGeometry(0.045), GOLD, true);
-    star.position.y = h1 + h2 + 0.09;
-    star.name = 'star';
-    star.userData.y = star.position.y;
-    cake.add(star);
+    this.slice = slice;
     this.group.add(cake);
 
     // The blade is light, not steel: a thin sliver of the thread's gold.
@@ -357,3 +305,4 @@ export class CakeScene {
     this.onDone?.();
   }
 }
+
