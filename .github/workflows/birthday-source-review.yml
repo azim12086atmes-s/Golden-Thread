@@ -1,0 +1,45 @@
+name: Birthday source visual review
+on:
+  push:
+    branches: [birthday/reference-audit]
+    paths:
+      - .github/workflows/birthday-source-review.yml
+      - tools/birthday-audit/capture.cjs
+permissions:
+  contents: read
+jobs:
+  browser-review:
+    runs-on: ubuntu-latest
+    timeout-minutes: 18
+    steps:
+      - name: Check out review tools
+        uses: actions/checkout@v4
+        with:
+          path: golden
+      - name: Check out complete large-palace reference
+        uses: actions/checkout@v4
+        with:
+          repository: azim12086atmes-s/birthday-castle
+          ref: 3fcc2b4728c51eca871c889fa545c9605d7ad8df
+          path: castle
+          persist-credentials: false
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Install browser
+        run: |
+          npm install --prefix "$RUNNER_TEMP/birthday-browser" --no-audit --no-fund playwright@1.56.1
+          "$RUNNER_TEMP/birthday-browser/node_modules/.bin/playwright" install --with-deps chromium
+      - name: Run both actual games and capture reference views
+        env:
+          CAPTURE_TOOLS: ${{ runner.temp }}/birthday-browser
+        run: |
+          python3 -m http.server 8012 --bind 127.0.0.1 --directory castle > "$RUNNER_TEMP/castle-preview.log" 2>&1 &
+          node golden/tools/birthday-audit/capture.cjs
+      - name: Keep screenshots and browser diagnostics
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: birthday-source-browser-captures
+          path: browser-captures
+          retention-days: 7
