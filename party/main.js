@@ -33,14 +33,28 @@ const isPrivate = role => role === 'companion' || role === 'observer';
 function entry() { return token ? { token } : { guestNumber, ...($('guest-name').value.trim() ? { name: $('guest-name').value.trim() } : {}) }; }
 let ticket = null, state = null, game = null, events = null, layout = null, activePanel = null, playlist = null;
 let toastTimer, reconnecting = false, reconnectTimer;
+let socket = null, rpcId = 0, socketPoll = null;
+const rpcPending = new Map();
 const panel = $('panel'), content = $('panel-content');
 const audio = new PartyAudio(data => api('/api/signal', data), message => toast(message));
 function toast(message) { text('toast', message); $('toast').hidden = false; clearTimeout(toastTimer); toastTimer = setTimeout(() => { $('toast').hidden = true; }, 4500); }
 async function api(path, data, quiet = false) {
-  const response = await fetch(path, { method: data === undefined ? 'GET' : 'POST', headers: { ...(data === undefined ? {} : { 'content-type': 'application/json' }), ...(ticket ? { authorization: `Bearer ${ticket}` } : {}) }, ...(data === undefined ? {} : { body: JSON.stringify(data) }), cache: 'no-store' });
+  let response;
+  if (socket?.readyState === WebSocket.OPEN && data !== undefined && ['/api/move','/api/action','/api/signal'].includes(path)) {
+    const reply = await liveRequest(path, data);
+    response = { ok: reply.status >= 200 && reply.status < 300, status: reply.status, json: async () => reply.data };
+  } else response = await fetch(path, { method: data === undefined ? 'GET' : 'POST', headers: { ...(data === undefined ? {} : { 'content-type': 'application/json' }), ...(ticket ? { authorization: `Bearer ${ticket}` } : {}) }, ...(data === undefined ? {} : { body: JSON.stringify(data) }), cache: 'no-store' });
   const result = await response.json();
-  if (!response.ok) { if (response.status === 401 && ticket && !reconnecting) reconnect(); if (!quiet) toast(result.error || 'That action could not be completed.'); throw new Error(result.error || 'Request failed.'); }
+  if (!response.ok) { if (response.status === 401 && ticket && !reconnecting) reconnect(); if (!quiet) toast(result.error || 'That action could not be completed.'); const error = new Error(result.error || 'Request failed.'); error.status = response.status; throw error; }
   return result;
+}
+function liveRequest(path, data) {
+  return new Promise((resolve, reject) => {
+    const id = ++rpcId, timer = setTimeout(() => { rpcPending.delete(id); reject(new Error('The party is reconnecting. Try again shortly.')); }, 12000);
+    rpcPending.set(id, { resolve, reject, timer });
+    try { socket.send(JSON.stringify({ kind:'rpc', id, path, data })); }
+    catch (error) { clearTimeout(timer); rpcPending.delete(id); reject(error); }
+  });
 }
 function action(data, quiet = false) { return api('/api/action', data, quiet); }
 function connection(connected) { text('connection', connected ? 'Together, live' : 'Reconnecting…'); $('connection-dot').classList.toggle('live', connected); }
@@ -74,6 +88,28 @@ $('join').addEventListener('click', async () => {
   }
 });
 function listen() {
+  if (layout?.TRANSPORT === 'websocket') {
+    events?.close();
+    clearInterval(socketPoll);
+    if (socket) { socket.onclose = null; socket.close(); }
+    socket = new WebSocket(`${location.protocol === 'https:' ? 'wss:' : 'ws:'}//${location.host}/api/socket?ticket=${encodeURIComponent(ticket)}`);
+    socket.onopen = () => { clearTimeout(reconnectTimer); connection(true); socketPoll = setInterval(() => { if(socket?.readyState===WebSocket.OPEN)socket.send('{"kind":"poll"}'); },200); };
+    socket.onmessage = async event => {
+      let msg; try { msg = JSON.parse(event.data); } catch { return; }
+      if (msg.kind === 'reply') { const pending = rpcPending.get(msg.id); if (pending) { clearTimeout(pending.timer); rpcPending.delete(msg.id); pending.resolve(msg); } }
+      else if (msg.kind === 'state') {
+        await receive(msg.state).catch(() => {});
+        if (msg.state.signals?.length && socket?.readyState === WebSocket.OPEN) socket.send(JSON.stringify({ kind:'ack', ids:msg.state.signals.map(s=>s.id) }));
+      }
+    };
+    socket.onclose = () => {
+      clearInterval(socketPoll);
+      connection(false); for (const p of rpcPending.values()) { clearTimeout(p.timer); p.reject(new Error('The live connection is restarting.')); } rpcPending.clear();
+      clearTimeout(reconnectTimer); reconnectTimer = setTimeout(() => reconnect(), 2500);
+    };
+    socket.onerror = () => connection(false);
+    return;
+  }
   events?.close(); events = new EventSource(`/api/events?ticket=${encodeURIComponent(ticket)}`);
   events.onopen = () => connection(true);
   events.addEventListener('state', e => { receive(JSON.parse(e.data)).catch(() => {}); });
@@ -335,7 +371,7 @@ class PartyGame {
     if(party.journey?.active&&party.phase!=='playing'){const trail=party.journey;if(trail.complete||trail.waiting){openPanel('journey');return;}const point=trail.stage==='collect'?trail.current.collect:trail.current.beacon;if(Math.hypot(this.pos.x-point.x,this.pos.z-point.z)>8){openPanel('journey');return;}if(trail.stage==='collect'){await this.send();await action({type:'journey-collect',chapterId:trail.current.id});toast('Kept safe. Bring its light to the violet beacon.');}else openPanel('journey');return;}
     openPanel('wishes');
     }catch{}finally{this.pending=false;}}
-  async send(){if(this.sending||!ticket||this.self.role==='observer')return;this.sending=true;try{await api('/api/move',{x:this.pos.x,y:this.pos.y,z:this.pos.z,yaw:this.bodyYaw||0},true);}catch(error){if(state?.party.game==='bridge-dash'||state?.party.chase){const p=state.players.find(p=>p.id===this.self.id);if(p)this.pos.set(p.x,p.y,p.z);}}finally{this.sending=false;}}
+  async send(){if(this.sending||!ticket||this.self.role==='observer')return;this.sending=true;try{await api('/api/move',{x:this.pos.x,y:this.pos.y,z:this.pos.z,yaw:this.bodyYaw||0},true);}catch(error){if(error.status===400&&(state?.party.game==='bridge-dash'||state?.party.chase)){const p=state.players.find(p=>p.id===this.self.id);if(p)this.pos.set(p.x,p.y,p.z);}}finally{this.sending=false;}}
   async checkpoints(){if(!state||this.pending||this.self.role==='observer')return;const id=state.party.game;if(id!=='bridge-dash'&&id!=='sky-rings')return;const points=id==='sky-rings'?layout.SKY_RINGS:layout.BRIDGE_CHECKPOINTS;const index=state.party.selfProgress?.checkpoint??this.checkpoint;const p=points?.[index];if(!p)return;const d=id==='sky-rings'?Math.hypot(this.pos.x-p.x,this.pos.y-p.y,this.pos.z-p.z):Math.hypot(this.pos.x-p.x,this.pos.z-p.z);if(d>6)return;this.pending=true;try{await this.send();await action({type:'checkpoint',index},true);this.checkpoint=index+1;audio.tone(660+index*90,.3);toast(index===4?'All five gates complete! A little stardust earned.':`Gate ${index+1} / 5`);}catch{}finally{this.pending=false;}}
   frame(){const now=performance.now(),dt=Math.min(.05,(now-this.last)/1000);this.last=now;this.t+=dt;
     if(this.input.hit('escape')&&panel.open)closePanel();

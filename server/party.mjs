@@ -1,4 +1,5 @@
 import http from 'node:http';
+import { Buffer } from 'node:buffer';
 import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -89,7 +90,7 @@ const gameSpec = (name, now) => {
   return null;
 };
 
-export function createPartyServer({ config, distDir = path.join(ROOT, 'dist'), now = Date.now, sessionMs = SESSION_MS } = {}) {
+export function createPartyServer({ config, distDir = path.join(ROOT, 'dist'), now = Date.now, sessionMs = SESSION_MS, autoTick = true, serverFactory = http.createServer, snapshot = null } = {}) {
   const validated = validateConfig(config); const slots = validated.slots; const maxConnections = validated.maxConnections;
   const birthdayId = slots.find(s => s.role === 'birthday').id;
   const inviteByToken = new Map(slots.map(s => [s.token, s]));
@@ -481,7 +482,7 @@ export function createPartyServer({ config, distDir = path.join(ROOT, 'dist'), n
       if (req.method === 'HEAD') return res.end(); fs.createReadStream(resolvedFile).pipe(res);
     } catch (e) { if (!res.headersSent) fail(res, e.status || 500, e.status ? e.message : 'Server error.'); else res.destroy(); }
   };
-  const server = http.createServer(handler);
+  const server = serverFactory(handler);
   const tickRoom = () => {
     const t = now();
     for (const [id, s] of sessionsBySlot) if (s.expiresAt <= t) { sessionsBySlot.delete(id); sessionsByTicket.delete(s.ticket); const stream = streams.get(s.ticket); if (stream) stream.end(); streams.delete(s.ticket); }
@@ -499,11 +500,73 @@ export function createPartyServer({ config, distDir = path.join(ROOT, 'dist'), n
     if (updateObservers(t)) broadcast();
     broadcast();
   };
-  const timer = setInterval(tickRoom, 1000); timer.unref();
-  const pushTimer = setInterval(() => { const t = now(); tickMatches(t); if (updateObservers(t)) broadcast(); flushBroadcast(); }, 100); pushTimer.unref();
-  server.on('close', () => { clearInterval(timer); clearInterval(pushTimer); });
-  server.partyInternals = { handler, stateFor, sessionsBySlot, scores, getActive: () => active, positions, tickRoom, getJourney: () => journey };
+  let timer = null, pushTimer = null;
+  if (autoTick) {
+    timer = setInterval(tickRoom, 1000); timer.unref();
+    pushTimer = setInterval(() => { const t = now(); tickMatches(t); if (updateObservers(t)) broadcast(); flushBroadcast(); }, 100); pushTimer.unref();
+  }
+  server.on?.('close', () => { if (timer) clearInterval(timer); if (pushTimer) clearInterval(pushTimer); });
+  const exportSnapshot = () => encodeSnapshot({
+    slotStates: slots.map(s => ({ id: s.id, name: s.name, avatar: s.avatar })),
+    sessions: [...sessionsBySlot.values()].filter(s => s.expiresAt > now()).map(s => ({ slot: { id: s.slot.id, role: s.slot.role, name: s.slot.name, avatar: s.slot.avatar }, ticket: s.ticket, expiresAt: s.expiresAt, lastSeen: s.lastSeen })),
+    positions, moveTimes, scores, signalQueues, signalTimes, party, active, wishes, rallyAt, dirty,
+    scheduledCelebration, journey, journeyStarted, journeyTravel, teleportVersion, privateJourneys,
+    observerUpdated, birthdaySample, birthdaySpeed,
+  });
+  const restoreSnapshot = raw => {
+    if (!raw || typeof raw !== 'object') return;
+    const data = decodeSnapshot(raw);
+    const slotStates = new Map((data.slotStates || []).filter(s => s && typeof s.id === 'string').map(s => [s.id, s]));
+    for (const slot of slots) { const saved = slotStates.get(slot.id); if (saved && typeof saved.avatar === 'string') slot.avatar = cleanLabel(saved.avatar, 48) || slot.avatar; }
+    for (const m of [sessionsBySlot, sessionsByTicket, positions, moveTimes, signalQueues, signalTimes, privateJourneys, observerUpdated]) m.clear();
+    for (const saved of data.sessions || []) {
+      if (!saved || typeof saved.ticket !== 'string' || typeof saved.slot?.id !== 'string' || !Number.isFinite(saved.expiresAt) || saved.expiresAt <= now()) continue;
+      const configured = slots.find(x => x.id === saved.slot.id);
+      const slot = configured || (/^numbered-\d{1,10}$/.test(saved.slot.id) && saved.slot.role === 'guest' ? { id: saved.slot.id, role: 'guest', name: cleanLabel(saved.slot.name) || `Guest ${saved.slot.id.slice(9)}`, avatar: cleanLabel(saved.slot.avatar, 48) || 'g-petal', token: null } : null);
+      if (!slot) continue;
+      const session = { slot, ticket: saved.ticket, expiresAt: saved.expiresAt, lastSeen: Number.isFinite(saved.lastSeen) ? saved.lastSeen : now() };
+      sessionsBySlot.set(slot.id, session); sessionsByTicket.set(session.ticket, session);
+    }
+    const assignMap = (dest, source) => { if (source instanceof Map) for (const [k, v] of source) dest.set(k, v); };
+    assignMap(positions, data.positions); assignMap(moveTimes, data.moveTimes); assignMap(signalQueues, data.signalQueues); assignMap(signalTimes, data.signalTimes); assignMap(privateJourneys, data.privateJourneys); assignMap(observerUpdated, data.observerUpdated);
+    if (data.scores && typeof data.scores === 'object') for (const role of ['birthday', 'guest', 'companion']) scores[role] = data.scores[role] || {};
+    if (data.party) party = data.party; active = data.active ?? null; wishes = Array.isArray(data.wishes) ? data.wishes : [];
+    rallyAt = data.rallyAt ?? null; dirty = !!data.dirty; scheduledCelebration = data.scheduledCelebration ?? null;
+    if (data.journey) journey = data.journey; journeyStarted = !!data.journeyStarted; journeyTravel = data.journeyTravel ?? null;
+    teleportVersion = Number.isInteger(data.teleportVersion) ? data.teleportVersion : 0;
+    birthdaySample = data.birthdaySample ?? null; birthdaySpeed = Number.isFinite(data.birthdaySpeed) ? data.birthdaySpeed : 0;
+    for (const session of sessionsBySlot.values()) if (!positions.has(session.slot.id)) positions.set(session.slot.id, initialPosition(session.slot));
+    updateObservers(now());
+  };
+  const listPhotos = () => photos.map(p => ({ id: p.id, caption: p.caption, createdAt: p.createdAt }));
+  const takePhoto = id => { const i = photos.findIndex(p => p.id === id); return i < 0 ? null : photos.splice(i, 1)[0]; };
+  const addPhoto = photo => { if (photo && typeof photo.id === 'string' && Buffer.isBuffer(photo.publicImage)) photos.push(photo); while (photos.length > 28) photos.shift(); };
+  const ackSignals = (slotId, ids) => {
+    if (!sessionsBySlot.has(slotId) || !Array.isArray(ids) || ids.length > 256) return 0;
+    const wanted = new Set(ids.filter(id => typeof id === 'string' && id.length <= 64));
+    const queue = signalQueues.get(slotId) || []; const filtered = queue.filter(signal => !wanted.has(signal.id));
+    signalQueues.set(slotId, filtered); return queue.length - filtered.length;
+  };
+  server.partyInternals = { handler, stateFor, sessionsBySlot, scores, getActive: () => active, positions, tickRoom, getJourney: () => journey, exportSnapshot, restoreSnapshot, listPhotos, takePhoto, addPhoto, ackSignals };
+  if (snapshot) restoreSnapshot(snapshot);
   return server;
+}
+
+export function encodeSnapshot(value) {
+  if (value instanceof Map) return { $type: 'Map', entries: [...value].map(([k, v]) => [encodeSnapshot(k), encodeSnapshot(v)]) };
+  if (value instanceof Set) return { $type: 'Set', values: [...value].map(encodeSnapshot) };
+  if (Array.isArray(value)) return value.map(encodeSnapshot);
+  if (value && typeof value === 'object') { const out = {}; for (const [k, v] of Object.entries(value)) out[k] = encodeSnapshot(v); return out; }
+  return value;
+}
+export function decodeSnapshot(value) {
+  if (Array.isArray(value)) return value.map(decodeSnapshot);
+  if (value && typeof value === 'object') {
+    if (value.$type === 'Map' && Array.isArray(value.entries)) return new Map(value.entries.map(([k, v]) => [decodeSnapshot(k), decodeSnapshot(v)]));
+    if (value.$type === 'Set' && Array.isArray(value.values)) return new Set(value.values.map(decodeSnapshot));
+    const out = {}; for (const [k, v] of Object.entries(value)) out[k] = decodeSnapshot(v); return out;
+  }
+  return value;
 }
 
 function outsideRepo(file) { return !path.resolve(file).startsWith(ROOT + path.sep) && path.resolve(file) !== ROOT; }
@@ -522,4 +585,4 @@ async function cli(args) {
   if (!config) throw new Error('Usage: node server/party.mjs <private-config.json> (outside repository), or set PARTY_CONFIG_JSON.');
   const server = createPartyServer({ config }); const port = Number(process.env.PORT || 3000); server.listen(port, process.env.HOST || '0.0.0.0', () => console.log(`Party server listening on ${server.address().address}:${server.address().port}`));
 }
-if (process.argv[1] && path.resolve(process.argv[1]) === fileURLToPath(import.meta.url)) cli(process.argv.slice(2)).catch(e => { console.error(e.message); process.exitCode = 1; });
+if (typeof process !== 'undefined' && process.argv?.[1] && path.resolve(process.argv[1]) === fileURLToPath(import.meta.url)) cli(process.argv.slice(2)).catch(e => { console.error(e.message); process.exitCode = 1; });

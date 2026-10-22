@@ -20,19 +20,13 @@ The default active connection limit is 32, including private attendees, and `max
 
 `--date` accepts an ISO timestamp with timezone, for example `2026-10-23T00:00:00+05:30`. Set the intended birthday timezone explicitly; the server uses one shared instant. The birthday guest or private companions can also call everyone to the cake from Play.
 
-## Host the room
+## Play online
 
-GitHub Pages alone cannot enforce private player visibility or run this server. Deploy the branch to a host supporting a persistent Node HTTP service, SSE, and HTTPS. Use **one instance** for the party; the room, scores, and album are held in that process.
+The live party is available at [starlight-birthday-garden-1023.swiftpika36.chatgpt.site](https://starlight-birthday-garden-1023.swiftpika36.chatgpt.site). It uses the Golden Thread game engine with a Cloudflare Worker room service, D1-backed snapshots and compare-and-swap batched updates, WebSockets, and R2 photo storage. State polls are read-only. The party does not require a hosting signup or make AI calls during play.
 
-For Render, create a Blueprint using this repository and the `birthday/14-player-celebration` branch. The included `render.yaml` selects the Docker service. Set its secret `PARTY_CONFIG_JSON` to the complete contents of your private `party.json`. No npm install or paid game backend is required. A free service may sleep before the party; open an invitation beforehand. A process restart clears round progress and the shared album; download photos you want to retain. No hosting account or paid service is provisioned by committing the branch.
+The organiser’s private invitation register was regenerated for the live HTTPS origin. Keep `party.json` and the full invitation register outside the repository and web root; never publish private links or tokens in source. Snapshots contain runtime party state only, not invitation tokens or helper credentials. The Sites source lives separately at `/workspace/sites/starlight-birthday`; the deployed source commit is `8dd0589b1f63ff66c8eed685d848e1d788e59a71`.
 
-After your host returns its actual HTTPS origin, open the private register and enter that origin in its host field to update every link. Alternatively regenerate using the **same private directory**:
-
-```sh
-node scripts/invitations.mjs --out ../starlight-private --base https://YOUR-SERVICE.onrender.com
-```
-
-The generator preserves existing tokens. These become the live invitations once that server is deployed; a GitHub branch URL itself is not a playable multiplayer link. For a VPS, `docker build -t starlight .` then run the container with `PARTY_CONFIG_JSON` provided securely by your host and route HTTPS to port 3000. Do not place credentials in a Docker image or commit them.
+The standalone Node server remains available for local play or another compatible host. It requires one persistent instance with HTTPS and SSE support; its in-memory room and album clear on restart. For Render, use the included `render.yaml` and Docker service, providing `PARTY_CONFIG_JSON` through the host’s secret settings. For a VPS, build the included Dockerfile and provide that setting securely at runtime. After deployment, set the invitation register’s host field to the actual HTTPS origin. Free services can sleep or restart, so test the chosen host before the event and download photos you want to retain.
 
 ## The evening
 
@@ -64,4 +58,4 @@ Polaroids are rendered from the player’s admitted scene. The birthday guest’
 
 ## Verification
 
-Run the party tests and build checks above. The deployment health endpoint is `/healthz`. Before the party, open separate birthday, observer and guest invitations, test the privacy views and photos, verify microphones on the actual devices/networks, and play one round. API tests exercise 14 participant sessions; they do not establish the frame rate or voice reliability of 14 real devices.
+Run the party tests and build checks above. The deployed health endpoint is `/healthz`. Before the party, open separate birthday, observer and guest invitations, test the privacy views and photos, verify microphones on the actual devices/networks, and play one round. API tests exercise 14 participant sessions; they do not establish the frame rate or voice reliability of 14 real devices.

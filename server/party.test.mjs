@@ -6,7 +6,7 @@ import path from 'node:path';
 import { EventEmitter } from 'node:events';
 import { createPartyServer, makeDefaultConfig, SKY_RINGS, BRIDGE_CHECKPOINTS } from './party.mjs';
 
-async function fixture({ observer = false, maxConnections } = {}) {
+async function fixture({ observer = false, maxConnections, autoTick = true } = {}) {
   const config = makeDefaultConfig();
   if (observer) config.slots.push({ id: 'private-observer', role: 'observer', name: 'Observer', avatar: 'b-moon', token: 'observer-token-' + 'x'.repeat(32) });
   if (maxConnections) config.maxConnections = maxConnections;
@@ -14,8 +14,8 @@ async function fixture({ observer = false, maxConnections } = {}) {
   const distDir = path.join(tmp, 'dist'); await fs.mkdir(distDir);
   await fs.writeFile(path.join(distDir, 'index.html'), '<!doctype html><h1>party</h1>');
   await fs.writeFile(path.join(tmp, 'private.json'), '{"secret":true}');
-  let time = Date.now(); const server = createPartyServer({ config, distDir, now: () => time });
-  return { config, tmp, server, advance: ms => { time += ms; }, close: async () => { await fs.rm(tmp, { recursive: true, force: true }); } };
+  let time = Date.now(); const server = createPartyServer({ config, distDir, now: () => time, autoTick, ...(autoTick ? {} : { serverFactory: () => ({ on() {} }) }) });
+  return { config, tmp, server, advance: ms => { time += ms; }, current: () => time, close: async () => { server.emit?.('close'); await fs.rm(tmp, { recursive: true, force: true }); } };
 }
 async function request(f, method, url, { body, ticket } = {}) {
   const req = new EventEmitter(); req.method = method; req.url = url; req.headers = ticket ? { authorization: `Bearer ${ticket}` } : {};
@@ -119,6 +119,46 @@ test('observer is view-only, follows birthday, and stays private from public gue
     assert.ok(!bView.party.scores[o.self.id]);
   }
   assert.ok((await state(f, o.ticket)).json().signals.some(s => s.from === b.self.id));
+});
+
+test('snapshots round-trip active chase, invitations, observer session, story, scores, and signals without invite tokens', async t => {
+  const f = await fixture({ observer: true, autoTick: false }); t.after(f.close);
+  const host = (await join(f, f.config.slots[0])).json(); const companion = (await join(f, f.config.slots[1])).json();
+  const guest = (await joinNumber(f, '808')).json(); const observer = (await join(f, f.config.slots.at(-1))).json();
+  assert.equal((await post(f, '/api/action', host.ticket, { type: 'start-journey' })).status, 200);
+  assert.equal((await post(f, '/api/action', host.ticket, { type: 'start-game', game: 'tag' })).status, 200);
+  const signal = { to: observer.self.id, kind: 'description', payload: { type: 'offer', sdp: 'sdp-round-trip' } };
+  assert.equal((await post(f, '/api/signal', host.ticket, signal)).status, 200);
+  assert.equal((await post(f, '/api/action', host.ticket, { type: 'outfit', avatar: 'g-silver' })).status, 200);
+  f.server.partyInternals.scores.guest[guest.self.id] = 9;
+  const snapshot = f.server.partyInternals.exportSnapshot();
+  for (const slot of f.config.slots) assert.ok(!JSON.stringify(snapshot).includes(slot.token));
+  const restored = createPartyServer({ config: f.config, now: f.current, autoTick: false, serverFactory: () => ({ on() {} }), snapshot });
+  t.after(() => restored.emit?.('close'));
+  const b = (await state({ server: restored }, host.ticket)).json();
+  assert.equal(b.party.game, 'tag'); assert.equal(b.party.journey.chapter, 0); assert.equal(b.party.scores[guest.self.id], 9);
+  assert.equal(b.self.avatar, 'g-silver'); assert.ok(b.party.privatePractices.some(p => p.ownerId === companion.self.id));
+  const o = (await state({ server: restored }, observer.ticket)).json();
+  assert.equal(o.party.chase, null); assert.ok(o.signals.some(s => s.payload.sdp === 'sdp-round-trip'));
+  assert.ok(o.players.some(p => p.id === host.self.id)); assert.ok(!o.players.some(p => p.id === companion.self.id));
+  const roundTrip = restored.partyInternals.exportSnapshot();
+  assert.ok(roundTrip); assert.equal(restored.partyInternals.getActive().chase.status instanceof Map, true);
+});
+
+test('ackSignals removes only acknowledged recipient events and persists the cleared queue', async t => {
+  const f = await fixture({ observer: true, autoTick: false }); t.after(f.close);
+  const host = (await join(f, f.config.slots[0])).json(), guest = (await join(f, f.config.slots[4])).json();
+  const offer = { to: guest.self.id, kind: 'description', payload: { type: 'offer', sdp: 'queued-offer' } };
+  assert.equal((await post(f, '/api/signal', host.ticket, offer)).status, 200);
+  const before = (await state(f, guest.ticket)).json(); const queued = before.signals[0]; assert.ok(queued);
+  assert.equal(f.server.partyInternals.ackSignals(host.self.id, [queued.id]), 0, 'sender queue remains untouched');
+  assert.equal(f.server.partyInternals.ackSignals(guest.self.id, [queued.id, 'unknown']), 1);
+  assert.equal((await state(f, guest.ticket)).json().signals.length, 0);
+  assert.equal(f.server.partyInternals.ackSignals(guest.self.id, Array.from({ length: 257 }, () => queued.id)), 0);
+  const snapshot = f.server.partyInternals.exportSnapshot();
+  const restored = createPartyServer({ config: f.config, now: f.current, autoTick: false, serverFactory: () => ({ on() {} }), snapshot });
+  t.after(() => restored.emit?.('close'));
+  assert.equal((await state({ server: restored }, guest.ticket)).json().signals.length, 0);
 });
 
 test('all fourteen configured slots can join without exposing companions to guests', async t => {
