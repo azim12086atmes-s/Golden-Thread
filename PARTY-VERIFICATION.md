@@ -4,11 +4,11 @@
 
 Passed:
 
-- Party rules: 33 tests across `server/party.test.mjs` (17), `server/chase-games.test.mjs` (10), `shared/story.test.mjs` (4), and `party/audio.test.mjs` (2).
+- Party rules: 34 tests across `server/party.test.mjs` (17), `server/chase-games.test.mjs` (10), `shared/story.test.mjs` (4), and `party/audio.test.mjs` (3).
 - Authentication and reconnect, numeric guest admission without role escalation, configurable active connection cap, 14 simultaneous invitation sessions and 14 SSE streams carrying movement.
 - Privacy projections exclude hidden companions and the observer from guest frames, counts, scores, signaling and game targets. The observer cannot send movement/actions/photos, follows with the original 1.95m preferred/1.5m minimum separation, and remains visible to the birthday player during all three arena games.
 - All nine game routes, range checks, cover, tag grace/cooldown, seeker countdown and hidden locations, laser ray hits/shields/recharge, private wisp practice, all twenty cooperative story chapters, stale-action rejection, private story progress and palace finale.
-- Separate birthday/guest photo bytes, private upload denial, static path restrictions, validated ICE configuration, and microphone track routing that removes public tracks when the birthday player switches to private voice.
+- Separate birthday/guest photo bytes, private upload denial, static path restrictions, validated ICE configuration, and microphone track routing that mutes during channel changes and removes public tracks when the birthday player switches to private voice.
 - `node scripts/build-party.mjs` and `node scripts/check-party-build.mjs`: standalone build with no package installation, 41 emitted files, excluding original application/story entry points and private invitations.
 - JavaScript syntax checks on authored and compiled client/server/build modules.
 - CPU scene construction with a canvas shim: palace floor at 46.72m, meadow arrival, all race checkpoint floors, all six venue landings, all 40 story stations checked for usable height/building clearance, original golden ribbon construction, arena layers, original character no-face rules, celebration effects and lantern updates. This traversal built about 525,000 triangles across the loaded world and venue meshes; it does not measure a typical rendered frame.

@@ -39,3 +39,14 @@ test('observer creates no voice peer to a public guest even if passed an extra p
     assert.deepEqual([...audio.peers.keys()], ['birthday']);
   } finally { delete globalThis.RTCPeerConnection; }
 });
+
+test('push-to-talk stays muted while a channel change removes public tracks', async () => {
+  const audio = new PartyAudio(async () => {}), track = { enabled: true };
+  audio.self = { role: 'birthday' }; audio.channel = 'private'; audio.mic = { getAudioTracks: () => [track] };
+  let finish;
+  audio.peers.set('guest', { player: peers[1], sender: { replaceTrack(value) { assert.equal(value, null); return new Promise(resolve => { finish = resolve; }); } } });
+  const switching = audio.applyTracks();
+  assert.equal(track.enabled, false); audio.setTalking(true); assert.equal(track.enabled, false);
+  finish(); await switching;
+  audio.setTalking(true); assert.equal(track.enabled, true);
+});

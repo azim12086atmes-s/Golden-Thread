@@ -2,7 +2,7 @@
 export class PartyAudio {
   constructor(send, onStatus = () => {}) {
     this.send = send; this.onStatus = onStatus; this.peers = new Map(); this.seen = new Set();
-    this.self = null; this.players = []; this.mic = null; this.talking = false;
+    this.self = null; this.players = []; this.mic = null; this.talking = false; this.routing = 0;
     this.channel = 'guests'; this.music = false; this.effects = true; this.volume = .65;
     this.iceServers = [{ urls: 'stun:stun.l.google.com:19302' }];
     this.context = null; this.lastNote = 0;
@@ -27,7 +27,7 @@ export class PartyAudio {
     this.applyTracks();
   }
   setTalking(value) {
-    this.talking = Boolean(value && this.mic);
+    this.talking = Boolean(value && this.mic && !this.routing);
     this.mic?.getAudioTracks().forEach(t => { t.enabled = this.talking; });
   }
   canSendTo(player) {
@@ -36,8 +36,11 @@ export class PartyAudio {
     return true;
   }
   async applyTracks() {
-    const track = this.mic?.getAudioTracks()[0] ?? null;
-    await Promise.allSettled([...this.peers.values()].map(p => p.sender.replaceTrack(this.canSendTo(p.player) ? track : null)));
+    this.routing++; this.setTalking(false);
+    try {
+      const track = this.mic?.getAudioTracks()[0] ?? null;
+      await Promise.allSettled([...this.peers.values()].map(p => p.sender.replaceTrack(this.canSendTo(p.player) ? track : null)));
+    } finally { this.routing--; }
   }
   async refresh(players, self) {
     this.self = self; this.players = players;
