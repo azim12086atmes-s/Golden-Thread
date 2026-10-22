@@ -3,6 +3,7 @@ import { createHmac } from 'node:crypto';
 const json = (data, status = 200) => new Response(JSON.stringify(data), { status, headers: { 'content-type':'application/json; charset=utf-8', 'cache-control':'no-store' } });
 const wait = ms => new Promise(resolve => setTimeout(resolve, ms));
 const ROOM_KEY = 'birthday';
+const PRESENCE_MS = 120000;
 const RPC_PATHS = new Set(['/api/move','/api/action','/api/signal','/api/state']);
 export function voiceRelay(secret, now = Date.now()) {
   if(!secret)return [];
@@ -35,7 +36,7 @@ export async function engineRequest(engine, method, path, ticket, data) {
 export class RoomCoordinator {
   constructor(env) {
     this.env=env;this.jobs=[];this.peers=new Map();this.busy=false;this.timer=null;this.lastCycleAt=0;this.clock=Date.now();this.version=-1;
-    this.engine=createPartyServer({config:JSON.parse(env.PARTY_CONFIG_JSON),autoTick:false,distDir:'/dist',now:()=>this.clock,serverFactory:()=>({on(){}})}).partyInternals;
+    this.engine=createPartyServer({config:JSON.parse(env.PARTY_CONFIG_JSON),autoTick:false,sessionMs:PRESENCE_MS,distDir:'/dist',now:()=>this.clock,serverFactory:()=>({on(){}})}).partyInternals;
   }
   async enqueue(method,path,ticket,data,kind='rpc') {
     if(this.jobs.length>=2048)return Promise.resolve({status:429,data:{error:'The party is catching up. Try again in a moment.'}});
@@ -53,7 +54,10 @@ export class RoomCoordinator {
     let row=await this.env.DB.prepare('SELECT version, snapshot, clock FROM party_room WHERE id = ?').bind(ROOM_KEY).first();
     if(!row){await this.env.DB.prepare('INSERT OR IGNORE INTO party_room (id, version, snapshot, clock) VALUES (?, 0, ?, ?)').bind(ROOM_KEY,JSON.stringify(this.engine.exportSnapshot()),Date.now()).run();row=await this.env.DB.prepare('SELECT version, snapshot, clock FROM party_room WHERE id = ?').bind(ROOM_KEY).first();}
     if(!row)throw new Error('The shared room is not ready.');
-    this.clock=Math.max(Date.now(),row.clock||0);this.engine.restoreSnapshot(JSON.parse(row.snapshot));this.version=row.version;
+    this.clock=Math.max(Date.now(),row.clock||0);
+    const snapshot=JSON.parse(row.snapshot);
+    for(const session of snapshot.sessions||[])session.expiresAt=Math.min(session.expiresAt,(session.lastSeen||0)+PRESENCE_MS);
+    this.engine.restoreSnapshot(snapshot);this.version=row.version;
     return row;
   }
   session(ticket) { return [...this.engine.sessionsBySlot.values()].find(s=>s.ticket===ticket&&s.expiresAt>this.clock); }
@@ -73,7 +77,7 @@ export class RoomCoordinator {
         if(jobs.every(job=>job.method==='GET'&&job.kind!=='heartbeat')){
           committed=true;for(let i=0;i<jobs.length;i++)jobs[i].resolve(results[i]);break;
         }
-        for(const peer of this.peers.values()){const session=this.session(peer.ticket);if(session){session.lastSeen=this.clock;session.expiresAt=this.clock+30*60*1000;}}
+        for(const peer of this.peers.values()){const session=this.session(peer.ticket);if(session){session.lastSeen=this.clock;session.expiresAt=this.clock+PRESENCE_MS;}}
         const snapshot=JSON.stringify(this.engine.exportSnapshot());
         const result=await this.env.DB.prepare('UPDATE party_room SET version = version + 1, snapshot = ?, clock = ? WHERE id = ? AND version = ?').bind(snapshot,this.clock,ROOM_KEY,row.version).run();
         if(result.meta?.changes!==1){await wait(15+Math.random()*65);continue;}
@@ -110,7 +114,7 @@ export class RoomCoordinator {
       let msg;try{msg=JSON.parse(event.data);}catch{return;}
       if(msg.kind==='poll'){
         if(pending>=2)return;pending++;
-        const heartbeat=Date.now()-lastHeartbeat>60000;if(heartbeat)lastHeartbeat=Date.now();
+        const heartbeat=Date.now()-lastHeartbeat>30000;if(heartbeat)lastHeartbeat=Date.now();
         this.enqueue('GET',`/api/state?ticket=${encodeURIComponent(ticket)}`,ticket,undefined,heartbeat?'heartbeat':'rpc').then(reply=>{
           try{if(reply.status===200)socket.send(JSON.stringify({kind:'state',state:reply.data}));else socket.close(4001,'This invitation was reopened.');}catch{}
         }).finally(()=>{pending--;});return;

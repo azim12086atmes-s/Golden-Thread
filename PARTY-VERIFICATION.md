@@ -1,10 +1,10 @@
 # Verification record
 
-2026-10-22, live Site: [starlight-birthday-garden-1023.swiftpika36.chatgpt.site](https://starlight-birthday-garden-1023.swiftpika36.chatgpt.site). The separate Sites source commit is `8dd0589b1f63ff66c8eed685d848e1d788e59a71`.
+2026-10-22, live Site: [starlight-birthday-garden-1023.swiftpika36.chatgpt.site](https://starlight-birthday-garden-1023.swiftpika36.chatgpt.site). The separate Sites source commit is `d9fb73b859dd1b0797dddbbc67e6e35542bca1aa`.
 
 Passed:
 
-- Party rules: 41 tests across the core (19), chase games (10), story (4), audio (3), and Worker service (5).
+- Party rules: 42 tests across the core (19), chase games (10), story (4), audio (3), and Worker service (6).
 - Authentication and reconnect, numeric guest admission without role escalation, configurable active connection cap, 14 simultaneous invitation sessions and 14 SSE streams carrying movement.
 - Privacy projections exclude hidden companions and the observer from guest frames, counts, scores, signaling and game targets. The observer cannot send movement/actions/photos, follows with the original 1.95m preferred/1.5m minimum separation, and remains visible to the birthday player during all three arena games.
 - All nine game routes, range checks, cover, tag grace/cooldown, seeker countdown and hidden locations, laser ray hits/shields/recharge, private wisp practice, all twenty cooperative story chapters, stale-action rejection, private story progress and palace finale.
@@ -16,6 +16,8 @@ Passed:
 - Live API checks passed for birthday, observer, and fourteen ordinary guest invitations (all HTTP 200). The guest roster reports fifteen public players (fourteen guests and the birthday player) and omits the observer; the birthday view reports sixteen attendees. A shared tag round and the observer’s forbidden action response (403) were checked against the live service.
 - Fourteen simultaneous live WebSocket connections passed five movement acknowledgements and five private-visibility state checks each after the palace transfer completed.
 - The optional free TURN fallback issues expiring HMAC credentials without exposing its shared secret; its credential rules pass a unit test. Actual relay/media connectivity has not been verified from the players’ networks.
+- Disconnected hosted attendees expire from presence after two minutes; active clients send a heartbeat every thirty seconds. A stale-session/rejoin regression test passes.
+- Live authenticated voice configuration returns expiring encrypted-relay fallback credentials. Actual media was not exercised.
 - The deployed Worker uses D1 snapshots with compare-and-swap batched mutation, read-only state polls, WebSockets, and R2 public/private photo storage. Private invitation tokens are not stored in snapshots.
 
 Not verified in this environment:
