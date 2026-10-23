@@ -10,6 +10,8 @@ jobs:
     timeout-minutes: 24
     steps:
       - uses: actions/checkout@v4
+        with:
+          fetch-depth: 2
       - uses: actions/setup-node@v4
         with:
           node-version: '22'
@@ -34,6 +36,7 @@ jobs:
         if: always()
         env:
           CAPTURE_TOOLS: ${{ runner.temp }}/birthday-validation
+          REVIEW_MODE: auto
         run: |
           node tools/birthday-audit/review-server.mjs > "$RUNNER_TEMP/birthday-review-server.log" 2>&1 &
           node tools/birthday-audit/complete-review.cjs

@@ -4,6 +4,11 @@ const out='browser-captures';fs.mkdirSync(out,{recursive:true});
 const report={method:'Actual current Game plus party adapter; Chromium SwiftShader; HTTP sessions are not 14 hardware renderers or a microphone test.',errors:[],captures:[],checks:{}};
 const delay=ms=>new Promise(r=>setTimeout(r,ms));
 const base='http://127.0.0.1:8013';
+let uiOnly=process.env.REVIEW_MODE==='ui';
+if(process.env.REVIEW_MODE==='auto'){
+ try{const changed=require('node:child_process').execFileSync('git',['diff','--name-only','HEAD^','HEAD'],{encoding:'utf8'}).trim().split('\n');uiOnly=changed.every(p=>/^(?:party\/golden-ui\.css|tools\/birthday-audit\/complete-review\.cjs|\.github\/workflows\/complete-birthday-review\.yml)$/.test(p));}catch{}
+}
+report.mode=uiOnly?'UI repair; palace walk-through and birthday projection retained from the preceding full review':'complete world';
 const save=()=>fs.writeFileSync(path.join(out,'report.json'),JSON.stringify(report,null,2));
 let browser;
 (async()=>{
@@ -43,8 +48,11 @@ let browser;
  async function shot(file){report.checks.lastCapture={file,position:await page.evaluate(()=>partyTest.game.pos.toArray())};save();await page.screenshot({path:path.join(out,file),timeout:120000});report.captures.push(file);save();console.log('Captured '+file);}
  await page.evaluate(()=>{const g=partyTest.game.core;g.st.minutes=14*60;g.trav.teleport(110,275);g.trav.camYaw=Math.PI;g.trav.camPitch=.16;g.trav.camDist=7;});
  await delay(12000);await shot('golden-full-world-meadow.png');
+ report.checks.meadowView=await page.evaluate(async()=>{const g=partyTest.game.core,T=await import('three'),v=g.renderer.getViewport(new T.Vector4()),sz=g.renderer.getDrawingBufferSize(new T.Vector2());const ray=new T.Raycaster();g.camera.updateMatrixWorld(true);ray.setFromCamera(new T.Vector2(500/innerWidth*2-1,1-400/innerHeight*2),g.camera);const hits=ray.intersectObjects(g.scene.children,true).slice(0,5).map(h=>({name:h.object.name,type:h.object.type,material:h.object.material?.type,color:h.object.material?.color?.getHexString(),distance:h.distance,point:h.point.toArray(),parent:h.object.parent?.name}));return{camera:g.camera.position.toArray(),viewport:v.toArray(),buffer:sz.toArray(),scissor:g.renderer.getScissorTest(),hits,elements:document.elementsFromPoint(500,400).slice(0,5).map(e=>({tag:e.tagName,id:e.id,cls:e.className,bg:getComputedStyle(e).backgroundColor}))};});save();
  report.checks.wardrobeImmediate=await page.evaluate(()=>{const g=partyTest.game.core;g.ui.open('wardrobe');const p=document.querySelector('#ui .p-wardrobe');const s=getComputedStyle(p);return{panel:g.ui.panelId,root:document.getElementById('ui').className,className:p.className,display:s.display,visibility:s.visibility,transform:s.transform,rect:p.getBoundingClientRect().toJSON(),rootGlass:getComputedStyle(document.getElementById('ui')).getPropertyValue('--glass-strong'),outfits:p.querySelectorAll('.outfit').length};});save();
  await delay(3000);report.checks.wardrobeSettled=await page.evaluate(()=>{const p=document.querySelector('#ui .panel');const s=getComputedStyle(p);return{panel:partyTest.game.core.ui.panelId,root:document.getElementById('ui').className,className:p.className,display:s.display,visibility:s.visibility,transform:s.transform,rect:p.getBoundingClientRect().toJSON()};});save();await shot('golden-full-wardrobe.png');
+ assert(report.checks.wardrobeSettled.rect.x>=0&&report.checks.wardrobeSettled.rect.right<=1360,'Wardrobe is outside the visible viewport');
+ if(uiOnly){await context.close();await browser.close();if(report.errors.length)process.exitCode=1;return;}
  await page.evaluate(()=>partyTest.game.core.ui.closePanel());
  await page.waitForFunction(()=>partyTest.game.core.dress.blend===0);
  const world=await page.evaluate(async()=>{const r=await import('/src/world/regions.js');return r.REGIONS.map(x=>({id:x.id,name:x.name,col:x.col,row:x.row}));});

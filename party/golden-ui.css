@@ -13,6 +13,10 @@
 #ui.party-presentation > .panel:not(.sheet) { inset-block-start: 84px; }
 #ui.party-presentation > .feed { inset-block-end: 130px; }
 #ui.party-presentation > .touch-actions { display: none; }
+#ui.party-presentation > .panel.show { transform: none !important; visibility: visible; }
+#ui.party-presentation.sheet-open > .tracker,
+#ui.party-presentation.sheet-open > .hud-tr { display: none !important; }
+body:has(#ui > .p-wardrobe.show) #hud { visibility: hidden; }
 @media (max-width: 700px) {
   #ui.party-presentation > .hud-tr { inset-block-start: 80px; inset-inline-end: 12px; min-inline-size: 0; padding: 8px 10px; font-size: 11px; }
   #ui.party-presentation > .hud-tr .small { display: none; }
