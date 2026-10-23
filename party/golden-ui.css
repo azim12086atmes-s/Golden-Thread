@@ -22,3 +22,10 @@ body:has(#ui > .p-wardrobe.show) #hud { visibility: hidden; }
   #ui.party-presentation > .hud-tr .small { display: none; }
   #ui.party-presentation > .tracker { inset-block-start: 190px; inset-inline-end: 12px; inline-size: 235px; }
 }
+
+@media (max-width:700px), (pointer:coarse) and (orientation:landscape) and (max-height:540px) {
+  #ui.party-presentation > .hud-tr,
+  #ui.party-presentation > .tracker { display: none !important; }
+  #ui.party-presentation > .compass,
+  #ui.party-presentation > .feed { display: none !important; }
+}

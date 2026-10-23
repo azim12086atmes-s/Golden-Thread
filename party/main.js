@@ -173,6 +173,7 @@ function beginPanel(name, eyebrow, heading, description) {
 function button(label, callback, className = 'subtle-button') { const b = el('button', label, className); b.addEventListener('click', () => Promise.resolve(callback()).catch(e => toast(e.message))); return b; }
 function openPanel(name) {
   if (!state) return;
+  if (name === 'tools') return renderTools();
   if (name === 'games') return renderGames();
   if (name === 'map') return renderMap();
   if (name === 'wardrobe') return renderWardrobe();
@@ -198,6 +199,18 @@ function openPanel(name) {
   content.append(keys);
   const row = el('div', undefined, 'button-row'); row.append(button('Automatic graphics', () => game.setQuality('auto')), button('Low graphics', () => game.setQuality('low')), button('High graphics', () => game.setQuality('high')), button('Return to meadow', () => { game.travel({ x:0,y:0,z:70,name:'Meadow' }); closePanel(); })); content.append(row);
   content.append(el('p', 'Your invitation belongs to one player. Reopening it in another browser moves your session there. Audio starts only with your permission.'));
+}
+function renderTools() {
+  beginPanel('tools', 'YOUR EVENING', 'A little more wonder.', 'Everything else is here whenever you need it.');
+  const grid = el('div', undefined, 'card-grid');
+  const observing = state.self.role === 'observer';
+  const tools = [['chronicle','Story & celebration'],['album','Photo album'],['help','Controls & graphics']];
+  if (!observing) tools.unshift(['wardrobe','Outfits'],['life','Living & journeys'],['photo','Take a polaroid'],['wishes','Send a birthday wish']);
+  for (const [id, label] of tools) grid.append(button(label, () => {
+    if (id === 'photo') { closePanel(); return game?.photo(); }
+    return openPanel(id);
+  }, 'destination'));
+  content.append(grid);
 }
 function renderGames() {
   beginPanel('games', 'A LITTLE FRIENDLY COMPETITION', 'Nine ways to make memories.', 'Every round is shared by the party. Explore between rounds, or play through the evening’s playlist. Tag, hide-and-seek and laser tag need two visible players.');
@@ -344,6 +357,7 @@ async function renderAlbum() {
 document.querySelectorAll('[data-panel]').forEach(b=>b.onclick=()=>openPanel(b.dataset.panel));
 $('panel-close').onclick=closePanel;panel.addEventListener('cancel',e=>{e.preventDefault();closePanel();});
 $('help-button').onclick=()=>openPanel('help');$('wish-button').onclick=()=>openPanel('wishes');$('photo-button').onclick=()=>game?.photo();
+$('objective-toggle').onclick=()=>{const expanded=$('hud').classList.toggle('objective-expanded');$('objective-toggle').setAttribute('aria-expanded',String(expanded));$('objective-toggle').setAttribute('aria-label',expanded?'Hide objective details':'Show objective details');};
 $('interact-button').onclick=()=>game?.interact();$('fly-button').onclick=()=>game?.toggleFlight();
 for(const [id,key]of[['rise-button',' '],['lower-button','shift'],['run-button','shift']]){const b=$(id);b.onpointerdown=e=>{if(!game)return;b.setPointerCapture(e.pointerId);game.input.setVirtual(key,true);};b.onpointerup=b.onpointercancel=()=>game?.input.setVirtual(key,false);}
 
@@ -365,7 +379,10 @@ class PartyGame {
     stabilizeBloom(g.bloom);
     // The original model's "girl" identity also powers each guest's local controller.
     // Only the birthday invitation may show its wings, including on dragon rides.
-    if(self.role!=='birthday')for(const model of [g.trav.girl,g.van.girl,g.house.girl])model.hideBack();
+    if(self.role!=='birthday'){
+      for(const model of [g.trav.girl,g.van.girl,g.house.girl])model.hideBack();
+      for(const model of [g.trav.girl,g.trav.boy,g.van.girl,g.van.boy,g.house.girl,g.house.boy])model.hideCrown();
+    }
     this.scene=g.scene; this.camera=g.camera; this.renderer=g.renderer;
     this.input=g.input; this.world=g.world; this.sky=g.sky; this.controller=g.trav; this.pos=g.trav.gPos;
     this.life=new CoreLife(this,()=>closePanel());
@@ -525,6 +542,11 @@ class PartyGame {
     if(this.fixedPosition){this.pos.copy(this.fixedPosition);this.controller.place(0,t);}
     if(state?.party.chase){this.adventures.resolve(this.pos,.5);this.controller.place(0,t);}
     this.vehicle=this.controller.mode;this.yaw=this.controller.camYaw-Math.PI;this.bodyYaw=this.controller.heading;
+    const flying=this.vehicle==='fly';
+    $('rise-button').hidden=!flying;$('lower-button').hidden=!flying;
+    $('run-button').hidden=flying;
+    $('fly-button').hidden=this.vehicle!=='walk'&&!flying||state?.party.game==='bridge-dash'||CHASE_GAMES.includes(state?.party.game);
+    text('fly-button',flying?'Land':'Fly');
     const observing=this.self.role==='observer',birthday=this.self.role==='birthday';
     // The current Golden models animate locally; invitation-filtered models represent remote guests.
     this.controller.girl.root.visible=!observing;

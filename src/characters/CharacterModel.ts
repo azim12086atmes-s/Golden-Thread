@@ -304,6 +304,8 @@ export class CharacterModel {
 
   /** Whether wings or a jetpack are worn (indoors they are left at the door). */
   private backShown = true;
+  /** Party guests use the same controller, without the two travellers' royal crowns. */
+  private crownShown = true;
   /** Her wings open on the Night Dragon whatever she wears (owner, 2026-09-29): hers alone, as always. */
   private rideWings = false;
 
@@ -319,6 +321,13 @@ export class CharacterModel {
     if (!this.backShown) return;
     this.backShown = false;
     this.setOutfit(this.outfit);
+  }
+
+  /** Leave the royal crown off, including after dressing or entering an interior. */
+  hideCrown(): void {
+    this.crownShown = false;
+    this.crown?.removeFromParent();
+    this.crown = null;
   }
 
   /** Fold the wings in to reach no further than `room` metres (safety whenever the two come close). */
@@ -938,7 +947,8 @@ export class CharacterModel {
    */
   crown: THREE.Group | null = null;
   private buildCrown(): void {
-    if (!this.identity) return;
+    this.crown = null;
+    if (!this.identity || !this.crownShown) return;
     const r = DIMS.headR, tall = ['gat', 'wide-hat', 'hijab-hat', 'turban', 'songkok'].includes(this.outfit.head.style);
     const g = new THREE.Group();
     g.position.y = r * (tall ? 2.5 : 1.85);

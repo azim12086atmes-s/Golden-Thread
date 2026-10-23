@@ -101,6 +101,7 @@ function checkSourceIntegrity() {
   const approved = new Set([
     'src/Game.ts', 'src/event/Celebration.ts', 'src/player/Travellers.ts',
     'src/ui/UI.ts', 'src/world/terrain.ts',
+    'src/characters/CharacterModel.ts',
   ]);
   const changed = [];
   for (const entry of srcFiles) {

@@ -541,6 +541,7 @@ export function createPartyServer({ config, distDir = path.join(ROOT, 'dist'), n
   }
   server.on?.('close', () => { if (timer) clearInterval(timer); if (pushTimer) clearInterval(pushTimer); });
   const exportSnapshot = () => encodeSnapshot({
+    birthdayGownDefault: true,
     slotStates: slots.map(s => ({ id: s.id, name: s.name, avatar: s.avatar })),
     sessions: [...sessionsBySlot.values()].filter(s => s.expiresAt > now()).map(s => ({ slot: { id: s.slot.id, role: s.slot.role, name: s.slot.name, avatar: s.slot.avatar }, ticket: s.ticket, expiresAt: s.expiresAt, lastSeen: s.lastSeen })),
     positions, moveTimes, scores, signalQueues, signalTimes, party, active, wishes, rallyAt, dirty, festival,
@@ -561,6 +562,10 @@ export function createPartyServer({ config, distDir = path.join(ROOT, 'dist'), n
       slot.avatar = partyAvatar(slot.role, slot.avatar);
       const session = { slot, ticket: saved.ticket, expiresAt: saved.expiresAt, lastSeen: Number.isFinite(saved.lastSeen) ? saved.lastSeen : now() };
       sessionsBySlot.set(slot.id, session); sessionsByTicket.set(session.ticket, session);
+    }
+    // Apply the organiser's new default once to pre-update rooms, then keep future wardrobe choices.
+    if (!data.birthdayGownDefault) for (const slot of slots) {
+      if (slot.role === 'birthday') slot.avatar = 'g-starlight-gown';
     }
     const assignMap = (dest, source) => { if (source instanceof Map) for (const [k, v] of source) dest.set(k, v); };
     assignMap(positions, data.positions); assignMap(moveTimes, data.moveTimes); assignMap(signalQueues, data.signalQueues); assignMap(signalTimes, data.signalTimes); assignMap(privateJourneys, data.privateJourneys); assignMap(observerUpdated, data.observerUpdated);

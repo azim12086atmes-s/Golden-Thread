@@ -64,6 +64,21 @@ test('invalid invite is rejected and reconnect replaces the prior session', asyn
   assert.throws(() => createPartyServer({ config: { slots: tooMany } }), /1 to 64/);
 });
 
+test('legacy birthday rooms adopt the pink gown once and preserve later wardrobe choices', async t => {
+  const f = await fixture(); t.after(f.close);
+  const birthday = (await join(f, f.config.slots[0])).json();
+  const guest = (await joinNumber(f, '77')).json();
+  const legacy = f.server.partyInternals.exportSnapshot();
+  delete legacy.birthdayGownDefault;
+  legacy.slotStates.find(s => s.id === birthday.self.id).avatar = 'g-kurti-jeans';
+  f.server.partyInternals.restoreSnapshot(legacy);
+  assert.equal((await state(f, birthday.ticket)).json().self.avatar, 'g-starlight-gown');
+  assert.equal((await state(f, guest.ticket)).json().self.avatar, 'g-meadow');
+  assert.equal((await post(f, '/api/action', birthday.ticket, { type:'outfit', avatar:'g-kurti-jeans' })).status, 200);
+  f.server.partyInternals.restoreSnapshot(f.server.partyInternals.exportSnapshot());
+  assert.equal((await state(f, birthday.ticket)).json().self.avatar, 'g-kurti-jeans');
+});
+
 test('numbered guest links create, replace, and cap guest sessions without role escalation', async t => {
   const f = await fixture({ maxConnections: 14 }); t.after(f.close);
   const first = (await joinNumber(f, '00123', 'Moss Guest')).json();
