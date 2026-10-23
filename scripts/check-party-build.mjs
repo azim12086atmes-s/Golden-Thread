@@ -102,6 +102,8 @@ function checkSourceIntegrity() {
     'src/Game.ts', 'src/event/Celebration.ts', 'src/player/Travellers.ts',
     'src/ui/UI.ts', 'src/world/terrain.ts',
     'src/characters/CharacterModel.ts',
+    // Optional party rendering limits; original foliage/crowd defaults stay unchanged.
+    'src/event/Festivities.ts', 'src/world/Meadow.ts',
   ]);
   const changed = [];
   for (const entry of srcFiles) {

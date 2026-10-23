@@ -8,6 +8,7 @@ import {
 } from '../great-palace/js/world/layout.js';
 import { MOOD } from '../great-palace/js/world/sky.js';
 import { createPalaceTerrain } from './palace-terrain.js';
+import { tileGardenInstances } from './render-detail.js';
 
 // Golden Thread coordinates preserve every original region. The donor palace is
 // appended in its measured world units, below the original game's highlands.
@@ -41,7 +42,7 @@ export function createPalaceWorld(scene, quality, { clearRoof, onReady } = {}) {
   group.position.set(PALACE_WORLD_OFFSET.x, PALACE_WORLD_OFFSET.y, PALACE_WORLD_OFFSET.z);
   scene.add(group);
 
-  let palace = null, approach = null, gardens = null, skyBridge = null, terrain = null;
+  let palace = null, approach = null, gardens = null, skyBridge = null, terrain = null, gardenDetail = null;
   let routeColliders = [];
   const sourceCamera = new THREE.PerspectiveCamera();
 
@@ -65,6 +66,7 @@ export function createPalaceWorld(scene, quality, { clearRoof, onReady } = {}) {
       for (let i = COLLIDERS.length - 1; i >= 0; i--) if (omitted.has(COLLIDERS[i])) COLLIDERS.splice(i, 1);
     }
     gardens = createPalaceGardens(group, quality, { clearRoof: clearRoof || palace.roofGardenClear });
+    gardenDetail = tileGardenInstances(gardens.group);
     onReady?.({ palace, approach, gardens });
   }
 
@@ -126,7 +128,7 @@ export function createPalaceWorld(scene, quality, { clearRoof, onReady } = {}) {
     return position;
   }
 
-  function update(t, dt, camera, night) {
+  function update(t, dt, camera, night, light = false) {
     if (night !== undefined && MOOD?.night) MOOD.night.value = Math.max(0, Math.min(1, night));
     if (!camera?.position) return;
     const q = worldToSource(camera.position);
@@ -136,10 +138,14 @@ export function createPalaceWorld(scene, quality, { clearRoof, onReady } = {}) {
     if (palaceDistance < 5200) ensurePalace();
     if (nearBridge) ensureBridge();
     sourceCamera.position.copy(q);
+    sourceCamera.quaternion.copy(camera.quaternion);
+    sourceCamera.projectionMatrix.copy(camera.projectionMatrix);
+    sourceCamera.projectionMatrixInverse.copy(camera.projectionMatrixInverse);
     skyBridge?.update();
     palace?.update(t, dt, sourceCamera);
     approach?.update(t, dt, sourceCamera);
     gardens?.update(t, sourceCamera);
+    gardenDetail?.update(sourceCamera, light);
   }
 
   return {

@@ -36,6 +36,23 @@ async function joinNumber(f, guestNumber, name, role) { return request(f, 'POST'
 async function post(f, route, ticket, body) { return request(f, 'POST', route, { ticket, body }); }
 async function state(f, ticket) { return request(f, 'GET', `/api/state?ticket=${ticket}`); }
 
+test('guests start idle shared games, join together, and cannot interrupt a round or gain host powers', async t => {
+  const f = await fixture({ observer:true }); t.after(f.close);
+  const birthday = (await join(f, f.config.slots[0])).json();
+  const guest = (await joinNumber(f, '901')).json();
+  const other = (await joinNumber(f, '902')).json();
+  const observer = (await join(f, f.config.slots.find(s => s.role === 'observer'))).json();
+  assert.equal((await post(f,'/api/action',guest.ticket,{type:'start-game',game:'tag'})).status,200);
+  assert.equal((await state(f,other.ticket)).json().party.game,'tag');
+  assert.equal((await post(f,'/api/action',other.ticket,{type:'start-game',game:'laser-tag'})).status,409);
+  assert.equal((await state(f,guest.ticket)).json().party.game,'tag');
+  assert.equal((await post(f,'/api/action',observer.ticket,{type:'start-game',game:'tag'})).status,403);
+  assert.equal((await post(f,'/api/action',guest.ticket,{type:'rally'})).status,403);
+  assert.equal((await post(f,'/api/action',birthday.ticket,{type:'start-game',game:'starlight-memory'})).status,200);
+  f.advance(61_000); f.server.partyInternals.tickRoom();
+  assert.equal((await post(f,'/api/action',guest.ticket,{type:'start-game',game:'lantern-hunt'})).status,200);
+});
+
 test('guest state filters companion presence, roles, and scores', async t => {
   const f = await fixture(); t.after(f.close);
   const birthday = f.config.slots[0], companion = f.config.slots[1], guest = f.config.slots[4];

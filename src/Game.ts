@@ -389,7 +389,8 @@ export class Game {
     this.composer.setPixelRatio(this.renderer.getPixelRatio());
     this.renderer.shadowMap.enabled = quality === 'high';
     this.bloom.enabled = quality === 'high';
-    this.world.grass = quality === 'high';
+    this.world.grass = quality === 'high' || this.presentation === 'party';
+    this.world.meadow.nearOnly = quality === 'low' && this.presentation === 'party';
     this.scene.traverse((object) => {
       if (object instanceof THREE.Mesh) {
         const materials = Array.isArray(object.material) ? object.material : [object.material];

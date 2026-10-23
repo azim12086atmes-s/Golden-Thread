@@ -33,7 +33,7 @@ export class PartyScenery {
   }
   ground(x,z,fromY=Infinity) { return surfaceAt(x,z,fromY); }
   resolve(p,r) { this.venue.resolve(p,r); }
-  update(t,dt,celebrating,camera,night) {this.venue.update(t,dt,camera,night);this.decor.update(t,dt,celebrating,night);}
+  update(t,dt,celebrating,camera,night,focus,light=false) {this.venue.update(t,dt,camera,night,light);this.decor.update(t,dt,celebrating,night);}
   updateFestival(festival,dt,t) {this.decor.updateFestival(festival,dt,t);}
   setCelebrationName(name) {this.decor.setCelebrationName(name);}
   releaseLantern(x,z) {this.decor.releaseLantern(x,z);}

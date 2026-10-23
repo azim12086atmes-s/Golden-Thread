@@ -22,7 +22,9 @@ export class PartyCelebration {
     const target=active&&near?1:0;
     this.effects.level+=(target-this.effects.level)*Math.min(1,dt*1.5);
     if(target&&!this.crowdReady){this.effects.showCrowd();this.crowdReady=true;}
-    this.focus.copy(this.game.pos).sub(this.offset);
+    this.effects.detailLimit=this.game.core.quality==='low'?4:this.game.mobile?6:12;
+    this.effects.detailRange=this.game.core.quality==='low'?48:80;
+    this.focus.copy(this.game.camera.position).sub(this.offset);
     this.effects.update(dt,t,night,this.focus);
     this.game.scenery.updateFestival(festival,dt,t);
     // The original event earns the dragon after the celebration, with no purchase shortcut.

@@ -430,7 +430,8 @@ export function createPartyServer({ config, distDir = path.join(ROOT, 'dist'), n
             award(result, practice ? slot.id : null); broadcast(); return writeJSON(res, 200, { ok: true, hit: result.events.some(e => e.hit), events: result.events });
           }
           if (type === 'start-game') {
-            if (!canHost || !GAMES.has(body.game)) return fail(res, 403, 'Game cannot be started by this player.');
+            if ((!canHost && slot.role !== 'guest') || !GAMES.has(body.game)) return fail(res, 403, 'Game cannot be started by this player.');
+            if (!canHost && ['playing', 'rally', 'journey-travel'].includes(party.phase)) return fail(res, 409, 'Finish the current round or skyboat journey before starting another game.');
             const chase = CHASE_GAMES.has(body.game) ? createChaseGame(body.game, publicRoster(), now()) : null;
             active = chase ? { phase: 'playing', game: body.game, endsAt: chase.endsAt, chase, practices: new Map() } : gameSpec(body.game, now()); active.roundId = randomUUID(); active.progress = new Map(); active.completed = new Set(); active.privateFound = new Map(); active.carrying = new Map(); active.delivered = new Map(); active.collected = new Map(); active.statues = new Map(); rallyAt = null; journeyTravel = null;
             let seat = 0;

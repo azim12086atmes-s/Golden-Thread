@@ -424,6 +424,8 @@ export class MeadowField {
   readonly group = new THREE.Group();
   /** Lighter grass for a struggling device (Game.adapt): the far ring is left out. */
   light = false;
+  /** Event phones keep nearby tufts and flowers, without the outer foliage rings. */
+  nearOnly = false;
   private grass: Field;
   private flowers: Field;
   private midGrass: Field;
@@ -431,6 +433,8 @@ export class MeadowField {
   private midFlowers: Field;
   private crystals: Field;
   private pebbles: Field;
+  private lightGrass?: Field;
+  private lightFlowers?: Field;
   private m = new THREE.Matrix4();
   private q = new THREE.Quaternion();
   private s = new THREE.Vector3();
@@ -560,16 +564,30 @@ export class MeadowField {
     // High in the air the meadow is too far below to matter.
     this.group.visible = this.enabled && focus.y - ground < 60;
     if (!this.group.visible) return;
-    for (const b of takeDirty()) for (const f of [this.grass, this.flowers, this.midGrass, this.farGrass, this.midFlowers, this.crystals, this.pebbles]) f.invalidate(b.x0, b.z0, b.x1, b.z1);
+    if (this.nearOnly && !this.lightGrass) {
+      const close = ring(0, 11);
+      this.lightGrass = new Field(GEO.tuft, swayingMaterial('grass', close), FIELD_CELL, 72, this.plantGrass(FIELD_CELL, 1));
+      this.lightFlowers = new Field(GEO.flower, swayingMaterial('flower', close), FLOWER_CELL, 36, this.plantFlower(FLOWER_CELL, 1, 0.8));
+      this.group.add(this.lightGrass.mesh, this.lightFlowers.mesh);
+    }
+    const fields = [this.grass, this.flowers, this.midGrass, this.farGrass, this.midFlowers, this.crystals, this.pebbles];
+    if (this.lightGrass && this.lightFlowers) fields.push(this.lightGrass, this.lightFlowers);
+    for (const b of takeDirty()) for (const f of fields) f.invalidate(b.x0, b.z0, b.x1, b.z1);
     GRASS_UNIFORMS.uFocus.value.copy(focus);
     GRASS_UNIFORMS.uFieldR.value = Math.min(FIELD_CELL * FIELD_CELLS, FLOWER_CELL * FLOWER_CELLS) / 2 - 1;
-    this.grass.update(focus.x, focus.z);
-    this.flowers.update(focus.x, focus.z);
-    this.midGrass.update(focus.x, focus.z);
+    this.grass.mesh.visible = this.flowers.mesh.visible = !this.nearOnly;
+    if (this.lightGrass && this.lightFlowers) {
+      this.lightGrass.mesh.visible = this.lightFlowers.mesh.visible = this.nearOnly;
+      if (this.nearOnly) { this.lightGrass.update(focus.x, focus.z); this.lightFlowers.update(focus.x, focus.z); }
+    }
+    if (!this.nearOnly) { this.grass.update(focus.x, focus.z); this.flowers.update(focus.x, focus.z); }
+    this.midGrass.mesh.visible = !this.nearOnly;
+    if (!this.nearOnly) this.midGrass.update(focus.x, focus.z);
     // On a struggling device the far ring (where tufts blend into the ground's colour) is left out.
-    this.farGrass.mesh.visible = !this.light;
-    if (!this.light) this.farGrass.update(focus.x, focus.z);
-    this.midFlowers.update(focus.x, focus.z);
+    this.farGrass.mesh.visible = !this.light && !this.nearOnly;
+    if (!this.light && !this.nearOnly) this.farGrass.update(focus.x, focus.z);
+    this.midFlowers.mesh.visible = !this.nearOnly;
+    if (!this.nearOnly) this.midFlowers.update(focus.x, focus.z);
     this.crystals.update(focus.x, focus.z);
     this.pebbles.update(focus.x, focus.z);
     // Only drawn where there is sand to lie on.

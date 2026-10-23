@@ -18,6 +18,7 @@ import { buildVehicle, VEHICLES } from '../src/vehicles/vehicles';
 import { appendAtlas } from './atlas-map.js';
 import { Chariot, SEATS as CHARIOT_SEATS } from '../src/event/Chariot';
 import { PartyCelebration } from './celebration.js';
+import { photoLayout } from './photo-layout.js';
 const closeWardrobePreview = () => {};
 
 const $ = id => document.getElementById(id);
@@ -154,7 +155,7 @@ async function receive(next) {
     toast(nextIndex < GAMES.length ? 'Round complete. The next adventure begins in five seconds.' : 'All nine adventures complete. The palace celebration is next.');
     setTimeout(async () => { if (!playlist) return; playlist.index = nextIndex; if (nextIndex < GAMES.length) await startGame(GAMES[nextIndex].id); else { playlist = null; action({ type: 'rally' }).catch(() => {}); } }, 5000);
   }
-  if (activePanel === 'games' && JSON.stringify(previous?.party.scores) !== JSON.stringify(next.party.scores)) renderGames();
+  if (activePanel === 'games' && (JSON.stringify(previous?.party.scores) !== JSON.stringify(next.party.scores) || previous?.party.game !== next.party.game || previous?.party.phase !== next.party.phase || previous?.players.length !== next.players.length)) renderGames();
   if (previous?.party.journey && next.party.journey?.stars > previous.party.journey.stars) toast(`Another beacon is shining. ${next.party.journey.stars} / 20 lights for the birthday crown.`);
   if (activePanel === 'journey' && (previous?.party.journey?.version !== next.party.journey?.version || previous?.party.phase !== next.party.phase)) renderJourney();
   if (activePanel === 'festival' && JSON.stringify(previous?.party.festival)!==JSON.stringify(next.party.festival)) renderFestival();
@@ -162,7 +163,7 @@ async function receive(next) {
 }
 if(['localhost','127.0.0.1'].includes(location.hostname))window.partyTest={get game(){return game;},get state(){return state;},openPanel,closePanel,action};
 function isHost() { return state && ['birthday', 'companion'].includes(state.self.role); }
-async function startGame(id) { if (!isHost()) return; await action({ type: 'start-game', game: id }); closePanel(); }
+async function startGame(id) { if (!state || state.self.role === 'observer') return; await action({ type: 'start-game', game: id }); if (id !== 'starlight-memory') closePanel(); else renderMemory(); }
 function closePanel() { closeWardrobePreview(); panel.close(); activePanel = null; if (game) { game.life?.closeInterior(); game.input.blocked = false; game.input.reset(); } }
 function beginPanel(name, eyebrow, heading, description) {
   game?.core?.ui.closePanel();
@@ -224,9 +225,25 @@ function renderGames() {
   if (isHost()) {
     const row = el('div', undefined, 'button-row');
     row.append(button(playlist ? 'Stop the playlist' : 'Play the nine-game playlist', async () => { if (playlist) { playlist = null; renderGames(); } else { playlist = { index: 0 }; await startGame(GAMES[0].id); } }, 'gold-button'), button('Gather everyone for the cake', async () => { playlist = null; await action({ type: 'rally' }); closePanel(); })); content.append(row);
-  } else content.append(el('p', 'The celebration host starts each round for everyone. The objective and countdown appear in your world.'));
+  } else content.append(el('p', state.self.role === 'observer' ? 'You can watch the shared rounds with the birthday guest.' : 'Choose a game to start a shared round. Everyone joins automatically. An ongoing round finishes before a new one starts.'));
   const grid = el('div', undefined, 'card-grid');
-  GAMES.forEach((g, i) => { const card = el('section', undefined, 'game-card'); card.append(el('div', `${String(i + 1).padStart(2, '0')} / ${g.time}`, 'number'), el('h3', `${g.icon} ${g.title}`), el('p', g.goal)); if (isHost()) card.append(button(state.party.game === g.id ? 'Restart this round' : 'Start for everyone', () => { playlist = null; return startGame(g.id); })); if (g.id === 'starlight-memory' && state.party.game === g.id) card.append(button('Open the constellation', () => renderMemory())); grid.append(card); }); content.append(grid);
+  GAMES.forEach((g, i) => {
+    const card = el('section', undefined, 'game-card');
+    card.append(el('div', `${String(i + 1).padStart(2, '0')} / ${g.time}`, 'number'), el('h3', `${g.icon} ${g.title}`), el('p', g.goal));
+    if (state.self.role !== 'observer') {
+      const current = state.party.phase === 'playing' && state.party.game === g.id;
+      const waiting = !isHost() && ['playing','rally','journey-travel'].includes(state.party.phase) && !current;
+      const needsPlayers = CHASE_GAMES.includes(g.id) && state.players.filter(p => !isPrivate(p.role)).length < 2;
+      const play = button(current ? 'Join this round' : needsPlayers ? 'Needs two players' : waiting ? 'Round in progress' : 'Play together', () => {
+        if (current) return g.id === 'starlight-memory' ? renderMemory() : closePanel();
+        playlist = null; return startGame(g.id);
+      }, 'gold-button');
+      play.disabled = waiting || needsPlayers && !current;
+      card.append(play);
+      if (current && isHost()) card.append(button('Restart this round', () => startGame(g.id)));
+    }
+    grid.append(card);
+  }); content.append(grid);
   content.append(el('h3', 'A little stardust earned'));
   const scores = Object.entries(state.party.scores || {}).sort((a,b) => b[1]-a[1]);
   const list = el('ol', undefined, 'score-list');
@@ -606,11 +623,11 @@ class PartyGame {
     for(const[id,m]of this.pickups){m.visible=state?.party.game==='lantern-hunt'&&!state.party.round?.items?.find(i=>i.id===id)?.found;m.rotation.y=t*.8;}
     this.rings.forEach((m,i)=>{m.visible=state?.party.game==='sky-rings';m.material.color.set(i===(state?.party.selfProgress?.checkpoint??this.checkpoint)?'#fff0b0':'#9584bc');});
     this.ingredients.forEach((m,i)=>{m.visible=state?.party.game==='cake-courier'&&!(state.party.selfProgress?.delivered||[]).includes(i);m.rotation.y=t*.7;});
-    this.scenery.update(t,dt,state?.party.phase==='celebration',this.camera,g.sky.night,this.pos);
+    this.scenery.update(t,dt,state?.party.phase==='celebration',this.camera,g.sky.night,this.pos,g.quality==='low');
     this.updateNearbyPrompt();
     this.celebration.update(dt,t,g.sky.night,state?.party);
     this.adventures.update(state,t,dt);
-    if(this.pos.z< -4500){g.scene.fog.far=6000;g.scene.fog.near=1200;}
+    if(this.pos.z< -4500){g.scene.fog.far=5000;g.scene.fog.near=1000;}
     const red=state?.party.game==='starlight-statues'&&state.party.selfProgress?.statueStatus==='red';
     if(this.statueRed!==red&&state?.party.game==='starlight-statues')audio.tone(red?220:880,.35);
     this.statueRed=red;audio.frozen=red;audio.update(t);
@@ -636,7 +653,7 @@ class PartyGame {
   }
   renderScene(){const view=this.life.view;if(view)this.renderer.render(view.scene,view.camera);else this.core.composer.render();}
   snapshot(guestView=false){const hidden=[];for(const p of this.players.values())if(guestView&&(isPrivate(p.data.role)||isPrivate(this.self.role)&&p.data.id===this.self.id)){hidden.push([p.model.root,p.model.root.visible]);p.model.root.visible=false;if(p.ride){hidden.push([p.ride.root,p.ride.root.visible]);p.ride.root.visible=false;}}const threadVisible=this.thread.group.visible;if(guestView){this.thread.group.visible=false;const g=this.core;for(const o of [...(isPrivate(this.self.role)?[g.trav.girl.root]:[]),g.trav.boy.root,g.trav.thread.group,g.trav.boyUnicorn?.root,g.van.boy.root,g.van.thread.group,g.house.boy.root,g.house.thread.group,g.caravan.carpet?.root,g.caravan.carpet?.trail,g.caravan.carpet2?.root,g.caravan.carpet2?.trail,...g.caravan.bodies.filter(b=>b.def.kind==='sibling').map(b=>b.child?.root),...g.van.kids.slice(0,g.caravan.bodies.filter(b=>b.def.kind==='sibling').length).map(k=>k.m.root),...g.house.folk.filter(f=>g.caravan.bodies.some(b=>b.def.id===f.id&&b.def.kind==='sibling')).map(f=>f.model.root)])if(o){hidden.push([o,o.visible]);o.visible=false;}}
-    this.adventures.guestPhoto(guestView);try{this.atmosphere.render();const c=document.createElement('canvas');c.width=960;c.height=780;const ctx=c.getContext('2d');ctx.fillStyle='#faf1e5';ctx.fillRect(0,0,c.width,c.height);ctx.drawImage(this.renderer.domElement,20,20,920,660);ctx.fillStyle='#433249';ctx.font='italic 27px Georgia';ctx.textAlign='center';ctx.fillText('A birthday under the stars.',480,730);return c.toDataURL('image/jpeg',.8);}finally{hidden.forEach(([o,v])=>{o.visible=v;});this.thread.group.visible=threadVisible;this.adventures.guestPhoto(false);this.atmosphere.render();}}
+    this.adventures.guestPhoto(guestView);try{this.atmosphere.render();const c=document.createElement('canvas'),source=this.renderer.domElement,frame=photoLayout(source.width,source.height);c.width=frame.width;c.height=frame.height;const ctx=c.getContext('2d');ctx.fillStyle='#faf1e5';ctx.fillRect(0,0,c.width,c.height);ctx.drawImage(source,frame.border,frame.border,frame.imageWidth,frame.imageHeight);ctx.fillStyle='#433249';ctx.font=`italic ${Math.max(14,Math.min(27,frame.imageWidth/24))}px Georgia`;ctx.textAlign='center';ctx.fillText('A birthday under the stars.',c.width/2,frame.border+frame.imageHeight+frame.caption*.57,frame.imageWidth);return c.toDataURL('image/jpeg',.92);}finally{hidden.forEach(([o,v])=>{o.visible=v;});this.thread.group.visible=threadVisible;this.adventures.guestPhoto(false);this.atmosphere.render();}}
   async photo(){if(this.photoBusy||!state)return;if(this.core.cutscene){toast('The polaroid will be ready when this scene finishes.');return;}this.photoBusy=true;try{const privateImage=this.snapshot(false),publicImage=this.self.role==='birthday'||isPrivate(this.self.role)?this.snapshot(true):privateImage;audio.tone(1200,.09);
     beginPanel('photo','A MOMENT, KEPT FOREVER','Your little polaroid.','Save it to your device, or add it to the birthday album.');const figure=el('figure',undefined,'polaroid'),img=el('img');img.src=privateImage;img.alt='Your birthday polaroid';figure.append(img,el('figcaption','A birthday under the stars.'));content.append(figure);
     const row=el('div',undefined,'button-row');const a=el('a','Save to my device ↗','gold-button');a.href=privateImage;a.download='starlight-polaroid.jpg';row.append(a);

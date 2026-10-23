@@ -87,6 +87,9 @@ export class Festivities {
    */
   readonly lightGroup = new THREE.Group();
   level = 0;
+  /** Hosts can limit full decorative figures; original journeys keep the complete crowd. */
+  detailLimit = PARTY_FULL;
+  detailRange = Infinity;
   private y: number;
   readonly centre: THREE.Vector3;
   private petals: Swarm;
@@ -277,7 +280,8 @@ export class Festivities {
     this.lodClock -= dt;
     if (this.lodClock <= 0) {
       this.lodClock = 0.25;
-      const near = new Set(this.people.filter((c) => c.visible).sort((a, b) => Math.hypot(a.x - focus.x, a.z - focus.z) - Math.hypot(b.x - focus.x, b.z - focus.z)).slice(0, PARTY_FULL));
+      const distance = (c: Party) => Math.hypot(c.x - focus.x, c.y - focus.y, c.z - focus.z);
+      const near = new Set(this.people.filter((c) => c.visible && distance(c) < this.detailRange).sort((a, b) => distance(a) - distance(b)).slice(0, this.detailLimit));
       for (const c of this.people) {
         if (near.has(c) && !c.model) { c.model = new CharacterModel(c.outfit, c.skin, c.scale); this.group.add(c.model.root); }
         if (c.model) c.model.root.visible = near.has(c);
