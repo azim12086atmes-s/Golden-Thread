@@ -1,0 +1,26 @@
+{
+  "repository": "azim12086atmes-s/birthday-castle",
+  "commit": "3fcc2b4728c51eca871c889fa545c9605d7ad8df",
+  "files": [
+    {
+      "path": "data/world/crescent-colour.jpg",
+      "size": 340797,
+      "sha": "65dc8ebaf8c2e2c5f29d2564e4b79da08b07fb72"
+    },
+    {
+      "path": "data/world/crescent-h.bin",
+      "size": 2097152,
+      "sha": "91217bea744b21acd71927fdeafcbb4bcef433fc"
+    },
+    {
+      "path": "data/world/outer-colour.jpg",
+      "size": 207717,
+      "sha": "c137c0f73355396ac59538a734e16ac82c491d9f"
+    },
+    {
+      "path": "data/world/outer-h.bin",
+      "size": 2097152,
+      "sha": "44ba1a22fd1dce7f7190312fd0125d7c0e41d342"
+    }
+  ]
+}

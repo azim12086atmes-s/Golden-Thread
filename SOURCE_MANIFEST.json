@@ -1,0 +1,1756 @@
+{
+  "repository": "azim12086atmes-s/Golden-Thread",
+  "commit": "a6c20a4f9ceabec4fbd544ca7c73658b005c2318",
+  "files": [
+    {
+      "path": ".gitignore",
+      "sha": "fb11be1b560137e3f4ee7c11cddcd9a3791e33ee",
+      "size": 65
+    },
+    {
+      "path": "AGENTS.md",
+      "sha": "5a5324104dd23eb2785ca429f17b2682592557e9",
+      "size": 2660
+    },
+    {
+      "path": "CLAUDE.md",
+      "sha": "f89e9874d2af2325c38c0df7586d538f2072a3bf",
+      "size": 3203
+    },
+    {
+      "path": "README.md",
+      "sha": "a2ef50db2b527d735dd1c58135a7c2db26d0c151",
+      "size": 3908
+    },
+    {
+      "path": "art/blender/export_selected.py",
+      "sha": "a2582d6fdcb4a79285f3e292802429ae65f9cd54",
+      "size": 2094
+    },
+    {
+      "path": "docs/ARCHITECTURE_RESEARCH.md",
+      "sha": "279146203ebf589c336676be7f35f8625b987e57",
+      "size": 9766
+    },
+    {
+      "path": "docs/ART_BIBLE.md",
+      "sha": "a2ad788425c65ff459f9b0c63c3afaf34ad23748",
+      "size": 8105
+    },
+    {
+      "path": "docs/GAME_DESIGN.md",
+      "sha": "c0559e9da9e441e7404ae47eb895ecdb4fa3ee7d",
+      "size": 6224
+    },
+    {
+      "path": "docs/GOOGLE_SIGN_IN.md",
+      "sha": "387c7f8ac70c818d53f96c11304bc70d876bf948",
+      "size": 2078
+    },
+    {
+      "path": "docs/REQUIREMENTS_EXPANSION.md",
+      "sha": "9c7cf632fc8d0cf38ccf1130bc5c90165637cfbc",
+      "size": 16738
+    },
+    {
+      "path": "docs/ROADMAP.md",
+      "sha": "57d0675bd07bd1a0b60cf866a43e9155ebe8a604",
+      "size": 5690
+    },
+    {
+      "path": "docs/prototypes/README.md",
+      "sha": "26ee9bfed965489e2af39b30c45f1303373ff29f",
+      "size": 311
+    },
+    {
+      "path": "docs/prototypes/geo.ts.txt",
+      "sha": "f779fe4179bf725251bd7d6ca0a4aafc041eb709",
+      "size": 7238
+    },
+    {
+      "path": "docs/renders/night-dragon-before-after.jpg",
+      "sha": "d31377788f7168fdcfc058c1347689b7fcc1caaf",
+      "size": 123328
+    },
+    {
+      "path": "docs/research/attire.md",
+      "sha": "fd82038c556fb5fc4bc2005199e7954b58b1e591",
+      "size": 66172
+    },
+    {
+      "path": "docs/research/buildings-artifacts.md",
+      "sha": "22d9ee7b55db747a158c8b8aa2bafb4f445f924e",
+      "size": 53253
+    },
+    {
+      "path": "docs/research/land-sciences.md",
+      "sha": "3e86187c8d5a71665b675cefb34abe95e1a8ffcb",
+      "size": 8144
+    },
+    {
+      "path": "docs/research/living-world/BLENDER_WEB_PIPELINE.md",
+      "sha": "503fb60f4cc48b4cc47660e424f140b2aaa2eb62",
+      "size": 6608
+    },
+    {
+      "path": "docs/research/living-world/LIVING_SYSTEMS.md",
+      "sha": "7a5c104cd7bcfb0e65d001fed7c83bc0dc70ac37",
+      "size": 13382
+    },
+    {
+      "path": "docs/research/living-world/PINTEREST_RESEARCH.md",
+      "sha": "08b2431936ba32918908dd48df7d6583741267ff",
+      "size": 6312
+    },
+    {
+      "path": "docs/research/living-world/WORLD_ATLAS.md",
+      "sha": "b8da3773ecd8046f657b8b5c959438ae98b6567a",
+      "size": 17880
+    },
+    {
+      "path": "docs/research/map-design.md",
+      "sha": "4a3b4100917518ddbaba0a8f1db7ccf2342084e4",
+      "size": 81706
+    },
+    {
+      "path": "docs/research/story-and-goals.md",
+      "sha": "380a46c344ce8742aa3182d8538190f85c2e2567",
+      "size": 150322
+    },
+    {
+      "path": "docs/team/BOARD.md",
+      "sha": "a1eb1ea36165f5e44e7393c3330d41e172959d6b",
+      "size": 1775
+    },
+    {
+      "path": "docs/team/OPUS_001.md",
+      "sha": "775aea09e25c1fc7063e053b3a393f8f3bf7afe3",
+      "size": 3893
+    },
+    {
+      "path": "docs/team/PASTE_IN_CLAUDE.md",
+      "sha": "e0baea6d222a97e2073e545fac45c00a7b4419d5",
+      "size": 1778
+    },
+    {
+      "path": "docs/team/TEAM_HANDOFF.md",
+      "sha": "079b24b246f1bda968213bde95bd44b22e3765d0",
+      "size": 7718
+    },
+    {
+      "path": "docs/team/handoffs/3D_BUILDS_HANDOFF.md",
+      "sha": "084483b6c00ce3989390fbc205f519800ce427e7",
+      "size": 24676
+    },
+    {
+      "path": "docs/team/handoffs/AIR_AND_SKY.md",
+      "sha": "66303c9a5c053c017f7218b37814163644e88ce5",
+      "size": 2686
+    },
+    {
+      "path": "docs/team/handoffs/ANTIGRAVITY_001.md",
+      "sha": "b848f27a37a9088d97f0227c1aa40092cc0b3d3f",
+      "size": 4991
+    },
+    {
+      "path": "docs/team/handoffs/CHATGPT_3D_MODELS.md",
+      "sha": "072fc647368548381e356ac1e6d78f5959587aee",
+      "size": 93449
+    },
+    {
+      "path": "docs/team/handoffs/CLAUDE_CLOUD_CURRENT_WORK.md",
+      "sha": "31e98578b1e2fa2e9726d23176b0aff591f57c23",
+      "size": 14586
+    },
+    {
+      "path": "docs/team/handoffs/CODEX_PROGRESS.md",
+      "sha": "04a9f5ab42d6ca709bd40a754377b57029ba2247",
+      "size": 1646
+    },
+    {
+      "path": "docs/team/handoffs/DECOR_INVENTORY.md",
+      "sha": "6520690c0e47b7707e66372b864e832c7bd7fd8a",
+      "size": 7387
+    },
+    {
+      "path": "docs/team/handoffs/DESIGN_METHOD.md",
+      "sha": "00fc8a3a6eaf5a21b53b9e3e0e5e8a9c9e58e927",
+      "size": 2133
+    },
+    {
+      "path": "docs/team/handoffs/DRAGONS_FANTASY_SCIFI_PLAN.md",
+      "sha": "27928671631aad4dcb05a2bb1217c042337c485b",
+      "size": 9546
+    },
+    {
+      "path": "docs/team/handoffs/INSTITUTES_AUDIT.md",
+      "sha": "bdd3fb1ba111393c61d86884e75fb051210d52ef",
+      "size": 2049
+    },
+    {
+      "path": "docs/team/handoffs/LEAD_OPUS.md",
+      "sha": "f4d7f76dc27277152f46f9c218d09015d16995a0",
+      "size": 3995
+    },
+    {
+      "path": "docs/team/handoffs/MASTER_BUILD_LIST.md",
+      "sha": "c3e36f359b9376a34429b61a15de36c79e0c6526",
+      "size": 20766
+    },
+    {
+      "path": "docs/team/handoffs/NEXT_WORK_2026-09-27.md",
+      "sha": "f6dfb8979d91fac40139e7700ee6c59cab7e73b4",
+      "size": 22403
+    },
+    {
+      "path": "docs/team/handoffs/OPUS_001_RESULT.md",
+      "sha": "a1d3e81a470cbf9fbbe45916f6d6461ba2fc6e05",
+      "size": 7397
+    },
+    {
+      "path": "docs/team/handoffs/OPUS_002_ATLAS.md",
+      "sha": "24c05da33cd20bc9a8c7a81c2c1aaf59be674f11",
+      "size": 7560
+    },
+    {
+      "path": "docs/team/handoffs/OPUS_LOG.md",
+      "sha": "2ba17db132fdcac79fcbee7e077cbae44f0b91d6",
+      "size": 14628
+    },
+    {
+      "path": "docs/team/handoffs/OWNER_REQUESTS_AUDIT.md",
+      "sha": "c6be4474b957c169fe67453e7d29044992cdc6c8",
+      "size": 12923
+    },
+    {
+      "path": "docs/team/handoffs/OWNER_REQUESTS_SPEC.md",
+      "sha": "4024ff28e92e350a53318ebe589a5c7da69199b6",
+      "size": 22200
+    },
+    {
+      "path": "docs/team/handoffs/VEHICLES_ANIMALS_PLAN.md",
+      "sha": "31b795bf6ce5beaac1582f90d0b375854eb8ff57",
+      "size": 6175
+    },
+    {
+      "path": "index.html",
+      "sha": "3e7f09fb793324b238800eeea591214d7b1af6d3",
+      "size": 900
+    },
+    {
+      "path": "package-lock.json",
+      "sha": "81b92fb500a1c910736428d512a928b067650136",
+      "size": 50032
+    },
+    {
+      "path": "package.json",
+      "sha": "7e67f172ffce2955879b113fdcb36c3771c1a9a1",
+      "size": 538
+    },
+    {
+      "path": "scripts/deploy-pages.sh",
+      "sha": "33b92d072a8f99bbc3494f7887ad15bb2d82dcc9",
+      "size": 3658
+    },
+    {
+      "path": "scripts/probe/README.md",
+      "sha": "b7069036cb9b00a98b20e9a008465d69d44e667f",
+      "size": 840
+    },
+    {
+      "path": "scripts/probe/example.js",
+      "sha": "e69fec8d54eeb32526f72d72d0d1bece5c63a9c8",
+      "size": 851
+    },
+    {
+      "path": "scripts/probe/prelude.js",
+      "sha": "0567c0d3ecc17086aad9861828cd9e8aa2fa712e",
+      "size": 1398
+    },
+    {
+      "path": "scripts/probe/probe.cjs",
+      "sha": "5876643b16e9e648793ea51b6bed9e59c4db1d2c",
+      "size": 1643
+    },
+    {
+      "path": "src/Game.ts",
+      "sha": "26a2cd4e392300de6086eabfebf186f457809441",
+      "size": 76356
+    },
+    {
+      "path": "src/animals/AnimalModel.ts",
+      "sha": "19520c5ecf0b1457af8566c935013b901cf85db8",
+      "size": 51458
+    },
+    {
+      "path": "src/animals/Animals.ts",
+      "sha": "ec942096bc19defcfabb933b234e1ef8a227fc38",
+      "size": 7476
+    },
+    {
+      "path": "src/animals/behaviour.ts",
+      "sha": "c87df0fd82e3fc8e4c23317f03474916ff8bf1be",
+      "size": 4372
+    },
+    {
+      "path": "src/animals/detailed.ts",
+      "sha": "b85f05dd5fe6a856c0a791d656d46b0e8bb5ac62",
+      "size": 37318
+    },
+    {
+      "path": "src/animals/skins.ts",
+      "sha": "9ac5d1c4859e13eef2bc3e7b49dec310f2b51435",
+      "size": 5709
+    },
+    {
+      "path": "src/assets/review.ts",
+      "sha": "4abfdb8105bfa4d7912e05bef010f14cd60f5755",
+      "size": 3690
+    },
+    {
+      "path": "src/atlas/atlas.ts",
+      "sha": "ee949429e0a48f521a926f9e151fff1e4883e198",
+      "size": 20524
+    },
+    {
+      "path": "src/atlas/continent.ts",
+      "sha": "55404e83a92edae122780cf218a4b63d8d48a7a9",
+      "size": 40325
+    },
+    {
+      "path": "src/atlas/schema.ts",
+      "sha": "68b62d42087921dacb3f461a03a339d2248b6e03",
+      "size": 4489
+    },
+    {
+      "path": "src/caravan/CaravanView.ts",
+      "sha": "deddd7c500077f5af359933815f3ab8ab8fa0969",
+      "size": 28835
+    },
+    {
+      "path": "src/caravan/Carpet.ts",
+      "sha": "910bef8f73da2d257c5f3645190c9ae7f418771b",
+      "size": 6549
+    },
+    {
+      "path": "src/caravan/caravan.ts",
+      "sha": "9215f656da6f06875afa253ad155f3999d439c5e",
+      "size": 25084
+    },
+    {
+      "path": "src/caravan/dress.ts",
+      "sha": "b88e264e642cca9a6ebb8c948feed52283e54388",
+      "size": 2776
+    },
+    {
+      "path": "src/characters/CharacterModel.ts",
+      "sha": "2ec658f084c5b0b76fd10fcae20cb3576d73ab3a",
+      "size": 59839
+    },
+    {
+      "path": "src/characters/Thread.ts",
+      "sha": "04f0955c97b7a1b40152ccc8bff74865387601a2",
+      "size": 4068
+    },
+    {
+      "path": "src/characters/anatomy.ts",
+      "sha": "b828b33ff335e2e9d57fa41ee855d78f4651a740",
+      "size": 1650
+    },
+    {
+      "path": "src/characters/fabric.ts",
+      "sha": "8a3764656fc64e044da49c737ac4e4d95eea431b",
+      "size": 10237
+    },
+    {
+      "path": "src/characters/follow.ts",
+      "sha": "302a26a21e5ccd0f17f867bcd7fe00d3f2958710",
+      "size": 6491
+    },
+    {
+      "path": "src/characters/jetpack.ts",
+      "sha": "c384e08480283631499fd366fb180c8c5149e4ce",
+      "size": 16256
+    },
+    {
+      "path": "src/characters/merge.ts",
+      "sha": "a0be03de8e378625ef15ef828ddb014794bc3925",
+      "size": 2725
+    },
+    {
+      "path": "src/characters/modesty.ts",
+      "sha": "3abef3e4e0ba6fc93cab1e178e21e147fd9fd725",
+      "size": 6248
+    },
+    {
+      "path": "src/characters/outfits-extended.ts",
+      "sha": "51df628520f5fc170aedc0667e1d57591cb16d1a",
+      "size": 30072
+    },
+    {
+      "path": "src/characters/outfits.ts",
+      "sha": "15def5f272220530ed9a406bcf4faaccd35a6f9e",
+      "size": 22947
+    },
+    {
+      "path": "src/characters/wardrobe.ts",
+      "sha": "330e14db6cd78169f363ff3fa7de0642d2f4a9c6",
+      "size": 1639
+    },
+    {
+      "path": "src/characters/wings.ts",
+      "sha": "9bb5bea799a69e48a1729d3a9c08369706555f5c",
+      "size": 24394
+    },
+    {
+      "path": "src/charity/NeedFolkView.ts",
+      "sha": "9f32d12926dab2a7cc809fad742bf7cf0f1c68c5",
+      "size": 4324
+    },
+    {
+      "path": "src/charity/charity.ts",
+      "sha": "dea41530e2de400f829d709a6328b5ebb4446c88",
+      "size": 13455
+    },
+    {
+      "path": "src/charity/upskill.ts",
+      "sha": "aae9efeb0360ed2e4d156295e936f41a885e3fdb",
+      "size": 2950
+    },
+    {
+      "path": "src/core/Input.ts",
+      "sha": "cebff181f3f547af38f0c308428b2fe540a7190c",
+      "size": 4474
+    },
+    {
+      "path": "src/core/events.ts",
+      "sha": "01a0b0a4b0f5a709c6cfd9c7586f6d29b73f62e2",
+      "size": 1608
+    },
+    {
+      "path": "src/core/google.ts",
+      "sha": "4d25535bb38fddf6f51c21b6dfd1dfe3690afdd7",
+      "size": 1809
+    },
+    {
+      "path": "src/core/profiles.ts",
+      "sha": "5ba44d2029137ace2a5d4244a6fcf4b580b60218",
+      "size": 9504
+    },
+    {
+      "path": "src/core/rng.ts",
+      "sha": "b08aa721534e5ab2abf26a2980db63d5df6b84c8",
+      "size": 2393
+    },
+    {
+      "path": "src/core/save.ts",
+      "sha": "d93588c99f72d2dc03f47b8ff4d6f4854cafc38d",
+      "size": 2928
+    },
+    {
+      "path": "src/core/state.ts",
+      "sha": "42cdc3b5ec832666dcd754da96288280b1c0bf0b",
+      "size": 10207
+    },
+    {
+      "path": "src/core/time.ts",
+      "sha": "e45c689dd0851adc3e0aef7371cecedc233c1d02",
+      "size": 1514
+    },
+    {
+      "path": "src/creatures/Dragons.ts",
+      "sha": "d11be4147b9a62b4b829900e7b7e5bba5671f37b",
+      "size": 11899
+    },
+    {
+      "path": "src/creatures/dragonKit.ts",
+      "sha": "16dd75c5ab694e486962332887b1adbe8cfbd6f3",
+      "size": 53961
+    },
+    {
+      "path": "src/dev.ts",
+      "sha": "7127cf75bfd0e01bd374716a8fefaa9f322e3230",
+      "size": 2177
+    },
+    {
+      "path": "src/diary/diary.ts",
+      "sha": "6dfd006974c0a05c3939f04e5a227f221ef1af32",
+      "size": 9323
+    },
+    {
+      "path": "src/economy/FieldsView.ts",
+      "sha": "2e39f136113efe54db05060faa5af1cab94bab49",
+      "size": 2729
+    },
+    {
+      "path": "src/economy/HarboursView.ts",
+      "sha": "2d1d8a61ca6fb6a9ce7cdfc771da7724cbdbdde1",
+      "size": 3075
+    },
+    {
+      "path": "src/economy/business.ts",
+      "sha": "c1f7e116c1185a959644ad328b7b6d03219259a4",
+      "size": 23754
+    },
+    {
+      "path": "src/economy/crews.ts",
+      "sha": "8b6a1c12a7595efb231a7ce12bc36d73fff4c93f",
+      "size": 4931
+    },
+    {
+      "path": "src/economy/economy.ts",
+      "sha": "74ea30ec282226c438d55ec459e039a99ad40f0a",
+      "size": 4702
+    },
+    {
+      "path": "src/economy/fields.ts",
+      "sha": "4d64bd333c8e0b8ebd28b25a02b97e758235d65e",
+      "size": 7729
+    },
+    {
+      "path": "src/economy/inventions.ts",
+      "sha": "51d5ec001be53a0e5f51e6c8455642904898e434",
+      "size": 9387
+    },
+    {
+      "path": "src/economy/items.ts",
+      "sha": "c9ead86460ff8145bf691cf95b7fa65c9018d414",
+      "size": 11859
+    },
+    {
+      "path": "src/economy/manufacture.ts",
+      "sha": "1cfe1d5517c65b319aa1df51b9cd120698afc8b1",
+      "size": 6009
+    },
+    {
+      "path": "src/economy/services.ts",
+      "sha": "5e0cb57c8e672188fe3646a7a1b99fd3b3d25e45",
+      "size": 10570
+    },
+    {
+      "path": "src/economy/storage.ts",
+      "sha": "5db5729369987f409e72a389abaab5d8fae580a1",
+      "size": 5617
+    },
+    {
+      "path": "src/economy/supply.ts",
+      "sha": "26f9b40d16886980089af7152b588b12e085eb28",
+      "size": 10393
+    },
+    {
+      "path": "src/economy/workers.ts",
+      "sha": "55abf16cb4afffb55a76445dee750e2970d8c983",
+      "size": 4066
+    },
+    {
+      "path": "src/event/Castle.ts",
+      "sha": "ec2b63fd0d456fac61e3546ed7b857c2d0dcbc0f",
+      "size": 19494
+    },
+    {
+      "path": "src/event/Celebration.ts",
+      "sha": "dda507c6c111ec9954ea67f59204d6ddab111956",
+      "size": 5580
+    },
+    {
+      "path": "src/event/CelebrationScene.ts",
+      "sha": "0419b8339ddba545260741ded8b84cb9ffe02915",
+      "size": 10018
+    },
+    {
+      "path": "src/event/Chariot.ts",
+      "sha": "ea2257b492308f5ee26e211f63877a7e77268f81",
+      "size": 4315
+    },
+    {
+      "path": "src/event/Dragon.ts",
+      "sha": "188f40eb2ff398d0f1ece20131ab17d01349e1bf",
+      "size": 11712
+    },
+    {
+      "path": "src/event/Festivities.ts",
+      "sha": "2ee81ae28234ec855b65e481bf9d74273169e07f",
+      "size": 19560
+    },
+    {
+      "path": "src/event/Friends.ts",
+      "sha": "041d40503aad99643ea726814dc9d8dca1b1494a",
+      "size": 4066
+    },
+    {
+      "path": "src/event/Wardrobe.ts",
+      "sha": "956b3e66a510bcffc4b1d44f1c0210dc8c317957",
+      "size": 7521
+    },
+    {
+      "path": "src/event/site.ts",
+      "sha": "06892412cfc7d558d65980b7b53565fc9ff84454",
+      "size": 5494
+    },
+    {
+      "path": "src/fusion/fusion.ts",
+      "sha": "34a4afdfa41e3e950e03884feab08a26d5209e77",
+      "size": 5364
+    },
+    {
+      "path": "src/guide/Guide.ts",
+      "sha": "4f54d42f08eb7d3942d8ce4bb576123b9e3c271e",
+      "size": 13207
+    },
+    {
+      "path": "src/guide/lands.ts",
+      "sha": "662472de0a34d0cdc4cce6dd7ef33c8933cab1be",
+      "size": 2267
+    },
+    {
+      "path": "src/guide/objectives.ts",
+      "sha": "c2bb22eaa24928ef82d3750857f6c3f28e5d2642",
+      "size": 14189
+    },
+    {
+      "path": "src/guide/tour.ts",
+      "sha": "3816f869c4f922b04e2b8322267d27b26f81a477",
+      "size": 8643
+    },
+    {
+      "path": "src/housing/HouseInterior.ts",
+      "sha": "c7b8f5d62bea0295eb6a6cd95bfcf2bdd3ecbcfa",
+      "size": 66148
+    },
+    {
+      "path": "src/housing/HousingView.ts",
+      "sha": "3040eb491a11d64ecb8684f115413a087ecdf87f",
+      "size": 11545
+    },
+    {
+      "path": "src/housing/PlotsView.ts",
+      "sha": "7f4601e6fa5ead0b3a8de5e6e526a2c6e24e92b9",
+      "size": 7887
+    },
+    {
+      "path": "src/housing/VanInterior.ts",
+      "sha": "2455fa9f9acd553131071b386cc51667cb54e7ac",
+      "size": 21766
+    },
+    {
+      "path": "src/housing/designs.ts",
+      "sha": "82573b6d0fbcdfeed66ce8670020a7c65a18f063",
+      "size": 7006
+    },
+    {
+      "path": "src/housing/housing.ts",
+      "sha": "cb601a1c34537dc3db19c0165615ee3661ee6aaf",
+      "size": 12980
+    },
+    {
+      "path": "src/housing/parents.ts",
+      "sha": "96fa7151cfe2e13ce4004ff5c20786c45e4f9915",
+      "size": 6046
+    },
+    {
+      "path": "src/housing/penthouses.ts",
+      "sha": "300b52d582c27b0753ee63623fd20abc5126baf8",
+      "size": 794
+    },
+    {
+      "path": "src/housing/roomWalk.ts",
+      "sha": "c600f52a35bda1a3076118ea2d2de73d625e71ec",
+      "size": 11991
+    },
+    {
+      "path": "src/institutions/InstitutesView.ts",
+      "sha": "426760ffadb71d49d24e8b7971d8cf6061af2b06",
+      "size": 4858
+    },
+    {
+      "path": "src/institutions/catalogue.ts",
+      "sha": "b1a4be4000cce98af3ad101d3f313cb8b8c5841c",
+      "size": 14485
+    },
+    {
+      "path": "src/institutions/certificates.ts",
+      "sha": "7cefe3ab3f7b2d8444992441c4b1e448e6150552",
+      "size": 1984
+    },
+    {
+      "path": "src/institutions/institutions.ts",
+      "sha": "c1ec25f819962cd8c47383a3a2b4cd06e50deed5",
+      "size": 21274
+    },
+    {
+      "path": "src/institutions/opportunities.ts",
+      "sha": "95ad1fb46c5b8e0902b8095fcde7756d4670ae8f",
+      "size": 3540
+    },
+    {
+      "path": "src/institutions/research.ts",
+      "sha": "94c41030d4dcf225b94d879d9e8e5d49ef81e3c2",
+      "size": 8471
+    },
+    {
+      "path": "src/institutions/sites.ts",
+      "sha": "e69e8312015130e0a98ee56010459d51cafbad55",
+      "size": 1873
+    },
+    {
+      "path": "src/living/model.ts",
+      "sha": "ea89365fd92233d1b8f03eb8071913c0962ec723",
+      "size": 16367
+    },
+    {
+      "path": "src/living/rules.ts",
+      "sha": "3fdaeae18429cca4dbbf4619b062450bf2187a4e",
+      "size": 16277
+    },
+    {
+      "path": "src/living/trial.ts",
+      "sha": "c84336843c05d4f2ed4a00cb791b588277bdc91b",
+      "size": 6262
+    },
+    {
+      "path": "src/main.ts",
+      "sha": "3b27a6a3343bbfb2721caf8661031ab160fb13d2",
+      "size": 562
+    },
+    {
+      "path": "src/npc/Crowd.ts",
+      "sha": "ccccefc0d349e6185a2b727f2d896c2b2ea6be0a",
+      "size": 7230
+    },
+    {
+      "path": "src/npc/Npcs.ts",
+      "sha": "4a63435d7a71c9f068c442d7b117d006d238d961",
+      "size": 3715
+    },
+    {
+      "path": "src/npc/Townsfolk.ts",
+      "sha": "dc087b6ff8cb144aa5793a8ddd92dc8e0a67c92f",
+      "size": 19382
+    },
+    {
+      "path": "src/npc/folk.ts",
+      "sha": "e540f32f274c64a7eb0cd9a74b2c4195527f1521",
+      "size": 18799
+    },
+    {
+      "path": "src/npc/people.ts",
+      "sha": "ce3106a1bf59fa6da4522d2a32c43e92de994968",
+      "size": 17755
+    },
+    {
+      "path": "src/player/Travellers.ts",
+      "sha": "c037af2437a6f52e926bbebbdcce45076c493895",
+      "size": 28896
+    },
+    {
+      "path": "src/quests/QuestSystem.ts",
+      "sha": "b23ad783201cce8d07bccc8c7aeae61c29e0e737",
+      "size": 7135
+    },
+    {
+      "path": "src/quests/quests.ts",
+      "sha": "bae10d9799e811f0c6decb3c628216f38dbda235",
+      "size": 16857
+    },
+    {
+      "path": "src/social/Messages.ts",
+      "sha": "13439a0adeff2e6da98ac36dfa862644a9c28225",
+      "size": 6706
+    },
+    {
+      "path": "src/social/friends.ts",
+      "sha": "888aa7043286b8010ff2ae5a4174dfe826d15e73",
+      "size": 3200
+    },
+    {
+      "path": "src/story/CakeScene.ts",
+      "sha": "545c9edc5560d6ab1aeff214a255826691fb56c6",
+      "size": 20707
+    },
+    {
+      "path": "src/story/MeetScene.ts",
+      "sha": "96ed991445a9a93a5d6c7a4beddd6a45453db51b",
+      "size": 6121
+    },
+    {
+      "path": "src/story/StoryScene.ts",
+      "sha": "505db723b31b105ba3a1a5728db4592cc4bc0614",
+      "size": 8626
+    },
+    {
+      "path": "src/story/ThreadScene.ts",
+      "sha": "36c15912f8267628a129e7a0710dbb62924918b6",
+      "size": 13958
+    },
+    {
+      "path": "src/story/intro.ts",
+      "sha": "b57909f2fe746166db9cd80a4bffd6460861bd5c",
+      "size": 4942
+    },
+    {
+      "path": "src/story/prologue.ts",
+      "sha": "55283857aaf4d950954039dc41f19411a55169e3",
+      "size": 2164
+    },
+    {
+      "path": "src/story/storyline.ts",
+      "sha": "889e07b3db8fe44f84825dec688f26f6870a914d",
+      "size": 7590
+    },
+    {
+      "path": "src/traffic/Traffic.ts",
+      "sha": "c601304cf0f0208a643bb1c1604ad017e7c04d44",
+      "size": 26862
+    },
+    {
+      "path": "src/traffic/creatures.ts",
+      "sha": "b9ff85661a618872a4a9c1fc08f09cceaa2b0e1b",
+      "size": 14820
+    },
+    {
+      "path": "src/traffic/designs.ts",
+      "sha": "855172cb15cb0f2979ec2b4527d3de078255dced",
+      "size": 79914
+    },
+    {
+      "path": "src/traffic/fantasyDesigns.ts",
+      "sha": "3a95091d7a16798c722781bbf422a403820fbc2e",
+      "size": 23975
+    },
+    {
+      "path": "src/traffic/roster.ts",
+      "sha": "09e85ae6c821e92a4bf7cdb5115232b2c28a356d",
+      "size": 12099
+    },
+    {
+      "path": "src/traffic/schedule.ts",
+      "sha": "8a14f387f971a47f72cb887a2c530de1ed31f65a",
+      "size": 5304
+    },
+    {
+      "path": "src/traffic/shaper.ts",
+      "sha": "69a1fedd0f5398acd1109fae4ba6cb31365a1842",
+      "size": 5921
+    },
+    {
+      "path": "src/traffic/ships.ts",
+      "sha": "99113f69fb6607f614d512d791e13fa557aab745",
+      "size": 35248
+    },
+    {
+      "path": "src/travel/Ride.ts",
+      "sha": "0f25f1e990a02d70a4828db0ae7a44eb95e4a9ea",
+      "size": 11799
+    },
+    {
+      "path": "src/travel/SkyTram.ts",
+      "sha": "86835dc71ce3f91aca56f7aba04b7330219782e0",
+      "size": 3569
+    },
+    {
+      "path": "src/travel/air.ts",
+      "sha": "acb099b62356f58e5e4c614e9b742d8327300642",
+      "size": 6079
+    },
+    {
+      "path": "src/travel/bus.ts",
+      "sha": "4754725bcfbde546139eee378c90b316a64b2b27",
+      "size": 8392
+    },
+    {
+      "path": "src/travel/ferry.ts",
+      "sha": "f31421514e59fd11cecc935e3fbd438cd3dfbe5b",
+      "size": 6216
+    },
+    {
+      "path": "src/travel/gondola.ts",
+      "sha": "06e35455f8d539530037dbadc7e0a7cfb1cae8f1",
+      "size": 4831
+    },
+    {
+      "path": "src/travel/streetTram.ts",
+      "sha": "abd5ebdc3181496424e21f033114ab1f0d08f4f1",
+      "size": 4937
+    },
+    {
+      "path": "src/ui/AccountPanel.ts",
+      "sha": "e0986c903b22c40414af67d33efcf6fa46fcb6a5",
+      "size": 7386
+    },
+    {
+      "path": "src/ui/DiaryPanel.ts",
+      "sha": "63efdc979e6cf2c227d23dcf39a6b6665263e99b",
+      "size": 8360
+    },
+    {
+      "path": "src/ui/UI.ts",
+      "sha": "a0cc8401da95e9c582054f0062a0895525b58d67",
+      "size": 143139
+    },
+    {
+      "path": "src/ui/dom.ts",
+      "sha": "b6f30918248ffde833a8cc9fffd49f5d339be8e6",
+      "size": 786
+    },
+    {
+      "path": "src/ui/styles.css",
+      "sha": "bbda0d8dbc1bd4f104d3a752fd8b1843b721ea5a",
+      "size": 38825
+    },
+    {
+      "path": "src/vehicles/vanLayout.ts",
+      "sha": "27fb6be29da7eaf141cb7bdcf0d14a6de1530530",
+      "size": 2793
+    },
+    {
+      "path": "src/vehicles/vehicles.ts",
+      "sha": "9c5fe05bc4e1fb1c4db019d7b2e2ac1dcbc27dcd",
+      "size": 58887
+    },
+    {
+      "path": "src/world/Ambience.ts",
+      "sha": "2219ed618ea068320f8c28a1a3340e97147a2a35",
+      "size": 4607
+    },
+    {
+      "path": "src/world/Atmos.ts",
+      "sha": "4efbc557ef6ff5c15a62288088d89a8df0cf9c7d",
+      "size": 30137
+    },
+    {
+      "path": "src/world/BridgesView.ts",
+      "sha": "44f9480fd91b936c8690ef6a4c192c4359f6c0d4",
+      "size": 1982
+    },
+    {
+      "path": "src/world/CityScreens.ts",
+      "sha": "021f7bb7db2bf1588e1cecad5fac14be1381360a",
+      "size": 7502
+    },
+    {
+      "path": "src/world/CivicMarkers.ts",
+      "sha": "eaf390a438ec07e2ccb891f1febbccb7995554a9",
+      "size": 1266
+    },
+    {
+      "path": "src/world/FestivalAir.ts",
+      "sha": "c1c5ca9b94b53c3b3751f89abe1c54b792b40dc6",
+      "size": 19560
+    },
+    {
+      "path": "src/world/Meadow.ts",
+      "sha": "94f1a5947f48e5d5583a8ff74b002f6b6a22d34b",
+      "size": 45252
+    },
+    {
+      "path": "src/world/PartyAir.ts",
+      "sha": "c84867a79f679bd112fe5481e269f9de79665005",
+      "size": 9130
+    },
+    {
+      "path": "src/world/RegionBuilder.ts",
+      "sha": "dc456b0a34cef160512c13b813b006fcd31257f1",
+      "size": 47451
+    },
+    {
+      "path": "src/world/RegionFX.ts",
+      "sha": "1c2a809bd4efdea38a5c07b0774d9afcd6815130",
+      "size": 8278
+    },
+    {
+      "path": "src/world/Sky.ts",
+      "sha": "900fd281feaff527f637aa772d88fd9893a3d0ed",
+      "size": 19902
+    },
+    {
+      "path": "src/world/SkyFX.ts",
+      "sha": "d0f09ad50135b6884c619e2d008984033d22ed16",
+      "size": 31721
+    },
+    {
+      "path": "src/world/SkyLanterns.ts",
+      "sha": "7710e782b835a61fcb6d783b0830cb639e699e75",
+      "size": 4686
+    },
+    {
+      "path": "src/world/SkyOrnaments.ts",
+      "sha": "75291681ebf9d0546c13608d75fc1e01df1b86a2",
+      "size": 29881
+    },
+    {
+      "path": "src/world/TownDressing.ts",
+      "sha": "89967a2318d56ab9477c3e41c4ef8ad5923364ba",
+      "size": 12885
+    },
+    {
+      "path": "src/world/Water.ts",
+      "sha": "c98c29ffac6d2b345ce797ef3628ee1bdabecee5",
+      "size": 14644
+    },
+    {
+      "path": "src/world/Weather.ts",
+      "sha": "e51f028df11c0784aa602d35205c40ca921a3447",
+      "size": 13938
+    },
+    {
+      "path": "src/world/WonderSites.ts",
+      "sha": "7381d8ef63b7f53d6cf1c89aaa12afdf8c19c556",
+      "size": 6558
+    },
+    {
+      "path": "src/world/World.ts",
+      "sha": "7045201abbd3959f85db54e83593d83c67dffafb",
+      "size": 13771
+    },
+    {
+      "path": "src/world/architecture.ts",
+      "sha": "95ec49bcba40ca4745e6541fd4ef6ea427b40508",
+      "size": 64518
+    },
+    {
+      "path": "src/world/atmosphere.ts",
+      "sha": "72a20d0f8a968beedca67287f91c54e8918a5366",
+      "size": 6302
+    },
+    {
+      "path": "src/world/banks.ts",
+      "sha": "761e8d3faf9c6e98fd5d4a00c5ad2c7360ecc39d",
+      "size": 5159
+    },
+    {
+      "path": "src/world/bridges.ts",
+      "sha": "ceedf48e4348ef8022693d1b6e261e7a9618cc6e",
+      "size": 3209
+    },
+    {
+      "path": "src/world/buildings.ts",
+      "sha": "7b14b01dea2671ab5964ec517a5462915b6ce0cf",
+      "size": 15533
+    },
+    {
+      "path": "src/world/caves.ts",
+      "sha": "519bc730b4ca930d6eaabe32aaaa1a8686fbd7e4",
+      "size": 5657
+    },
+    {
+      "path": "src/world/chimneys.ts",
+      "sha": "df7de0b8063b0ed655d75846c151d6b706481a1b",
+      "size": 1863
+    },
+    {
+      "path": "src/world/decorLedger.ts",
+      "sha": "8e2dfd0e41bda7d36443eb3a890ee475b89584f7",
+      "size": 921
+    },
+    {
+      "path": "src/world/desertRoses.ts",
+      "sha": "7ea08a3c0757804e095dd2f18116581b0a418058",
+      "size": 4377
+    },
+    {
+      "path": "src/world/facade.ts",
+      "sha": "0e08a6cf329c100db8ffd5e96ebb7f0b57873284",
+      "size": 28349
+    },
+    {
+      "path": "src/world/flowWater.ts",
+      "sha": "5d6365ab59bc11b83cb5df7c51be9d797f5bad19",
+      "size": 12439
+    },
+    {
+      "path": "src/world/foliage.ts",
+      "sha": "168a7d801d168d91803ae3bcb36866e8f941279b",
+      "size": 13682
+    },
+    {
+      "path": "src/world/geography.ts",
+      "sha": "cadaa376b8d9f0c6822146df6b4feca94c51364f",
+      "size": 4515
+    },
+    {
+      "path": "src/world/gulabi.ts",
+      "sha": "73e39409febc2400a7779327a0f49bd92af95242",
+      "size": 17998
+    },
+    {
+      "path": "src/world/harbours.ts",
+      "sha": "01ef06dcff0ec9be0050dc77eeba790e36e5fcaf",
+      "size": 3618
+    },
+    {
+      "path": "src/world/houseDecor.ts",
+      "sha": "d12c6e150e984798a3ab0e677135ce03b09b8bf5",
+      "size": 13114
+    },
+    {
+      "path": "src/world/instituteFronts.ts",
+      "sha": "9b8f1b153d6aeb0df5d4579dc92f5843d65d81b0",
+      "size": 42556
+    },
+    {
+      "path": "src/world/institutes3d.ts",
+      "sha": "4cc4424940f9a00f50cd03fd559e5fb6c52a8d5a",
+      "size": 21151
+    },
+    {
+      "path": "src/world/interiorDress.ts",
+      "sha": "f68988f0a4ed9c20a8546d90fb4cb507de20b16e",
+      "size": 24580
+    },
+    {
+      "path": "src/world/interiors3d.ts",
+      "sha": "3e82a07f4a967319d96d39246dfbfaaa34752ffe",
+      "size": 38678
+    },
+    {
+      "path": "src/world/islands.ts",
+      "sha": "c83713f2dba388b16970081b1865bf29dbaf23c3",
+      "size": 8844
+    },
+    {
+      "path": "src/world/kit.ts",
+      "sha": "c6947f065cec8965f88ecd867de345b72c2b0fad",
+      "size": 25355
+    },
+    {
+      "path": "src/world/lamplight.ts",
+      "sha": "d5e684fbf267a07f7ed889d7dd9800949bc824f6",
+      "size": 3098
+    },
+    {
+      "path": "src/world/landWaters.ts",
+      "sha": "7454d50fc7289605a14150501e5eec5e86aed8b4",
+      "size": 20883
+    },
+    {
+      "path": "src/world/landforms.ts",
+      "sha": "17cbe88d25ac2aa2a5129be1712e404514dc5288",
+      "size": 12193
+    },
+    {
+      "path": "src/world/landmarkDetail.ts",
+      "sha": "dc90d09acb8f17914fca7e412a80f6a1e58e842c",
+      "size": 19203
+    },
+    {
+      "path": "src/world/lanterns.ts",
+      "sha": "aedaa4b238e3ad55948fd6cefa4779ff54e9d381",
+      "size": 6741
+    },
+    {
+      "path": "src/world/locale.ts",
+      "sha": "58a665e05de9b7ab26357ad4ce11fb8a4edfe77e",
+      "size": 12091
+    },
+    {
+      "path": "src/world/markers.ts",
+      "sha": "26270364f60921efcbb3837c135bbd516b6bd723",
+      "size": 2976
+    },
+    {
+      "path": "src/world/models/balloons.ts",
+      "sha": "2466c4b5d9beb547da890e7ec00b631a5ff3a007",
+      "size": 3236
+    },
+    {
+      "path": "src/world/models/bridges.ts",
+      "sha": "64e284f14e72a37ffcf08c5d704eb924b93795d0",
+      "size": 17517
+    },
+    {
+      "path": "src/world/models/caves.ts",
+      "sha": "8e733f27d8711d211fc9f555a9f6f76673917690",
+      "size": 7635
+    },
+    {
+      "path": "src/world/models/fields.ts",
+      "sha": "bcdd9ff62845c56f8e7fb375b4019fefbd093c37",
+      "size": 17903
+    },
+    {
+      "path": "src/world/models/harbour.ts",
+      "sha": "8bac2a096e23c88cdd0a79cc3188cd0e7365fa80",
+      "size": 17725
+    },
+    {
+      "path": "src/world/models/homeStoreys.ts",
+      "sha": "4064ccbd5a8579d5d4b388cb1af756500b588cf8",
+      "size": 7683
+    },
+    {
+      "path": "src/world/models/institutes.ts",
+      "sha": "2eeee720deee821e09ab3b9c059de982355b756f",
+      "size": 2920
+    },
+    {
+      "path": "src/world/models/interiors.ts",
+      "sha": "64f95c00ebc18c967eba3d717de99664adcf9bac",
+      "size": 2226
+    },
+    {
+      "path": "src/world/models/lights.ts",
+      "sha": "5e3023290c912a235e1c3144384a141a4a5c8588",
+      "size": 20391
+    },
+    {
+      "path": "src/world/models/penthouse.ts",
+      "sha": "72ff9ebfc111d386b415c6edc804141ffd4c5ccd",
+      "size": 5111
+    },
+    {
+      "path": "src/world/monumentKit.ts",
+      "sha": "d999320b78213c647c8a31dad194be6b6c057cab",
+      "size": 28410
+    },
+    {
+      "path": "src/world/monuments.ts",
+      "sha": "3569f51bc22d027a06e3ebba23fbdb8a92153b93",
+      "size": 250194
+    },
+    {
+      "path": "src/world/nature.ts",
+      "sha": "1e5421875b5489046f4f9af9114c5ec1ca48af00",
+      "size": 5610
+    },
+    {
+      "path": "src/world/neighbourhood.ts",
+      "sha": "dfa66e9befd99afbf913689ad391d6a48bb98c01",
+      "size": 50515
+    },
+    {
+      "path": "src/world/outcrops.ts",
+      "sha": "df030c9b95140253eb1ce32fb483d963030d85b2",
+      "size": 4283
+    },
+    {
+      "path": "src/world/paved.ts",
+      "sha": "3ac7c57a2a9276b835537b3c4e91b636ce0d6a5d",
+      "size": 2494
+    },
+    {
+      "path": "src/world/plots.ts",
+      "sha": "f6160dfa276cdb1798c32a1f345aec5318ec06d5",
+      "size": 1554
+    },
+    {
+      "path": "src/world/regions.ts",
+      "sha": "98d0cd8d571f9b490c00ac584703f3ef6533e07d",
+      "size": 14873
+    },
+    {
+      "path": "src/world/reserved.ts",
+      "sha": "ec7a68114889f6719bb01679e53376c7fdfc200b",
+      "size": 2443
+    },
+    {
+      "path": "src/world/roads.ts",
+      "sha": "c694ee61b614166a6119766cd1be03c83ba0c52b",
+      "size": 3016
+    },
+    {
+      "path": "src/world/rocks.ts",
+      "sha": "1d35077605f4a0973eba1e8c31244e11979d93a7",
+      "size": 7049
+    },
+    {
+      "path": "src/world/sciences3d.ts",
+      "sha": "caf097bfc6bb0bd226acaf969877b2b96a57a1d0",
+      "size": 66934
+    },
+    {
+      "path": "src/world/seasons.ts",
+      "sha": "d313f62f1b7aedcf50dbec8f924311eb80a7b7d5",
+      "size": 4566
+    },
+    {
+      "path": "src/world/skies.ts",
+      "sha": "5326978b5bd5014c644e240ef950c9da58b938e4",
+      "size": 10874
+    },
+    {
+      "path": "src/world/species.ts",
+      "sha": "1ae0b98b128b94a1c4531b8ec8cf45b302889ed2",
+      "size": 17542
+    },
+    {
+      "path": "src/world/streetGarlands.ts",
+      "sha": "5ef7a98f1616f6f48cf3c43b2fb00dda8703d354",
+      "size": 8400
+    },
+    {
+      "path": "src/world/surfaces.ts",
+      "sha": "65f8398145f919cae708c70736486d7b4d0f705d",
+      "size": 13035
+    },
+    {
+      "path": "src/world/terrain.ts",
+      "sha": "5cc05781fc639c14cbcd9182d1a82e013c24a8a1",
+      "size": 9772
+    },
+    {
+      "path": "src/world/townLayout.ts",
+      "sha": "4edd8bef39fec813326121072b720fa51838f869",
+      "size": 6242
+    },
+    {
+      "path": "src/world/traditions.ts",
+      "sha": "60b0aa4620883d94329313acf3daa2749439d054",
+      "size": 48447
+    },
+    {
+      "path": "src/world/traditionsMore.ts",
+      "sha": "45f18fa1fa8c2f6d34756df0401efc22177aa8d0",
+      "size": 31779
+    },
+    {
+      "path": "src/world/trees.ts",
+      "sha": "04e5de0c92b4782e525245cf117f9516e5c967e6",
+      "size": 22572
+    },
+    {
+      "path": "src/world/understory.ts",
+      "sha": "68760757ba9f4884fe5f4205c3f8b6d4dc270d19",
+      "size": 12344
+    },
+    {
+      "path": "src/world/waters.ts",
+      "sha": "84b2bef7da6af1234cafcc5710319d1851338fd3",
+      "size": 6435
+    },
+    {
+      "path": "src/world/wind.ts",
+      "sha": "1ca6177c58e18a27f6ea22e2e0a7b772f0504bb6",
+      "size": 9823
+    },
+    {
+      "path": "src/world/wonders.ts",
+      "sha": "9a2dbfb4ccf4f7e051e78adecfab070fb848fc82",
+      "size": 5804
+    },
+    {
+      "path": "tests/anatomy.test.ts",
+      "sha": "d034e46dd0125c99a4d74be9d011f5d38eafdd54",
+      "size": 4614
+    },
+    {
+      "path": "tests/atlas.test.ts",
+      "sha": "ee3ac471c89199e172c71fd8d8eabaae5259c699",
+      "size": 5316
+    },
+    {
+      "path": "tests/atmosphere.test.ts",
+      "sha": "d6283172a598f47599020a9a71e9407b8e5c26ef",
+      "size": 2940
+    },
+    {
+      "path": "tests/balloons.test.ts",
+      "sha": "1c6d3daf1cfe4e209fab293b604d80f966ceea67",
+      "size": 2128
+    },
+    {
+      "path": "tests/behaviour.test.ts",
+      "sha": "d42a3d8919ff7e7e0b5718302e61893a5fd3ea1d",
+      "size": 4019
+    },
+    {
+      "path": "tests/bridgeModels.test.ts",
+      "sha": "7347046e125a2a72f2c26ab0060f138ff762e1cb",
+      "size": 951
+    },
+    {
+      "path": "tests/bridges.test.ts",
+      "sha": "29d33073c3bfd7bbd06cc9b5b28ea9049ff3f6ff",
+      "size": 1070
+    },
+    {
+      "path": "tests/buildings.test.ts",
+      "sha": "e95310d1a60bf79eb28e9b3218eecc7d84066fe9",
+      "size": 2504
+    },
+    {
+      "path": "tests/bus.test.ts",
+      "sha": "f8ea659b0bf2478aaa9cd0a56b944c7c417aaf66",
+      "size": 3959
+    },
+    {
+      "path": "tests/business.test.ts",
+      "sha": "797f58e2a6dee24513c16a4d419a97d3bbc2c5bc",
+      "size": 10024
+    },
+    {
+      "path": "tests/caravan.test.ts",
+      "sha": "16bf294eed93bb52ac920583f07be13cef2192bc",
+      "size": 11927
+    },
+    {
+      "path": "tests/castle.test.ts",
+      "sha": "6127b362bc8475e1772378a1dd1c14a40e4204dc",
+      "size": 742
+    },
+    {
+      "path": "tests/celebration.test.ts",
+      "sha": "62b88f28d2fab74cbae269d2554c826789eae1fd",
+      "size": 6006
+    },
+    {
+      "path": "tests/charity.test.ts",
+      "sha": "fd0fc4da15457969e782380cd79bc22860cdfe57",
+      "size": 3441
+    },
+    {
+      "path": "tests/cityScreens.test.ts",
+      "sha": "12a78f89e0b69f083e2382a1e0cb4cfb994712ac",
+      "size": 868
+    },
+    {
+      "path": "tests/clothSway.test.ts",
+      "sha": "fd2a98f041e9ea775cca63f0f38867c73eeaabb3",
+      "size": 2456
+    },
+    {
+      "path": "tests/crews.test.ts",
+      "sha": "a41bf122ebdf7301b9c71950455cb25b099e9dab",
+      "size": 3458
+    },
+    {
+      "path": "tests/decor-inventory.test.ts",
+      "sha": "d7f6b761fb33102b744ff73bc13073fbb6de201a",
+      "size": 2459
+    },
+    {
+      "path": "tests/desertRoses.test.ts",
+      "sha": "495c3c7fbcb1d73b387921bfd190b66004fee958",
+      "size": 1577
+    },
+    {
+      "path": "tests/designs.test.ts",
+      "sha": "1173f358d05b58a7bb2a7785029f424b3a39f175",
+      "size": 3926
+    },
+    {
+      "path": "tests/diary.test.ts",
+      "sha": "9fe70165e9c52f7fd36a44c2c32ba14b0b769f61",
+      "size": 3176
+    },
+    {
+      "path": "tests/dragons.test.ts",
+      "sha": "1a110b2f31bbb29e321e3d4af0a6606a7f2fa78a",
+      "size": 12523
+    },
+    {
+      "path": "tests/dress.test.ts",
+      "sha": "49e2cf8b264e65da12c549b4f15cd5fff09e1d60",
+      "size": 2408
+    },
+    {
+      "path": "tests/facades.test.ts",
+      "sha": "d961e470f333bac3d1cf631864033b3371f0f3fc",
+      "size": 2678
+    },
+    {
+      "path": "tests/ferry.test.ts",
+      "sha": "60ebf29519744ef020ed5e94990e227e415d5960",
+      "size": 7031
+    },
+    {
+      "path": "tests/festivalAir.test.ts",
+      "sha": "807a45366fcc4dd357e05bae66f6a6b49bf34132",
+      "size": 953
+    },
+    {
+      "path": "tests/fieldModels.test.ts",
+      "sha": "27771e228dc8fd1a8225c408db7a1a4306207936",
+      "size": 925
+    },
+    {
+      "path": "tests/foliage.test.ts",
+      "sha": "a53135eae5e68b6f060f417279df39b7adfebb44",
+      "size": 3734
+    },
+    {
+      "path": "tests/follow.test.ts",
+      "sha": "76bdd5c986da0fee549968f8cfd77b366694c5d1",
+      "size": 3529
+    },
+    {
+      "path": "tests/friends.test.ts",
+      "sha": "3b148a9db86487d4d82ccd1f12fde8ec3a8e5ba6",
+      "size": 1484
+    },
+    {
+      "path": "tests/fusion.test.ts",
+      "sha": "170db1e741542bb0a9728bde29e76c6777fbe6dd",
+      "size": 1646
+    },
+    {
+      "path": "tests/gondola.test.ts",
+      "sha": "c571b0b66056a7899372f6ce758e68638e9b66ff",
+      "size": 4843
+    },
+    {
+      "path": "tests/guide.test.ts",
+      "sha": "333b03a57b6180d29b0b64420fe3fb514b7db178",
+      "size": 8220
+    },
+    {
+      "path": "tests/harbours.test.ts",
+      "sha": "1ddddfe0bd5f53e824c81b78ed2af24105ebe37c",
+      "size": 4029
+    },
+    {
+      "path": "tests/homeStoreys.test.ts",
+      "sha": "7687d6aefaf21f4d311bcbd42208702d7f01c6dd",
+      "size": 1048
+    },
+    {
+      "path": "tests/houseKinds.test.ts",
+      "sha": "8430ccebd2ca1de7fecee83bc688ae2b401b1683",
+      "size": 1626
+    },
+    {
+      "path": "tests/houses.test.ts",
+      "sha": "427656a565627b28bb906d394b3b1cde893e1a38",
+      "size": 9296
+    },
+    {
+      "path": "tests/input.test.ts",
+      "sha": "0cc8ce47b7fca28841b73a213e2951d138b15c03",
+      "size": 1495
+    },
+    {
+      "path": "tests/institutes3d.test.ts",
+      "sha": "6a05f5c033643ecf85ce1521b890285515b77d97",
+      "size": 4646
+    },
+    {
+      "path": "tests/institutions.test.ts",
+      "sha": "dbe3d1e59f58a36462d1bde8d7600cc7b7914316",
+      "size": 6627
+    },
+    {
+      "path": "tests/interiorDress.test.ts",
+      "sha": "655864155553a6a49ddd6b6b74c4d30ef4dafe13",
+      "size": 2054
+    },
+    {
+      "path": "tests/interiorGlow.test.ts",
+      "sha": "ae5fe3fb79711494f96c005ba7e1c916f669edb3",
+      "size": 4112
+    },
+    {
+      "path": "tests/interiors.test.ts",
+      "sha": "def8bccbc8529ba365e85f225812efad758b2e03",
+      "size": 3556
+    },
+    {
+      "path": "tests/inventions.test.ts",
+      "sha": "182b75f357892698ba1446f559ae62734dff3cb9",
+      "size": 3871
+    },
+    {
+      "path": "tests/journey.test.ts",
+      "sha": "4070b19370358a14880ff9f347819b81a56cf51b",
+      "size": 8533
+    },
+    {
+      "path": "tests/lamplight.test.ts",
+      "sha": "d25c99bf9d9ba6060981b3ccb707483fcf2f7f8e",
+      "size": 1999
+    },
+    {
+      "path": "tests/landforms.test.ts",
+      "sha": "b6a7ccd40b9ad395ffb7a1a30be308f27296dac0",
+      "size": 3641
+    },
+    {
+      "path": "tests/living.test.ts",
+      "sha": "67bba3afb50e1b22b47781b9518259f690cbca0d",
+      "size": 16451
+    },
+    {
+      "path": "tests/locale.test.ts",
+      "sha": "9c8de329cdcf9697ce3623826dedc1f73a7338d4",
+      "size": 4567
+    },
+    {
+      "path": "tests/meet.test.ts",
+      "sha": "6b5936228fef952fe0d130c76745d6804e569f57",
+      "size": 856
+    },
+    {
+      "path": "tests/modesty.test.ts",
+      "sha": "6265613ca81a61456f9700f27e84b7a58672fc12",
+      "size": 2528
+    },
+    {
+      "path": "tests/nature.test.ts",
+      "sha": "ae653dc3017fc23171d7b7b6c400ea6a166822d0",
+      "size": 6193
+    },
+    {
+      "path": "tests/neighbourhood.test.ts",
+      "sha": "16ecfd1fc0cb9d041c1259d07106699b77612b09",
+      "size": 4218
+    },
+    {
+      "path": "tests/opening.test.ts",
+      "sha": "9dfd68b1cc1aacdf84257130d8526c8526e6ecf3",
+      "size": 4276
+    },
+    {
+      "path": "tests/opportunities.test.ts",
+      "sha": "5d65f4987ea6c2be47e191903606787c1c281644",
+      "size": 2757
+    },
+    {
+      "path": "tests/parents.test.ts",
+      "sha": "039960df94257cd59974ba9ce695fbd029502c38",
+      "size": 4431
+    },
+    {
+      "path": "tests/parking.test.ts",
+      "sha": "efc8c16ea28a2f6d0f0063b6d76c04531e085f5a",
+      "size": 1095
+    },
+    {
+      "path": "tests/penthouses.test.ts",
+      "sha": "3fa66a5eb2790cc08e3f69dda03e36d0a69502e9",
+      "size": 2314
+    },
+    {
+      "path": "tests/people.test.ts",
+      "sha": "efb6f481669464873a30a09721512972a3dfb7ae",
+      "size": 7322
+    },
+    {
+      "path": "tests/profiles.test.ts",
+      "sha": "b7b95d22adc57717534311b25710d3752a7f3a9b",
+      "size": 4975
+    },
+    {
+      "path": "tests/research.test.ts",
+      "sha": "93ddd16e30ed05cc8220e1ac73ac74a85ce1f0c8",
+      "size": 2317
+    },
+    {
+      "path": "tests/roomWalk.test.ts",
+      "sha": "175eb742a6a2a6c875e2f08ab2b68e49da790b83",
+      "size": 7918
+    },
+    {
+      "path": "tests/seasons.test.ts",
+      "sha": "11d6b883c942bed29b8505d804d4f942b4052574",
+      "size": 2572
+    },
+    {
+      "path": "tests/services.test.ts",
+      "sha": "d6fad48fa66d1ca52ca33a013afafde53877c2b5",
+      "size": 4045
+    },
+    {
+      "path": "tests/ships.test.ts",
+      "sha": "92e240c353ab82d581fca63d5a06876c6516396c",
+      "size": 2293
+    },
+    {
+      "path": "tests/skies.test.ts",
+      "sha": "2a689165387f125805f163a2cf4890ca880c6e5d",
+      "size": 4098
+    },
+    {
+      "path": "tests/storage.test.ts",
+      "sha": "dffe2c1878a4029d7ed3b0caa1f1a973de871821",
+      "size": 4713
+    },
+    {
+      "path": "tests/streetTram.test.ts",
+      "sha": "e3e20739a961a49e4fcf0f545cba2ce398062534",
+      "size": 4042
+    },
+    {
+      "path": "tests/supply.test.ts",
+      "sha": "4a10a02cc3905530d67dc807c7a9206bab15380d",
+      "size": 9293
+    },
+    {
+      "path": "tests/surfaces.test.ts",
+      "sha": "3760b17ea2d7436225bc931095f492bbab427474",
+      "size": 2824
+    },
+    {
+      "path": "tests/systems.test.ts",
+      "sha": "f205dbb5f44260138a175eea9798e36cba6581ab",
+      "size": 12656
+    },
+    {
+      "path": "tests/terrain-nature.test.ts",
+      "sha": "10dcd4c8676145d9ee4797c8ef8981eb5fb9a25d",
+      "size": 3096
+    },
+    {
+      "path": "tests/terrain.test.ts",
+      "sha": "27895d94db132c12fffca16c499feab0556f3508",
+      "size": 2561
+    },
+    {
+      "path": "tests/townLayout.test.ts",
+      "sha": "ac269e9a1d7dc8da4bea0597e30072a7f7636c85",
+      "size": 2897
+    },
+    {
+      "path": "tests/traffic-schedule.test.ts",
+      "sha": "899ace1ec5d2e4c23328edcd832e17a7b71c944c",
+      "size": 3353
+    },
+    {
+      "path": "tests/traffic.test.ts",
+      "sha": "975ecd09dceffcf944ce4661b6ea3f02d7988743",
+      "size": 5757
+    },
+    {
+      "path": "tests/understory.test.ts",
+      "sha": "583c9f440bdc3052cb3319b4be00560818a8ff68",
+      "size": 1941
+    },
+    {
+      "path": "tests/upskill.test.ts",
+      "sha": "09d212e250207d0eb01ba26887f06eb019803dd5",
+      "size": 2051
+    },
+    {
+      "path": "tests/van.test.ts",
+      "sha": "bbaf0d1a0297c2ce26a76a7514616a20ba5d9595",
+      "size": 3766
+    },
+    {
+      "path": "tests/wardrobe.test.ts",
+      "sha": "1fce653caa4d755ddccb00523af0fd356fd85604",
+      "size": 6141
+    },
+    {
+      "path": "tests/wardrobeRules.test.ts",
+      "sha": "52c071dc9a52dd7827f6d0848bad0dc1ba3bc400",
+      "size": 1778
+    },
+    {
+      "path": "tests/wings.test.ts",
+      "sha": "ae7ae50d91c7aedb104891c90340b0a13394f719",
+      "size": 8959
+    },
+    {
+      "path": "tests/world.test.ts",
+      "sha": "de5f92bf0d514c8526f65403a66ea0b7115ffd07",
+      "size": 3840
+    },
+    {
+      "path": "tsconfig.json",
+      "sha": "c92a16bdf363190d4fc41acc655a3094dd164dc1",
+      "size": 395
+    },
+    {
+      "path": "vite.config.ts",
+      "sha": "5c95a38fb531f2bde222ed26583d31b77cabd6c8",
+      "size": 270
+    }
+  ]
+}

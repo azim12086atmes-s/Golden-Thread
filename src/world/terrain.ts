@@ -13,6 +13,13 @@ export const WATER_Y = -0.8;
 /** A walkable surface that is not terrain: floating islands, platforms, temple terraces. */
 export interface Platform { x: number; z: number; r: number; y: number; /** Who added it, to remove it again. */ tag?: string }
 const platforms: Platform[] = [];
+/** Additional venues share the same height query as actors and cameras. No terrain is moved. */
+type SurfaceSource = (x: number, z: number, fromY: number) => number | null;
+const surfaceSources = new Set<SurfaceSource>();
+export function registerSurfaceSource(source: SurfaceSource): () => void {
+  surfaceSources.add(source);
+  return () => { surfaceSources.delete(source); };
+}
 export const addPlatform = (p: Platform) => platforms.push(p);
 export const removePlatforms = (pred: (p: Platform) => boolean) => {
   for (let i = platforms.length - 1; i >= 0; i--) if (pred(platforms[i])) platforms.splice(i, 1);
@@ -126,6 +133,10 @@ export function groundAt(x: number, z: number, fromY = Infinity): number {
   let h = terrainHeight(x, z);
   for (const p of platforms) {
     if ((x - p.x) ** 2 + (z - p.z) ** 2 < p.r * p.r && p.y <= fromY + 1.2 && p.y > h) h = p.y;
+  }
+  for (const source of surfaceSources) {
+    const y = source(x, z, fromY);
+    if (y !== null && Number.isFinite(y) && y <= fromY + 1.2 && y > h) h = y;
   }
   return h;
 }

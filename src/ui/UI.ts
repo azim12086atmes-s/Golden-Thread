@@ -60,6 +60,7 @@ import { btn, h } from './dom';
 import { DiaryPanel } from './DiaryPanel';
 import { dayKey, entryOn, streak } from '../diary/diary';
 import { AccountPanel } from './AccountPanel';
+import '../../party/golden-ui.css';
 
 type Panel = 'guidebook' | 'finder' | 'work' | 'harbour' | 'bus' | 'tram' | 'air' | 'field' | 'institute' | 'care' | 'wardrobe' | 'bag' | 'journal' | 'map' | 'messages' | 'vehicles' | 'dialogue' | 'animal' | 'build' | 'van' | 'house' | 'farm' | 'market' | 'help' | 'homes' | 'houses' | 'property' | 'diary' | 'account' | null;
 
@@ -117,11 +118,14 @@ export class UI {
     this.diary = new DiaryPanel(g, () => this.render());
     this.account = new AccountPanel(g, () => this.render());
     document.body.append(this.root);
+    if (g.presentation === 'party') this.root.classList.add('party-presentation');
     this.root.append(this.labels, this.tl, this.tr, this.tracker, this.feed, this.prompt, this.dock, this.panelEl, this.card, this.flash, this.title);
     this.root.append(this.touchActions, this.tourEl);
     this.buildTouchActions();
     this.buildDock();
-    this.buildTitle();
+    // The public party entry supplies its own start card. Never flash the paired private title,
+    // even for a single frame before the party shell takes over.
+    if (g.presentation !== 'party') this.buildTitle();
     g.bus.on('toast', ({ text, kind }) => this.toast(text, kind ?? 'info'));
     g.bus.on('diary:nudge', ({ text }) => {
       const el = h('div', { class: 'toast diary-nudge' }, h('p', {}, text), h('div', { class: 'acts' }, btn('📔 Write', () => { el.remove(); this.open('diary'); }, 'small primary'), btn('Later', () => el.remove(), 'small ghost')));
@@ -155,10 +159,10 @@ export class UI {
     if (this.storyOpen) return;
     const i = this.g.input;
     if (i.hit('p') && !this.modal) this.g.takePhoto();
-    if (i.hit('t') && !this.modal) this.g.setTimeOfDay(nextTime(this.g.st.minutes));
+    if (this.g.presentation !== 'party' && i.hit('t') && !this.modal) this.g.setTimeOfDay(nextTime(this.g.st.minutes));
     if (i.hit('o') && !this.modal) this.setTrackerHidden(!this.trackerHidden);
     const keys: Array<[string, Panel]> = [['c', 'wardrobe'], ['i', 'bag'], ['j', 'journal'], ['m', 'map'], ['n', 'messages'], ['v', 'vehicles'], ['h', 'help'], ['l', 'homes'], ['k', 'care'], ['u', 'work'], ['y', 'finder'], ['q', 'diary']];
-    for (const [k, p] of keys) if (i.hit(k)) return this.toggle(p);
+    for (const [k, p] of keys) if (!(this.g.presentation === 'party' && k === 'q') && i.hit(k)) return this.toggle(p);
     if (i.hit('b')) {
       if (this.panel === 'build') return this.closePanel();
       const plot = this.g.housing.plotAt(this.g.trav.gPos.x, this.g.trav.gPos.z);
@@ -206,6 +210,11 @@ export class UI {
    */
   private renderTour(): void {
     const g = this.g, st = g.st;
+    if (!g.allowPersonalNarrative) {
+      this.tourEl.hidden = true;
+      this.tourEl.replaceChildren();
+      return;
+    }
     const away = !g.started || this.modal || !!g.cutscene || g.inHouse || g.inVan;
     this.tourEl.hidden = away;
     if (away) return;
@@ -255,8 +264,13 @@ export class UI {
    */
   private guidebook(body: HTMLElement): void {
     const g = this.g, st = g.st;
+    if (!g.allowPersonalNarrative && this.guideTab === 'letters') this.guideTab = 'how';
     const tabs = h('div', { class: 'seg', role: 'tablist' },
-      ...([['letters', '✉ Letters'], ['how', '📜 How things work'], ['lands', '🗺️ The lands']] as const).map(([id, label]) =>
+      ...([
+        ...(g.allowPersonalNarrative ? [['letters', '✉ Letters'] as const] : []),
+        ['how', '📜 How things work'] as const,
+        ['lands', '🗺️ The lands'] as const,
+      ]).map(([id, label]) =>
         btn(label, () => { this.guideTab = id; this.render(); }, this.guideTab === id ? 'on' : '')));
     body.append(tabs);
     if (this.guideTab === 'letters') {
@@ -280,7 +294,16 @@ export class UI {
       return;
     }
     if (this.guideTab === 'how') {
-      for (const [icon, title, text] of HOW_IT_WORKS) body.append(h('div', { class: 'quest' }, h('b', {}, `${icon} ${title}`), h('p', { class: 'story' }, text)));
+      for (const [icon, title, text] of HOW_IT_WORKS) {
+        if (!g.allowPersonalNarrative && title === 'The story') continue;
+        const publicText = !g.allowPersonalNarrative ? ({
+          'The two of you': 'Travel with the golden thread between you. Each land offers people to meet, places to explore and a lantern to light.',
+          'Clothes': 'Use the dressing room to change your outfit and the outfits of eligible companions travelling with you.',
+          'Homes and land': 'Buy land, build a home, add floors and grow food in farm beds.',
+          'People and friends': 'Talk to people, learn about the lands and help with community projects.',
+        } as Record<string, string>)[title] ?? text : text;
+        body.append(h('div', { class: 'quest' }, h('b', {}, `${icon} ${title}`), h('p', { class: 'story' }, publicText)));
+      }
       return;
     }
     body.append(h('p', { class: 'dim' }, `Twenty lands, each with its own sky, its own science and its own people. You have found ${st.discovered.length}.`));
@@ -330,7 +353,7 @@ export class UI {
     this.tl.replaceChildren(
       h('div', { class: 'region' }, g.region.name),
       h('div', { class: 'sub' }, g.region.subtitle),
-      h('div', { class: 'names' }, `${st.names.girl} ✦ ${st.names.boy}`),
+      h('div', { class: 'names' }, g.allowPersonalNarrative ? `${st.names.girl} ✦ ${st.names.boy}` : st.names.girl),
       ...(diaryChip ? [diaryChip] : []),
     );
     this.dock.querySelector('[data-p="diary"]')?.classList.toggle('calling', calling);
@@ -494,6 +517,7 @@ export class UI {
 
   /** "Your journey": the objectives and everything there is to do (after the story; and in Help). */
   showIntroGuide(done?: () => void): void {
+    if (!this.g.allowPersonalNarrative) { done?.(); return; }
     this.storyOpen = true;
     this.g.input.reset();
     const st = this.g.st;
@@ -519,7 +543,7 @@ export class UI {
     book.append(h('div', { class: 'page wide' },
       x,
       h('div', { class: 'eyebrow' }, 'Your journey'),
-      h('h2', {}, `${st.names.girl} & ${st.names.boy}`),
+      h('h2', {}, this.g.allowPersonalNarrative ? `${st.names.girl} & ${st.names.boy}` : 'The journey'),
       h('h3', {}, 'Objectives'),
       h('div', { class: 'cards' }, ...objectives(st).map(card)),
       h('h3', {}, 'Travel, friends and home'),
@@ -531,6 +555,7 @@ export class UI {
 
   /** The storybook told before the journey (and again from the journal). */
   showPrologue(done?: () => void): void {
+    if (!this.g.allowPersonalNarrative) { done?.(); return; }
     const pages = prologue(this.g.st);
     let i = 0;
     this.storyOpen = true;
@@ -571,6 +596,7 @@ export class UI {
   // ───────────────────────── title ─────────────────────────
 
   private buildTitle(): void {
+    if (this.g.presentation === 'party') return;
     const st = this.g.st;
     const fresh = !st.quests['main-meadow'] && st.playSeconds < 5;
     const girl = h('input', { value: st.names.girl, maxlength: '28', 'aria-label': 'Her name' }) as HTMLInputElement;
@@ -824,17 +850,20 @@ export class UI {
 
   private wardrobe(body: HTMLElement): void {
     const st = this.g.st;
-    const family = dressable(st);
+    // In the shared party presentation, only the local avatar and non-sibling adopted children
+    // are selectable. The original private wardrobe remains unchanged.
+    const family = dressable(st).filter((f) => this.g.allowPersonalNarrative || f.kind === 'child');
     // Someone who has gone home (or left) can no longer be dressed here.
-    if (this.wardrobeWho !== 'girl' && this.wardrobeWho !== 'boy' && !family.some((f) => f.id === this.wardrobeWho)) this.wardrobeWho = 'girl';
-    const who = this.wardrobeWho, hero = who === 'girl' || who === 'boy';
+    if ((this.wardrobeWho === 'boy' && !this.g.allowPersonalNarrative)
+      || (this.wardrobeWho !== 'girl' && this.wardrobeWho !== 'boy' && !family.some((f) => f.id === this.wardrobeWho))) this.wardrobeWho = 'girl';
+    const who = this.wardrobeWho, hero = who === 'girl' || (this.g.allowPersonalNarrative && who === 'boy');
     const kin = hero ? null : family.find((f) => f.id === who)!;
     const worn = hero ? OUTFITS[st.outfits[who as 'girl' | 'boy']] : outfitOf(st, who);
     const top = h('div', { class: 'sheet-row' },
       h('div', { class: 'seg', role: 'tablist' },
-        btn(`${st.names.girl}`, () => { this.wardrobeWho = 'girl'; this.render(); }, who === 'girl' ? 'on' : ''),
-        btn(`${st.names.boy}`, () => { this.wardrobeWho = 'boy'; this.render(); }, who === 'boy' ? 'on' : ''),
-        ...family.map((f) => btn(`${f.kind === 'child' ? '🧒 ' : ''}${f.name}`, () => { this.wardrobeWho = f.id; this.render(); }, who === f.id ? 'on' : ''))),
+        btn(this.g.allowPersonalNarrative ? `${st.names.girl}` : 'Your outfit', () => { this.wardrobeWho = 'girl'; this.render(); }, who === 'girl' ? 'on' : ''),
+        ...(this.g.allowPersonalNarrative ? [btn(`${st.names.boy}`, () => { this.wardrobeWho = 'boy'; this.render(); }, who === 'boy' ? 'on' : '')] : []),
+        ...family.map((f, i) => btn(`${f.kind === 'child' ? '🧒 ' : ''}${this.g.allowPersonalNarrative ? f.name : `Child ${i + 1}`}`, () => { this.wardrobeWho = f.id; this.render(); }, who === f.id ? 'on' : ''))),
       worn ? h('div', { class: 'worn' }, h('b', {}, worn.name), h('small', {}, worn.culture), worn.merged.length ? h('small', { class: 'merged' }, `+ ${worn.merged.join(', ')}`) : null) : null,
     );
     const search = h('input', { type: 'search', placeholder: 'Search outfits', 'aria-label': 'Search outfits', value: this.wardrobeQuery }) as HTMLInputElement;
@@ -933,16 +962,16 @@ export class UI {
     const st = this.g.st, hs = this.g.housing;
     body.append(h('p', { class: 'dim' }, `Every land has two plots for sale just outside its town. Buy the bare land and build it yourself, or buy a ready-made home in that land's own style (land + ${HOME_PRICE} coins). You have 🪙 ${st.coins}.`));
     const owned = PLOTS.filter((p) => hs.owns(p.id));
-    // Your parents and his: a home each, and a visit whenever you like (housing/parents.ts).
-    body.append(h('h3', {}, '👪 Your parents'));
+    // Keep private family names and letters out of the public homes panel.
+    body.append(h('h3', {}, this.g.allowPersonalNarrative ? '👪 Your parents' : '👪 Family homes'));
     const fam = h('div', { class: 'cards' });
-    for (const w of WHOSE) {
+    for (const [i, w] of WHOSE.entries()) {
       const home = parentsHome(st, w), letter = lastLetter(st, w);
       fam.append(h('div', { class: `quest ${home ? 'main' : ''}` },
-        h('b', {}, familyName(st, w)),
-        h('small', {}, home ? `Living in your home in ${REGION_BY_ID[PLOT_BY_ID[home].region].name}${visitedToday(st, w) ? ' · visited today' : ''}` : ownedHomes(st).length ? 'Give them one of your homes below.' : 'Buy or build a home first, then give it to them.'),
-        letter ? h('p', { class: 'story' }, `“${letter}”`) : null,
-        home ? h('div', { class: 'acts' }, btn(`Visit ${w === 'hers' ? 'her' : 'his'} parents`, () => { const e = this.g.visitParents(w); if (e) this.g.toast(e, 'info'); else this.closePanel(); }, 'small primary')) : null));
+        h('b', {}, this.g.allowPersonalNarrative ? familyName(st, w) : `Family home ${i + 1}`),
+        h('small', {}, home ? `Living in your home in ${REGION_BY_ID[PLOT_BY_ID[home].region].name}${visitedToday(st, w) ? ' · visited today' : ''}` : ownedHomes(st).length ? 'Give this family a home below.' : 'Buy or build a home first, then give it to a family.'),
+        this.g.allowPersonalNarrative && letter ? h('p', { class: 'story' }, `“${letter}”`) : null,
+        home ? h('div', { class: 'acts' }, btn(this.g.allowPersonalNarrative ? `Visit ${w === 'hers' ? 'her' : 'his'} parents` : 'Visit family home', () => { const e = this.g.visitParents(w); if (e) this.g.toast(e, 'info'); else this.closePanel(); }, 'small primary')) : null));
     }
     body.append(fam);
     if (owned.length) {
@@ -950,7 +979,7 @@ export class UI {
       for (const p of owned) {
         const lives = parentsIn(st, p.id);
         const card = h('div', { class: 'quest main' }, h('b', {}, `🏡 ${REGION_BY_ID[p.region].name}`),
-          h('small', {}, `${st.plots[p.id].decor.length} things built · stand on it and press B to build${lives ? ` · ${familyName(st, lives)} live here` : ''}`));
+          h('small', {}, `${st.plots[p.id].decor.length} things built · stand on it and press B to build${lives ? ` · ${this.g.allowPersonalNarrative ? familyName(st, lives) : 'family'} live here` : ''}`));
         // The house: any design from any land, improved a level at a time (housing/designs.ts).
         const house = houseOn(st, p.id), design = house ? designOf(house) : undefined, lvl = house ? levelOf(house) : 0;
         if (house) card.append(h('small', {}, `🏠 ${design?.name ?? `${REGION_BY_ID[DECOR_BY_ID[house.kind]?.style ?? p.region].name} house`} · level ${lvl} of ${MAX_LEVEL} — ${LEVELS[lvl - 1].name}`));
@@ -965,10 +994,10 @@ export class UI {
             this.render();
           }, 'small primary', st.coins < c.coins));
         }
-        if (ownsHome(st, p.id)) for (const w of WHOSE) if (lives !== w) {
-          acts.append(btn(`Give to ${w === 'hers' ? 'her' : 'his'} parents`, () => {
+        if (ownsHome(st, p.id)) for (const [i, w] of WHOSE.entries()) if (lives !== w) {
+          acts.append(btn(this.g.allowPersonalNarrative ? `Give to ${w === 'hers' ? 'her' : 'his'} parents` : `Give to family ${i + 1}`, () => {
             const e = giveToParents(st, p.id, w);
-            this.g.toast(e ?? `🏡 ${familyName(st, w)} move into your home in ${REGION_BY_ID[p.region].name}. Visit them whenever you pass.`, e ? 'info' : 'reward');
+            this.g.toast(e ?? (this.g.allowPersonalNarrative ? `🏡 ${familyName(st, w)} move into your home in ${REGION_BY_ID[p.region].name}. Visit them whenever you pass.` : `🏡 Family ${i + 1} move into your home in ${REGION_BY_ID[p.region].name}.`), e ? 'info' : 'reward');
             this.render();
           }, 'small ghost', lives !== null));
         }
@@ -1601,11 +1630,13 @@ export class UI {
     const wondersFound = WONDERS.filter((w) => foundWonder(st, w.id)).length;
     body.append(h('div', { class: 'quest main' },
       h('b', {}, '🏮 The main objective'),
-      h('p', {}, `Go to new places, work beside the people you meet and solve their problems, make friends — and relight all ${REGIONS.length} lanterns, then wake the Great Lantern above the clouds. Her new job is one chapter of a lifelong journey of exploring and bonding.`),
+      h('p', {}, this.g.allowPersonalNarrative
+        ? `Go to new places, work beside the people you meet and solve their problems, make friends — and relight all ${REGIONS.length} lanterns, then wake the Great Lantern above the clouds. Her new job is one chapter of a lifelong journey of exploring and bonding.`
+        : `Explore the lands, help the people you meet, and light all ${REGIONS.length} lanterns to wake the Great Lantern above the clouds.`),
       h('small', {}, `${st.lanterns.length} of ${REGIONS.length} lanterns · ${wondersFound} of ${WONDERS.length} hidden wonders · ${Object.keys(st.plots).length} homes & lands · ${st.caravan.length} in the caravan`),
-      h('div', { class: 'acts' },
+      this.g.allowPersonalNarrative ? h('div', { class: 'acts' },
         btn('▶ Watch the story again', () => { this.closePanel(); this.g.playStory(); }, 'small'),
-        btn('Read it', () => { this.closePanel(); this.showPrologue(); }, 'small ghost')),
+        btn('Read it', () => { this.closePanel(); this.showPrologue(); }, 'small ghost')) : null,
     ));
     body.append(h('p', { class: 'dim' }, `Day ${dayOf(st.minutes)} of the journey · ${st.lanterns.length} of ${REGIONS.length} lanterns lit · shared light ✦ ${st.light.toFixed(1)}`));
     const act = q.active();
@@ -1613,20 +1644,20 @@ export class UI {
     if (!act.length) body.append(h('p', { class: 'dim' }, 'No journeys underway. Look for ❗ above people\'s heads.'));
     const followed = this.g.guide.objective.questId;
     for (const x of act) body.append(h('div', { class: `quest ${x.main ? 'main' : ''}` },
-      h('b', {}, `${x.main ? '🏮 ' : ''}${x.title}`), h('small', {}, `${REGION_BY_ID[x.region].name} · ${PEOPLE_BY_ID[x.giver]?.name ?? ''}`), h('p', {}, x.intro), h('p', { class: 'step' }, `→ ${q.stepText(x.id)}`),
+      h('b', {}, `${x.main ? '🏮 ' : ''}${x.title}`), h('small', {}, `${REGION_BY_ID[x.region].name}${this.g.allowPersonalNarrative ? ` · ${PEOPLE_BY_ID[x.giver]?.name ?? ''}` : ''}`), this.g.allowPersonalNarrative ? h('p', {}, x.intro) : null, h('p', { class: 'step' }, `→ ${q.stepText(x.id)}`),
       x.id === followed ? h('span', { class: 'following' }, '✦ Following') : btn('Follow this journey', () => { this.g.guide.track(x.id); this.g.guide.refresh(); this.render(); this.refreshTracker(); }, 'small'),
     ));
     if (st.errands.length) {
       body.append(h('h3', {}, '❗ People waiting for you'));
-      for (const e of st.errands) body.append(h('div', { class: 'quest' }, h('b', {}, `${e.name} in ${REGION_BY_ID[e.land as RegionId]?.name ?? e.land}`),
+      for (const [i, e] of st.errands.entries()) body.append(h('div', { class: 'quest' }, h('b', {}, `${this.g.allowPersonalNarrative ? e.name : `Friend ${i + 1}`} in ${REGION_BY_ID[e.land as RegionId]?.name ?? e.land}`),
         h('small', {}, `needs ${e.qty}× ${ITEMS[e.item]?.icon ?? ''} ${ITEMS[e.item]?.name ?? e.item} · waits ${Math.max(1, Math.ceil((e.until - st.minutes) / 60))} more hours · you have ${count(st, e.item)}`),
-        btn('Show the way', () => { g2.guide.pin({ title: `Bringing ${ITEMS[e.item]?.name ?? e.item} to ${e.name}`, text: 'They are waiting under the ❗', x: e.x, z: e.z, region: e.land as RegionId }); this.closePanel(); }, 'small')));
+        btn('Show the way', () => { g2.guide.pin({ title: `Bringing ${ITEMS[e.item]?.name ?? e.item} to ${this.g.allowPersonalNarrative ? e.name : 'a friend'}`, text: 'They are waiting under the ❗', x: e.x, z: e.z, region: e.land as RegionId }); this.closePanel(); }, 'small')));
     }
     body.append(h('h3', {}, 'The caravan'));
-    for (const c of this.g.caravan.list()) body.append(h('div', { class: 'quest' },
-      h('b', {}, `${c.kind === 'pet' ? '🐾' : c.kind === 'sibling' ? (c.who === 'girl' ? '👩' : '👨') : '🧒'} ${c.name}`),
-      h('small', {}, c.kind === 'child' ? `${c.tradition} · going to ${REGION_BY_ID[c.destination].name}` : c.kind === 'sibling' ? (c.who === 'girl' ? 'Sister · travels with you always' : 'Brother · travels with you always') : `from ${REGION_BY_ID[c.origin].name}`),
-      h('p', {}, c.kind === 'child' ? c.journey : c.blurb)));
+    for (const [i, c] of this.g.caravan.list().entries()) body.append(h('div', { class: 'quest' },
+      h('b', {}, this.g.allowPersonalNarrative ? `${c.kind === 'pet' ? '🐾' : c.kind === 'sibling' ? (c.who === 'girl' ? '👩' : '👨') : '🧒'} ${c.name}` : `${c.kind === 'pet' ? '🐾 Pet' : '🧒 Companion'} ${i + 1}`),
+      this.g.allowPersonalNarrative ? h('small', {}, c.kind === 'child' ? `${c.tradition} · going to ${REGION_BY_ID[c.destination].name}` : c.kind === 'sibling' ? (c.who === 'girl' ? 'Sister · travels with you always' : 'Brother · travels with you always') : `from ${REGION_BY_ID[c.origin].name}`) : h('small', {}, 'Travelling companion'),
+      this.g.allowPersonalNarrative ? h('p', {}, c.kind === 'child' ? c.journey : c.blurb) : null));
     body.append(h('h3', {}, `Hidden wonders · ${wondersFound} of ${WONDERS.length}`));
     for (const w of WONDERS) {
       const f = foundWonder(st, w.id);
@@ -1925,11 +1956,11 @@ export class UI {
         btn('Low graphics', () => { this.g.setQuality('low'); this.render(); }, this.g.quality === 'low' ? 'on' : 'ghost'),
         btn('High graphics', () => { this.g.setQuality('high'); this.render(); }, this.g.quality === 'high' ? 'on' : 'ghost'),
         btn('Save photo (P)', () => this.g.takePhoto(), 'primary'),
-        btn('🎂 Replay the opening', () => this.g.playOpening(), 'ghost'),
-        btn('🏰 Replay the celebration evening', () => this.g.celebration.replay(), 'ghost'),
+        this.g.allowPersonalNarrative ? btn('🎂 Replay the opening', () => this.g.playOpening(), 'ghost') : null,
+        this.g.allowPersonalNarrative ? btn('🏰 Replay the celebration evening', () => this.g.celebration.replay(), 'ghost') : null,
         btn('🧭 Objectives & features', () => { this.closePanel(); this.showIntroGuide(); }, 'ghost'),
         btn('📜 Guidebook', () => this.open('guidebook'), 'ghost'),
-        btn('▶ Watch the story', () => this.g.playStory(), 'ghost')),
+        this.g.allowPersonalNarrative ? btn('▶ Watch the story', () => this.g.playStory(), 'ghost') : null),
       h('h3', {}, 'Day and night'),
       h('p', { class: 'dim' }, 'Choose the sky: the clock moves forward to that hour, as if you rested. T (or tapping the clock) moves on to the next part of the day.'),
       h('div', { class: 'acts' },

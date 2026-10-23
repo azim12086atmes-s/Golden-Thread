@@ -1,0 +1,19 @@
+# Complete Golden Thread birthday integration
+
+The baseline is Golden Thread `a6c20a4f9ceabec4fbd544ca7c73658b005c2318`, the current `claudes-current-work` / `3d-builds` source. This branch hosts its actual `Game` lifecycle and original UI. It does not run the earlier subset `PartyLife` renderer.
+
+All 211 original source files remain present. The original twenty regions, their street placement, architecture, terrain shaping, authored meadow/flower/leaf textures, water, skies, weather, atmosphere, traffic and economy stay together. `scripts/check-party-build.mjs` compares their Git blob hashes with `SOURCE_MANIFEST.json`. Only five source files receive integration edits: `Game`, `UI`, `terrain`, `Travellers`, and `Celebration`. The generated party closure includes 200 original source modules; development-only entrypoints are excluded.
+
+The complete large-palace donor is Birthday Castle `3fcc2b4728c51eca871c889fa545c9605d7ad8df`. Its geometry retains world scale 1 and is translated by `(0,-600,-8000)`: the existing town layout is unchanged, the lower terrace lies at 87.5 m, the SkyBridge at 88 m, and the crown court at 792 m. Extra Birthday Castle cities are excluded. Movement, camera height and collision queries use the same venue surfaces. The original vehicle shoreline check now samples walkable surfaces so vehicles can use raised bridge decks.
+
+The palace terrain is a bounded mesh sampled from the donor's actual MAIN island height field. Its four source terrain assets are pinned by commit, size and Git blob hash in `great-palace/terrain-assets.json`; run `node scripts/fetch-palace-assets.mjs` before building. The build rejects missing or modified assets.
+
+The rose gate has an actual arch opening through the backing masonry and a walkable entrance gallery. The fixed glazing occupies only the fanlight; the two lower leaves move with their collision volumes. A lift in the gallery continues to the crown garden. Upper window relief is cut around the pointed glazing instead of overlapping it. `tools/birthday-audit/palace-spatial.mjs` builds the actual geometry, rejects non-finite vertices, raycasts closed and open leaves, and checks the entrance floor and collision route.
+
+The party uses the existing server-authoritative nine minigames, optional twenty-land cooperative story, celebration stages, dynamic numbered invitations, private companions and observer-only Azim voice/follow policy. Private companions are filtered by the server, removed from public local caravan state after save migration, and omitted from guest photo variants. Per-invitation saves cannot overwrite the original journey. Party invitations enter the shared world directly without fabricating original story, unlock or economy flags.
+
+Original cutscenes and family presentation are available only in the birthday view. Public presentation retains the world and progression with a single visible local traveller. The shared party celebration replaces the original private automatic chariot/cake sequence for this entry; its original festivities and earned dragon reward are reused.
+
+Validation uses Node 22, Three r180, TypeScript 5.9.3, Vitest 3.2.4 and Playwright 1.56.1. The earlier party vendor was Three r169; the complete client now vendors r180 and its core module. The original repository package declarations are retained, while the review workflow installs its pinned toolchain separately.
+
+This is a review branch, not a claim of production deployment or target-device performance. Browser captures render the actual game using SwiftShader. Eighteen concurrent invitation sessions (fourteen public players and four private viewers) verify role projection; two rendered browser views and HTTP sessions do not establish fourteen-device frame rate or cross-network microphone quality. The original live invitation URLs remain unchanged until a validated deployment is published.

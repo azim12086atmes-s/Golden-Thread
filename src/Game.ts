@@ -135,7 +135,28 @@ export interface Cutscene {
   caravan?: boolean;
 }
 
+/** Optional host integration. The original single-player journey uses all defaults. */
+export interface GameOptions {
+  saveKey?: string;
+  playerName?: string;
+  /** Applied after save migration, before any views or UI are created. */
+  prepareState?: (state: GameState) => GameState | void;
+  presentation?: 'original' | 'party';
+  allowPersonalNarrative?: boolean;
+  readOnly?: boolean;
+  inputBlocked?: () => boolean;
+  beforeUpdate?: (game: Game, dt: number, time: number) => void;
+  beforeRender?: (game: Game, dt: number, time: number) => void;
+  /** Return true when the host handled the interaction. */
+  interact?: (game: Game) => boolean;
+  photo?: () => void;
+  chooseVehicle?: (id: VehicleId) => string | null;
+}
+
 export class Game {
+  readonly presentation: 'original' | 'party';
+  readonly allowPersonalNarrative: boolean;
+  readonly readOnly: boolean;
   readonly renderer: THREE.WebGLRenderer;
   readonly scene = new THREE.Scene();
   readonly camera = new THREE.PerspectiveCamera(60, 1, 0.1, 5000);
@@ -216,10 +237,13 @@ export class Game {
   readonly saveKey: string;
   readonly player: string;
 
-  constructor(host: HTMLElement) {
+  constructor(host: HTMLElement, private readonly options: GameOptions = {}) {
+    this.presentation = options.presentation ?? 'original';
+    this.allowPersonalNarrative = options.allowPersonalNarrative ?? true;
+    this.readOnly = options.readOnly ?? false;
     // The signed-in player's journey, or the device's own (core/profiles.ts).
-    this.saveKey = currentSaveKey(storage());
-    this.player = currentPlayer(storage())?.name ?? '';
+    this.saveKey = options.saveKey ?? currentSaveKey(storage());
+    this.player = options.playerName ?? currentPlayer(storage())?.name ?? '';
     this.st = loadGame(storage(), this.saveKey) ?? newGame();
     // One-time: journeys still in the old default clothes move to the new everyday default.
     if (!this.st.flags.includes('kurti-default')) {
@@ -231,6 +255,7 @@ export class Game {
       this.st.outfits = { girl: 'g-kurti-jeans', boy: 'b-kurta-jeans' };
       this.st.flags.push('kurti-default-2');
     }
+    this.st = options.prepareState?.(this.st) ?? this.st;
     befriendMet(this.st);
     this.renderer = new THREE.WebGLRenderer({ antialias: true, powerPreference: 'high-performance' });
     this.renderer.setPixelRatio(Math.min(devicePixelRatio, 1.75));
@@ -370,6 +395,7 @@ export class Game {
   }
 
   takePhoto(): void {
+    if (this.options.photo) return this.options.photo();
     // Render and copy synchronously before WebGL clears its drawing buffer. DOM UI is excluded.
     if (this.inVan) this.renderer.render(this.van.scene, this.van.camera);
     else if (this.inHouse) this.renderer.render(this.house.scene, this.house.camera);
@@ -451,10 +477,12 @@ export class Game {
     this.adapt();
     const dt = Math.min(0.05, this.clock.getDelta());
     this.t += dt;
+    this.options.beforeUpdate?.(this, dt, this.t);
 
     if (this.inVan) {
       this.van.update(dt);
       this.guide.update(dt, this.t);
+      this.options.beforeRender?.(this, dt, this.t);
       this.renderer.render(this.van.scene, this.van.camera);
       this.ui.update(dt);
       if (this.input.hit('escape') || this.input.hit('e')) this.exitVan();
@@ -463,11 +491,12 @@ export class Game {
     }
 
     if (this.inHouse) {
-      if (!this.st.flags.includes(SKY_PAUSED)) this.st.minutes += dt * MINUTES_PER_SECOND;
+      if (!this.readOnly && !this.st.flags.includes(SKY_PAUSED)) this.st.minutes += dt * MINUTES_PER_SECOND;
       // They walk about the room (housing/roomWalk.ts) while only the room's own panel is open.
-      this.input.blocked = this.ui.modal && this.ui.panelId !== 'house';
+      this.input.blocked = this.readOnly || !!this.options.inputBlocked?.() || (this.ui.modal && this.ui.panelId !== 'house');
       this.house.update(dt, this.input);
       this.guide.update(dt, this.t);
+      this.options.beforeRender?.(this, dt, this.t);
       this.renderer.render(this.house.scene, this.house.camera);
       this.ui.update(dt);
       if (this.input.hit('escape')) this.exitHouse();
@@ -481,11 +510,13 @@ export class Game {
     }
 
     if (this.started) {
-      if (!this.st.flags.includes(SKY_PAUSED)) this.st.minutes += dt * MINUTES_PER_SECOND;
-      this.st.playSeconds += dt;
-      this.diaryNudge(dt);
-      if (!this.cutscene) this.ui.handleKeys();
-      this.input.blocked = (this.ui.modal && !this.build) || !!this.cutscene;
+      if (!this.readOnly) {
+        if (!this.st.flags.includes(SKY_PAUSED)) this.st.minutes += dt * MINUTES_PER_SECOND;
+        this.st.playSeconds += dt;
+        this.diaryNudge(dt);
+        if (!this.cutscene && !this.options.inputBlocked?.()) this.ui.handleKeys();
+      }
+      this.input.blocked = this.readOnly || !!this.options.inputBlocked?.() || (this.ui.modal && !this.build) || !!this.cutscene;
       // On the coach, the ferry or the air taxi: it carries them; E or Esc skips ahead to the arrival.
       if (this.ride) {
         // The pier they will step onto is walkable as soon as its land streams in.
@@ -495,7 +526,13 @@ export class Game {
         if (this.ride.done) this.arriveByRide();
       }
       this.skyTram.update(dt, this.ride);
-      this.trav.update(dt, this.input, this.t);
+      if (this.readOnly) {
+        const controls = Object.create(this.input) as Input;
+        controls.hit = () => false;
+        controls.held = () => false;
+        controls.axis = () => ({ x: 0, y: 0 });
+        this.trav.update(dt, controls, this.t);
+      } else this.trav.update(dt, this.input, this.t);
       this.trackRegion();
     } else {
       // Title screen: a slow orbit around the travellers while the world streams in.
@@ -537,7 +574,7 @@ export class Game {
     this.skyFx.update(dt, this.t, this.trav.gPos, this.region.id, this.sky.night, this.sky.sunDirection);
     this.traffic.update(dt, this.t, this.region.id, this.trav.gPos, this.sky.night, couriersIn(this.st, this.region.id), hourOf(this.st.minutes));
     // The people in your care: news when someone thrives or their paid days run out.
-    if ((this.charityClock -= dt) <= 0) {
+    if (!this.readOnly && (this.charityClock -= dt) <= 0) {
       this.charityClock = 2;
       for (const n of tickCharity(this.st)) this.toast(`🤲 ${n.text}`, 'story');
       for (const n of tickInstitutes(this.st)) this.toast(`🏛️ ${n.text}`, 'reward');
@@ -580,9 +617,12 @@ export class Game {
       this.housingDirty = false;
     }
 
-    if (this.started) {
+    if (this.started && !this.readOnly) {
       this.target = this.build || this.cutscene ? null : this.findTarget();
-      if (this.input.hit('e') && this.target && !this.ui.modal) this.interact(this.target);
+      if (this.input.hit('e') && !this.ui.modal && !this.options.inputBlocked?.()) {
+        const handled = this.options.interact?.(this) ?? false;
+        if (!handled && this.target) this.interact(this.target);
+      }
       if (this.build) this.updateBuild();
       this.tickTimer += dt;
       if (this.tickTimer > 1) {
@@ -601,6 +641,7 @@ export class Game {
     this.caravan.update(dt, this.t);
     this.wonders.update(dt, this.t);
     this.guide.update(dt, this.t);
+    this.options.beforeRender?.(this, dt, this.t);
     const view = this.cutscene?.view;
     if (view) { this.renderer.shadowMap.needsUpdate = true; this.renderer.render(view.scene, view.camera); }
     else if (this.ready) {
@@ -850,7 +891,7 @@ export class Game {
   talk(npc: Npc): void {
     const def = npc.def;
     // The first meeting with a land's Keeper is a short film, then the conversation.
-    if (def.keeper && !this.st.flags.includes(metFlag(def.id)) && !this.cutscene && !this.inVan && this.trav.mode === 'walk') {
+    if (this.allowPersonalNarrative && def.keeper && !this.st.flags.includes(metFlag(def.id)) && !this.cutscene && !this.inVan && this.trav.mode === 'walk') {
       this.st.flags.push(metFlag(def.id));
       this.ui.closePanel();
       const scene = new MeetScene(this, npc);
@@ -980,6 +1021,9 @@ export class Game {
   }
 
   chooseVehicle(id: VehicleId): string | null {
+    if (this.readOnly) return 'This invitation follows automatically.';
+    const blocked = this.options.chooseVehicle?.(id);
+    if (blocked) return blocked;
     if (!this.st.vehicles.includes(id)) return 'Not yours yet.';
     const err = this.trav.setMode(id);
     if (!err) this.bus.emit('vehicle:changed', { vehicleId: id });
@@ -1420,6 +1464,13 @@ export class Game {
     if (names) this.st.names = names;
     this.started = true;
     this.trav.camYaw = this.trav.heading;
+    // Party invitations enter the shared world directly; no private opening is played in a
+    // public browser and no story/progression flags are fabricated to bypass it.
+    if (this.presentation === 'party') {
+      this.guide.refresh();
+      this.ui.refreshTracker();
+      return;
+    }
     const after = () => {
       const cake = !this.st.quests['main-meadow'] && !this.st.flags.includes('cake');
       if (cake || !this.st.flags.includes(THREAD_FLAG)) this.playOpening(cake);
@@ -1442,6 +1493,7 @@ export class Game {
 
   /** The story of the journey, over the world (replayable from the journal). */
   playStory(done?: () => void): void {
+    if (!this.allowPersonalNarrative || this.readOnly) return;
     if (this.cutscene || this.inVan) return;
     this.ui.closePanel();
     if (this.trav.mode !== 'walk') this.chooseVehicle('walk');
@@ -1460,6 +1512,7 @@ export class Game {
    * cake. Plays on a new journey; replayable from Help.
    */
   playOpening(cake = true): void {
+    if (!this.allowPersonalNarrative || this.readOnly) return;
     if (this.cutscene || this.inVan) return;
     this.ui.closePanel();
     if (this.trav.mode !== 'walk') this.chooseVehicle('walk');
@@ -1485,7 +1538,7 @@ export class Game {
   private leaving = false;
 
   save(): void {
-    if (this.leaving) return;
+    if (this.leaving || this.readOnly) return;
     this.saveTimer = 0;
     this.trav.save();
     saveGame(this.st, storage(), this.saveKey);

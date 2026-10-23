@@ -1,0 +1,50 @@
+name: Complete Golden Thread birthday review
+on:
+  push:
+    branches: [birthday/complete-golden-world]
+permissions:
+  contents: read
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    timeout-minutes: 24
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Install pinned validation tools
+        run: |
+          npm install --prefix "$RUNNER_TEMP/birthday-validation" --no-audit --no-fund typescript@5.9.3 three@0.180.0 @types/three@0.180.0 vite@7.1.12 vitest@3.2.4 playwright@1.56.1
+          ln -s "$RUNNER_TEMP/birthday-validation/node_modules" node_modules
+          "$RUNNER_TEMP/birthday-validation/node_modules/.bin/playwright" install --with-deps chromium
+      - name: Fetch verified palace terrain
+        run: node scripts/fetch-palace-assets.mjs
+      - name: Original Golden Thread tests
+        run: npm test
+      - name: Original TypeScript contracts
+        if: always()
+        run: npm run typecheck
+      - name: Party build and invitation privacy checks
+        if: always()
+        run: |
+          node scripts/build-party.mjs
+          node scripts/check-party-build.mjs
+          node tools/birthday-audit/palace-spatial.mjs
+          node --experimental-strip-types --test party/presentation-policy.test.mjs server/party.test.mjs server/chase-games.test.mjs shared/festival.test.mjs party/audio.test.mjs
+      - name: Actual game browser and 14-player session review
+        if: always()
+        env:
+          CAPTURE_TOOLS: ${{ runner.temp }}/birthday-validation
+        run: |
+          node tools/birthday-audit/review-server.mjs > "$RUNNER_TEMP/birthday-review-server.log" 2>&1 &
+          node tools/birthday-audit/complete-review.cjs
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: complete-golden-birthday-review
+          path: |
+            browser-captures
+            data/world
+            dist
+          retention-days: 7

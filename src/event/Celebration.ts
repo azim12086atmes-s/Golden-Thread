@@ -43,12 +43,14 @@ export class Celebration {
 
   /** The guide follows this while the evening waits for her. */
   objective(): Objective | null {
+    if (this.g.presentation === 'party') return null;
     if (!this.g.started || this.g.cutscene || !this.waiting) return null;
     return celebrationObjective(this.g.st, this.chariotPos);
   }
 
   /** Called when the journey starts (after any opening scene). */
   invite(): void {
+    if (this.g.presentation === 'party' || !this.g.allowPersonalNarrative || this.g.readOnly) return;
     if (this.done || this.invited) return;
     this.invited = true;
     const { girl, boy } = this.g.st.names;
@@ -72,6 +74,7 @@ export class Celebration {
   update(dt: number, t: number): void {
     const g = this.g;
     if (!g.started) return;
+    if (g.presentation === 'party') return;
     const running = g.cutscene instanceof CelebrationScene;
     if (!this.done && !running && !g.cutscene && !g.inVan && g.trav.mode === 'walk') {
       if (!this.waiting || this.chariotPos.distanceTo(g.trav.gPos) > 140) this.placeChariot();
@@ -95,6 +98,7 @@ export class Celebration {
   /** Start the evening (also used by "Replay the celebration evening"). */
   begin(): void {
     const g = this.g;
+    if (g.presentation === 'party' || !g.allowPersonalNarrative || g.readOnly) return;
     if (g.cutscene || g.inVan) return;
     if (!this.waiting) this.placeChariot();
     g.ui.closePanel();
@@ -133,6 +137,7 @@ export class Celebration {
 
   /** Replay from Help: the chariot returns and the evening begins again. */
   replay(): void {
+    if (this.g.presentation === 'party' || !this.g.allowPersonalNarrative || this.g.readOnly) return;
     this.placeChariot();
     this.begin();
   }

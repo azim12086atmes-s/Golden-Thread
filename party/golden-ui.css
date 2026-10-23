@@ -1,0 +1,20 @@
+/* Scoped presentation shim for the public party entry. The game's original UI and CSS stay intact. */
+#ui.party-presentation > .dock,
+#ui.party-presentation > .title {
+  display: none !important;
+}
+
+/* One layout: party objectives at left, journey status and original tools at right. */
+#ui.party-presentation { z-index: 4; }
+#ui.party-presentation > .hud-tl,
+#ui.party-presentation > .tour { display: none; }
+#ui.party-presentation > .hud-tr { inset-block-start: 90px; inset-inline-end: 28px; }
+#ui.party-presentation > .tracker { inset-block-start: 245px; inset-inline-end: 28px; }
+#ui.party-presentation > .panel:not(.sheet) { inset-block-start: 84px; }
+#ui.party-presentation > .feed { inset-block-end: 130px; }
+#ui.party-presentation > .touch-actions { display: none; }
+@media (max-width: 700px) {
+  #ui.party-presentation > .hud-tr { inset-block-start: 80px; inset-inline-end: 12px; min-inline-size: 0; padding: 8px 10px; font-size: 11px; }
+  #ui.party-presentation > .hud-tr .small { display: none; }
+  #ui.party-presentation > .tracker { inset-block-start: 190px; inset-inline-end: 12px; inline-size: 235px; }
+}

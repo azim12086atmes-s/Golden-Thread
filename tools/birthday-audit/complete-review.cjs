@@ -1,0 +1,70 @@
+const fs=require('node:fs'),path=require('node:path'),assert=require('node:assert/strict');
+const {chromium}=require(path.resolve(process.env.CAPTURE_TOOLS,'node_modules/playwright'));
+const out='browser-captures';fs.mkdirSync(out,{recursive:true});
+const report={method:'Actual current Game plus party adapter; Chromium SwiftShader; HTTP sessions are not 14 hardware renderers or a microphone test.',errors:[],captures:[],checks:{}};
+const delay=ms=>new Promise(r=>setTimeout(r,ms));
+const base='http://127.0.0.1:8013';
+const save=()=>fs.writeFileSync(path.join(out,'report.json'),JSON.stringify(report,null,2));
+(async()=>{
+ for(let i=0;i<30;i++){try{const r=await fetch(base);if(r.ok)break;}catch{}await delay(500);}
+ const fixtures=JSON.parse(fs.readFileSync('.review-fixture.json','utf8'));
+ const join=async body=>{const r=await fetch(base+'/api/join',{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify(body)});assert(r.ok,'Review join failed '+r.status);return r.json();};
+ const sessions=[];
+ for(const slot of fixtures.slots)sessions.push(await join({token:slot.token}));
+ for(let i=1;i<=13;i++)sessions.push(await join({guestNumber:String(i),name:'Guest '+i}));
+ const views=await Promise.all(sessions.map(async s=>{const r=await fetch(base+'/api/state',{headers:{authorization:'Bearer '+s.ticket}});assert(r.ok);return r.json();}));
+ const guestView=views.find(v=>v.self.id==='numbered-1')||views.find(v=>v.self.role==='guest');
+ const birthdayView=views.find(v=>v.self.role==='birthday');
+ assert(guestView&&birthdayView);
+ assert.equal(guestView.players.length,14,'There should be 14 visible public players');
+ assert(!JSON.stringify(guestView).includes('review-observer'),'Observer identity leaked to public view');
+ assert(!JSON.stringify(guestView).includes('review-sibling-'),'Private siblings leaked to public view');
+ assert(birthdayView.players.some(p=>p.id==='review-observer'));
+ report.checks.sessions={connected:sessions.length,publicPlayers:guestView.players.length,privateProjection:true};save();
+ const browser=await chromium.launch({headless:true,args:['--use-gl=angle','--use-angle=swiftshader','--enable-unsafe-swiftshader','--enable-webgl','--ignore-gpu-blocklist','--no-sandbox','--disable-dev-shm-usage']});
+ async function open(url){
+  const context=await browser.newContext({viewport:{width:1360,height:850},deviceScaleFactor:1});const page=await context.newPage();page.setDefaultTimeout(180000);
+  page.on('pageerror',e=>{report.errors.push({type:'page',message:String(e)});save();});
+  page.on('console',m=>{if(m.type()==='error'){report.errors.push({type:'console',message:m.text().slice(0,2500)});save();}});
+  await page.goto(base+url,{waitUntil:'domcontentloaded'});return{context,page};
+ }
+ const {context,page}=await open('?guest=1');await page.locator('#join').click();
+ await page.waitForFunction(()=>window.partyTest?.game?.core?.ready===true);
+ report.checks.ui=await page.evaluate(()=>({uiRoots:document.querySelectorAll('#ui').length,personalNarrative:partyTest.game.core.allowPersonalNarrative,hiddenSiblingModels:partyTest.game.core.caravan.bodies.filter(b=>b.def.kind==='sibling').length,wardrobe:Object.keys(partyTest.game.core.st.outfits)}));
+ assert.equal(report.checks.ui.uiRoots,1);assert.equal(report.checks.ui.hiddenSiblingModels,0);assert.equal(report.checks.ui.personalNarrative,false);
+ async function shot(file){await page.screenshot({path:path.join(out,file),timeout:120000});report.captures.push(file);save();console.log('Captured '+file);}
+ await page.evaluate(()=>{const g=partyTest.game.core;g.st.minutes=14*60;g.trav.teleport(110,275);g.trav.camYaw=Math.PI;g.trav.camPitch=.16;g.trav.camDist=7;});
+ await delay(12000);await shot('golden-full-world-meadow.png');
+ await page.evaluate(()=>partyTest.game.core.ui.open('wardrobe'));await delay(2000);await shot('golden-full-wardrobe.png');
+ await page.evaluate(()=>partyTest.game.core.ui.closePanel());
+ const world=await page.evaluate(async()=>{const r=await import('/src/world/regions.js');return r.REGIONS.map(x=>({id:x.id,name:x.name,col:x.col,row:x.row}));});
+ report.checks.regions=world;assert.equal(world.length,20);save();
+ // Inspect the actual northern venue and the gate approach from the original camera rig.
+ await page.evaluate(()=>{const g=partyTest.game.core;g.trav.teleport(0,-7395);g.trav.gPos.y=340.5;g.trav.camYaw=Math.PI;g.trav.camPitch=.1;g.trav.camDist=25;});
+ await page.waitForFunction(()=>!!partyTest.game.scenery.venue.palace);await delay(12000);
+ await shot('palace-rose-gate-approach.png');
+ const normalCamera=await page.evaluate(()=>{window.__normalReviewCamera=partyTest.game.controller.updateCamera;return true;});
+ async function inspectCamera(camera,look){await page.evaluate(({camera,look})=>{partyTest.game.controller.updateCamera=cam=>{cam.position.set(...camera);cam.lookAt(...look);};},{camera,look});await delay(3500);}
+ await inspectCamera([0,470,-7060],[0,470,-7460]);
+ await page.evaluate(()=>partyTest.game.scenery.venue.palace.setGate(false,true));await delay(1500);await shot('palace-rose-gate-closed.png');
+ await page.evaluate(()=>partyTest.game.scenery.venue.palace.setGate(true,true));await delay(1500);await shot('palace-rose-gate-open.png');
+ await inspectCamera([370,550,-7040],[400,530,-7470]);await shot('palace-window-relief.png');
+ report.checks.walkThrough=await page.evaluate(()=>{
+   const g=partyTest.game.core,t=g.trav;t.camYaw=Math.PI;t.gPos.set(0,340.5,-7395);t.bPos.set(2,340.5,-7395);
+   const controls={dx:0,dy:0,wheel:0,axis:()=>({x:0,y:1}),held:k=>k==='shift',hit:()=>false};
+   for(let i=0;i<200;i++)t.update(.05,controls,i*.05);
+   return{position:t.gPos.toArray(),floor:partyTest.game.scenery.ground(t.gPos.x,t.gPos.z,t.gPos.y+1)};
+ });
+ assert(report.checks.walkThrough.position[2]<-7470,'Actual movement could not cross the open gate');save();
+ await page.evaluate(()=>{partyTest.game.controller.updateCamera=window.__normalReviewCamera;});
+
+ report.checks.gate=await page.evaluate(()=>{const v=partyTest.game.scenery.venue;return{position:partyTest.game.pos.toArray(),entrance:{bounds:v.palace.vestibule,opening:v.palace.gateOpening?.()},plants:v.gardens?.plantBakeStatus||null};});save();
+ await page.evaluate(()=>{const g=partyTest.game.core;g.trav.teleport(-192.5,-8412.5);g.trav.gPos.y=792;g.trav.camYaw=1.1;g.trav.camPitch=.35;g.trav.camDist=16;});
+ await delay(12000);await shot('palace-crown-garden.png');
+ await context.close();
+ const b=await open('#invite='+encodeURIComponent(fixtures.slots[0].token));await b.page.locator('#join').click();await b.page.waitForFunction(()=>window.partyTest?.game?.core?.ready===true);
+ report.checks.birthday=await b.page.evaluate(()=>({privateNarrative:partyTest.game.core.allowPersonalNarrative,companion:partyTest.game.core.st.names.boy,siblings:partyTest.game.core.caravan.bodies.filter(b=>b.def.kind==='sibling').length}));
+ assert.equal(report.checks.birthday.companion,'AbdulAzim');assert(report.checks.birthday.siblings>0);save();
+ await b.context.close();await browser.close();
+ if(report.errors.length)process.exitCode=1;
+})().catch(e=>{report.errors.push({type:'fatal',message:String(e),stack:e.stack});save();console.error(e);process.exitCode=1;});

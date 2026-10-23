@@ -327,7 +327,7 @@ export class Travellers {
 
     const dir = new THREE.Vector3(Math.sin(this.heading), 0, Math.cos(this.heading));
     const next = this.gPos.clone().addScaledVector(dir, this.speed * dt);
-    if (terrainHeight(next.x, next.z) < WATER_Y + 0.1) {
+    if (groundAt(next.x, next.z, this.gPos.y + 1.5) < WATER_Y + 0.1) {
       this.speed *= -0.2; // bumped the shore
       return;
     }
@@ -338,8 +338,8 @@ export class Travellers {
     this.gPos.y = groundAt(this.gPos.x, this.gPos.z, this.gPos.y + 1.5);
     // Tilt to the terrain.
     const f = 1.8;
-    const hF = terrainHeight(this.gPos.x + dir.x * f, this.gPos.z + dir.z * f), hB = terrainHeight(this.gPos.x - dir.x * f, this.gPos.z - dir.z * f);
-    const hR = terrainHeight(this.gPos.x + dir.z * f, this.gPos.z - dir.x * f), hL = terrainHeight(this.gPos.x - dir.z * f, this.gPos.z + dir.x * f);
+    const hF = groundAt(this.gPos.x + dir.x * f, this.gPos.z + dir.z * f, this.gPos.y + 1.5), hB = groundAt(this.gPos.x - dir.x * f, this.gPos.z - dir.z * f, this.gPos.y + 1.5);
+    const hR = groundAt(this.gPos.x + dir.z * f, this.gPos.z - dir.x * f, this.gPos.y + 1.5), hL = groundAt(this.gPos.x - dir.z * f, this.gPos.z + dir.x * f, this.gPos.y + 1.5);
     this.pitch = damp(this.pitch, Math.atan2(hB - hF, 2 * f), 8, dt);
     this.roll = damp(this.roll, Math.atan2(hR - hL, 2 * f), 8, dt);
     this.grounded = true;
