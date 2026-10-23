@@ -1,0 +1,12 @@
+services:
+  - type: web
+    name: starlight-birthday-party
+    runtime: docker
+    branch: birthday/complete-golden-world
+    plan: free
+    healthCheckPath: /healthz
+    envVars:
+      - key: PARTY_CONFIG_JSON
+        sync: false
+      - key: NODE_ENV
+        value: production

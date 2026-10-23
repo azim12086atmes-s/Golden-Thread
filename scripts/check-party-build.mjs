@@ -68,6 +68,7 @@ for (const file of files.filter(file => /\.m?js$/.test(file) && !file.includes(`
   const code = fs.readFileSync(file, 'utf8');
   for (const match of code.matchAll(IMPORT_RE)) {
     const target = match[1];
+    check(!/\.css(?:[?#]|$)/i.test(target), `CSS must be loaded by a stylesheet link, not a JavaScript module: ${target}`);
     check(!/\.ts(?:[?#]|$)/i.test(target), `Unresolved TypeScript import in ${path.relative(DIST, file)}: ${target}`);
     if (!target.startsWith('.')) {
       if (target === 'three') check(fileSet.has('vendor/three.module.min.js'), 'Import map target for "three" is missing.');

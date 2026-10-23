@@ -6,3 +6,14 @@ dist/
 .claude/
 *.jsonl
 dist-*/
+
+# Birthday build and local review output
+browser-captures/
+data/world/
+.review-fixture.json
+REVIEW_CHANGES.json
+party.json
+invitations.html
+*.zip
+.env*
+

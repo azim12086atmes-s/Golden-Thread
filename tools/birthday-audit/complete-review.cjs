@@ -29,8 +29,15 @@ let browser;
   page.on('console',m=>{if(m.type()==='error'){report.errors.push({type:'console',message:m.text().slice(0,2500)});save();}});
   await page.goto(base+url,{waitUntil:'domcontentloaded'});return{context,page};
  }
+ async function waitForGame(page){
+  if(report.errors.length)throw new Error('Browser startup failed: '+report.errors.at(-1).message);
+  let consoleError,pageError;
+  const failed=new Promise((resolve,reject)=>{consoleError=m=>{if(m.type()==='error')reject(new Error(m.text()));};pageError=e=>reject(e);page.on('console',consoleError);page.on('pageerror',pageError);});
+  try{await Promise.race([page.waitForFunction(()=>window.partyTest?.game?.core?.ready===true),failed]);}
+  finally{page.off('console',consoleError);page.off('pageerror',pageError);}
+ }
  const {context,page}=await open('?guest=1');await page.locator('#join').click();
- await page.waitForFunction(()=>window.partyTest?.game?.core?.ready===true);
+ await waitForGame(page);
  report.checks.ui=await page.evaluate(()=>({uiRoots:document.querySelectorAll('#ui').length,personalNarrative:partyTest.game.core.allowPersonalNarrative,hiddenSiblingModels:partyTest.game.core.caravan.bodies.filter(b=>b.def.kind==='sibling').length,wardrobe:Object.keys(partyTest.game.core.st.outfits)}));
  assert.equal(report.checks.ui.uiRoots,1);assert.equal(report.checks.ui.hiddenSiblingModels,0);assert.equal(report.checks.ui.personalNarrative,false);
  async function shot(file){await page.screenshot({path:path.join(out,file),timeout:120000});report.captures.push(file);save();console.log('Captured '+file);}
@@ -65,7 +72,7 @@ let browser;
  report.checks.crownPlants=await page.evaluate(()=>partyTest.game.scenery.venue.gardens.plantBakeStatus);save();
  await shot('palace-crown-garden.png');
  await context.close();
- const b=await open('#invite='+encodeURIComponent(fixtures.slots[0].token));await b.page.locator('#join').click();await b.page.waitForFunction(()=>window.partyTest?.game?.core?.ready===true);
+ const b=await open('#invite='+encodeURIComponent(fixtures.slots[0].token));await b.page.locator('#join').click();await waitForGame(b.page);
  report.checks.birthday=await b.page.evaluate(()=>({privateNarrative:partyTest.game.core.allowPersonalNarrative,companion:partyTest.game.core.st.names.boy,siblings:partyTest.game.core.caravan.bodies.filter(b=>b.def.kind==='sibling').length}));
  assert.equal(report.checks.birthday.companion,'AbdulAzim');assert(report.checks.birthday.siblings>0);save();
  await b.context.close();await browser.close();

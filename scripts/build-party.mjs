@@ -78,11 +78,13 @@ if (missingVendorModules.length) throw new Error(`Missing vendored Three.js addo
 const indexHtml = fs.readFileSync(path.join(ROOT, 'party', 'index.html'), 'utf8')
   .replace('/party/main.js"', '/party/main.js?v=' + BUILD_ID + '"')
   .replace('/party/styles.css"', '/party/styles.css?v=' + BUILD_ID + '"')
+  .replace('/party/golden-ui.css"', '/party/golden-ui.css?v=' + BUILD_ID + '"')
   .replace('"three/addons/":"/vendor/addons/"', '"three/addons/":"/vendor/addons/","three/examples/jsm/":"/vendor/addons/"')
   .replace('</head>', `  <link rel="stylesheet" href="/src/ui/styles.css?v=${BUILD_ID}">\n</head>`);
 fs.writeFileSync(path.join(DIST, 'index.html'), indexHtml);
 fs.mkdirSync(path.join(DIST, 'party'), { recursive: true });
 fs.copyFileSync(path.join(ROOT, 'party', 'styles.css'), path.join(DIST, 'party', 'styles.css'));
+fs.copyFileSync(path.join(ROOT, 'party', 'golden-ui.css'), path.join(DIST, 'party', 'golden-ui.css'));
 const originalStyles = fs.readFileSync(path.join(ROOT, 'src', 'ui', 'styles.css'), 'utf8').replace(/(^|\n)\s*:root\s*\{/g, '$1#ui {');
 const scopedStylesPath = path.join(DIST, 'src', 'ui', 'styles.css');
 fs.mkdirSync(path.dirname(scopedStylesPath), { recursive: true });

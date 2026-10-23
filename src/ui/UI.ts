@@ -60,7 +60,6 @@ import { btn, h } from './dom';
 import { DiaryPanel } from './DiaryPanel';
 import { dayKey, entryOn, streak } from '../diary/diary';
 import { AccountPanel } from './AccountPanel';
-import '../../party/golden-ui.css';
 
 type Panel = 'guidebook' | 'finder' | 'work' | 'harbour' | 'bus' | 'tram' | 'air' | 'field' | 'institute' | 'care' | 'wardrobe' | 'bag' | 'journal' | 'map' | 'messages' | 'vehicles' | 'dialogue' | 'animal' | 'build' | 'van' | 'house' | 'farm' | 'market' | 'help' | 'homes' | 'houses' | 'property' | 'diary' | 'account' | null;
 

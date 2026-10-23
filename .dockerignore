@@ -1,0 +1,12 @@
+.git
+node_modules
+dist
+browser-captures
+data/world
+.review-fixture.json
+REVIEW_CHANGES.json
+*.zip
+.env*
+*private*
+invitations.html
+party.json
