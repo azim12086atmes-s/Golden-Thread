@@ -268,7 +268,9 @@ test('birthday photo variants stay private and listings omit image data', async 
 test('static server serves dist and blocks traversal to sibling files', async t => {
   const f = await fixture(); t.after(f.close);
   await fs.symlink(path.join(f.tmp, 'private.json'), path.join(f.tmp, 'dist', 'link.json'));
-  assert.match((await request(f, 'GET', '/')).text(), /party/);
+  const entry=await request(f, 'GET', '/');
+  assert.match(entry.text(), /party/);
+  assert.match(entry.headers['content-security-policy'], /style-src-attr 'unsafe-inline'/);
   const traversal = await request(f, 'GET', '/%2e%2e%2fprivate.json');
   assert.equal(traversal.status, 404);
   assert.doesNotMatch(traversal.text(), /secret/);

@@ -268,7 +268,7 @@ export function createPartyServer({ config, distDir = path.join(ROOT, 'dist'), n
   });
   const fail = (res, status, message) => writeJSON(res, status, { error: message });
   const handler = async (req, res) => {
-    res.setHeader('x-content-type-options', 'nosniff'); res.setHeader('x-frame-options', 'DENY'); res.setHeader('referrer-policy', 'no-referrer'); res.setHeader('content-security-policy', "default-src 'self'; img-src 'self' data: blob:; media-src 'self' blob:; connect-src 'self'; style-src 'self'; object-src 'none'; frame-ancestors 'none'");
+    res.setHeader('x-content-type-options', 'nosniff'); res.setHeader('x-frame-options', 'DENY'); res.setHeader('referrer-policy', 'no-referrer'); res.setHeader('content-security-policy', "default-src 'self'; img-src 'self' data: blob:; media-src 'self' blob:; connect-src 'self'; style-src 'self'; style-src-attr 'unsafe-inline'; object-src 'none'; frame-ancestors 'none'");
     const url = new URL(req.url, 'http://localhost');
     try {
       if (req.method === 'GET' && url.pathname === '/healthz') return writeJSON(res, 200, { ok: true });
@@ -506,7 +506,7 @@ export function createPartyServer({ config, distDir = path.join(ROOT, 'dist'), n
       if (path.basename(resolvedFile) === 'index.html') {
         const html = await fs.promises.readFile(resolvedFile); const match = /<script\s+type=["']importmap["']\s*>([\s\S]*?)<\/script>/i.exec(html.toString('utf8'));
         const hash = match ? `'sha256-${createHash('sha256').update(match[1]).digest('base64')}'` : '';
-        res.setHeader('content-security-policy', `default-src 'self'; script-src 'self' ${hash}; img-src 'self' data: blob:; media-src 'self' blob:; connect-src 'self'; style-src 'self'; object-src 'none'; frame-ancestors 'none'`);
+        res.setHeader('content-security-policy', `default-src 'self'; script-src 'self' ${hash}; img-src 'self' data: blob:; media-src 'self' blob:; connect-src 'self'; style-src 'self'; style-src-attr 'unsafe-inline'; object-src 'none'; frame-ancestors 'none'`);
         res.writeHead(200, { 'content-type': 'text/html; charset=utf-8', 'content-length': html.length, 'cache-control': 'no-cache' }); return req.method === 'HEAD' ? res.end() : res.end(html);
       }
       res.writeHead(200, { 'content-type': types[path.extname(file)] || 'application/octet-stream', 'content-length': stat.size, 'cache-control': 'public, max-age=3600' });

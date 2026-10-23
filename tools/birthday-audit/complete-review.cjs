@@ -5,6 +5,7 @@ const report={method:'Actual current Game plus party adapter; Chromium SwiftShad
 const delay=ms=>new Promise(r=>setTimeout(r,ms));
 const base='http://127.0.0.1:8013';
 const save=()=>fs.writeFileSync(path.join(out,'report.json'),JSON.stringify(report,null,2));
+let browser;
 (async()=>{
  for(let i=0;i<30;i++){try{const r=await fetch(base);if(r.ok)break;}catch{}await delay(500);}
  const fixtures=JSON.parse(fs.readFileSync('.review-fixture.json','utf8'));
@@ -12,7 +13,7 @@ const save=()=>fs.writeFileSync(path.join(out,'report.json'),JSON.stringify(repo
  const sessions=[];
  for(const slot of fixtures.slots)sessions.push(await join({token:slot.token}));
  for(let i=1;i<=13;i++)sessions.push(await join({guestNumber:String(i),name:'Guest '+i}));
- const views=await Promise.all(sessions.map(async s=>{const r=await fetch(base+'/api/state',{headers:{authorization:'Bearer '+s.ticket}});assert(r.ok);return r.json();}));
+ const views=await Promise.all(sessions.map(async s=>{const r=await fetch(base+'/api/state?ticket='+encodeURIComponent(s.ticket));assert(r.ok,'State review failed '+r.status);return r.json();}));
  const guestView=views.find(v=>v.self.id==='numbered-1')||views.find(v=>v.self.role==='guest');
  const birthdayView=views.find(v=>v.self.role==='birthday');
  assert(guestView&&birthdayView);
@@ -21,7 +22,7 @@ const save=()=>fs.writeFileSync(path.join(out,'report.json'),JSON.stringify(repo
  assert(!JSON.stringify(guestView).includes('review-sibling-'),'Private siblings leaked to public view');
  assert(birthdayView.players.some(p=>p.id==='review-observer'));
  report.checks.sessions={connected:sessions.length,publicPlayers:guestView.players.length,privateProjection:true};save();
- const browser=await chromium.launch({headless:true,args:['--use-gl=angle','--use-angle=swiftshader','--enable-unsafe-swiftshader','--enable-webgl','--ignore-gpu-blocklist','--no-sandbox','--disable-dev-shm-usage']});
+ browser=await chromium.launch({headless:true,args:['--use-gl=angle','--use-angle=swiftshader','--enable-unsafe-swiftshader','--enable-webgl','--ignore-gpu-blocklist','--no-sandbox','--disable-dev-shm-usage']});
  async function open(url){
   const context=await browser.newContext({viewport:{width:1360,height:850},deviceScaleFactor:1});const page=await context.newPage();page.setDefaultTimeout(180000);
   page.on('pageerror',e=>{report.errors.push({type:'page',message:String(e)});save();});
@@ -60,11 +61,13 @@ const save=()=>fs.writeFileSync(path.join(out,'report.json'),JSON.stringify(repo
 
  report.checks.gate=await page.evaluate(()=>{const v=partyTest.game.scenery.venue;return{position:partyTest.game.pos.toArray(),entrance:{bounds:v.palace.vestibule,opening:v.palace.gateOpening?.()},plants:v.gardens?.plantBakeStatus||null};});save();
  await page.evaluate(()=>{const g=partyTest.game.core;g.trav.teleport(-192.5,-8412.5);g.trav.gPos.y=792;g.trav.camYaw=1.1;g.trav.camPitch=.35;g.trav.camDist=16;});
- await delay(12000);await shot('palace-crown-garden.png');
+ await page.waitForFunction(()=>{const p=partyTest.game.scenery.venue.gardens?.plantBakeStatus;return p?.near&&p.settled;},null,{timeout:150000});
+ report.checks.crownPlants=await page.evaluate(()=>partyTest.game.scenery.venue.gardens.plantBakeStatus);save();
+ await shot('palace-crown-garden.png');
  await context.close();
  const b=await open('#invite='+encodeURIComponent(fixtures.slots[0].token));await b.page.locator('#join').click();await b.page.waitForFunction(()=>window.partyTest?.game?.core?.ready===true);
  report.checks.birthday=await b.page.evaluate(()=>({privateNarrative:partyTest.game.core.allowPersonalNarrative,companion:partyTest.game.core.st.names.boy,siblings:partyTest.game.core.caravan.bodies.filter(b=>b.def.kind==='sibling').length}));
  assert.equal(report.checks.birthday.companion,'AbdulAzim');assert(report.checks.birthday.siblings>0);save();
  await b.context.close();await browser.close();
  if(report.errors.length)process.exitCode=1;
-})().catch(e=>{report.errors.push({type:'fatal',message:String(e),stack:e.stack});save();console.error(e);process.exitCode=1;});
+})().catch(async e=>{report.errors.push({type:'fatal',message:String(e),stack:e.stack});save();console.error(e);if(browser){for(const c of browser.contexts())for(const p of c.pages())try{await p.screenshot({path:path.join(out,'failure-view.png'),timeout:15000});}catch{}await browser.close();}process.exitCode=1;});

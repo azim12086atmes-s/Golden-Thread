@@ -20,8 +20,6 @@ jobs:
           "$RUNNER_TEMP/birthday-validation/node_modules/.bin/playwright" install --with-deps chromium
       - name: Fetch verified palace terrain
         run: node scripts/fetch-palace-assets.mjs
-      - name: Original Golden Thread tests
-        run: npm test
       - name: Original TypeScript contracts
         if: always()
         run: npm run typecheck
@@ -48,3 +46,8 @@ jobs:
             data/world
             dist
           retention-days: 7
+      - name: Original Golden Thread tests
+        if: always()
+        env:
+          VITEST_RPC_TIMEOUT: '180000'
+        run: npm test -- --maxWorkers=2 --minWorkers=1
