@@ -47,7 +47,7 @@ let toastTimer, reconnecting = false, reconnectTimer;
 let socket = null, rpcId = 0, socketPoll = null;
 const rpcPending = new Map();
 const panel = $('panel'), content = $('panel-content');
-const audio = new PartyAudio(data => api('/api/signal', data), message => toast(message));
+const audio = new PartyAudio(data => api('/api/signal', data, true), message => { toast(message); updateAudioUI(); });
 function toast(message) { text('toast', message); $('toast').hidden = false; clearTimeout(toastTimer); toastTimer = setTimeout(() => { $('toast').hidden = true; }, 4500); }
 async function api(path, data, quiet = false) {
   let response;
@@ -130,7 +130,7 @@ function listen() {
 }
 async function reconnect() {
   if (reconnecting || !invited || !game) return; reconnecting = true; events?.close(); connection(false);
-  try { const joined = await api('/api/join', entry(), true); ticket = joined.ticket; await receive(await api(`/api/state?ticket=${encodeURIComponent(ticket)}`, undefined, true)); listen(); }
+  try { const joined = await api('/api/join', entry(), true); ticket = joined.ticket; audio.reset(); await receive(await api(`/api/state?ticket=${encodeURIComponent(ticket)}`, undefined, true)); listen(); }
   catch { clearTimeout(reconnectTimer); reconnectTimer = setTimeout(() => reconnect(), 5000); }
   finally { reconnecting = false; }
 }
@@ -141,7 +141,7 @@ async function receive(next) {
   if (birthday) { game.scenery.setCelebrationName(birthday.name); text('birthday-title', `Happy Birthday, ${birthday.name}!`); }
   $('celebration-banner').hidden = next.party.phase !== 'celebration';
   await audio.refresh(next.voicePeers || next.players, next.self);
-  for (const signal of next.signals || []) await audio.signal(signal);
+  await Promise.all((next.signals || []).map(signal => audio.signal(signal)));
   if (previous?.party.game !== next.party.game && next.party.game) {
     if (activePanel === 'memory') closePanel();
     const spec = GAMES.find(g => g.id === next.party.game); toast(`${spec.title} · ${spec.objective}`); audio.tone(880, .5);
@@ -340,16 +340,30 @@ function renderFestival(){
   if(!observing){const row=el('div',undefined,'button-row');row.append(button('The complete dressing room',()=>openPanel('wardrobe')),button('Save a birthday polaroid',()=>game.photo()),button('Play another shared game',()=>openPanel('games')));if(state.self.role==='birthday')row.append(button('Wear the original Starlight Gown',async()=>{await action({type:'outfit',avatar:'g-starlight-gown'});toast('The Starlight Gown is ready for your evening.');}));content.append(row);}
 }
 function renderAudio() {
-  beginPanel('voice', 'SOUNDTRACK TO THE EVENING', 'A little closer, by voice.', 'Voice is optional. Enable your microphone, then hold Q or the talk button to speak. Music and effects are made in your browser.');
-  const row = el('div', undefined, 'button-row'); row.append(button('Enable sound', () => audio.unlock()), button(audio.mic ? 'Turn microphone off' : 'Enable microphone', async () => { if (audio.mic) audio.disableMic(); else await audio.enableMic(); renderAudio(); })); content.append(row);
-  if (audio.mic) { const talk = button('Hold to talk', () => {}, 'gold-button'); talk.onpointerdown = e => { talk.setPointerCapture(e.pointerId); audio.setTalking(true); }; talk.onpointerup = talk.onpointercancel = () => audio.setTalking(false); content.append(talk); }
+  beginPanel('voice', 'SOUNDTRACK TO THE EVENING', 'A little closer, by voice.', 'Enable your microphone, then tap the mic button to talk while playing. Tap again to mute. You can also hold Q on a keyboard.');
+  const status=el('p','','privacy-note');status.id='voice-status';content.append(status);
+  const row = el('div', undefined, 'button-row'); row.append(button('Enable sound', () => audio.unlock()), button('Test sound', async () => { await audio.unlock();audio.tone(660,.3,.12,true); }),button(audio.mic ? 'Turn microphone off' : 'Enable microphone', async () => { if (audio.mic) audio.disableMic(); else await audio.enableMic(); renderAudio(); }),button('Reconnect voice',async()=>{await reconnect();renderAudio();})); content.append(row);
+  if (audio.mic) {
+    const talk = button('',()=>{audio.setHandsFree(!audio.handsFree);updateAudioUI();},'gold-button');talk.id='voice-talk';content.append(talk);
+    const meter=el('meter');meter.id='voice-level';meter.min=0;meter.max=1;meter.value=0;meter.setAttribute('aria-label','Microphone level');content.append(meter);
+  }
   if (state.self.role === 'birthday') {
     const field = el('label', 'Speak to', 'field'); const select = el('select'); for (const [v,l] of [['guests','Party guests'],['private','Private voice']]) { const option = el('option',l); option.value=v; option.selected=audio.channel===v; select.append(option); }
-    select.onchange = () => { audio.setTalking(false); audio.channel=select.value; audio.applyTracks(); toast(`Voice channel: ${select.selectedOptions[0].textContent}.`); }; field.append(select); content.append(field, el('p','Private companions’ audio reaches only you. Select the private channel before replying to them.', 'privacy-note'));
+    select.onchange = async () => { audio.mute(); audio.channel=select.value; await audio.applyTracks();updateAudioUI();toast(`Voice channel: ${select.selectedOptions[0].textContent}.`); }; field.append(select); content.append(field, el('p','Private companions’ audio reaches only you. Select the private channel before replying to them.', 'privacy-note'));
   } else if (isPrivate(state.self.role)) content.append(el('p',state.self.role === 'observer' ? 'You are here to watch and speak privately with the birthday guest. Your character follows her automatically. Nobody else receives your character or your microphone.' : 'Your microphone reaches only the birthday guest. Party guests cannot see or hear you.', 'privacy-note'));
   const switches = el('div', undefined, 'button-row'); switches.append(button(audio.music ? 'Music: on' : 'Music: off', async () => { await audio.unlock(); audio.music=!audio.music; renderAudio(); }), button(audio.effects ? 'Effects: on' : 'Effects: off', () => { audio.effects=!audio.effects; renderAudio(); })); content.append(switches);
   const volume = el('label','Party volume','field'); const slider = el('input'); slider.type='range';slider.min='0';slider.max='1';slider.step='.05';slider.value=String(audio.volume); slider.className='volume'; slider.oninput=()=>audio.setVolume(slider.value); volume.append(slider);content.append(volume);
+  updateAudioUI();
 }
+function updateAudioUI(){
+  const mic=$('voice-toggle');if(!mic)return;
+  mic.hidden=!audio.mic;mic.textContent=audio.talking?'Mic on · tap to mute':'Mic muted · tap to talk';mic.setAttribute('aria-pressed',String(audio.talking));
+  const talk=$('voice-talk');if(talk){talk.textContent=audio.talking?'Mute microphone':'Unmute microphone';talk.setAttribute('aria-pressed',String(audio.talking));}
+  const meter=$('voice-level');if(meter)meter.value=audio.level();
+  const status=$('voice-status');if(status){const peers=[...audio.peers.values()],connected=peers.filter(p=>p.pc.connectionState==='connected').length;status.textContent=`${audio.mic?(audio.talking?'Microphone on.':'Microphone ready, muted.'):'Microphone off.'} ${connected} voice connection${connected===1?'':'s'} ready.${peers.length>connected?' Connecting…':''}${audio.playbackBlocked?' Tap Enable sound to hear voices.':''}`;}
+}
+$('voice-toggle').onclick=async()=>{await audio.unlock();audio.setHandsFree(!audio.handsFree);updateAudioUI();};
+setInterval(updateAudioUI,200);
 let memoryTimeouts = [];
 function renderMemory() {
   beginPanel('memory','CONSTELLATION ECHOES','Watch. Remember. Shine.','Watch five symbols glow, then tap them in the same order. You can replay the pattern.');

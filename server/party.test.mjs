@@ -36,6 +36,38 @@ async function joinNumber(f, guestNumber, name, role) { return request(f, 'POST'
 async function post(f, route, ticket, body) { return request(f, 'POST', route, { ticket, body }); }
 async function state(f, ticket) { return request(f, 'GET', `/api/state?ticket=${ticket}`); }
 
+test('voice reconnect changes its public connection revision and clears stale negotiation', async t => {
+  const f=await fixture();t.after(f.close);
+  const a=(await joinNumber(f,'7001')).json(),b=(await joinNumber(f,'7002')).json();
+  const before=(await state(f,a.ticket)).json().voicePeers.find(p=>p.id===b.self.id).connectionId;
+  await post(f,'/api/signal',b.ticket,{to:a.self.id,kind:'description',payload:{type:'offer',sdp:'old-offer'}});
+  await post(f,'/api/signal',a.ticket,{to:b.self.id,kind:'candidate',payload:{candidate:'old-candidate'}});
+  const rejoined=(await joinNumber(f,'7002')).json();
+  const next=(await state(f,a.ticket)).json();
+  assert.notEqual(next.voicePeers.find(p=>p.id===b.self.id).connectionId,before);
+  assert.ok(!JSON.stringify(next).includes(rejoined.ticket));
+  assert.deepEqual(next.signals,[]);
+  assert.deepEqual((await state(f,rejoined.ticket)).json().signals,[]);
+});
+
+test('friends join and refresh behind the birthday guest while her location and story survive reload', async t => {
+  const f=await fixture();t.after(f.close);
+  const birthday=(await join(f,f.config.slots[0])).json();
+  const anchor={x:500,y:792,z:-8200,yaw:Math.PI/2};
+  f.server.partyInternals.positions.set(birthday.self.id,anchor);
+  const friend=(await joinNumber(f,'7003')).json();
+  const position=()=>f.server.partyInternals.positions.get(friend.self.id);
+  assert.ok(Math.hypot(position().x-anchor.x,position().z-anchor.z)<12);
+  assert.ok(position().x<anchor.x);assert.equal(position().y,anchor.y);
+  f.server.partyInternals.positions.set(birthday.self.id,{...anchor,x:700});
+  await joinNumber(f,'7003');assert.ok(position().x>688&&position().x<700);
+  const snapshot=f.server.partyInternals.exportSnapshot();
+  f.server.partyInternals.restoreSnapshot(snapshot);
+  await join(f,f.config.slots[0]);
+  assert.equal(f.server.partyInternals.positions.get(birthday.self.id).x,700);
+  assert.deepEqual(f.server.partyInternals.getJourney(),snapshot.journey);
+});
+
 test('guests start idle shared games, join together, and cannot interrupt a round or gain host powers', async t => {
   const f = await fixture({ observer:true }); t.after(f.close);
   const birthday = (await join(f, f.config.slots[0])).json();

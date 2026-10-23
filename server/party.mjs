@@ -177,6 +177,15 @@ export function createPartyServer({ config, distDir = path.join(ROOT, 'dist'), n
   };
   const initialPosition = slot => {
     if (slot.role === 'birthday') return { ...SPAWN, yaw: 0 };
+    const birthday = positions.get(birthdayId);
+    if (birthday && slot.role !== 'observer') {
+      // Public placement counts only public guests. Private companions must not
+      // change the visible formation or reveal their presence through its gaps.
+      const friends = [...sessionsBySlot.values()].filter(s => s.slot.role === slot.role && s.slot.id !== slot.id);
+      const n = friends.length, side = ((n % 5) - 2) * 2.2, back = 4 + Math.floor(n / 5) * 2.5;
+      const yaw = birthday.yaw || 0;
+      return { x: birthday.x - Math.sin(yaw) * back + Math.cos(yaw) * side, y: birthday.y, z: birthday.z - Math.cos(yaw) * back - Math.sin(yaw) * side, yaw, vehicle: 'walk' };
+    }
     if (slot.role === 'companion') {
       const n = [...sessionsBySlot.values()].filter(s => s.slot.role === 'companion').length;
       return { x: -10 + ((n - 1) % 3) * 3, y: 0, z: 68 - Math.floor((n - 1) / 3) * 3, yaw: 0 };
@@ -231,7 +240,7 @@ export function createPartyServer({ config, distDir = path.join(ROOT, 'dist'), n
   const stateFor = session => {
     const viewer = session.slot;
     const admitted = [...sessionsBySlot.values()].filter(s => s.expiresAt > now() && maySee(viewer, s.slot));
-    const voicePeers = admitted.filter(s => mayVoice(viewer, s.slot)).map(s => ({ id: s.slot.id, name: s.slot.name, isBirthday: s.slot.role === 'birthday', ...(viewer.role === 'birthday' ? { role: s.slot.role } : {}) }));
+    const voicePeers = admitted.filter(s => mayVoice(viewer, s.slot)).map(s => ({ id: s.slot.id, name: s.slot.name, connectionId: createHash('sha256').update(s.ticket).digest('hex').slice(0,24), isBirthday: s.slot.role === 'birthday', ...(viewer.role === 'birthday' ? { role: s.slot.role } : {}) }));
     const players = admitted.filter(s => !active?.chase || viewer.role === 'companion' || viewer.role === 'observer' || ['companion', 'observer'].includes(s.slot.role) || canSeeChase(active.chase, viewer.id, s.slot.id, positions, now())).map(s => ({ id: s.slot.id, name: s.slot.name, isBirthday: s.slot.role === 'birthday', role: viewer.role === 'birthday' ? s.slot.role : undefined, avatar: s.slot.avatar, ...(positions.get(s.slot.id) || coord()) }));
     const signals = (signalQueues.get(viewer.id) || []).slice(-256);
     const visibleWishes = wishes.filter(x => viewer.role === 'birthday' || x.from === viewer.id).map(x => viewer.role === 'birthday' ? ({ fromRole: x.role, text: x.text }) : ({ text: x.text }));
@@ -294,8 +303,11 @@ export function createPartyServer({ config, distDir = path.join(ROOT, 'dist'), n
         const activeCount = [...sessionsBySlot.values()].filter(s => s.expiresAt > now()).length;
         if (!existing && activeCount >= maxConnections) return fail(res, 429, 'The party is at its current connection limit.');
         if (existing) { const old = streams.get(existing.ticket); if (old) { old.end(); streams.delete(existing.ticket); } sessionsByTicket.delete(existing.ticket); }
+        signalQueues.delete(slot.id);
+        for (const [id, queue] of signalQueues) signalQueues.set(id, queue.filter(signal => signal.from !== slot.id));
         const ticket = token(); const session = { slot, ticket, expiresAt: now() + sessionMs, lastSeen: now() };
-        sessionsBySlot.set(slot.id, session); sessionsByTicket.set(ticket, session); if (!positions.has(slot.id)) positions.set(slot.id, initialPosition(slot));
+        sessionsBySlot.set(slot.id, session); sessionsByTicket.set(ticket, session);
+        if (!positions.has(slot.id) || slot.role !== 'birthday' && slot.role !== 'observer' && !active && !rallyAt && !journeyTravel) positions.set(slot.id, initialPosition(slot));
         if (active?.chase && slot.role !== 'observer') {
           updateChasePlayers(active.chase, publicRoster().map(s => s.id), now());
           if (slot.role === 'companion') practiceFor(slot);

@@ -1,6 +1,15 @@
 /** Party navigation opens the original UI; it never runs a second set of game rules. */
 export class CoreLife {
-  constructor(game, closePartyPanel) { this.game=game; this.core=game.core; this.closePartyPanel=closePartyPanel; }
+  constructor(game, closePartyPanel) {
+    this.game=game; this.core=game.core; this.closePartyPanel=closePartyPanel;
+    this.savePending=false;this.destroyed=false;
+    this.flushSave=()=>{if(!this.destroyed)this.core.save();};
+    this.scheduleSave=()=>{if(this.savePending)return;this.savePending=true;queueMicrotask(()=>{this.savePending=false;this.flushSave();});};
+    this.hiddenSave=()=>{if(document.hidden)this.flushSave();};
+    this.unsubscribers=['quest:started','quest:progress','quest:completed','lantern:lit','item:gained','item:crafted','npc:talked','animal:befriended','plot:bought','plot:changed','outfit:changed'].map(event=>this.core.bus.on(event,this.scheduleSave));
+    addEventListener('pagehide',this.flushSave);document.addEventListener('visibilitychange',this.hiddenSave);
+    this.saveTimer=setInterval(this.flushSave,3000);
+  }
   get st() { return this.core.st; }
   get guide() { return this.core.guide; }
   get van() { return this.core.van; }
@@ -22,5 +31,5 @@ export class CoreLife {
   interact() { if(this.core.readOnly || !this.core.target)return false; this.core.interact(this.core.target); return true; }
   hint() { return this.core.target?.label || ''; }
   save() { this.core.save(); }
-  destroy() { this.core.save(); document.getElementById('ui')?.remove(); }
+  destroy() { this.flushSave();this.destroyed=true;clearInterval(this.saveTimer);this.unsubscribers.forEach(off=>off());removeEventListener('pagehide',this.flushSave);document.removeEventListener('visibilitychange',this.hiddenSave);document.getElementById('ui')?.remove(); }
 }

@@ -1,0 +1,9 @@
+# Voice and return-to-party update
+
+One peer creates each audio offer; its partner reuses the incoming audio transceiver. Signals are serialized per peer and deduplicated before queueing. Rejoining changes the voice connection revision, recreates old peer connections and clears stale negotiation messages. The server still projects only permitted voice peers, and private microphone tracks remain limited to the birthday guest.
+
+Microphone permission and voice connection setup are separate. The Audio panel provides Enable sound, Test sound, Enable microphone, Unmute/Mute, a microphone meter, connection status and Reconnect voice. The mic button stays available during phone gameplay. Changing voice channels or leaving the browser mutes capture. Music can play independently of the effects switch.
+
+Story and inventory changes save after their event completes, with periodic saves and immediate page-hide/visibility saves. This preserves the original personal journey on refresh in the same browser; the shared twenty-land story remains in the hosted room snapshot. Returning or newly joining friends form behind the birthday guest during exploration. Her saved room location remains stable. Active minigames retain their own spawn rules. Private companions never change public formation spacing.
+
+Checks: privacy routing, mute during channel changes, stable one-offer negotiation, signal ordering/deduplication, reconnect revision and stale-signal cleanup, story lifecycle saves, party regrouping, existing game rules and hosted snapshot tests. Phone browser checks cover live microphone permission, mic controls outside the panel, channel-switch muting and a persisted story checkpoint after a real page reload. Offer/answer setup was exercised against the deployed signaling API. Actual inter-device audio packets were not verified: this execution browser restricts WebRTC network access, and a direct relay probe returned connection refused in this environment.
