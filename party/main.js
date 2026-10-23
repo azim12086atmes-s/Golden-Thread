@@ -13,6 +13,7 @@ import { Adventures, EXTRA_GAMES, CHASE_GAMES } from './adventures.js';
 import { CoreLife } from './core-life.js';
 import { partyPresentation } from './presentation-policy.js';
 import { stabilizeBloom } from './bloom.js';
+import { canWearPartyOutfit } from '../shared/appearance.mjs';
 import { buildVehicle, VEHICLES } from '../src/vehicles/vehicles';
 import { appendAtlas } from './atlas-map.js';
 import { Chariot, SEATS as CHARIOT_SEATS } from '../src/event/Chariot';
@@ -357,10 +358,14 @@ class PartyGame {
       beforeUpdate:(g,dt,t)=>this.beforeUpdate(g,dt,t),
       beforeRender:(g,dt,t)=>this.beforeRender(g,dt,t),
       interact:()=>this.partyInteraction(),photo:()=>this.photo(),
+      outfitAllowed:(who,id)=>canWearPartyOutfit(self.role==='birthday'&&who==='boy'?'observer':self.role,id),
       chooseVehicle:id=>state?.party.phase==='playing'&&id!=='walk'&&!(state.party.game==='sky-rings'&&id==='fly')?'Finish this round before changing rides.':null,
     });
     const g=this.core;
     stabilizeBloom(g.bloom);
+    // The original model's "girl" identity also powers each guest's local controller.
+    // Only the birthday invitation may show its wings, including on dragon rides.
+    if(self.role!=='birthday')for(const model of [g.trav.girl,g.van.girl,g.house.girl])model.hideBack();
     this.scene=g.scene; this.camera=g.camera; this.renderer=g.renderer;
     this.input=g.input; this.world=g.world; this.sky=g.sky; this.controller=g.trav; this.pos=g.trav.gPos;
     this.life=new CoreLife(this,()=>closePanel());

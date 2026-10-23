@@ -60,6 +60,9 @@ let browser;
  report.checks.wardrobeImmediate=await page.evaluate(()=>{const g=partyTest.game.core;const p=document.querySelector('#ui .p-wardrobe');const s=getComputedStyle(p);return{panel:g.ui.panelId,root:document.getElementById('ui').className,className:p.className,display:s.display,visibility:s.visibility,transform:s.transform,rect:p.getBoundingClientRect().toJSON(),rootGlass:getComputedStyle(document.getElementById('ui')).getPropertyValue('--glass-strong'),outfits:p.querySelectorAll('.outfit').length};});save();
  await delay(3000);report.checks.wardrobeSettled=await page.evaluate(()=>{const p=document.querySelector('#ui .panel');const s=getComputedStyle(p);return{panel:partyTest.game.core.ui.panelId,root:document.getElementById('ui').className,className:p.className,display:s.display,visibility:s.visibility,transform:s.transform,rect:p.getBoundingClientRect().toJSON()};});save();await shot('golden-full-wardrobe.png');
  assert(report.checks.wardrobeSettled.rect.x>=0&&report.checks.wardrobeSettled.rect.right<=1360,'Wardrobe is outside the visible viewport');
+ report.checks.appearance=await page.evaluate(async()=>{const g=partyTest.game.core,{OUTFITS}=await import('/src/characters/outfits.js'),model=g.trav.girl,original=model.outfit;model.setOutfit(OUTFITS['g-star']);model.setRideWings(true);const guestWings=model.hasWings;model.setRideWings(false);model.setOutfit(original);return{guestWings,signatureVisible:[...document.querySelectorAll('#ui .outfit b')].some(e=>['Starlight Gown','Pink Kurti & Jeans'].includes(e.textContent)),otherGuestWings:[...partyTest.game.players.values()].some(p=>!p.data.isBirthday&&p.model.hasWings),birthdayWings:[...partyTest.game.players.values()].find(p=>p.data.isBirthday)?.model.hasWings};});save();
+ assert.equal(report.checks.appearance.guestWings,false);assert.equal(report.checks.appearance.otherGuestWings,false);assert.equal(report.checks.appearance.signatureVisible,false);
+
  if(uiOnly){await context.close();await browser.close();if(report.errors.length)process.exitCode=1;return;}
  await page.evaluate(()=>partyTest.game.core.ui.closePanel());
  await page.waitForFunction(()=>partyTest.game.core.dress.blend===0);
@@ -91,8 +94,10 @@ let browser;
  await shot('palace-crown-garden.png');
  await context.close();
  const b=await open('#invite='+encodeURIComponent(fixtures.slots[0].token));await b.page.locator('#join').click();await waitForGame(b.page);
- report.checks.birthday=await b.page.evaluate(()=>({privateNarrative:partyTest.game.core.allowPersonalNarrative,companion:partyTest.game.core.st.names.boy,siblings:partyTest.game.core.caravan.bodies.filter(b=>b.def.kind==='sibling').length}));
- assert.equal(report.checks.birthday.companion,'AbdulAzim');assert(report.checks.birthday.siblings>0);save();
+ await b.page.evaluate(()=>partyTest.game.core.wear('girl','g-starlight-gown'));
+ await b.page.waitForFunction(()=>partyTest.game.core.trav.girl.hasWings);
+ report.checks.birthday=await b.page.evaluate(()=>({privateNarrative:partyTest.game.core.allowPersonalNarrative,companion:partyTest.game.core.st.names.boy,siblings:partyTest.game.core.caravan.bodies.filter(b=>b.def.kind==='sibling').length,wings:partyTest.game.core.trav.girl.hasWings,signatureGown:partyTest.game.core.canWear('girl','g-starlight-gown'),signatureBoy:partyTest.game.core.canWear('boy','b-celebration')}));
+ assert.equal(report.checks.birthday.wings,true);assert(report.checks.birthday.signatureGown&&report.checks.birthday.signatureBoy); assert.equal(report.checks.birthday.companion,'AbdulAzim');assert(report.checks.birthday.siblings>0);save();
  await b.context.close();await browser.close();
  if(report.errors.length)process.exitCode=1;
 })().catch(async e=>{report.errors.push({type:'fatal',message:String(e),stack:e.stack});save();console.error(e);if(browser){for(const c of browser.contexts())for(const p of c.pages())try{await p.screenshot({path:path.join(out,'failure-view.png'),timeout:15000});}catch{}await browser.close();}process.exitCode=1;});

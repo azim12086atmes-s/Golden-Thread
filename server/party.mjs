@@ -9,6 +9,7 @@ import { newJourney, journeyView, advanceJourney, journeyCatalog, JOURNEY_TITLE,
 import { followStep, enforceGap } from '../shared/follow.js';
 import { BRIDGE_START, BRIDGE_CHECKPOINTS as PALACE_BRIDGE_CHECKPOINTS, SKY_RINGS as PALACE_SKY_RINGS, INGREDIENTS as PALACE_INGREDIENTS, CAKE_SPOT as PALACE_CAKE_SPOT } from '../shared/party-layout.js';
 import { createFestival, advanceFestival, festivalView } from '../shared/festival.mjs';
+import { canWearPartyOutfit, partyAvatar } from '../shared/appearance.mjs';
 
 const HERE = path.dirname(fileURLToPath(import.meta.url));
 const ROOT = path.resolve(HERE, '..');
@@ -55,7 +56,7 @@ function validateConfig(config) {
     if (ids.has(id) || /^numbered-\d+$/.test(id)) throw new Error('Duplicate or reserved slot id.'); ids.add(id);
     const name = cleanLabel(s.name); const avatar = cleanLabel(s.avatar, 48);
     if (!name || !avatar) throw new Error(`Slot ${i + 1} needs a public name and avatar id.`);
-    return { id, role: s.role, name, avatar, token: s.token };
+    return { id, role: s.role, name, avatar: partyAvatar(s.role, avatar), token: s.token };
   });
   if (birthdayCount !== 1) throw new Error('Config must have exactly one birthday slot.');
   if (observerCount > 1) throw new Error('Config may have at most one observer slot.');
@@ -280,7 +281,7 @@ export function createPartyServer({ config, distDir = path.join(ROOT, 'dist'), n
           const guestNumber = body.guestNumber.replace(/^0+(?=\d)/, '');
           const name = body.name === undefined ? `Guest ${guestNumber}` : cleanLabel(body.name, 36);
           if (!name) return fail(res, 401, 'Enter a valid numbered guest link.');
-          slot = { id: `numbered-${guestNumber}`, role: 'guest', name, avatar: 'g-kurti-jeans', token: null };
+          slot = { id: `numbered-${guestNumber}`, role: 'guest', name, avatar: 'g-meadow', token: null };
         } else slot = inviteByToken.get(String(body.token || ''));
         if (!slot) return fail(res, 401, 'Invalid invitation.');
         const existing = sessionsBySlot.get(slot.id);
@@ -447,6 +448,7 @@ export function createPartyServer({ config, distDir = path.join(ROOT, 'dist'), n
               if (slot.role !== 'birthday' || !session || session.expiresAt <= now() || !['observer', 'companion'].includes(session.slot.role)) return fail(res, 403, 'That wardrobe is not available.');
               target = session.slot;
             }
+            if (!canWearPartyOutfit(target.role, body.avatar)) return fail(res, 403, 'Please choose another outfit.');
             target.avatar = body.avatar; broadcast(); return writeJSON(res, 200, { ok: true });
           }
           if (type === 'celebrate') {
@@ -549,13 +551,14 @@ export function createPartyServer({ config, distDir = path.join(ROOT, 'dist'), n
     if (!raw || typeof raw !== 'object') return;
     const data = decodeSnapshot(raw);
     const slotStates = new Map((data.slotStates || []).filter(s => s && typeof s.id === 'string').map(s => [s.id, s]));
-    for (const slot of slots) { const saved = slotStates.get(slot.id); if (saved && typeof saved.avatar === 'string') slot.avatar = cleanLabel(saved.avatar, 48) || slot.avatar; }
+    for (const slot of slots) { const saved = slotStates.get(slot.id); if (saved && typeof saved.avatar === 'string') slot.avatar = partyAvatar(slot.role, cleanLabel(saved.avatar, 48) || slot.avatar); }
     for (const m of [sessionsBySlot, sessionsByTicket, positions, moveTimes, signalQueues, signalTimes, privateJourneys, observerUpdated]) m.clear();
     for (const saved of data.sessions || []) {
       if (!saved || typeof saved.ticket !== 'string' || typeof saved.slot?.id !== 'string' || !Number.isFinite(saved.expiresAt) || saved.expiresAt <= now()) continue;
       const configured = slots.find(x => x.id === saved.slot.id);
       const slot = configured || (/^numbered-\d{1,10}$/.test(saved.slot.id) && saved.slot.role === 'guest' ? { id: saved.slot.id, role: 'guest', name: cleanLabel(saved.slot.name) || `Guest ${saved.slot.id.slice(9)}`, avatar: cleanLabel(saved.slot.avatar, 48) || 'g-petal', token: null } : null);
       if (!slot) continue;
+      slot.avatar = partyAvatar(slot.role, slot.avatar);
       const session = { slot, ticket: saved.ticket, expiresAt: saved.expiresAt, lastSeen: Number.isFinite(saved.lastSeen) ? saved.lastSeen : now() };
       sessionsBySlot.set(slot.id, session); sessionsByTicket.set(session.ticket, session);
     }

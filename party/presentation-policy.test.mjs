@@ -55,3 +55,12 @@ test('save key is stable for the invite identity and names are safe labels', () 
   assert.deepEqual(a.prepareState({ names: {}, caravan: [] }).names, { girl: 'GuestName', boy: 'Traveller' });
 });
 
+test('signature outfits are migrated only for other attendees without changing birthday clothes', () => {
+  const input = { ...sampleState(), outfits: { girl: 'g-starlight-gown', boy: 'b-celebration' } };
+  const guest = partyPresentation({ role: 'guest' }).prepareState(input);
+  assert.deepEqual(guest.outfits, { girl: 'g-meadow', boy: 'b-meadow' });
+  const birthday = partyPresentation({ role: 'birthday' }).prepareState(input);
+  assert.deepEqual(birthday.outfits, input.outfits);
+  assert.deepEqual(input.outfits, { girl: 'g-starlight-gown', boy: 'b-celebration' });
+});
+

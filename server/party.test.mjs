@@ -380,6 +380,27 @@ test('twenty-land story is cooperative, rejects stale actions, and isolates comp
   }
 });
 
+test('signature clothes remain exclusive through actions, private targets and restored saves', async t => {
+  const f = await fixture({ observer: true, autoTick: false }); t.after(f.close);
+  const birthday = (await join(f, f.config.slots[0])).json();
+  const observer = (await join(f, f.config.slots.find(s => s.role === 'observer'))).json();
+  const guest = (await request(f, 'POST', '/api/join', { body: { guestNumber: '12' } })).json();
+  assert.equal(guest.self.avatar, 'g-meadow');
+  for (const avatar of ['g-kurti-jeans', 'g-starlight-gown', 'b-kurta-jeans', 'b-celebration']) {
+    assert.equal((await post(f, '/api/action', guest.ticket, { type: 'outfit', avatar })).status, 403);
+  }
+  assert.equal((await post(f, '/api/action', birthday.ticket, { type: 'outfit', avatar: 'g-starlight-gown' })).status, 200);
+  assert.equal((await post(f, '/api/action', birthday.ticket, { type: 'outfit', avatar: 'b-celebration', targetId: observer.self.id })).status, 200);
+  assert.equal((await post(f, '/api/action', birthday.ticket, { type: 'outfit', avatar: 'g-starlight-gown', targetId: observer.self.id })).status, 403);
+  assert.equal((await post(f, '/api/action', guest.ticket, { type: 'outfit', avatar: 'g-star' })).status, 200);
+  const snapshot = f.server.partyInternals.exportSnapshot();
+  snapshot.sessions.find(s => s.slot.id === guest.self.id).slot.avatar = 'g-starlight-gown';
+  const restored = createPartyServer({ config: f.config, now: f.current, autoTick: false, serverFactory: () => ({ on() {} }), snapshot });
+  const view = (await state({ server: restored }, guest.ticket)).json();
+  assert.equal(view.self.avatar, 'g-meadow');
+  assert.equal(view.players.find(p => p.isBirthday).avatar, 'g-starlight-gown');
+});
+
 test('fusion and registered outfits persist while public rides stay private to each recipient projection', async t => {
   const f=await fixture({autoTick:false});t.after(f.close);
   const host=(await join(f,f.config.slots[0])).json(),companion=(await join(f,f.config.slots[1])).json(),guest=(await join(f,f.config.slots[4])).json();

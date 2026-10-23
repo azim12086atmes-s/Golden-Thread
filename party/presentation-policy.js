@@ -1,4 +1,5 @@
 import { SIBLINGS } from '../src/caravan/caravan.ts';
+import { partyAvatar } from '../shared/appearance.mjs';
 
 const PRIVATE_ROLES = new Set(['guest', 'companion', 'observer']);
 const cleanName = (value, fallback) => typeof value === 'string'
@@ -30,6 +31,11 @@ export function partyPresentation(self = {}) {
       }
       const state = { ...loadedState };
       state.names = { ...(loadedState.names || {}), girl: displayName, boy: birthday ? 'AbdulAzim' : 'Traveller' };
+      if (loadedState.outfits) state.outfits = {
+        ...loadedState.outfits,
+        girl: partyAvatar(role, loadedState.outfits.girl),
+        boy: birthday ? loadedState.outfits.boy : partyAvatar(role, loadedState.outfits.boy),
+      };
 
       if (Array.isArray(loadedState.caravan)) {
         state.caravan = birthday

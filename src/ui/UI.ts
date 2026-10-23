@@ -872,7 +872,7 @@ export class UI {
     const fill = () => {
       const q = this.wardrobeQuery.trim().toLowerCase();
       const pool = kin ? choicesFor(kin) : outfitsFor(who as 'girl' | 'boy');
-      const list = pool.filter((o) => (this.wardrobeGroup === 'all' || dressGroup(o) === this.wardrobeGroup)
+      const list = pool.filter((o) => this.g.canWear(who, o.id) && (this.wardrobeGroup === 'all' || dressGroup(o) === this.wardrobeGroup)
         && (!q || `${o.name} ${o.culture}`.toLowerCase().includes(q)));
       shelf.replaceChildren(...list.map((o) => {
         const on = worn?.id === o.id;

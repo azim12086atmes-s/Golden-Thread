@@ -151,6 +151,7 @@ export interface GameOptions {
   interact?: (game: Game) => boolean;
   photo?: () => void;
   chooseVehicle?: (id: VehicleId) => string | null;
+  outfitAllowed?: (who: string, id: string) => boolean;
 }
 
 export class Game {
@@ -1005,7 +1006,12 @@ export class Game {
     return true;
   }
 
+  canWear(who: string, id: string): boolean {
+    return this.options.outfitAllowed?.(who, id) ?? true;
+  }
+
   wear(who: 'girl' | 'boy', id: string): void {
+    if (!this.canWear(who, id)) { this.toast('Please choose another outfit.'); return; }
     this.st.outfits[who] = id;
     (who === 'girl' ? this.trav.girl : this.trav.boy).setOutfit(OUTFITS[id]);
     this.van.setOutfits(OUTFITS[this.st.outfits.girl], OUTFITS[this.st.outfits.boy]);
@@ -1015,6 +1021,7 @@ export class Game {
 
   /** Dress a brother, sister or child travelling with them (caravan/dress.ts). */
   dressCompanion(id: string, outfitId: string): string | null {
+    if (!this.canWear(id, outfitId)) return 'Please choose another outfit.';
     const err = dress(this.st, id, outfitId);
     if (!err) this.caravan.redress(id);
     return err;

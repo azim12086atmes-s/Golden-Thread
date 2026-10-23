@@ -2,6 +2,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { randomBytes } from 'node:crypto';
+import { partyAvatar } from '../shared/appearance.mjs';
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const args = process.argv.slice(2);
@@ -99,6 +100,7 @@ if (fs.existsSync(configPath)) {
 
 if (config.dynamicGuests === undefined) config.dynamicGuests = true;
 if (config.maxConnections === undefined) config.maxConnections = 32;
+for (const invite of config.slots) invite.avatar = partyAvatar(invite.role, invite.avatar);
 if (config.celebrationStart !== undefined && config.celebrationStart !== null) config.celebrationStart = utcDate(config.celebrationStart);
 
 // Write safely outside the source tree and replace only the organizer's private file.
