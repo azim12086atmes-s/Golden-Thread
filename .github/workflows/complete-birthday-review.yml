@@ -19,10 +19,14 @@ jobs:
         with:
           node-version: '22'
       - name: Install pinned validation tools
+        timeout-minutes: 5
         run: |
           npm install --prefix "$RUNNER_TEMP/birthday-validation" --no-audit --no-fund typescript@5.9.3 three@0.180.0 @types/three@0.180.0 vite@7.1.12 vitest@3.2.4 playwright@1.56.1
           ln -s "$RUNNER_TEMP/birthday-validation/node_modules" node_modules
-          "$RUNNER_TEMP/birthday-validation/node_modules/.bin/playwright" install --with-deps chromium
+      - name: Install review browser
+        timeout-minutes: 4
+        # Ubuntu's hosted runner includes Chromium's system libraries.
+        run: '"$RUNNER_TEMP/birthday-validation/node_modules/.bin/playwright" install chromium'
       - name: Fetch verified palace terrain
         run: node scripts/fetch-palace-assets.mjs
       - name: Original TypeScript contracts
