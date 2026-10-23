@@ -201,6 +201,10 @@ function openPanel(name) {
   for (const [k, v] of [['WASD / arrows','Walk'],['Shift','Run'],['F','Toggle flight outside arena rounds'],['Space / X','Jump or rise / descend'],['E','Collect, solve a beacon, tag, find, or fire'],['R / click','Fire a light pulse in laser tag'],['T','Twirl'],['P','Save a polaroid'],['Q (hold)','Push to talk after enabling your microphone'],['Esc','Close a panel']]) { const row = el('div'); row.append(el('kbd', `${k} `), document.createTextNode(` · ${v}`)); keys.append(row); }
   content.append(keys);
   const row = el('div', undefined, 'button-row'); row.append(button('Automatic graphics', () => game.setQuality('auto')), button('Low graphics', () => game.setQuality('low')), button('High graphics', () => game.setQuality('high')), button('Return to meadow', () => { game.travel({ x:0,y:0,z:70,name:'Meadow' }); closePanel(); })); content.append(row);
+  content.append(el('h3','Image clarity'));
+  const imageRow=el('div',undefined,'button-row');
+  for(const [mode,label]of[['auto','Balanced image'],['sharp','Sharper image'],['fast','Faster movement']])imageRow.append(button(label,()=>game.setResolution(mode)));
+  content.append(imageRow,el('p','Balanced image reduces effects first and can soften the picture when a phone struggles. Sharper image keeps more pixels and may slow controls. Faster movement limits graphics work. Menus and text stay sharp in every mode.'));
   content.append(el('p', 'Your invitation belongs to one player. Reopening it in another browser moves your session there. Audio starts only with your permission.'));
 }
 function renderTools() {
@@ -367,10 +371,13 @@ for(const [id,key]of[['rise-button',' '],['lower-button','shift'],['run-button',
 class PartyGame {
   constructor(host,self) {
     this.self=self; this.players=new Map(); this.t=0; this.lastSend=0; this.sending=false;
+    this.mobile=matchMedia('(pointer:coarse)').matches||innerWidth<=700;
+    this.resolutionMode='auto';try{const saved=localStorage.getItem('starlight/image-clarity');if(['auto','sharp','fast'].includes(saved))this.resolutionMode=saved;}catch{}
     this.pending=false; this.checkpoint=0; this.trip=null; this.photoBusy=false; this.twirlUntil=0;
     this.vehicle='walk'; this.yaw=0; this.policy=partyPresentation(self);
     this.core=new Game(host,{
       ...this.policy,presentation:'party',playerName:self.name,
+      resolution:()=>this.resolutionPolicy(),
       inputBlocked:()=>Boolean(panel.open||this.trip||state?.party.chase&&!state.party.chase.self.canMove),
       beforeUpdate:(g,dt,t)=>this.beforeUpdate(g,dt,t),
       beforeRender:(g,dt,t)=>this.beforeRender(g,dt,t),
@@ -422,6 +429,17 @@ class PartyGame {
   }
   stop(){this.renderer.setAnimationLoop(null);clearInterval(this.clockTimer);this.unregisterSurface?.();this.life.destroy();this.scenery.destroy();this.celebration.destroy();this.renderer.dispose();audio.close();}
   setQuality(quality){this.core.setQuality(quality==='auto'?'high':quality);toast(`${quality==='auto'?'Adaptive':quality==='high'?'High':'Low'} graphics selected.`);}
+  resolutionPolicy(){
+    if(this.resolutionMode==='sharp')return{minimum:1,maximum:1.5};
+    if(this.resolutionMode==='fast')return{minimum:.5,maximum:1};
+    return this.mobile?{minimum:.5,maximum:1.25}:null;
+  }
+  setResolution(mode){
+    if(!['auto','sharp','fast'].includes(mode))return;
+    this.resolutionMode=mode;try{localStorage.setItem('starlight/image-clarity',mode);}catch{}
+    this.core.setQuality(this.core.quality);
+    toast(mode==='sharp'?'Sharper image selected. Use Faster movement if controls slow down.':mode==='fast'?'Faster movement selected. The image may look softer.':'Balanced image selected.');
+  }
   setVehicle(id){if(this.self.role==='observer')return 'You follow automatically.';if(state?.party.phase==='playing')return 'Finish this round before changing rides.';const err=this.core.chooseVehicle(id);this.vehicle=this.controller.mode;return err;}
   sync(next,previous){
     this.party=next.party;

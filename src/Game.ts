@@ -149,6 +149,8 @@ export interface GameOptions {
   beforeRender?: (game: Game, dt: number, time: number) => void;
   /** An event may borrow an original land's sky without advancing personal progression. */
   atmosphere?: () => { region: RegionId; hour: number; festivities?: { level: number; centre: THREE.Vector3 } } | null;
+  /** A host may balance image clarity against GPU cost; original journeys use the existing limits. */
+  resolution?: () => { minimum: number; maximum: number } | null;
   /** Return true when the host handled the interaction. */
   interact?: (game: Game) => boolean;
   photo?: () => void;
@@ -382,7 +384,8 @@ export class Game {
 
   setQuality(quality: 'low' | 'high'): void {
     this.quality = quality;
-    this.renderer.setPixelRatio(this.basePixelRatio() * this.perf.scale);
+    const base = this.basePixelRatio(), floor = Math.min(base, this.options.resolution?.()?.minimum ?? 0);
+    this.renderer.setPixelRatio(Math.max(floor, base * this.perf.scale));
     this.composer.setPixelRatio(this.renderer.getPixelRatio());
     this.renderer.shadowMap.enabled = quality === 'high';
     this.bloom.enabled = quality === 'high';
@@ -462,10 +465,15 @@ export class Game {
     if (p.acc < 1.5) return;
     const avg = p.acc / p.frames;
     p.acc = 0; p.frames = 0;
-    if (avg > 1 / 40 && p.scale > 0.5) p.scale = Math.max(0.5, p.scale - 0.12);
+    const resolution = this.options.resolution?.(), base = this.basePixelRatio();
+    const minimumScale = Math.max(0.5, Math.min(1, (resolution?.minimum ?? 0) / base));
+    p.scale = Math.max(minimumScale, p.scale);
+    if (avg > 1 / 40 && p.scale > minimumScale) p.scale = Math.max(minimumScale, p.scale - 0.12);
     else if (avg < 1 / 57 && p.scale < 1) p.scale = Math.min(1, p.scale + 0.06);
-    if (avg > 1 / 30 && p.scale <= 0.5) p.slowFor += 1.5; else p.slowFor = 0;
-    if (p.slowFor > 6 && this.quality === 'high') {
+    // On clarity-aware clients, reduce expensive effects before shrinking the picture further.
+    const effectsThreshold = resolution ? Math.max(minimumScale, 1 / base) : minimumScale;
+    if (avg > 1 / 30 && p.scale <= effectsThreshold) p.slowFor += 1.5; else p.slowFor = 0;
+    if (p.slowFor > (resolution ? 3 : 6) && this.quality === 'high') {
       p.slowFor = 0; p.scale = 1;
       this.setQuality('low');
       this.toast('Switched to smoother graphics so the journey runs well on this device — you can change it in Help (H).', 'info');
@@ -473,14 +481,16 @@ export class Game {
     }
     // Struggling (resolution already lowered): the far grass ring is left out too.
     this.world.meadow.light = p.scale < 0.8 || this.quality === 'low';
-    const pr = this.basePixelRatio() * p.scale;
+    const pr = Math.max(Math.min(this.basePixelRatio(), resolution?.minimum ?? 0), this.basePixelRatio() * p.scale);
     if (Math.abs(this.renderer.getPixelRatio() - pr) > 0.01) {
       this.renderer.setPixelRatio(pr);
       this.composer.setPixelRatio(pr);
       this.resize();
     }
   }
-  private basePixelRatio(): number { return this.quality === 'low' ? 1 : Math.min(devicePixelRatio, 1.5); }
+  private basePixelRatio(): number {
+    return Math.min(this.quality === 'low' ? 1 : Math.min(devicePixelRatio, 1.5), this.options.resolution?.()?.maximum ?? Infinity);
+  }
 
   private frame(): void {
     this.adapt();
