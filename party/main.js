@@ -12,6 +12,7 @@ import { PartyAudio } from './audio.js';
 import { Adventures, EXTRA_GAMES, CHASE_GAMES } from './adventures.js';
 import { CoreLife } from './core-life.js';
 import { partyPresentation } from './presentation-policy.js';
+import { stabilizeBloom } from './bloom.js';
 import { buildVehicle, VEHICLES } from '../src/vehicles/vehicles';
 import { appendAtlas } from './atlas-map.js';
 import { Chariot, SEATS as CHARIOT_SEATS } from '../src/event/Chariot';
@@ -359,6 +360,7 @@ class PartyGame {
       chooseVehicle:id=>state?.party.phase==='playing'&&id!=='walk'&&!(state.party.game==='sky-rings'&&id==='fly')?'Finish this round before changing rides.':null,
     });
     const g=this.core;
+    stabilizeBloom(g.bloom);
     this.scene=g.scene; this.camera=g.camera; this.renderer=g.renderer;
     this.input=g.input; this.world=g.world; this.sky=g.sky; this.controller=g.trav; this.pos=g.trav.gPos;
     this.life=new CoreLife(this,()=>closePanel());
