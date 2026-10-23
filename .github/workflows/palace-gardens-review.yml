@@ -1,0 +1,49 @@
+name: Palace garden visual review
+on:
+  push:
+    branches: [birthday/reference-audit]
+    paths:
+      - .github/workflows/palace-gardens-review.yml
+      - tools/birthday-audit/palace-review.cjs
+permissions:
+  contents: read
+jobs:
+  palace-review:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          path: golden
+      - uses: actions/checkout@v4
+        with:
+          repository: azim12086atmes-s/birthday-castle
+          ref: cd7df6fe1fafd30b0939d2f7fbd2a307525404ca
+          path: castle
+          persist-credentials: false
+          filter: blob:none
+          sparse-checkout: |
+            index.html
+            js
+            css
+            vendor
+            data
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Install browser
+        run: |
+          npm install --prefix "$RUNNER_TEMP/birthday-browser" --no-audit --no-fund playwright@1.56.1
+          "$RUNNER_TEMP/birthday-browser/node_modules/.bin/playwright" install --with-deps chromium
+      - name: Inspect full game and garden routes
+        env:
+          CAPTURE_TOOLS: ${{ runner.temp }}/birthday-browser
+        run: |
+          python3 -m http.server 8012 --bind 127.0.0.1 --directory castle > "$RUNNER_TEMP/palace-preview.log" 2>&1 &
+          node golden/tools/birthday-audit/palace-review.cjs
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: palace-garden-browser-review
+          path: palace-captures
+          retention-days: 7
