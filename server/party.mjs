@@ -275,6 +275,7 @@ export function createPartyServer({ config, distDir = path.join(ROOT, 'dist'), n
       if (req.method === 'GET' && url.pathname === '/healthz') return writeJSON(res, 200, { ok: true });
       if (req.method === 'POST' && url.pathname === '/api/join') {
         const body = await readJSON(req);
+        if (Object.hasOwn(body, 'gender') && !['girl', 'boy'].includes(body.gender)) return fail(res, 400, 'Choose Girl or Boy for your character.');
         let slot;
         if (Object.hasOwn(body, 'guestNumber')) {
           if (typeof body.guestNumber !== 'string' || !/^\d{1,10}$/.test(body.guestNumber)) return fail(res, 401, 'Enter a valid numbered guest link.');
@@ -285,6 +286,11 @@ export function createPartyServer({ config, distDir = path.join(ROOT, 'dist'), n
         } else slot = inviteByToken.get(String(body.token || ''));
         if (!slot) return fail(res, 401, 'Invalid invitation.');
         const existing = sessionsBySlot.get(slot.id);
+        if (slot.role === 'guest') {
+          const current = existing?.slot.avatar || slot.avatar;
+          const gender = /^(?:b-|fx-b-)/.test(current) ? 'boy' : 'girl';
+          slot.avatar = body.gender && body.gender !== gender ? (body.gender === 'boy' ? 'b-meadow' : 'g-meadow') : current;
+        }
         const activeCount = [...sessionsBySlot.values()].filter(s => s.expiresAt > now()).length;
         if (!existing && activeCount >= maxConnections) return fail(res, 429, 'The party is at its current connection limit.');
         if (existing) { const old = streams.get(existing.ticket); if (old) { old.end(); streams.delete(existing.ticket); } sessionsByTicket.delete(existing.ticket); }

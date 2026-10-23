@@ -96,6 +96,20 @@ test('numbered guest links reject empty and malformed identifiers', async t => {
   for (const guestNumber of ['', ' 2', '12345678901', 123]) assert.equal((await joinNumber(f, guestNumber)).status, 401);
 });
 
+test('guests choose their character and retain its outfit across reconnects and snapshots', async t => {
+  const f = await fixture(); t.after(f.close);
+  const choose = gender => request(f, 'POST', '/api/join', { body:{guestNumber:'88',gender} });
+  let guest = (await choose('boy')).json();
+  assert.equal(guest.self.avatar, 'b-meadow'); assert.equal(guest.self.role, 'guest');
+  assert.equal((await post(f, '/api/action', guest.ticket, { type:'outfit',avatar:'b-moon' })).status, 200);
+  guest = (await choose('boy')).json(); assert.equal(guest.self.avatar,'b-moon');
+  f.server.partyInternals.restoreSnapshot(f.server.partyInternals.exportSnapshot());
+  assert.equal((await state(f, guest.ticket)).json().self.avatar,'b-moon');
+  guest = (await choose('girl')).json(); assert.equal(guest.self.avatar,'g-meadow');
+  for (const invalid of ['observer','',null,1]) assert.equal((await choose(invalid)).status,400);
+  assert.equal((await post(f, '/api/action', guest.ticket, { type:'outfit',avatar:'g-starlight-gown' })).status,403);
+});
+
 test('observer is view-only, follows birthday, and stays private from public guests', async t => {
   const f = await fixture({ observer: true }); t.after(f.close);
   const [birthday, companion, guest, guest2] = [f.config.slots[0], f.config.slots[1], f.config.slots[4], f.config.slots[5]];

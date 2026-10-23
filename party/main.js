@@ -38,7 +38,9 @@ const token = fragment.get('invite') || query.get('invite');
 const guestNumber = query.get('guest');
 const invited = Boolean(token || guestNumber !== null && /^\d{1,10}$/.test(guestNumber));
 const isPrivate = role => role === 'companion' || role === 'observer';
-function entry() { return token ? { token } : { guestNumber, ...($('guest-name').value.trim() ? { name: $('guest-name').value.trim() } : {}) }; }
+function entry() { return token ? { token } : { guestNumber, gender:$('guest-gender').value, ...($('guest-name').value.trim() ? { name: $('guest-name').value.trim() } : {}) }; }
+const genderSaveKey=`starlight/guest-character/${guestNumber}`;
+try { const saved=localStorage.getItem(genderSaveKey);if(['girl','boy'].includes(saved))$('guest-gender').value=saved; } catch {}
 let ticket = null, state = null, game = null, events = null, layout = null, activePanel = null, playlist = null;
 let toastTimer, reconnecting = false, reconnectTimer;
 let socket = null, rpcId = 0, socketPoll = null;
@@ -69,6 +71,7 @@ function connection(connected) { text('connection', connected ? 'Together, live'
 
 $('join').disabled = !invited;
 $('guest-name-field').hidden = !invited || Boolean(token);
+$('guest-gender-field').hidden = !invited || Boolean(token);
 if (invited) text('join-status', token ? 'Your place among the stars is ready.' : `Guest ${guestNumber} · Your place among the stars is ready.`);
 else { text('invite-title', 'Not invited'); text('invite-description', 'Open your numbered guest link or your private invitation to enter the celebration.'); text('join-status', 'This page needs an invitation.'); }
 $('join').addEventListener('click', async () => {
@@ -428,7 +431,9 @@ class PartyGame {
       if(data.id===next.self.id){const changed=previous?.party.game!==next.party.game||previous?.party.phase!==next.party.phase;const transferred=previous?.party.teleportVersion!==next.party.teleportVersion;if(!previous||changed&&p.target.distanceTo(this.pos)>5||transferred||next.self.role==='observer'&&p.target.distanceTo(this.pos)>40){if(next.self.role!=='observer')this.controller.teleport(p.target.x,p.target.z);this.pos.copy(p.target);if(next.self.role!=='observer')this.pos.y=Math.max(this.pos.y,this.scenery.ground(this.pos.x,this.pos.z,this.pos.y));this.fly=false;this.trip=null;this.checkpoint=0;this.input.reset();}}
     }
     if(previous?.party.game!==next.party.game){this.checkpoint=0;this.pending=false;if(next.party.game){this.vehicle='walk';this.fly=false;this.controller.setMode('walk');this.core.ui.closePanel();this.life?.closeInterior();}}
-    this.self=next.self;const observing=next.self.role==='observer';if(OUTFITS[next.self.avatar]&&this.core.st.outfits.girl!==next.self.avatar&&!observing){this.applyingOutfit=true;this.core.wear('girl',next.self.avatar);this.applyingOutfit=false;}document.querySelector('#hud .touch-actions').hidden=observing;document.querySelector('.desktop-hint').textContent=observing?'Following automatically · Drag to look · Scroll to zoom · Q private voice · P photo':'WASD move · Drag to look · Shift run · F fly · Space rise · E interact · P photo';$('wish-button').hidden=observing;this.objective();
+    this.self=next.self;const observing=next.self.role==='observer';if(OUTFITS[next.self.avatar]&&this.core.st.outfits.girl!==next.self.avatar&&!observing){this.applyingOutfit=true;this.core.wear('girl',next.self.avatar);this.applyingOutfit=false;}
+    if(next.self.role==='guest'&&guestNumber!==null){const gender=OUTFITS[next.self.avatar]?.who||'girl';$('guest-gender').value=gender;try{localStorage.setItem(genderSaveKey,gender);}catch{}}
+    document.querySelector('#hud .touch-actions').hidden=observing;document.querySelector('.desktop-hint').textContent=observing?'Following automatically · Drag to look · Scroll to zoom · Q private voice · P photo':'WASD move · Drag to look · Shift run · F fly · Space rise · E interact · P photo';$('wish-button').hidden=observing;this.objective();
   }
   nameTag(name){const c=document.createElement('canvas');c.width=512;c.height=88;const ctx=c.getContext('2d');ctx.font='26px system-ui';ctx.textAlign='center';ctx.fillStyle='#171329bb';ctx.fillRect(50,8,412,66);ctx.fillStyle='#f9e8c7';ctx.fillText(name,256,50);const material=new THREE.SpriteMaterial({map:new THREE.CanvasTexture(c),transparent:true,depthTest:false});const sprite=new THREE.Sprite(material);sprite.scale.set(3.3,.57,1);return sprite;}
   objective(){if(!state)return;const party=state.party,spec=GAMES.find(g=>g.id===party.game),progress=party.selfProgress||{};

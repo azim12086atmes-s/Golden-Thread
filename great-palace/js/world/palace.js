@@ -72,7 +72,7 @@ function pair(draw, w, h) {
 // wing wall bay (25 m x 100 m): slim twin lancets with a quatrefoil, gold string courses
 const wingTex = () => pair((g, glow) => {
   if (!glow) {
-    marble(g, 256, 1024, '#f8efe9');
+    marble(g, 256, 1024, '#fff0f4');
     g.fillStyle = '#efc4c8'; g.fillRect(0, 0, 256, 34); g.fillRect(0, 984, 256, 40);
     g.fillStyle = '#d9b25a'; g.fillRect(0, 34, 256, 6); g.fillRect(0, 978, 256, 6);
     g.fillStyle = 'rgba(200,150,160,0.25)'; g.fillRect(0, 40, 14, 938); g.fillRect(242, 40, 14, 938);
@@ -83,7 +83,7 @@ const wingTex = () => pair((g, glow) => {
 }, 256, 1024);
 // podium (24 m x 124 m): two storeys of round-arched arcades with rose planters on every sill
 const podiumTex = () => pair((g, glow) => {
-  if (!glow) marble(g, 256, 512, '#f2c7c9', 'rgba(255,255,255,0.25)');
+  if (!glow) marble(g, 256, 512, '#efb6c7', 'rgba(255,255,255,0.25)');
   for (const y0 of [0, 256]) {
     const arch = () => { g.beginPath(); g.moveTo(52, y0 + 226); g.lineTo(52, y0 + 108); g.arc(128, y0 + 108, 76, Math.PI, 0); g.lineTo(204, y0 + 226); g.closePath(); };
     arch();
@@ -98,7 +98,7 @@ const podiumTex = () => pair((g, glow) => {
 // corner pavilion face (one octagon face, the whole shaft): banner panel with a gold star
 const towerTex = () => pair((g, glow) => {
   if (!glow) {
-    marble(g, 128, 1024, '#f8f0ea');
+    marble(g, 128, 1024, '#fff0f4');
     g.fillStyle = '#efc4c8'; g.fillRect(0, 0, 10, 1024); g.fillRect(118, 0, 10, 1024); g.fillRect(0, 950, 128, 74);
     g.fillStyle = '#d9b25a'; for (const y of [40, 300, 700, 944]) g.fillRect(0, y, 128, 8);
   }
@@ -111,7 +111,7 @@ const towerTex = () => pair((g, glow) => {
 // needle spire face (owner's hi-res elevation): a tall pointed light of violet-blue glass strung
 // with gold lozenges and pink diamonds, in a pearl frame with gold fillets
 const spireTex = () => pair((g, glow) => {
-  if (!glow) { marble(g, 64, 512, '#faf3ee'); g.fillStyle = '#d9b25a'; g.fillRect(0, 0, 64, 6); g.fillRect(0, 506, 64, 6); g.fillRect(9, 6, 3, 500); g.fillRect(52, 6, 3, 500); }
+  if (!glow) { marble(g, 64, 512, '#fff0f4'); g.fillStyle = '#d9b25a'; g.fillRect(0, 0, 64, 6); g.fillRect(0, 506, 64, 6); g.fillRect(9, 6, 3, 500); g.fillRect(52, 6, 3, 500); }
   lancetPath(g, 15, 34, 14, 500);
   if (glow) { g.fillStyle = '#5a58c8'; g.fill(); }
   else {
@@ -151,7 +151,7 @@ const starWinTex = () => pair((g, glow) => {
 }, 128, 512);
 // drum: two rings of arched indigo windows with a gold ring between
 const drumTex = () => pair((g, glow) => {
-  if (!glow) { marble(g, 128, 256, '#f8efe9'); g.fillStyle = '#d9b25a'; g.fillRect(0, 124, 128, 8); g.fillRect(0, 248, 128, 8); g.fillRect(0, 0, 128, 5); }
+  if (!glow) { marble(g, 128, 256, '#fff0f4'); g.fillStyle = '#d9b25a'; g.fillRect(0, 124, 128, 8); g.fillRect(0, 248, 128, 8); g.fillRect(0, 0, 128, 5); }
   for (const y of [18, 140]) { lancetPath(g, 34, 60, y, y + 98); glassFill(g, 34, y, 60, 98, glow); if (!glow) { g.strokeStyle = '#d9b25a'; g.lineWidth = 4; g.stroke(); } }
 }, 128, 256);
 // purple dome with a gold rib on each tile edge and a gold neck ring at the foot
@@ -501,10 +501,10 @@ function medallionTex() {
 }
 function ashlarTex() {
   const [c, g] = cv(256, 256);
-  marble(g, 256, 256, '#f8ebe6', 'rgba(200,140,150,0.22)');
+  marble(g, 256, 256, '#ffe3eb', 'rgba(205,125,150,0.2)');
   g.strokeStyle = 'rgba(214,170,170,0.55)'; g.lineWidth = 1.2;
   for (let y = 0; y < 256; y += 32) { g.beginPath(); g.moveTo(0, y); g.lineTo(256, y); g.stroke(); for (let x = (y / 32) % 2 ? 0 : 48; x < 256; x += 96) { g.beginPath(); g.moveTo(x, y); g.lineTo(x, y + 32); g.stroke(); } }
-  g.fillStyle = '#f2d2d0'; g.fillRect(70, 96, 116, 148);                   // the recessed panel
+  g.fillStyle = '#efc0cf'; g.fillRect(70, 96, 116, 148);                   // the recessed panel
   g.strokeStyle = '#e2b44c'; g.lineWidth = 4; g.strokeRect(70, 96, 116, 148);
   g.strokeStyle = '#e7b7bd'; g.lineWidth = 6; g.strokeRect(82, 108, 92, 124);
   carvedRose(g, 128, 170, 40);                                               // a carved rose in the panel
@@ -520,7 +520,7 @@ function ashlarTex() {
 function gableTex(W = 88, H = 56) {
   const [c, g] = cv(512, 326), sx = 512 / W, sy = 326 / H;
   const P = (x, y) => [(x + W / 2) * sx, 326 - y * sy];                // gable metres to canvas
-  marble(g, 512, 326, '#f8efe9');
+  marble(g, 512, 326, '#fff0f4');
   g.strokeStyle = '#e2b44c'; g.lineCap = 'round';
   for (const sd of [-1, 1]) {
     const q = (t, ins) => { const ax = sd * (W / 2 - ins), ay = 2, bx = sd * (W / 2 - ins) * 0.96, by = 2 + (H - ins * 1.6) * 0.62, cx2 = 0, cy2 = H - ins * 1.6, u = 1 - t;
@@ -621,10 +621,10 @@ export function createPalace(scene, preset, { makePortal } = {}) {
   // Physical roughness and metal response replace the fixed camera-space shine.
   const glossy = (m, k) => { m.roughness = .55 - k * .14; m.metalness = .15 + k * .3; return m; };
   const tile = (t, emissive, opts = {}) => toon('#ffffff', { map: t.map, emissiveMap: t.glow, emissive, emissiveIntensity: 0.5, vertexColors: true, ...opts });
-  const steps = (() => { const [c, g] = cv(64, 64); g.fillStyle = '#fbf3ee'; g.fillRect(0, 0, 64, 64); g.fillStyle = '#e8c9c6'; g.fillRect(0, 50, 64, 14); g.fillStyle = '#d9b25a'; g.fillRect(0, 48, 64, 2); return tex(c); })();
+  const steps = (() => { const [c, g] = cv(64, 64); g.fillStyle = '#fff0f4'; g.fillRect(0, 0, 64, 64); g.fillStyle = '#e8c9c6'; g.fillRect(0, 50, 64, 14); g.fillStyle = '#d9b25a'; g.fillRect(0, 48, 64, 2); return tex(c); })();
   const garden = gardenTex(), dome = domeTex(), jali = jaliTex(), lancetT = lancetTex(), starWin = starWinTex();
   const mats = {
-    ivory: toon('#ffffff', { vertexColors: true, emissive: '#2a1838', emissiveIntensity: 0.025 }),
+    ivory: toon('#fff0f4', { vertexColors: true, emissive: '#2a1838', emissiveIntensity: 0.025 }),
     podium: tile(podiumTex(), '#ffb070'),
     wing: tile(wingTex(), '#a99bff'),
     tower: tile(towerTex(), '#ffd36a'),
@@ -730,7 +730,7 @@ export function createPalace(scene, preset, { makePortal } = {}) {
         const g = new THREE.ShapeGeometry(sh, 1), p = g.attributes.position, guv = g.attributes.uv;
         for (let i = 0; i < p.count; i++) guv.setXY(i, (p.getX(i) - x0) / tileW, (p.getY(i) - y0) / tileH);
         if(e.nz<0)g.rotateY(Math.PI);
-        kit.add('ashlar', g.translate(0, 0, az), '#fff4f0', '#f0b8c0');
+        kit.add('ashlar', g.translate(0, 0, az), '#fff0f4', '#efabc1');
         continue;
       }
       pos.push(ax, y0, az, bx, y0, bz, bx, y1, bz, ax, y0, az, bx, y1, bz, ax, y1, az);

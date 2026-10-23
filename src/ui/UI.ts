@@ -858,6 +858,8 @@ export class UI {
     const who = this.wardrobeWho, hero = who === 'girl' || (this.g.allowPersonalNarrative && who === 'boy');
     const kin = hero ? null : family.find((f) => f.id === who)!;
     const worn = hero ? OUTFITS[st.outfits[who as 'girl' | 'boy']] : outfitOf(st, who);
+    const partyAvatar = !this.g.allowPersonalNarrative && who === 'girl';
+    const avatarGender = partyAvatar ? OUTFITS[st.outfits.girl]?.who || 'girl' : who as 'girl' | 'boy';
     const top = h('div', { class: 'sheet-row' },
       h('div', { class: 'seg', role: 'tablist' },
         btn(this.g.allowPersonalNarrative ? `${st.names.girl}` : 'Your outfit', () => { this.wardrobeWho = 'girl'; this.render(); }, who === 'girl' ? 'on' : ''),
@@ -865,13 +867,18 @@ export class UI {
         ...family.map((f, i) => btn(`${f.kind === 'child' ? '🧒 ' : ''}${this.g.allowPersonalNarrative ? f.name : `Child ${i + 1}`}`, () => { this.wardrobeWho = f.id; this.render(); }, who === f.id ? 'on' : ''))),
       worn ? h('div', { class: 'worn' }, h('b', {}, worn.name), h('small', {}, worn.culture), worn.merged.length ? h('small', { class: 'merged' }, `+ ${worn.merged.join(', ')}`) : null) : null,
     );
+    if (partyAvatar) top.append(h('div', { class: 'seg', role: 'group', 'aria-label': 'Your character' },
+      ...(['girl', 'boy'] as const).map(gender => btn(gender === 'girl' ? 'Girl' : 'Boy', () => {
+        if (avatarGender === gender) return;
+        this.g.wear('girl', gender === 'girl' ? 'g-meadow' : 'b-meadow'); this.render();
+      }, avatarGender === gender ? 'on' : ''))));
     const search = h('input', { type: 'search', placeholder: 'Search outfits', 'aria-label': 'Search outfits', value: this.wardrobeQuery }) as HTMLInputElement;
     const chips = h('div', { class: 'chips' }, search, ...DRESS_GROUPS.map(([id, label]) =>
       btn(label, () => { this.wardrobeGroup = id; this.render(); }, `small ${this.wardrobeGroup === id ? 'on' : 'ghost'}`)));
     const shelf = h('div', { class: 'shelf', role: 'list' });
     const fill = () => {
       const q = this.wardrobeQuery.trim().toLowerCase();
-      const pool = kin ? choicesFor(kin) : outfitsFor(who as 'girl' | 'boy');
+      const pool = kin ? choicesFor(kin) : outfitsFor(avatarGender);
       const list = pool.filter((o) => this.g.canWear(who, o.id) && (this.wardrobeGroup === 'all' || dressGroup(o) === this.wardrobeGroup)
         && (!q || `${o.name} ${o.culture}`.toLowerCase().includes(q)));
       shelf.replaceChildren(...list.map((o) => {
