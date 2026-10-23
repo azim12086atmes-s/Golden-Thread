@@ -1,0 +1,45 @@
+{
+  "auditedAt": "2026-10-22",
+  "purpose": "Reference selection only. Does not claim that the current birthday deployment has been migrated.",
+  "goldenThread": {
+    "repository": "azim12086atmes-s/Golden-Thread",
+    "sourceRef": "claudes-current-work",
+    "aliases": [
+      "3d-builds"
+    ],
+    "commit": "a6c20a4f9ceabec4fbd544ca7c73658b005c2318",
+    "tree": "74d8d1ef6c29bcb880cad56047b3a1d266a9eca8"
+  },
+  "birthdayCastle": {
+    "repository": "azim12086atmes-s/birthday-castle",
+    "sourceRef": "claude/game-logic-4d13do",
+    "aliases": [
+      "claude/world-slice-qsc3ua"
+    ],
+    "commit": "3fcc2b4728c51eca871c889fa545c9605d7ad8df",
+    "palaceBlob": "70c3fa4f3ed24956c4d747402c85d6df91df2656",
+    "sourceArchitecturalScale": 2.75,
+    "palaceBaseMetres": 797.5,
+    "gateSillWorldMetres": 940.5,
+    "preserveHumanScaleProps": true
+  },
+  "existingParty": {
+    "repository": "azim12086atmes-s/Golden-Thread",
+    "sourceRef": "birthday/14-player-celebration",
+    "auditedCommit": "9c8abef570e79ce87751242a442867292913d5fd",
+    "oldGoldenBase": "acbaee3595f312f57b66b147605465e53f017151",
+    "oldPalacePrototype": "0ca8fb371203f5c3a1f7d2306add622fc6014b41",
+    "requiresMigration": true
+  },
+  "browserReview": {
+    "runId": 39873458071,
+    "browser": "Chromium",
+    "webglBackend": "SwiftShader",
+    "status": "both capture runs succeeded",
+    "isPerformanceBenchmark": false,
+    "followupRunId": 39874330821,
+    "screenshotCount": 9,
+    "recordedPageErrors": 0,
+    "recordedConsoleErrors": 0
+  }
+}

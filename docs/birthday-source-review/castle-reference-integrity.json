@@ -1,0 +1,9 @@
+{
+  "repository": "azim12086atmes-s/birthday-castle",
+  "commit": "3fcc2b4728c51eca871c889fa545c9605d7ad8df",
+  "checked": 48,
+  "excluded": [
+    "js/config.js (redacted access values)"
+  ],
+  "mismatches": []
+}
