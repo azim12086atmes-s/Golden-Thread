@@ -374,6 +374,10 @@ class PartyGame {
       inputBlocked:()=>Boolean(panel.open||this.trip||state?.party.chase&&!state.party.chase.self.canMove),
       beforeUpdate:(g,dt,t)=>this.beforeUpdate(g,dt,t),
       beforeRender:(g,dt,t)=>this.beforeRender(g,dt,t),
+      atmosphere:()=>['rally','celebration'].includes(state?.party.phase)?{
+        region:'meadow',hour:22,
+        festivities:{level:this.celebration?.effects.level||0,centre:this.celebration?.centre||new THREE.Vector3(layout.CAKE_SPOT.x,layout.CAKE_SPOT.y,layout.CAKE_SPOT.z)},
+      }:null,
       interact:()=>this.partyInteraction(),photo:()=>this.photo(),
       outfitAllowed:(who,id)=>canWearPartyOutfit(self.role==='birthday'&&who==='boy'?'observer':self.role,id),
       chooseVehicle:id=>state?.party.phase==='playing'&&id!=='walk'&&!(state.party.game==='sky-rings'&&id==='fly')?'Finish this round before changing rides.':null,

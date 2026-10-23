@@ -359,7 +359,7 @@ export class UI {
     const mode = VEHICLES[g.trav.mode], season = seasonOf(dayOf(st.minutes) - 1);
     const showEnergy = g.trav.mode === 'fly' || g.trav.mounted || g.trav.energy < 0.99;
     this.tr.replaceChildren(...[
-      h('div', { class: 'row' }, this.clockText(`${g.sky.night > 0.5 ? '🌙' : SEASON_ICON[season]} ${SEASON_NAME[season]} · Day ${dayOf(st.minutes)} · ${clock(st.minutes)}${g.weatherNow !== 'none' ? ` ${EVENT_TEXT[g.weatherNow].icon}` : ''}${st.flags.includes(SKY_PAUSED) ? ' ⏸' : ''}`)),
+      h('div', { class: 'row' }, this.clockText(`${g.sky.night > 0.5 ? '🌙' : SEASON_ICON[season]} ${SEASON_NAME[season]} · Day ${dayOf(st.minutes)} · ${clock(g.displayedMinutes)}${g.weatherNow !== 'none' ? ` ${EVENT_TEXT[g.weatherNow].icon}` : ''}${st.flags.includes(SKY_PAUSED) ? ' ⏸' : ''}`)),
       h('div', { class: 'row' }, h('span', { class: 'coins', title: 'Coins' }, `🪙 ${st.coins}`), h('span', { class: 'light', title: 'Shared light — grows with every kindness' }, `✦ ${st.light.toFixed(st.light % 1 ? 1 : 0)}`), h('span', { title: 'Lanterns lit' }, `🏮 ${st.lanterns.length}/${REGIONS.length}`)),
       h('div', { class: 'row small' }, `${mode.icon} ${mode.name}`),
       showEnergy ? h('div', { class: 'energy', title: 'Cape light — recharges on the ground, or in the air while you stay close together' }, h('i', { style: `inline-size:${Math.round(g.trav.energy * 100)}%` })) : null,

@@ -147,6 +147,8 @@ export interface GameOptions {
   inputBlocked?: () => boolean;
   beforeUpdate?: (game: Game, dt: number, time: number) => void;
   beforeRender?: (game: Game, dt: number, time: number) => void;
+  /** An event may borrow an original land's sky without advancing personal progression. */
+  atmosphere?: () => { region: RegionId; hour: number; festivities?: { level: number; centre: THREE.Vector3 } } | null;
   /** Return true when the host handled the interaction. */
   interact?: (game: Game) => boolean;
   photo?: () => void;
@@ -434,6 +436,12 @@ export class Game {
     return hourOf(this.st.minutes);
   }
 
+  /** The event's visible clock; the saved journey keeps its own elapsed time. */
+  get displayedMinutes(): number {
+    const atmosphere = this.options.atmosphere?.();
+    return atmosphere ? atmosphere.hour * 60 : this.st.minutes;
+  }
+
   // ───────────────────────── main loop ─────────────────────────
 
   private lampTick = 1;
@@ -541,7 +549,11 @@ export class Game {
       this.trav.update(dt, this.input, this.t);
     }
 
-    updateWind(this.t, this.region.id, dt);
+    const atmosphere = this.options.atmosphere?.();
+    const atmosphereRegion = atmosphere?.region ?? this.region.id;
+    const atmosphereHour = atmosphere?.hour ?? this.hour;
+    const festivities = atmosphere?.festivities ?? this.celebration.festivities;
+    updateWind(this.t, atmosphereRegion, dt);
     FOLIAGE_UNIFORMS.uSunDir.value.copy(this.sky.sunDirection);
     FOLIAGE_UNIFORMS.uLeafNight.value = this.sky.night;
     setVehicleNight(this.sky.night);
@@ -551,11 +563,11 @@ export class Game {
     this.world.update(this.trav.gPos, this.sky.night);
     // Lamplight: the nearest lamps light the ground and walls round them after dusk (a few times a second).
     if ((this.lampTick += dt) > 0.15) { this.lampTick = 0; setLamps(this.world.lamps(), this.trav.gPos, this.sky.night); }
-    this.sky.update(this.hour, this.trav.gPos, this.t, this.region.id);
-    this.atmos.update(dt, this.t, this.trav.gPos, this.region.id, this.hour, this.sky.night, this.sky.sunDirection, this.world.smokeTops(), this.sky.fog.color);
-    this.ambience.setMode(this.region.ambient);
+    this.sky.update(atmosphereHour, this.trav.gPos, this.t, atmosphereRegion);
+    this.atmos.update(dt, this.t, this.trav.gPos, atmosphereRegion, atmosphereHour, this.sky.night, this.sky.sunDirection, this.world.smokeTops(), this.sky.fog.color);
+    this.ambience.setMode(REGION_BY_ID[atmosphereRegion].ambient);
     this.ambience.update(dt, this.trav.gPos, this.t, this.sky.night);
-    this.regionFx.setRegion(this.region.id);
+    this.regionFx.setRegion(atmosphereRegion);
     this.regionFx.update(dt, this.trav.gPos, this.t, this.sky.night);
     // The season turns the leaves of the temperate lands (eased, so crossing a border is gentle).
     {
@@ -563,16 +575,16 @@ export class Game {
       FOLIAGE_UNIFORMS.uSeasonTint.value.lerp(this.tmpTint.set(...ls.tint), k);
       FOLIAGE_UNIFORMS.uSeasonAmt.value += (ls.amount - FOLIAGE_UNIFORMS.uSeasonAmt.value) * k;
     }
-    this.weather.update(dt, this.t, this.region.id, this.trav.gPos, this.sky.night, surfaceAt(this.trav.gPos.x, this.trav.gPos.z, this.trav.gPos.y + 2), this.weatherNow);
-    this.skyLanterns.everyLand = this.region.id === 'meadow' && this.celebration.festivities.level > 0.5;
-    this.skyLanterns.update(dt, this.t, this.trav.gPos, this.region.id, this.sky.night);
-    this.festivalAir.update(dt, this.t, this.region.id, this.sky.night);
+    this.weather.update(dt, this.t, atmosphereRegion, this.trav.gPos, this.sky.night, surfaceAt(this.trav.gPos.x, this.trav.gPos.z, this.trav.gPos.y + 2), atmosphere ? 'none' : this.weatherNow);
+    this.skyLanterns.everyLand = atmosphereRegion === 'meadow' && festivities.level > 0.5;
+    this.skyLanterns.update(dt, this.t, this.trav.gPos, atmosphereRegion, this.sky.night);
+    this.festivalAir.update(dt, this.t, atmosphereRegion, this.sky.night);
     this.cityScreens.update(this.t, this.region.id, this.sky.night);
     this.civicMarkers.update(this.t, this.region.id, this.trav.gPos);
-    this.skyFx.party = this.celebration.festivities.level;
-    this.skyFx.partyAt.copy(this.celebration.festivities.centre);
+    this.skyFx.party = festivities.level;
+    this.skyFx.partyAt.copy(festivities.centre);
     this.camera.getWorldDirection(this.skyFx.lookDir);
-    this.skyFx.update(dt, this.t, this.trav.gPos, this.region.id, this.sky.night, this.sky.sunDirection);
+    this.skyFx.update(dt, this.t, this.trav.gPos, atmosphereRegion, this.sky.night, this.sky.sunDirection);
     this.traffic.update(dt, this.t, this.region.id, this.trav.gPos, this.sky.night, couriersIn(this.st, this.region.id), hourOf(this.st.minutes));
     // The people in your care: news when someone thrives or their paid days run out.
     if (!this.readOnly && (this.charityClock -= dt) <= 0) {
