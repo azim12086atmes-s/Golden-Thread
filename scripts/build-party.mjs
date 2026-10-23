@@ -85,7 +85,9 @@ fs.writeFileSync(path.join(DIST, 'index.html'), indexHtml);
 fs.mkdirSync(path.join(DIST, 'party'), { recursive: true });
 fs.copyFileSync(path.join(ROOT, 'party', 'styles.css'), path.join(DIST, 'party', 'styles.css'));
 fs.copyFileSync(path.join(ROOT, 'party', 'golden-ui.css'), path.join(DIST, 'party', 'golden-ui.css'));
-const originalStyles = fs.readFileSync(path.join(ROOT, 'src', 'ui', 'styles.css'), 'utf8').replace(/(^|\n)\s*:root\s*\{/g, '$1#ui {');
+const originalStyles = fs.readFileSync(path.join(ROOT, 'src', 'ui', 'styles.css'), 'utf8')
+  .replace(/(^|\n)\s*:root\s*\{/g, '$1:scope {')
+  .replace(/#ui\b/g, ':scope');
 const scopedStylesPath = path.join(DIST, 'src', 'ui', 'styles.css');
 fs.mkdirSync(path.dirname(scopedStylesPath), { recursive: true });
 fs.writeFileSync(scopedStylesPath, `/* Original Golden Thread UI styles, confined to its #ui mount. */\n@scope (#ui) {\n${originalStyles}\n}\n`);

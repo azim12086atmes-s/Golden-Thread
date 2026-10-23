@@ -40,11 +40,13 @@ let browser;
  await waitForGame(page);
  report.checks.ui=await page.evaluate(()=>({uiRoots:document.querySelectorAll('#ui').length,personalNarrative:partyTest.game.core.allowPersonalNarrative,hiddenSiblingModels:partyTest.game.core.caravan.bodies.filter(b=>b.def.kind==='sibling').length,wardrobe:Object.keys(partyTest.game.core.st.outfits)}));
  assert.equal(report.checks.ui.uiRoots,1);assert.equal(report.checks.ui.hiddenSiblingModels,0);assert.equal(report.checks.ui.personalNarrative,false);
- async function shot(file){await page.screenshot({path:path.join(out,file),timeout:120000});report.captures.push(file);save();console.log('Captured '+file);}
+ async function shot(file){report.checks.lastCapture={file,position:await page.evaluate(()=>partyTest.game.pos.toArray())};save();await page.screenshot({path:path.join(out,file),timeout:120000});report.captures.push(file);save();console.log('Captured '+file);}
  await page.evaluate(()=>{const g=partyTest.game.core;g.st.minutes=14*60;g.trav.teleport(110,275);g.trav.camYaw=Math.PI;g.trav.camPitch=.16;g.trav.camDist=7;});
  await delay(12000);await shot('golden-full-world-meadow.png');
- await page.evaluate(()=>partyTest.game.core.ui.open('wardrobe'));await delay(2000);await shot('golden-full-wardrobe.png');
+ report.checks.wardrobeImmediate=await page.evaluate(()=>{const g=partyTest.game.core;g.ui.open('wardrobe');const p=document.querySelector('#ui .p-wardrobe');const s=getComputedStyle(p);return{panel:g.ui.panelId,root:document.getElementById('ui').className,className:p.className,display:s.display,visibility:s.visibility,transform:s.transform,rect:p.getBoundingClientRect().toJSON(),rootGlass:getComputedStyle(document.getElementById('ui')).getPropertyValue('--glass-strong'),outfits:p.querySelectorAll('.outfit').length};});save();
+ await delay(3000);report.checks.wardrobeSettled=await page.evaluate(()=>{const p=document.querySelector('#ui .panel');const s=getComputedStyle(p);return{panel:partyTest.game.core.ui.panelId,root:document.getElementById('ui').className,className:p.className,display:s.display,visibility:s.visibility,transform:s.transform,rect:p.getBoundingClientRect().toJSON()};});save();await shot('golden-full-wardrobe.png');
  await page.evaluate(()=>partyTest.game.core.ui.closePanel());
+ await page.waitForFunction(()=>partyTest.game.core.dress.blend===0);
  const world=await page.evaluate(async()=>{const r=await import('/src/world/regions.js');return r.REGIONS.map(x=>({id:x.id,name:x.name,col:x.col,row:x.row}));});
  report.checks.regions=world;assert.equal(world.length,20);save();
  // Inspect the actual northern venue and the gate approach from the original camera rig.
@@ -68,7 +70,7 @@ let browser;
 
  report.checks.gate=await page.evaluate(()=>{const v=partyTest.game.scenery.venue;return{position:partyTest.game.pos.toArray(),entrance:{bounds:v.palace.vestibule,opening:v.palace.gateOpening?.()},plants:v.gardens?.plantBakeStatus||null};});save();
  await page.evaluate(()=>{const g=partyTest.game.core;g.trav.teleport(-192.5,-8412.5);g.trav.gPos.y=792;g.trav.camYaw=1.1;g.trav.camPitch=.35;g.trav.camDist=16;});
- await page.waitForFunction(()=>{const p=partyTest.game.scenery.venue.gardens?.plantBakeStatus;return p?.near&&p.settled;},null,{timeout:150000});
+ try{await page.waitForFunction(()=>{const p=partyTest.game.scenery.venue.gardens?.plantBakeStatus;return p?.near&&p.settled;},null,{timeout:90000});}catch(e){report.errors.push({type:'plants',message:String(e)});}
  report.checks.crownPlants=await page.evaluate(()=>partyTest.game.scenery.venue.gardens.plantBakeStatus);save();
  await shot('palace-crown-garden.png');
  await context.close();

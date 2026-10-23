@@ -280,7 +280,7 @@ export function createPartyServer({ config, distDir = path.join(ROOT, 'dist'), n
           const guestNumber = body.guestNumber.replace(/^0+(?=\d)/, '');
           const name = body.name === undefined ? `Guest ${guestNumber}` : cleanLabel(body.name, 36);
           if (!name) return fail(res, 401, 'Enter a valid numbered guest link.');
-          slot = { id: `numbered-${guestNumber}`, role: 'guest', name, avatar: 'g-petal', token: null };
+          slot = { id: `numbered-${guestNumber}`, role: 'guest', name, avatar: 'g-kurti-jeans', token: null };
         } else slot = inviteByToken.get(String(body.token || ''));
         if (!slot) return fail(res, 401, 'Invalid invitation.');
         const existing = sessionsBySlot.get(slot.id);
