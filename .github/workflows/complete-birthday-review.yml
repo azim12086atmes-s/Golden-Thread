@@ -4,6 +4,9 @@ on:
     branches: [birthday/complete-golden-world]
 permissions:
   contents: read
+concurrency:
+  group: birthday-complete-review-${{ github.ref }}
+  cancel-in-progress: true
 jobs:
   validate:
     runs-on: ubuntu-latest

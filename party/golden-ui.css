@@ -13,7 +13,7 @@
 #ui.party-presentation > .panel:not(.sheet) { inset-block-start: 84px; }
 #ui.party-presentation > .feed { inset-block-end: 130px; }
 #ui.party-presentation > .touch-actions { display: none; }
-#ui.party-presentation > .panel.show { transform: none !important; visibility: visible; }
+#ui.party-presentation > .panel.show { transform: none !important; visibility: visible; transition: none !important; }
 #ui.party-presentation.sheet-open > .tracker,
 #ui.party-presentation.sheet-open > .hud-tr { display: none !important; }
 body:has(#ui > .p-wardrobe.show) #hud { visibility: hidden; }
